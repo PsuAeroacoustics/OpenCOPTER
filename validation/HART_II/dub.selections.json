@@ -1,0 +1,12 @@
+{
+	"fileVersion": 1,
+	"versions": {
+		"matplotlib-d": {"path":"../../../matplotlib-d"},
+		"opencopter": {"path":"../../"},
+		"numd": {"path":"../../dependencies/numd"},
+		"pyd": "0.14.1",
+		"tinyendian": "0.2.0",
+		"vtkd": {"path":"../../dependencies/vtkd"},
+		"wopwopd": "~master"
+	}
+}

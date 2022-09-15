@@ -1,0 +1,9 @@
+[submodule "dependencies/numd"]
+	path = dependencies/numd
+	url = ../../Rob-Rau/numd.git
+[submodule "dependencies/pyd"]
+	path = dependencies/pyd
+	url = ../../Rob-Rau/pyd.git
+[submodule "dependencies/vtkd"]
+	path = dependencies/vtkd
+	url = ../vtkd.git
