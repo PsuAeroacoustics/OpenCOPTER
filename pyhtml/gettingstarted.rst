@@ -52,7 +52,7 @@ Using Homebrew::
 Windows
 ^^^^^^^
 
-Unfortunatly OpenCOPTER does not support Windows at this time. Work is being done to get support going but for the time being, WSL and WSL2 can be used to run this code using the linux directions above.
+Unfortunatly OpenCOPTER does not support Windows natively at this time. Work is being done to get support going but for the time being, WSL and WSL2 can be used to run this code using the linux directions above.
 
 Optional Dependencies
 ---------------------
