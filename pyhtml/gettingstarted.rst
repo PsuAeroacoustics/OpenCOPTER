@@ -129,7 +129,7 @@ Configurations (`-c`)
 +-------------------------------+-----------------------------------------------------------------------------+
 | library-python<version>       | Builds the dynamic library for use with other D code.                       |
 |                               | Python wrappers are built for the specific version of python.               |
-|                               | <version> can be any of 33, 34, 35, 36, 37, 38, 39, or 310                                           |
+|                               | <version> can be any of 33, 34, 35, 36, 37, 38, 39, or 310                  |
 +-------------------------------+-----------------------------------------------------------------------------+
 | library-python<version>-novtk | Builds the dynamic library for use with other D code. VTK support excluded. |
 |                               | Python wrappers are built for the specific version of python.               |
