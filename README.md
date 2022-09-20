@@ -44,14 +44,18 @@ Homebrew can be used to install most of these dependencies. The exception is SLE
 
 Homebrew can also be used to install openblas. On macOS openblas includes lapack and lapacke, so no further dependencies need to be installed. If Homebrew is not an option, openblas can be built from source and installed to `/usr/local/lib`.
 
-Using Homebrew::
-
+Using Homebrew:
+```
+	brew install dub
 	brew install ldc
-	brew install openblas
+	brew install -s openblas
+```
+
+The `-s` option for the openblas install makes Homebrew build the library from source, which is required to avoid openmp runtime errors.
 
 **Windows**
 
-Unfortunatly OpenCOPTER does not support Windows natively at this time. Work is being done to get support going but for the time being, WSL and WSL2 can be used to run this code using the linux directions above.
+Unfortunately OpenCOPTER does not support Windows natively at this time. Work is being done to get support going but for the time being, WSL and WSL2 can be used to run this code using the linux directions above.
 
 ### Optional Dependencies
 
