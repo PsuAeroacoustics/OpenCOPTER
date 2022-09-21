@@ -2,6 +2,7 @@
 import sys
 import os
 
+# Tell python where it will find the libopencopter module
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/../../')
 
 from libopencopter import *
@@ -160,8 +161,8 @@ if __name__ == "__main__":
 		step(ac_state, aircraft, ac_input_state, inflows, wake_history, atmo, iteration, dt)
 
 		if iteration > (iterations - 360):
-			write_rotor_vtu("rotor_"+str(iteration)+".vtu", vtk_rotor, ac_state.rotor_states[0], ac_input_state.rotor_inputs[0])
-			write_wake_vtu("wake_", str(iteration), vtk_wake, wake_history.history[0])
+			write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], ac_input_state.rotor_inputs[0])
+			write_wake_vtu("wake", iteration, vtk_wake, wake_history.history[0])
 		
 
 	print("rotor 0 C_T: ", ac_state.rotor_states[0].C_T)
@@ -187,7 +188,7 @@ if __name__ == "__main__":
 
 			x_r = math.cos(blade.azimuth)
 			x_b = aircraft.rotors[r_idx].origin[0] + x_r*math.cos(ac_input_state.rotor_inputs[r_idx].angle_of_attack)
-			z_b = aircraft.rotors[r_idx].origin[2] + x_r*math.sin(ac_input_state.rotor_inputs[r_idx].angle_of_attack)
+			z_b = aircraft.rotors[r_idx].origin[2] - x_r*math.sin(ac_input_state.rotor_inputs[r_idx].angle_of_attack)
 
 			plt.plot([aircraft.rotors[r_idx].origin[0], x_b], [aircraft.rotors[r_idx].origin[2], z_b], "k-", linewidth=1.5)
 
