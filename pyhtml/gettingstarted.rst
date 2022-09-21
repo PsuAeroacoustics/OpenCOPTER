@@ -139,6 +139,10 @@ Configurations (`-c`)
 |                               | <version> can be any of 33, 34, 35, 36, 37, 38, 39, or 310                  |
 +-------------------------------+-----------------------------------------------------------------------------+
 
+**-novtk**
+
+The configurations that have a `-novtk` suffix disable linking to the libvtk libraries and turns OpenCOPTER vtu* functions into no-ops. This ensures that no source code changes are required when building without libvtk support.
+
 Running the Examples
 ====================
 
