@@ -12,7 +12,7 @@ If the repository is already cloned, but submodules were not cloned, run the fol
 
 ::
 
-	git submodule update --init
+	git submodule update --init --recursive
 
 Setting up the remaining dependencies is described below.
 

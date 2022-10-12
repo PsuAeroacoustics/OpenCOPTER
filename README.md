@@ -12,7 +12,7 @@ OpenCOPTER has a number of dependencies that need to be setup and installed firs
 If the repository is already cloned, but submodules were not cloned, run the following command to acquire the submodules:
 
 ```
-	git submodule update --init
+	git submodule update --init --recursive
 ```
 
 Setting up the remaining dependencies is described below.
