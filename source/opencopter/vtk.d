@@ -10,6 +10,7 @@ import numd.linearalgebra.matrix : Matrix, Vector;
 
 import std.conv;
 import std.math;
+import std.stdio;
 
 double[2][] naca0012 = [
 	[1.000000,  0.001260],
@@ -333,6 +334,24 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 
 class VtkWake {
 	this() {
+
+	}
+
+	VtkRotorWake[] rotor_wakes;
+
+	version(Have_vtkd) {
+		private this(size_t num_rotors, size_t num_blades, size_t shed_length, size_t elements) {
+			rotor_wakes = new VtkRotorWake[num_rotors];
+
+			foreach(ref rotor_wake; rotor_wakes) {
+				rotor_wake = new VtkRotorWake(num_blades, shed_length, elements);
+			}
+		}
+	}
+}
+
+class VtkRotorWake {
+	this() {
 	}
 
 	version(Have_vtkd) {
@@ -413,19 +432,69 @@ class VtkWake {
 			}
 		}
 	}
+
+	~this() {
+			writer.Delete;
+
+			foreach(ref shed_appender; shed_appenders) {
+				shed_appender.Delete;
+			}
+			
+			foreach(ref shed_grid; shed_grids) {
+				shed_grid.Delete;
+			}
+
+			foreach(ref shed_point; shed_points) {
+				shed_point.Delete;
+			}
+
+			foreach(ref induced; shed_induced) {
+				induced.Delete;
+			}
+
+			foreach(ref circ; shed_circ) {
+				circ.Delete;
+			}
+	
+			foreach(ref tip_grid; tip_grids) {
+				tip_grid.Delete;
+			}
+
+			foreach(ref tip_point; tip_points) {
+				tip_point.Delete;
+			}
+
+			foreach(ref induced; tip_induced) {
+				induced.Delete;
+			}
+
+			foreach(ref circ; tip_circ) {
+				circ.Delete;
+			}
+
+			foreach(ref core_size; tip_core_size) {
+				core_size.Delete;
+			}
+
+			foreach(ref d_volume; tip_d_volume) {
+				d_volume.Delete;
+			}
+	}
 }
 
 VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 	
 	version(Have_vtkd) {
-		immutable wake_length = wake.rotor_wakes[0].tip_vortices[0].chunks.length*chunk_size;
+		//immutable wake_length = wake.rotor_wakes[0].tip_vortices[0].chunks.length*chunk_size;
 		immutable shed_length = wake.rotor_wakes[0].shed_vortices[0].shed_filaments.length;
 		immutable elements = wake.rotor_wakes[0].shed_vortices[0].shed_filaments[0].length*chunk_size;
 
-		auto vtk_wake = new VtkWake(wake.rotor_wakes[0].tip_vortices.length, shed_length, elements);
+		auto vtk_wake = new VtkWake(wake.rotor_wakes.length, wake.rotor_wakes[0].tip_vortices.length, shed_length, elements);
 
 		foreach(r_idx, rotor_wake; wake.rotor_wakes) {
 			vtkIdType last_point_id;
+
+			immutable wake_length = rotor_wake.tip_vortices[0].chunks.length*chunk_size;
 
 			size_t shed_idx = 0;
 			foreach(b_idx, shed_wake; rotor_wake.shed_vortices) {
@@ -434,47 +503,47 @@ VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 				
 				foreach(shed_filament; shed_wake.shed_filaments) {
 
-					vtk_wake.shed_grids[shed_idx].Allocate(shed_wake_len);
+					vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx].Allocate(shed_wake_len);
 					
-					vtk_wake.shed_points[shed_idx].Allocate(shed_wake_len);
+					vtk_wake.rotor_wakes[r_idx].shed_points[shed_idx].Allocate(shed_wake_len);
 
-					vtk_wake.shed_induced[shed_idx].SetNumberOfComponents(1);
-					vtk_wake.shed_induced[shed_idx].SetNumberOfTuples(shed_wake_len);
-					vtk_wake.shed_induced[shed_idx].SetName("induced");
+					vtk_wake.rotor_wakes[r_idx].shed_induced[shed_idx].SetNumberOfComponents(1);
+					vtk_wake.rotor_wakes[r_idx].shed_induced[shed_idx].SetNumberOfTuples(shed_wake_len);
+					vtk_wake.rotor_wakes[r_idx].shed_induced[shed_idx].SetName("induced");
 
-					vtk_wake.shed_circ[shed_idx].SetNumberOfComponents(1);
-					vtk_wake.shed_circ[shed_idx].SetNumberOfTuples(shed_wake_len - 1);
-					vtk_wake.shed_circ[shed_idx].SetName("d_circulation");
+					vtk_wake.rotor_wakes[r_idx].shed_circ[shed_idx].SetNumberOfComponents(1);
+					vtk_wake.rotor_wakes[r_idx].shed_circ[shed_idx].SetNumberOfTuples(shed_wake_len - 1);
+					vtk_wake.rotor_wakes[r_idx].shed_circ[shed_idx].SetName("d_circulation");
 
 					foreach(idx, shed_chunk; shed_filament.chunks) {
 						foreach(c_idx; 0..chunk_size) {
-							auto point_id = vtk_wake.shed_points[shed_idx].InsertNextPoint(0, 0, 0);
+							auto point_id = vtk_wake.rotor_wakes[r_idx].shed_points[shed_idx].InsertNextPoint(0, 0, 0);
 
-							vtk_wake.shed_point_ids ~= point_id;
-							vtk_wake.shed_induced[shed_idx].SetTuple1(point_id, 0);
+							vtk_wake.rotor_wakes[r_idx].shed_point_ids ~= point_id;
+							vtk_wake.rotor_wakes[r_idx].shed_induced[shed_idx].SetTuple1(point_id, 0);
 							if((idx > 0) || ((idx == 0) && (c_idx > 0))) {
 								vtkIdType[2] ids = [last_point_id, point_id];
 
-								auto cell_id = vtk_wake.shed_grids[shed_idx].InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
-								vtk_wake.shed_cell_ids ~= cell_id;
+								auto cell_id = vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx].InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
+								vtk_wake.rotor_wakes[r_idx].shed_cell_ids ~= cell_id;
 
-								vtk_wake.shed_circ[shed_idx].SetTuple1(cell_id, 0);
+								vtk_wake.rotor_wakes[r_idx].shed_circ[shed_idx].SetTuple1(cell_id, 0);
 							}
 
 							last_point_id = point_id;
 						}
 					}
 
-					vtk_wake.shed_grids[shed_idx].SetPoints(vtk_wake.shed_points[shed_idx]);
+					vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx].SetPoints(vtk_wake.rotor_wakes[r_idx].shed_points[shed_idx]);
 
-					auto point_data = vtk_wake.shed_grids[shed_idx].GetPointData;
-					point_data.AddArray(vtk_wake.shed_induced[shed_idx]);
+					auto point_data = vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx].GetPointData;
+					point_data.AddArray(vtk_wake.rotor_wakes[r_idx].shed_induced[shed_idx]);
 
-					auto cell_data = vtk_wake.shed_grids[shed_idx].GetCellData;
-					cell_data.AddArray(vtk_wake.shed_circ[shed_idx]);
+					auto cell_data = vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx].GetCellData;
+					cell_data.AddArray(vtk_wake.rotor_wakes[r_idx].shed_circ[shed_idx]);
 
-					vtk_wake.shed_appenders[b_idx].AddInputData(vtk_wake.shed_grids[shed_idx]);
-					vtk_wake.shed_appenders[b_idx].Update;
+					vtk_wake.rotor_wakes[r_idx].shed_appenders[b_idx].AddInputData(vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx]);
+					vtk_wake.rotor_wakes[r_idx].shed_appenders[b_idx].Update;
 
 					shed_idx++;
 				}
@@ -482,60 +551,59 @@ VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 
 			foreach(b_idx, tip_vortex; rotor_wake.tip_vortices) {
 
-				vtk_wake.tip_grids[b_idx].Allocate(wake_length);
+				vtk_wake.rotor_wakes[r_idx].tip_grids[b_idx].Allocate(wake_length);
 
 				//auto tip_points = vtkPoints.New(VTK__DOUBLE);
-				vtk_wake.tip_points[b_idx].Allocate(wake_length);
+				vtk_wake.rotor_wakes[r_idx].tip_points[b_idx].Allocate(wake_length);
 
-				vtk_wake.tip_induced[b_idx].SetNumberOfComponents(1);
-				vtk_wake.tip_induced[b_idx].SetNumberOfTuples(wake_length);
-				vtk_wake.tip_induced[b_idx].SetName("induced");
+				vtk_wake.rotor_wakes[r_idx].tip_induced[b_idx].SetNumberOfComponents(1);
+				vtk_wake.rotor_wakes[r_idx].tip_induced[b_idx].SetNumberOfTuples(wake_length);
+				vtk_wake.rotor_wakes[r_idx].tip_induced[b_idx].SetName("induced");
 
-				vtk_wake.tip_d_volume[b_idx].SetNumberOfComponents(1);
-				vtk_wake.tip_d_volume[b_idx].SetNumberOfTuples(wake_length - 1);
-				vtk_wake.tip_d_volume[b_idx].SetName("d volume");
+				vtk_wake.rotor_wakes[r_idx].tip_d_volume[b_idx].SetNumberOfComponents(1);
+				vtk_wake.rotor_wakes[r_idx].tip_d_volume[b_idx].SetNumberOfTuples(wake_length - 1);
+				vtk_wake.rotor_wakes[r_idx].tip_d_volume[b_idx].SetName("d volume");
 
-				vtk_wake.tip_core_size[b_idx].SetNumberOfComponents(1);
-				vtk_wake.tip_core_size[b_idx].SetNumberOfTuples(wake_length - 1);
-				vtk_wake.tip_core_size[b_idx].SetName("core size");
+				vtk_wake.rotor_wakes[r_idx].tip_core_size[b_idx].SetNumberOfComponents(1);
+				vtk_wake.rotor_wakes[r_idx].tip_core_size[b_idx].SetNumberOfTuples(wake_length - 1);
+				vtk_wake.rotor_wakes[r_idx].tip_core_size[b_idx].SetName("core size");
 
-				vtk_wake.tip_circ[b_idx].SetNumberOfComponents(1);
-				vtk_wake.tip_circ[b_idx].SetNumberOfTuples(wake_length - 1);
-				vtk_wake.tip_circ[b_idx].SetName("circulation");
+				vtk_wake.rotor_wakes[r_idx].tip_circ[b_idx].SetNumberOfComponents(1);
+				vtk_wake.rotor_wakes[r_idx].tip_circ[b_idx].SetNumberOfTuples(wake_length - 1);
+				vtk_wake.rotor_wakes[r_idx].tip_circ[b_idx].SetName("circulation");
 
 				foreach(idx, tip_chunk; tip_vortex.chunks) {
 					foreach(c_idx; 0..chunk_size) {
-						auto point_id =  vtk_wake.tip_points[b_idx].InsertNextPoint(0, 0, 0);
+						auto point_id =  vtk_wake.rotor_wakes[r_idx].tip_points[b_idx].InsertNextPoint(0, 0, 0);
 
-						vtk_wake.tip_point_ids ~= point_id;
+						vtk_wake.rotor_wakes[r_idx].tip_point_ids ~= point_id;
 
-						vtk_wake.tip_induced[b_idx].SetTuple1(point_id, 0);
+						vtk_wake.rotor_wakes[r_idx].tip_induced[b_idx].SetTuple1(point_id, 0);
 						if((idx > 0) || ((idx == 0) && (c_idx > 0))) {
 							vtkIdType[2] ids = [last_point_id, point_id];
 
-							auto cell_id = vtk_wake.tip_grids[b_idx].InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
+							auto cell_id = vtk_wake.rotor_wakes[r_idx].tip_grids[b_idx].InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
 
-							vtk_wake.tip_cell_ids ~= cell_id;
+							vtk_wake.rotor_wakes[r_idx].tip_cell_ids ~= cell_id;
 
-							vtk_wake.tip_core_size[b_idx].SetTuple1(cell_id, 0);
-							vtk_wake.tip_d_volume[b_idx].SetTuple1(cell_id, 0);
-							vtk_wake.tip_circ[b_idx].SetTuple1(cell_id, 0);
+							vtk_wake.rotor_wakes[r_idx].tip_core_size[b_idx].SetTuple1(cell_id, 0);
+							vtk_wake.rotor_wakes[r_idx].tip_d_volume[b_idx].SetTuple1(cell_id, 0);
+							vtk_wake.rotor_wakes[r_idx].tip_circ[b_idx].SetTuple1(cell_id, 0);
 						}
 
 						last_point_id = point_id;
 					}
 				}
 
-				vtk_wake.tip_grids[b_idx].SetPoints(vtk_wake.tip_points[b_idx]);
+				vtk_wake.rotor_wakes[r_idx].tip_grids[b_idx].SetPoints(vtk_wake.rotor_wakes[r_idx].tip_points[b_idx]);
 
-				auto point_data = vtk_wake.tip_grids[b_idx].GetPointData;
-				point_data.AddArray(vtk_wake.tip_induced[b_idx]);
+				auto point_data = vtk_wake.rotor_wakes[r_idx].tip_grids[b_idx].GetPointData;
+				point_data.AddArray(vtk_wake.rotor_wakes[r_idx].tip_induced[b_idx]);
 
-				auto cell_data = vtk_wake.tip_grids[b_idx].GetCellData;
-				cell_data.AddArray(vtk_wake.tip_circ[b_idx]);
-				cell_data.AddArray(vtk_wake.tip_core_size[b_idx]);
-				cell_data.AddArray(vtk_wake.tip_d_volume[b_idx]);
-
+				auto cell_data = vtk_wake.rotor_wakes[r_idx].tip_grids[b_idx].GetCellData;
+				cell_data.AddArray(vtk_wake.rotor_wakes[r_idx].tip_circ[b_idx]);
+				cell_data.AddArray(vtk_wake.rotor_wakes[r_idx].tip_core_size[b_idx]);
+				cell_data.AddArray(vtk_wake.rotor_wakes[r_idx].tip_d_volume[b_idx]);
 			}
 		}
 
@@ -557,7 +625,7 @@ void write_wake_vtu(W)(string base_filename, size_t iteration, VtkWake vtk_wake,
 			size_t shed_idx = 0;
 			foreach(b_idx, shed_wake; rotor_wake.shed_vortices) {
 				
-				vtk_wake.shed_appenders[b_idx].RemoveAllInputs;
+				vtk_wake.rotor_wakes[r_idx].shed_appenders[b_idx].RemoveAllInputs;
 
 				auto shed_wake_len = shed_wake.shed_filaments[0].chunks.length*chunk_size;
 				
@@ -567,20 +635,20 @@ void write_wake_vtu(W)(string base_filename, size_t iteration, VtkWake vtk_wake,
 					double last_core_size;
 					foreach(idx, shed_chunk; shed_filament.chunks) {
 						foreach(c_idx; 0..chunk_size) {
-							auto point_id = vtk_wake.shed_point_ids[shed_point_idx];
+							auto point_id = vtk_wake.rotor_wakes[r_idx].shed_point_ids[shed_point_idx];
 
-							vtk_wake.shed_points[shed_idx].SetPoint(point_id, shed_chunk.x[c_idx], shed_chunk.y[c_idx], shed_chunk.z[c_idx]);
+							vtk_wake.rotor_wakes[r_idx].shed_points[shed_idx].SetPoint(point_id, shed_chunk.x[c_idx], shed_chunk.y[c_idx], shed_chunk.z[c_idx]);
 
 							last_circ = shed_chunk.gamma[c_idx];
 
-							vtk_wake.shed_induced[shed_idx].SetTuple1(point_id, shed_chunk.v_z[c_idx]);
+							vtk_wake.rotor_wakes[r_idx].shed_induced[shed_idx].SetTuple1(point_id, shed_chunk.v_z[c_idx]);
 
 							if((idx > 0) || ((idx == 0) && (c_idx > 0))) {
 								vtkIdType[2] ids = [last_point_id, point_id];
 
 								//auto cell_id = wake_grid.InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
-								auto cell_id = vtk_wake.shed_cell_ids[shed_cell_idx];
-								vtk_wake.shed_circ[shed_idx].SetTuple1(cell_id, last_circ);
+								auto cell_id = vtk_wake.rotor_wakes[r_idx].shed_cell_ids[shed_cell_idx];
+								vtk_wake.rotor_wakes[r_idx].shed_circ[shed_idx].SetTuple1(cell_id, last_circ);
 
 								shed_cell_idx++;
 							}
@@ -591,17 +659,17 @@ void write_wake_vtu(W)(string base_filename, size_t iteration, VtkWake vtk_wake,
 						}
 					}
 
-					vtk_wake.shed_appenders[b_idx].AddInputData(vtk_wake.shed_grids[shed_idx]);
-					vtk_wake.shed_appenders[b_idx].Update;
+					vtk_wake.rotor_wakes[r_idx].shed_appenders[b_idx].AddInputData(vtk_wake.rotor_wakes[r_idx].shed_grids[shed_idx]);
+					vtk_wake.rotor_wakes[r_idx].shed_appenders[b_idx].Update;
 
 					shed_idx++;
 				}
 
 				import std.string : toStringz;
 				auto filename = base_filename~"_shed_"~r_idx.to!string~"_"~b_idx.to!string~"_"~iteration.to!string~".vtu";
-				vtk_wake.writer.SetFileName(filename.toStringz);
-				vtk_wake.writer.SetInputData(vtk_wake.shed_appenders[b_idx].GetOutput);
-				vtk_wake.writer.Write;
+				vtk_wake.rotor_wakes[r_idx].writer.SetFileName(filename.toStringz);
+				vtk_wake.rotor_wakes[r_idx].writer.SetInputData(vtk_wake.rotor_wakes[r_idx].shed_appenders[b_idx].GetOutput);
+				vtk_wake.rotor_wakes[r_idx].writer.Write;
 			}
 
 			size_t tip_point_idx = 0;
@@ -614,21 +682,21 @@ void write_wake_vtu(W)(string base_filename, size_t iteration, VtkWake vtk_wake,
 				double last_d_volume;
 				foreach(idx, tip_chunk; tip_vortex.chunks) {
 					foreach(c_idx; 0..chunk_size) {
-						auto point_id = vtk_wake.tip_point_ids[tip_point_idx];
-						vtk_wake.tip_points[b_idx].SetPoint(point_id, tip_chunk.x[c_idx], tip_chunk.y[c_idx], tip_chunk.z[c_idx]);
+						auto point_id = vtk_wake.rotor_wakes[r_idx].tip_point_ids[tip_point_idx];
+						vtk_wake.rotor_wakes[r_idx].tip_points[b_idx].SetPoint(point_id, tip_chunk.x[c_idx], tip_chunk.y[c_idx], tip_chunk.z[c_idx]);
 
 						last_circ = tip_chunk.gamma[c_idx];
 						last_core_size = tip_chunk.r_c[c_idx];
 						last_d_volume = tip_chunk.d_volume[c_idx];
-						vtk_wake.tip_induced[b_idx].SetTuple1(point_id, tip_chunk.v_z[c_idx]);
+						vtk_wake.rotor_wakes[r_idx].tip_induced[b_idx].SetTuple1(point_id, tip_chunk.v_z[c_idx]);
 
 						if((idx != tip_vortex.chunks.length - 1) || ((idx == tip_vortex.chunks.length - 1) && (c_idx < (chunk_size - 1)) )) {
 						//if((idx > 0) || ((idx == 0) && (c_idx > 0))) {
 
-							auto cell_id = vtk_wake.tip_cell_ids[tip_cell_idx];
-							vtk_wake.tip_core_size[b_idx].SetTuple1(cell_id, last_core_size);
-							vtk_wake.tip_d_volume[b_idx].SetTuple1(cell_id, last_d_volume);
-							vtk_wake.tip_circ[b_idx].SetTuple1(cell_id, last_circ);
+							auto cell_id = vtk_wake.rotor_wakes[r_idx].tip_cell_ids[tip_cell_idx];
+							vtk_wake.rotor_wakes[r_idx].tip_core_size[b_idx].SetTuple1(cell_id, last_core_size);
+							vtk_wake.rotor_wakes[r_idx].tip_d_volume[b_idx].SetTuple1(cell_id, last_d_volume);
+							vtk_wake.rotor_wakes[r_idx].tip_circ[b_idx].SetTuple1(cell_id, last_circ);
 
 							tip_cell_idx++;
 						}
@@ -640,9 +708,9 @@ void write_wake_vtu(W)(string base_filename, size_t iteration, VtkWake vtk_wake,
 
 				import std.string : toStringz;
 				auto filename = base_filename~"_"~r_idx.to!string~"_"~b_idx.to!string~"_"~iteration.to!string~".vtu";
-				vtk_wake.writer.SetFileName(filename.toStringz);
-				vtk_wake.writer.SetInputData(vtk_wake.tip_grids[b_idx]);
-				vtk_wake.writer.Write;
+				vtk_wake.rotor_wakes[r_idx].writer.SetFileName(filename.toStringz);
+				vtk_wake.rotor_wakes[r_idx].writer.SetInputData(vtk_wake.rotor_wakes[r_idx].tip_grids[b_idx]);
+				vtk_wake.rotor_wakes[r_idx].writer.Write;
 			}
 		}
 	}
