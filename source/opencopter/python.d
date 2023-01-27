@@ -161,6 +161,14 @@ double[] get_dC_T(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_T";
 }
 
+void fill_dC_Tf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_T"(data);
+}
+
+void fill_dC_Td(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_T"(data);
+}
+
 double[] get_dC_Q(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_Q";
 }
@@ -175,6 +183,30 @@ double[] get_dC_D(ref PyBladeState blade) {
 
 double[] get_aoa(ref PyBladeState blade) {
 	return blade.get_state_array!"aoa";
+}
+
+void fill_aoad(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"aoa"(data);
+}
+
+void fill_aoaf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"aoa"(data);
+}
+
+void fill_u_td(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"u_t"(data);
+}
+
+void fill_u_tf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"u_t"(data);
+}
+
+void fill_u_pd(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"u_p"(data);
+}
+
+void fill_u_pf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"u_p"(data);
 }
 
 double[] get_gamma(ref PyBladeState blade) {
@@ -424,6 +456,20 @@ extern(C) void PydMain() {
 		:return: List of spanwise :math:`dC_T` values
 	});
 
+	def!(fill_dC_Td, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise thrust coefficient to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_dC_Tf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise thrust coefficient to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
 	def!(get_dC_Q, double[] function(ref PyBladeState), Docstring!q{
 		Extract blade spanwise torque coefficient to a linear array.
 
@@ -437,6 +483,49 @@ extern(C) void PydMain() {
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\alpha}` from
 		:return: List of spanwise :math:`{\alpha}`
 	});
+
+	def!(fill_aoad, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise angle of attack to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_aoaf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise angle of attack to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_u_td, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise tangential velocity component to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_u_tf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise tangential velocity component to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_u_pd, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise perpendicular velocity component to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_u_pf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise perpendicular velocity component to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
 	def!(get_gamma, double[] function(ref PyBladeState), Docstring!q{
 		Extract blade spanwise bound circulation (:math:`{\Gamma}`) to a linear array.
 
