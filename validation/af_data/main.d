@@ -1,5 +1,6 @@
 import opencopter.math;
 import opencopter.read_afdata;
+import opencopter.aerodas;
 import std.stdio;
 import std.array;
 import std.math;
@@ -73,16 +74,17 @@ void main(){
         auto afdata2D = load2Dfile("sm701_Re250k.dat",6,0.21);
         //writeln(afdata2D.CL);
         double[110] aoa_array;
+        double mach = 0.5;
         for (int i=0;i<110;i++){aoa_array[i]=i-10.0;}
         double[] CL_array = new double[aoa_array.length];
         double[] CD_array = new double[aoa_array.length];
         for(int i=0;i<aoa_array.length;i++){
-            CL_array[i] = afdata2D.getCL(aoa_array[i]);
-            CD_array[i] = afdata2D.getCD(aoa_array[i]);
+            CL_array[i] = afdata2D.getCl(aoa_array[i],mach);
+            CD_array[i] = afdata2D.getCd(aoa_array[i],mach);
         }
         plt.figure();
         plt.plot(aoa_array,CL_array,["label": "$AERODAS MODEL$"]);
-        plt.plot(afdata2D.aoa,afdata2D.cl,["label": "XFOIL data"]);
+        plt.plot(afdata2D.alpha,afdata2D.CL,["label": "XFOIL data"]);
         plt.xlabel("Angle of attack (degrees)");
         plt.ylabel("Coefficient of lift");
         plt.legend();
@@ -91,7 +93,7 @@ void main(){
 
         plt.figure();
         plt.plot(aoa_array,CD_array,["label": "$AERODAS MODEL$"]);
-        plt.plot(afdata2D.aoa,afdata2D.cd,["label": "XFOIL data"]);
+        plt.plot(afdata2D.alpha,afdata2D.CD,["label": "XFOIL data"]);
         plt.xlabel("Angle of attack (degrees)");
         plt.ylabel("Coefficient of drag");
         plt.legend();

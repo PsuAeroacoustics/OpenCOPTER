@@ -2,6 +2,7 @@ module opencopter.aerodas;
 
 import opencopter.math;
 import opencopter.liftmodel_interface;
+import opencopter.memory;
 import std.stdio;
 import std.array;
 import std.math;
@@ -86,6 +87,43 @@ class Input_param
     }
 
 }
+// Function for CL calulation in the post stall regime
+double getCL2(double aoa,double tbyc,double AR,double ACL1_3D){
+    double ans;
+    double F1 = 1.190 * (1 - pow(tbyc,2));
+    double F2 = 0.65 + 0.35 * exp(-pow((9.0 / AR),2.3));
+    double cl2max = F1 * F2;
+    double RCL2 = 1.632 - cl2max;
+    double N2 = 1 + cl2max / RCL2;
+    if (0 < aoa && aoa < ACL1_3D){
+        ans = 0;
+    }
+    else if (ACL1_3D <= aoa && aoa <= 92.0){
+        ans = -0.032 * (aoa - 92.0) - RCL2 * pow(((92.0 - aoa) / 51.0),N2);
+    }
+    else if (aoa > 92){
+        ans = -0.032 * (aoa - 92.0) + RCL2 * pow(((aoa - 92.0) / 51.0),N2);
+    }
+    return ans;
+}
+// Function for CD calulation in the post stall regime
+double getCD2(double aoa,double A0,double cd1max_3D,double ACL1_3D,double ACD1_3D,double tbyc,double AR){
+    double ans1;
+    double G1 = 2.300 * exp(-1 * pow(0.65 * tbyc,0.9));
+    double G2 = 0.52 + 0.48 * exp(-1 * pow((0.65 / AR),1.1));
+    double cd2max = G1 * G2;
+    debug writeln("cd2max = ",cd2max);
+    if ((2 * A0 - ACL1_3D) < aoa && aoa < ACL1_3D)
+    { //(check this condition(might be typo in the paper pg18.) 
+        ans1 = 0;
+    }
+    else if (aoa > ACD1_3D)
+    {
+        ans1 = cd1max_3D + (cd2max - cd1max_3D) * sin((aoa - ACD1_3D) * PI*0.5 / (
+                90.0 - ACD1_3D));
+    }
+    return ans1;
+}
 
 class AeroDAS:Coefficent
 {
@@ -111,7 +149,7 @@ class AeroDAS:Coefficent
         this.ip = new Input_param(this.alpha, this.CL, this.CD);
         debug writeln("A0 is",this.ip.A0);
     }
-        double getCl(double alphaQuery,double machQuery)
+        double[] getCl(Chunk alphaQuery,Chunk machQuery)
         {
             //finite aspect ratio adjustment
             double ACL1_3D = this.ip.ACL1_2D + this.ip.cd1max_2D * 18.2 * pow(this.AR,-0.9);
@@ -123,66 +161,47 @@ class AeroDAS:Coefficent
             // pre-stall Cl calculation
             double RCL1 = S1_3D * (ACL1_3D - this.ip.A0) - cl1max_3D; //reduction from extension of linear segment of lift curve to CL1max
             double N1 = 1 + cl1max_3D / RCL1;
-            if (alphaQuery >= this.ip.A0)
-            {
-                CL1 = S1_3D * (alphaQuery - this.ip.A0) - RCL1 * pow(
-                    (alphaQuery - this.ip.A0) / (ACL1_3D - this.ip.A0),N1);
-            }
-            else
-            {
-                CL1 = S1_3D * (alphaQuery - this.ip.A0) + RCL1 * pow(
-                    (this.ip.A0 - alphaQuery) / (ACL1_3D - this.ip.A0),N1);
-            }
-            //writeln("CL1 = ", CL1);
-            //post stall regim
+            double[] Cl = new double[8];
 
-            double getCL2(double aoa)
-            {
-                double ans;
-                double F1 = 1.190 * (1 - pow(this.tbyc,2));
-                double F2 = 0.65 + 0.35 * exp(-pow((9.0 / this.AR),2.3));
-                double cl2max = F1 * F2;
-                double RCL2 = 1.632 - cl2max;
-                double N2 = 1 + cl2max / RCL2;
-                if (0 < aoa && aoa < ACL1_3D)
+            for(int i=0;i<8;i++){
+                if (alphaQuery[i] >= this.ip.A0)
                 {
-                    ans = 0;
+                    CL1 = S1_3D * (alphaQuery[i] - this.ip.A0) - RCL1 * pow(
+                        (alphaQuery[i] - this.ip.A0) / (ACL1_3D - this.ip.A0),N1);
                 }
-                else if (ACL1_3D <= aoa && aoa <= 92.0)
+                else
                 {
-                    ans = -0.032 * (aoa - 92.0) - RCL2 * pow(((92.0 - aoa) / 51.0),N2);
+                    CL1 = S1_3D * (alphaQuery[i] - this.ip.A0) + RCL1 * pow(
+                        (this.ip.A0 - alphaQuery[i]) / (ACL1_3D - this.ip.A0),N1);
                 }
-                else if (aoa > 92)
-                {
-                    ans = -0.032 * (aoa - 92.0) + RCL2 * pow(((aoa - 92.0) / 51.0),N2);
-                }
-                return ans;
-            }
+                //post stall regim
 
-            if (alphaQuery >= 0)
-            {
-                CL2 = getCL2(alphaQuery);
-                //writeln("CL2 = ",CL2);
-            }
-            else
-            {
-                double updated_alphaquery = -alphaQuery + 2.0 * this.ip.A0;
-                //writeln("alpha_neg = ",updated_alphaquery);
-                CL2 = -1.0 * getCL2(updated_alphaquery);
-                //writeln("CL2 = ",CL2);
-            }
+                if (alphaQuery[i] >= 0)
+                {
+                    CL2 = getCL2(alphaQuery[i],this.tbyc,this.AR,ACL1_3D);
+                    //writeln("CL2 = ",CL2);
+                }
+                else
+                {
+                    double updated_alphaquery = -alphaQuery[i] + 2.0 * this.ip.A0;
+                    //writeln("alpha_neg = ",updated_alphaquery);
+                    CL2 = -1.0 * getCL2(updated_alphaquery,this.tbyc,this.AR,ACL1_3D);
+                    //writeln("CL2 = ",CL2);
+                }
 
-            if (alphaQuery >= this.ip.A0)
-            {
-                return max(CL1, CL2);
+                if (alphaQuery[i] >= this.ip.A0)
+                {
+                    Cl[i] = max(CL1, CL2);
+                }
+                else
+                {
+                    Cl[i] = min(CL1, CL2);
+                }
             }
-            else
-            {
-                return min(CL1, CL2);
-            }
+            return Cl;
         }
 
-        double getCd(double alphaQuery, double machQuery)
+        double[] getCd(Chunk alphaQuery, Chunk machQuery)
         {   
             //finite aspect ratio adjustment
             double ACL1_3D = this.ip.ACL1_2D + this.ip.cd1max_2D * 18.2 * pow(this.AR,-0.9);
@@ -191,53 +210,33 @@ class AeroDAS:Coefficent
             double cd1max_3D = this.ip.cd1max_2D + 0.280 * pow(this.ip.cl1max_2D,2.0) * pow(this.AR,-0.9);
             writeln("CDmax_3D = ",cd1max_3D);
             double cl1max_3D = this.ip.cl1max_2D * (0.67 + 0.33 * exp(-16 / pow(this.AR,2.0)));
-                        
+            double[] Cd = new double [8];
+
+            for(int i=0; i<8 ; i++){
             //pre-stall Cd calculation
-            if ((2 * this.ip.A0 - ACD1_3D) <= alphaQuery && alphaQuery <= ACD1_3D)
-            {
-                CD1 = this.ip.CD0 + (cd1max_3D - this.ip.CD0) * pow(
-                    (alphaQuery - this.ip.A0) / (ACD1_3D - this.ip.A0),2);
-            }
-            else
-            {
-                CD1 = 0;
-            }
-            writeln("CD1 = ",CD1);
-
-            double getCD2(double aoa)
-            {
-                double ans1;
-                double G1 = 2.300 * exp(-1 * pow(0.65 * tbyc,0.9));
-                double G2 = 0.52 + 0.48 * exp(-1 * pow((0.65 / this.AR),1.1));
-                double cd2max = G1 * G2;
-                debug writeln("cd2max = ",cd2max);
-                if ((2 * this.ip.A0 - ACL1_3D) < aoa && aoa < ACL1_3D)
-                { //(check this condition(might be typo in the paper pg18.) 
-                    ans1 = 0;
+                if ((2 * this.ip.A0 - ACD1_3D) <= alphaQuery[i] && alphaQuery[i] <= ACD1_3D){
+                    CD1 = this.ip.CD0 + (cd1max_3D - this.ip.CD0) * pow(
+                        (alphaQuery[i] - this.ip.A0) / (ACD1_3D - this.ip.A0),2);
                 }
-                else if (aoa > ACD1_3D)
+                else
                 {
-                    ans1 = cd1max_3D + (cd2max - cd1max_3D) * sin((aoa - ACD1_3D) * PI*0.5 / (
-                            90.0 - ACD1_3D));
+                    CD1 = 0;
                 }
-                return ans1;
-            }
+                writeln("CD1 = ",CD1);
 
-            if (alphaQuery > (2 * this.ip.A0 - ACD1_3D))
-            {
-                CD2 = getCD2(alphaQuery);
+                if (alphaQuery[i] > (2 * this.ip.A0 - ACD1_3D)){
+                    CD2 = getCD2(alphaQuery[i],this.ip.A0,cd1max_3D,ACL1_3D,ACD1_3D,this.tbyc,this.AR);
+                }
+                else{
+                    double updated_alphaquery = -alphaQuery[i] + 2 * this.ip.A0;
+                    CD2 = getCD2(updated_alphaquery,this.ip.A0,cd1max_3D,ACL1_3D,ACD1_3D,this.tbyc,this.AR);
+                }
+                debug writeln("CD2 = ",CD2);
+                Cd[i]=max(CD1, CD2);
             }
-            else
-            {
-                double updated_alphaquery = -alphaQuery + 2 * this.ip.A0;
-                CD2 = getCD2(updated_alphaquery);
-            }
-            debug writeln("CD2 = ",CD2);
-
-            return max(CD1, CD2);
+            return Cd;
         }
 }
-
 auto load2Dfile(string filename, double AR, double tbyc)
 {
     /*reads 2D airfoil Data file*/

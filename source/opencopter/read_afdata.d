@@ -2,6 +2,7 @@ module opencopter.read_afdata;
 
 import opencopter.math;
 import opencopter.liftmodel_interface;
+import opencopter.memory;
 import std.stdio;
 import std.array;
 import std.math;
@@ -24,63 +25,53 @@ int findindx(double[] array, double query)
     return indx;
 }
 
-auto interpolation(double alphaQuery, double machQuery, double[] aoa, double[] mach, double[][] vals)
-    {
-        if (canFind(aoa[], alphaQuery) && canFind(mach[], machQuery))
-        {
+auto interpolation(Chunk alphaQuery, Chunk machQuery, double[] aoa, double[] mach, double[][] vals)
+    {   
+        double[] val_req;
+        for(int i=0; i<8; i++){
+            if (canFind(aoa, alphaQuery[i]) && canFind(mach, machQuery[i]))
+            {
             debug writeln("Requaired Angle of attack and Mach number are in the file");
-            auto alpha_indx = countUntil(aoa[], alphaQuery);
-            auto mach_indx = countUntil(mach[], machQuery);
-            double val_req = vals[alpha_indx][mach_indx];
-            return val_req;
-        }
-        else if (canFind(aoa[], alphaQuery))
-        {
+            auto alpha_indx = countUntil(aoa[], alphaQuery[i]);
+            auto mach_indx = countUntil(mach[], machQuery[i]);
+            val_req[i] = vals[alpha_indx][mach_indx];
+            }
+        else if (canFind(aoa, alphaQuery[i]))
+            {
             debug writeln("Requaired Angle of attack is in the file");
-            auto alpha_indx = countUntil(aoa[], alphaQuery);
+            auto alpha_indx = countUntil(aoa[], alphaQuery[i]);
             debug writeln(aoa[alpha_indx]);
-            int mach_indx = findindx(mach[], machQuery);
+            int mach_indx = findindx(mach[], machQuery[i]);
             debug writeln(mach[mach_indx], '\t', mach[mach_indx + 1]);
             debug writeln(vals[alpha_indx][mach_indx + 1], "\t", vals[alpha_indx][mach_indx]);
-            double val_req = ((vals[alpha_indx][mach_indx + 1] - vals[alpha_indx][mach_indx]) /
-                    (
-                        mach[mach_indx + 1] - mach[mach_indx])) * (
-                machQuery - mach[mach_indx]) + vals[alpha_indx][mach_indx];
-            return val_req;
-        }
-        else if (canFind(mach[], machQuery))
-        {
+            val_req[i] = ((vals[alpha_indx][mach_indx + 1] - vals[alpha_indx][mach_indx]) /
+                    (mach[mach_indx + 1] - mach[mach_indx])) * (machQuery[i] - mach[mach_indx]) + vals[alpha_indx][mach_indx];
+            }
+        else if (canFind(mach, machQuery[i]))
+            {
             debug writeln("Requaired Mach number is in the file");
-            auto mach_indx = countUntil(mach[], machQuery);
+            auto mach_indx = countUntil(mach[], machQuery[i]);
             debug writeln(this.mach[mach_indx]);
-            int alpha_indx = findindx(aoa, alphaQuery);
+            int alpha_indx = findindx(aoa, alphaQuery[i]);
             debug writeln(aoa[alpha_indx], aoa[alpha_indx + 1]);
-            double val_req = ((vals[alpha_indx + 1][mach_indx] - vals[alpha_indx][mach_indx]) /
-                    (
-                        aoa[alpha_indx + 1] - aoa[alpha_indx])) * (
-                alphaQuery - aoa[alpha_indx]) + vals[alpha_indx][mach_indx];
-            return val_req;
-        }
+            val_req[i] = ((vals[alpha_indx + 1][mach_indx] - vals[alpha_indx][mach_indx]) /
+                    (aoa[alpha_indx + 1] - aoa[alpha_indx])) * (alphaQuery[i] - aoa[alpha_indx]) + vals[alpha_indx][mach_indx];
+            }
         else
-        {
+            {
             writeln("Interpolating through the data");
-            int alpha_indx = findindx(aoa[], alphaQuery);
+            int alpha_indx = findindx(aoa[], alphaQuery[i]);
             debug writeln(aoa[alpha_indx], aoa[alpha_indx + 1]);
-            int mach_indx = findindx(mach[], machQuery);
+            int mach_indx = findindx(mach[], machQuery[i]);
             debug writeln(mach[mach_indx], mach[mach_indx + 1]);
             double val_intr1 = ((vals[alpha_indx + 1][mach_indx] - vals[alpha_indx][mach_indx]) /
-                    (
-                        aoa[alpha_indx + 1] - aoa[alpha_indx])) * (
-                alphaQuery - aoa[alpha_indx]) + vals[alpha_indx][mach_indx];
-            double val_intr2 = (
-                (vals[alpha_indx + 1][mach_indx + 1] - vals[alpha_indx][mach_indx + 1]) /
-                    (aoa[alpha_indx + 1] - aoa[alpha_indx])) * (
-                alphaQuery - aoa[alpha_indx]) + vals[alpha_indx][mach_indx + 1];
-            double val_req = ((val_intr2 - val_intr1) / (
-                    mach[mach_indx + 1] - mach[mach_indx])) * (
-                machQuery - mach[mach_indx]) + val_intr1;
-            return val_req;
+                    (aoa[alpha_indx + 1] - aoa[alpha_indx])) * (alphaQuery[i] - aoa[alpha_indx]) + vals[alpha_indx][mach_indx];
+            double val_intr2 = ((vals[alpha_indx + 1][mach_indx + 1] - vals[alpha_indx][mach_indx + 1]) /
+                    (aoa[alpha_indx + 1] - aoa[alpha_indx])) * (alphaQuery[i] - aoa[alpha_indx]) + vals[alpha_indx][mach_indx + 1];
+            val_req[i] = ((val_intr2 - val_intr1) / (mach[mach_indx + 1] - mach[mach_indx])) * (machQuery[i] - mach[mach_indx]) + val_intr1;
+            }
         }
+        return val_req;
     }
 
     void checkdim(double[] aoa,double[] mach,double[][] vals)
@@ -262,19 +253,19 @@ class C81:Coefficent
         }
     }
 
-    double getCl(double alphaQuery, double machQuery)
+    double[] getCl(Chunk alphaQuery, Chunk machQuery)
     {
         return interpolation(alphaQuery, machQuery,this.CL.aoa,this.CL.mach,this.CL.vals);
     }
 
-    double getCd(double alphaQuery, double machQuery)
+    double[] getCd(Chunk alphaQuery, Chunk machQuery)
     {
         return interpolation(alphaQuery, machQuery,this.CD.aoa,this.CD.mach,this.CD.vals);
     }
 
-    double getCm(double alphaQuery, double machQuery)
+    double[] getCm(Chunk alphaQuery, Chunk machQuery)
     {
-        return interpolation(alphaQuery, machQuery,this.CM.aoa,this.CM.mach,this.CM.vals);
+        return interpolation(alphaQuery, machQuery,this.CM.aoa,this.CM.mach,this.CM.vals);       
     }
 
 }
