@@ -32,6 +32,7 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 	immutable sin_alpha = rotor_input.sin_aoa;
 
 	foreach(chunk_idx; 0..blade.chunks.length) {
+		/+
 		immutable Chunk x_f = cos_beta*blade.chunks[chunk_idx].r[];
 		immutable Chunk z_f = -sin_beta*blade.chunks[chunk_idx].r[];
 
@@ -41,8 +42,9 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 
 		immutable Chunk x = x_tpp[]*cos_alpha + z_tpp[]*sin_alpha;
 		immutable Chunk z = -x_tpp[]*sin_alpha + z_tpp[]*cos_alpha;
-		
-		auto wake_velocities = wake.compute_wake_induced_velocities(x, y, z, ac_state, std.math.abs(rotor_input.angular_velocity), rotor_idx, blade_idx);
+		+/
+
+		auto wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, std.math.abs(rotor_input.angular_velocity), rotor_idx, blade_idx);
 
 		immutable Chunk wake_z = wake_velocities.v_x[]*sin_alpha + wake_velocities.v_z[]*cos_alpha;
 		immutable Chunk wake_y = wake_velocities.v_y[];
@@ -108,9 +110,9 @@ extern (C++) void compute_rotor_properties(alias lift_model, RG, RS, RIS, AS, I,
 	rotor_state.advance_ratio = rotor_input.freestream_velocity*rotor_input.cos_aoa/abs(rotor_input.angular_velocity*rotor.radius);
 	rotor_state.axial_advance_ratio = rotor_input.freestream_velocity*rotor_input.sin_aoa/abs(rotor_input.angular_velocity*rotor.radius);
 
-	foreach(blade_idx; 0..rotor.blades.length) {
-		rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
-	}
+	//foreach(blade_idx; 0..rotor.blades.length) {
+	//	rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
+	//}
 
 	foreach(blade_idx; 0..rotor.blades.length) {
 
@@ -146,6 +148,37 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 		ac_input_state.rotor_inputs[rotor_idx].cos_aoa = cos(ac_input_state.rotor_inputs[rotor_idx].angle_of_attack);
 		ac_input_state.rotor_inputs[rotor_idx].sin_aoa = sin(ac_input_state.rotor_inputs[rotor_idx].angle_of_attack);
+		
+		static import std.math;
+
+		immutable omega_sgn = std.math.sgn(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
+
+		foreach(blade_idx, ref blade; aircraft.rotors[rotor_idx].blades) {
+			ac_state.rotor_states[rotor_idx].blade_states[blade_idx].azimuth = ac_input_state.rotor_inputs[rotor_idx].azimuth + aircraft.rotors[rotor_idx].blades[blade_idx].azimuth_offset;
+
+			
+
+			immutable cos_beta = std.math.cos(ac_input_state.rotor_inputs[rotor_idx].blade_flapping[blade_idx]);
+			immutable sin_beta = std.math.sin(ac_input_state.rotor_inputs[rotor_idx].blade_flapping[blade_idx]);
+
+			immutable cos_azimuth = std.math.cos(ac_state.rotor_states[rotor_idx].blade_states[blade_idx].azimuth);
+			immutable sin_azimuth = std.math.sin(ac_state.rotor_states[rotor_idx].blade_states[blade_idx].azimuth);
+
+			immutable cos_alpha = ac_input_state.rotor_inputs[rotor_idx].cos_aoa;
+			immutable sin_alpha = ac_input_state.rotor_inputs[rotor_idx].sin_aoa;
+
+			foreach(chunk_idx, ref state_chunk; ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks) {
+				immutable Chunk x_f = cos_beta*blade.chunks[chunk_idx].r[];
+				immutable Chunk z_f = -sin_beta*blade.chunks[chunk_idx].r[];
+
+				immutable Chunk x_tpp = aircraft.rotors[rotor_idx].origin[0] + x_f[]*cos_azimuth + omega_sgn*blade.chunks[chunk_idx].xi[]*sin_azimuth;
+				state_chunk.y[] = aircraft.rotors[rotor_idx].origin[1] + x_f[]*sin_azimuth - omega_sgn*blade.chunks[chunk_idx].xi[]*cos_azimuth;
+				immutable Chunk z_tpp = aircraft.rotors[rotor_idx].origin[2] + z_f[];
+
+				state_chunk.x[] = x_tpp[]*cos_alpha + z_tpp[]*sin_alpha;
+				state_chunk.z[] = -x_tpp[]*sin_alpha + z_tpp[]*cos_alpha;
+			}
+		}
 	}
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {

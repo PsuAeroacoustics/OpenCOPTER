@@ -18,55 +18,55 @@ import core.simd;
 		version(D_AVX2) {
 			pragma(msg, "avx2 cos");
 			static if(T.length == 16) {
-				result[0..4] = cast(double[4])Sleef_cosd4_u10avx2(cast(double4)vector[0..4]);
-				result[4..8] = cast(double[4])Sleef_cosd4_u10avx2(cast(double4)vector[4..8]);
-				result[8..12] = cast(double[4])Sleef_cosd4_u10avx2(cast(double4)vector[8..12]);
-				result[12..$] = cast(double[4])Sleef_cosd4_u10avx2(cast(double4)vector[12..$]);
+				result[0..4] = cast(double[4])Sleef_finz_cosd4_u10avx2(cast(double4)vector[0..4]);
+				result[4..8] = cast(double[4])Sleef_finz_cosd4_u10avx2(cast(double4)vector[4..8]);
+				result[8..12] = cast(double[4])Sleef_finz_cosd4_u10avx2(cast(double4)vector[8..12]);
+				result[12..$] = cast(double[4])Sleef_finz_cosd4_u10avx2(cast(double4)vector[12..$]);
 			} else static if(T.length == 8) {
-				result[0..4] = cast(double[4])Sleef_cosd4_u10avx2(cast(double4)vector[0..4]);
-				result[4..$] = cast(double[4])Sleef_cosd4_u10avx2(cast(double4)vector[4..$]);
+				result[0..4] = cast(double[4])Sleef_finz_cosd4_u10avx2(cast(double4)vector[0..4]);
+				result[4..$] = cast(double[4])Sleef_finz_cosd4_u10avx2(cast(double4)vector[4..$]);
 			} else static if(T.length == 4) {
-				result[] = cast(T)Sleef_cosd4_u10avx2(cast(double4)vector);
+				result[] = cast(T)Sleef_finz_cosd4_u10avx2(cast(double4)vector);
 			}
 		} else {
 			version(D_AVX) {
 				pragma(msg, "avx cos");
 				static if(T.length == 16) {
-					result[0..2] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..4] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[2..4]);
-					result[4..6] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[4..6]);
-					result[6..8] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[6..8]);
-					result[8..10] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[8..10]);
-					result[10..12] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[10..12]);
-					result[12..14] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[12..14]);
-					result[14..$] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[14..$]);
+					result[0..2] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[0..2]);
+					result[2..4] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[2..4]);
+					result[4..6] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[4..6]);
+					result[6..8] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[6..8]);
+					result[8..10] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[8..10]);
+					result[10..12] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[10..12]);
+					result[12..14] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[12..14]);
+					result[14..$] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[14..$]);
 				} else static if(T.length == 8) {
-					result[0..2] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..4] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[2..4]);
-					result[4..6] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[4..6]);
-					result[6..$] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[6..$]);
+					result[0..2] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[0..2]);
+					result[2..4] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[2..4]);
+					result[4..6] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[4..6]);
+					result[6..$] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[6..$]);
 
 				} else static if(T.length == 4) {
-					result[0..2] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..$] = cast(double[2])Sleef_cosd2_u10sse4(cast(double2)vector[2..$]);
+					result[0..2] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[0..2]);
+					result[2..$] = cast(double[2])Sleef_cinz_cosd2_u10sse4(cast(double2)vector[2..$]);
 				} else static if(T.length == 2) {
-					result[] = cast(T)Sleef_cosd2_u10sse4(cast(double2)vector);
+					result[] = cast(T)Sleef_cinz_cosd2_u10sse4(cast(double2)vector);
 				}
 
 			} else {
 				version(X86_64) {
 					pragma(msg, "sse cos");
 					static if(T.length == 8) {
-						result[0..2] = cast(double[2])Sleef_cosd2_u10sse2(cast(double2)vector[0..2]);
-						result[2..4] = cast(double[2])Sleef_cosd2_u10sse2(cast(double2)vector[2..4]);
-						result[4..6] = cast(double[2])Sleef_cosd2_u10sse2(cast(double2)vector[4..6]);
-						result[6..$] = cast(double[2])Sleef_cosd2_u10sse2(cast(double2)vector[6..$]);
+						result[0..2] = cast(double[2])Sleef_cinz_cosd2_u10sse2(cast(double2)vector[0..2]);
+						result[2..4] = cast(double[2])Sleef_cinz_cosd2_u10sse2(cast(double2)vector[2..4]);
+						result[4..6] = cast(double[2])Sleef_cinz_cosd2_u10sse2(cast(double2)vector[4..6]);
+						result[6..$] = cast(double[2])Sleef_cinz_cosd2_u10sse2(cast(double2)vector[6..$]);
 
 					} else static if(T.length == 4) {
-						result[0..2] = cast(double[2])Sleef_cosd2_u10sse2(cast(double2)vector[0..2]);
-						result[2..$] = cast(double[2])Sleef_cosd2_u10sse2(cast(double2)vector[2..$]);
+						result[0..2] = cast(double[2])Sleef_cinz_cosd2_u10sse2(cast(double2)vector[0..2]);
+						result[2..$] = cast(double[2])Sleef_cinz_cosd2_u10sse2(cast(double2)vector[2..$]);
 					} else static if(T.length == 2) {
-						result[] = cast(T)Sleef_cosd2_u10sse2(cast(double2)vector);
+						result[] = cast(T)Sleef_cinz_cosd2_u10sse2(cast(double2)vector);
 					}
 				} else {
 					foreach(idx; 0..T.length) {

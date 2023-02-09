@@ -146,11 +146,16 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 
 		auto rotor_writer = vtkXMLUnstructuredGridWriter.New;
 
+		auto rotor_sgn = sgn(rotor_input.angular_velocity);
+		double flip_angle = 0;
+		if(rotor_input.angular_velocity < 0) {
+			flip_angle = PI;
+		}
 		auto aoa_rotation =
 			Mat3(
-				std.math.cos(rotor_input.angle_of_attack), 0, std.math.sin(rotor_input.angle_of_attack),
+				std.math.cos(rotor_input.angle_of_attack + flip_angle), 0, std.math.sin(rotor_input.angle_of_attack + flip_angle),
 				0, 1, 0,
-				-std.math.sin(rotor_input.angle_of_attack), 0, std.math.cos(rotor_input.angle_of_attack)
+				-std.math.sin(rotor_input.angle_of_attack + flip_angle), 0, std.math.cos(rotor_input.angle_of_attack + flip_angle)
 			);
 
 		rotor.grid.SetPoints(rotor.points);
@@ -159,8 +164,8 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 
 			auto azimuth_rotation =
 				Mat3(
-					cos(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), -sin(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), 0,
-					sin(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), cos(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), 0,
+					cos(rotor_sgn*(rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), -sin(rotor_sgn*(rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), 0,
+					sin(rotor_sgn*(rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), cos(rotor_sgn*(rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), 0,
 					0, 0, 1
 				);
 
@@ -182,10 +187,15 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 				vtkIdType id = pi.key;
 				Vec3 point = pi.value;
 
+				auto origin = rotor.origin;
+				if(rotor_input.angular_velocity < 0) {
+					origin[0] = -origin[0];
+					origin[2] = -origin[2];
+				}
 				//auto pitch_rotated = pitch_rotation*point;
 				//auto az_rotated = azimuth_rotation*pitch_rotated;
 				//auto pitch_az_rot = azimuth_rotation*pitch_rotation;
-				auto post_az_rot = azimuth_rotation*flap_rotation*pitch_rotation*point + rotor.origin;
+				auto post_az_rot = azimuth_rotation*flap_rotation*pitch_rotation*point + origin;
 				//auto post_az_rot = az_rotated + origin;
 				auto final_p = aoa_rotation*post_az_rot;
 
@@ -277,12 +287,13 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 					vtk_rotor.r_to_point_map ~= new vtkIdType[naca0012.length];
 
 					foreach(yz_idx, ref yz_point; naca0012) {
-						auto yp0 = c0*(yz_point[0] - 0.25);
+						auto yp0 = c0*(yz_point[0] - 0.25);// + chunk.xi[c_idx];
 						auto zp0 = c0*yz_point[1];
 
 						auto y0 = yp0*std.math.cos(t0) - zp0*std.math.sin(t0);
 						auto z0 = yp0*std.math.sin(t0) + zp0*std.math.cos(t0);
 
+						y0 -= chunk.xi[c_idx];
 						auto p0 = Vec3(x0, y0, z0);
 						
 						auto id0 = vtk_rotor.points.InsertNextPoint(p0[0], p0[1], p0[2]);

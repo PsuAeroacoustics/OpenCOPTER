@@ -31,6 +31,20 @@ double[] generate_radius_points(size_t n_sections) {
     }).retro.array;
 }
 
+double[] generate_radius_points(size_t n_sections, double root_cutout) {
+	import std.algorithm : map;
+	import std.array : array;
+	import std.math : cos, PI;
+	import std.range : iota, retro;
+
+	immutable num_points = n_sections%chunk_size == 0 ? n_sections : n_sections + (chunk_size - n_sections%chunk_size);
+    return iota(1.0, num_points + 1.0).map!((n) {
+    	immutable psi = n*PI/(num_points.to!double + 1.0);
+    	auto r = (1.0 - root_cutout)*0.5*(cos(psi) + 1.0).to!double + root_cutout;
+    	return r;
+    }).retro.array;
+}
+
 extern(C++) struct Frame {
 	Mat4 local_matrix;
 	Mat4 global_matrix;
@@ -179,7 +193,17 @@ extern (C++) struct BladeGeometryChunk {
 	/++
 	 +	Blade quarter chord sweep angle
 	 +/
-	 Chunk sweep;
+	Chunk sweep;
+
+	/++
+	 +	Blade local normalized x offset;
+	 +/
+	Chunk xi;
+
+	/++
+	 +	Blade local normalized x offset derivative;
+	 +/
+	Chunk xi_p;
 }
 
 template is_blade_geometry(A) {
@@ -198,6 +222,11 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 
 	double azimuth_offset;
 	double average_chord;
+
+	/++
+	 +	True length of the blade accounting for root cutout.
+	 +/
+	double blade_length;
 
 	this(size_t num_elements, double azimuth_offset, double average_chord) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);

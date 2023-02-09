@@ -494,6 +494,14 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 
 	foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
 		foreach(i_blade_idx; 0..ac_state.rotor_states[i_rotor_idx].blade_states.length) {
+
+			if((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx))) {
+				auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0);
+				ret_shed.v_x[] += ind_vel.v_x[];
+				ret_shed.v_y[] += ind_vel.v_y[];
+				ret_shed.v_z[] += ind_vel.v_z[];
+			}
+
 			foreach(fil_idx, ref shed_filament; wake.rotor_wakes[i_rotor_idx].shed_vortices[i_blade_idx].shed_filaments) {
 				auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0);
 				ret_shed.v_x[] += ind_vel.v_x[];
@@ -596,15 +604,19 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 			immutable rotation_dir = -1.0*std.math.sgn(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
 
 			foreach(c_idx, ref chunk; current_shed_filament.chunks) {
-				immutable Chunk x_fc = cos_beta*blade_geo.chunks[c_idx].r[];
-				immutable Chunk z_fc = -sin_beta*blade_geo.chunks[c_idx].r[];
+				//immutable Chunk x_fc = cos_beta*blade_geo.chunks[c_idx].r[];
+				//immutable Chunk z_fc = -sin_beta*blade_geo.chunks[c_idx].r[];
 
-				immutable Chunk x_tppc = ac.rotors[rotor_idx].origin[0] + x_fc[]*std.math.cos(blade.azimuth);
-				immutable Chunk y_tppc = ac.rotors[rotor_idx].origin[1] + blade_geo.chunks[c_idx].r[]*std.math.sin(blade.azimuth);
-				immutable Chunk z_tppc = ac.rotors[rotor_idx].origin[2] + z_fc[];
-				chunk.x[] = x_tppc[]*cos_aoa + z_tppc[]*sin_aoa;
-				chunk.y[] = y_tppc[];
-				chunk.z[] = -x_tppc[]*sin_aoa + z_tppc[]*cos_aoa;
+				//immutable Chunk x_tppc = ac.rotors[rotor_idx].origin[0] + x_fc[]*std.math.cos(blade.azimuth);
+				//immutable Chunk y_tppc = ac.rotors[rotor_idx].origin[1] + blade_geo.chunks[c_idx].r[]*std.math.sin(blade.azimuth);
+				//immutable Chunk z_tppc = ac.rotors[rotor_idx].origin[2] + z_fc[];
+				//chunk.x[] = x_tppc[]*cos_aoa + z_tppc[]*sin_aoa;
+				//chunk.y[] = y_tppc[];
+				//chunk.z[] = -x_tppc[]*sin_aoa + z_tppc[]*cos_aoa;
+
+				chunk.x[] = blade_state.chunks[c_idx].x[];
+				chunk.y[] = blade_state.chunks[c_idx].y[];
+				chunk.z[] = blade_state.chunks[c_idx].z[];
 
 				chunk.gamma[] = rotation_dir*blade_state.chunks[c_idx].d_gamma[];
 				chunk.l_0[] = 0;
