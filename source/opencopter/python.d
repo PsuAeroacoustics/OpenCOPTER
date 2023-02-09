@@ -689,14 +689,14 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWake,
 		PyName!"Wake",
-		Init!(size_t, size_t, size_t, size_t, size_t),
+		Init!(size_t, size_t, size_t[], size_t, size_t),
 		Member!("rotor_wakes", Docstring!q{An array of :class:`RotorWake`})
 	);
 
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t, size_t, size_t, size_t, size_t),
+		Init!(size_t, size_t, size_t[], size_t, size_t, size_t),
 		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep}),
 		Docstring!("Top level structure for holding the wake and its history")
 	);
