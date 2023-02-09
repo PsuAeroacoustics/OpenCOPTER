@@ -381,8 +381,6 @@ unittest {
 			Qmn_bar[m + 1][n][] = Qmn_delta[]*one_over_sqrt_opxs[];
 		}
 	}
-
-	debug writeln(Qmn_bar);
 }
 
 @nogc Chunk sign(Chunk x) {
@@ -1271,7 +1269,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			total_even_states++;
 		})(Me, total_odd_states);
 
-		writeln("total_states: ", total_states);
 		iterate_odds!((r, j, idx) {
 
 			size_t num_coefficients = j - r + 2;
@@ -1316,9 +1313,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		L = allocate_dense(total_states, total_states);
 		Gamma = allocate_dense(total_states, total_states);
 
-		//time_history = 1_000_000;
-		time_history = 10_000;
-		//time_history = 100_000;
+		time_history = 100_000;
 		state_history = allocate_dense(time_history, 2*total_states);
 		
 		//Qmn_bar = new Chunk[][](max(Me, Mo) + 1, N);
