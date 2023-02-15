@@ -12,6 +12,9 @@ import std.array;
 import std.math;
 
 unittest {
+	import std.stdio : writeln;
+	writeln("hello int");
+
 	Chunk generate_radius_points(size_t n_sections) {
 		import std.conv : to;
 		import numd.utility : linspace;
@@ -41,7 +44,7 @@ unittest {
 
 	auto bs = BladeState(1, blade);
 
-	import std.stdio : writeln;
+	
 	writeln;
 
 	bs.chunks[0].dC_T = 0;//steady_lift_model(inflow, rotor_radius, blade.chunks[0], u_t, inflow_angle, 0);
@@ -57,7 +60,7 @@ unittest {
 	writeln;
 }
 
-@nogc Chunk steady_lift_model(BC, BSC)(Chunk inflow, double rotor_radius, auto ref BC blade_chunk, auto ref BSC blade_state_chunk, immutable Chunk u_t, immutable Chunk inflow_angle, double time) if(is_blade_geometry_chunk!BC) {
+@nogc Chunk steady_lift_model(immutable Chunk u_p, immutable Chunk u_t, immutable Chunk C_l, immutable Chunk chord) {
 
 	version(LDC) pragma(inline, true);
 
@@ -66,13 +69,13 @@ unittest {
 	import std.math : PI;
 	import std.stdio : writeln;
 
-	immutable Chunk sigma_hat = 2.0*blade_chunk.chord[]/(PI*PI);
+	immutable Chunk sigma_hat = 2.0*chord[]/(PI*PI);
 
 	immutable Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
-	immutable Chunk u_squared = inflow[]*inflow[] + corrected_u_t[]*corrected_u_t[];
+	immutable Chunk u_squared = u_p[]*u_p[] + corrected_u_t[]*corrected_u_t[];
 	//immutable Chunk u_squared = (inflow[] + corrected_u_t[])*(inflow[] + corrected_u_t[]);
 	//immutable Chunk angle_of_attack = blade_chunk.twist[] - inflow_angle[];
-	immutable Chunk C_l = blade_chunk.C_l_alpha[]*blade_state_chunk.aoa[] + blade_chunk.alpha_0[];
+	//immutable Chunk C_l = blade_chunk.C_l_alpha[]*blade_state_chunk.aoa[] + blade_chunk.alpha_0[];
 
 	lift_coefficient[] = 0.5*sigma_hat[]*u_squared[]*C_l[];
 

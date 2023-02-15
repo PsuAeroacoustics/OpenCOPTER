@@ -12,6 +12,9 @@
 			"sourceFiles": ["main.d"]
 		}
 	],
+	"subConfigurations": {
+		"opencopter": "library"
+	},
 	"buildTypes": {
 		"debug": {
 			"buildOptions": ["debugMode", "debugInfo"]

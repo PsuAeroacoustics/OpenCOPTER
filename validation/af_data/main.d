@@ -1,6 +1,9 @@
 import opencopter.math;
-import opencopter.read_afdata;
-import opencopter.aerodas;
+//import opencopter.read_afdata;
+import opencopter.config;
+import opencopter.airfoilmodels;
+import opencopter.memory;
+
 import std.stdio;
 import std.array;
 import std.math;
@@ -13,6 +16,63 @@ import plt = matplotlibd.pyplot;
 
 void main(){
     bool haveafdata = false;
+
+    writeln("hello");
+    class DummyAF: AirfoilModel {
+        string name;
+        this(string _name) {
+            name = _name;
+        }
+
+        Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
+            Chunk c;
+            return c;
+        }
+
+        Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
+            Chunk c;
+            return c;
+        }
+
+        double get_Cl(double alpha_query, double mach_query) {
+            return 0.0;
+        }
+
+        double get_Cd(double alpha_query, double mach_query) {
+            return 0.0;
+        }
+    }
+
+    AirfoilModel af1 = new DummyAF("af1");
+    AirfoilModel af2 = new DummyAF("af2");
+    AirfoilModel af3 = new DummyAF("af3");
+    AirfoilModel af4 = new DummyAF("af4");
+    AirfoilModel af5 = new DummyAF("af5");
+    AirfoilModel af6 = new DummyAF("af6");
+    AirfoilModel af7 = new DummyAF("af7");
+
+    auto af_models = [af1, af2, af3, af4, af5, af6, af7];
+
+    size_t[2][] extents = [
+        [0, 9],
+        [10, 21],
+        [22, 25],
+        [26,28],
+        [29,30],
+        [31, 41],
+        [42, 47]
+    ];
+
+    auto blade_af = new BladeAirfoil(af_models, extents);
+
+    writeln("blade_af.airfoil_models.length: ", blade_af.airfoil_models.length);
+    foreach(blade_af_models; blade_af.airfoil_models) {
+        writeln("blade_af_models.length: ", blade_af_models.length);
+        foreach(af_model; blade_af_models) {
+            writeln("af_model.name: ", af_model.to!DummyAF.name);
+        }
+        writeln;
+    }
 
     if(haveafdata){
     //auto file= File("vsppropaf.C81");
@@ -31,11 +91,11 @@ void main(){
     double[][] Cd_array = new double[][](aoa_array.length,mach_array.length);
     double[][] Cm_array = new double[][](aoa_array.length,mach_array.length);
     /*writeln("Getting cl");
-    double desired_CL = NACA0012.getCl(desired_aoa,desired_mach);
+    double desired_CL = NACA0012.get_Cl(desired_aoa,desired_mach);
     writeln("Getting cd");
-    double desired_CD = NACA0012.getCd(desired_aoa,desired_mach);
+    double desired_CD = NACA0012.get_Cd(desired_aoa,desired_mach);
     writeln("Getting cml");
-    double desired_CM = NACA0012.getCm(desired_aoa,desired_mach);
+    double desired_CM = NACA0012.get_Cm(desired_aoa,desired_mach);
 
     writeln("Cl =", desired_CL);
     writeln("Cd =", desired_CD);
@@ -43,9 +103,9 @@ void main(){
 
    for(int i=0; i<mach_array.length;i++){
         for(int j=0; j<aoa_array.length;j++){
-            Cl_array[j][i] = NACA0012.getCl(aoa_array[j],mach_array[i]);
-            Cd_array[j][i] = NACA0012.getCd(aoa_array[j],mach_array[i]);
-            Cm_array[j][i] = NACA0012.getCm(aoa_array[j],mach_array[i]);
+            Cl_array[j][i] = NACA0012.get_Cl(aoa_array[j],mach_array[i]);
+            Cd_array[j][i] = NACA0012.get_Cd(aoa_array[j],mach_array[i]);
+            Cm_array[j][i] = NACA0012.get_Cm(aoa_array[j],mach_array[i]);
         }
     }
 
@@ -79,8 +139,8 @@ void main(){
         double[] CL_array = new double[aoa_array.length];
         double[] CD_array = new double[aoa_array.length];
         for(int i=0;i<aoa_array.length;i++){
-            CL_array[i] = afdata2D.getCl(aoa_array[i],mach);
-            CD_array[i] = afdata2D.getCd(aoa_array[i],mach);
+            CL_array[i] = afdata2D.get_Cl(aoa_array[i],mach);
+            CD_array[i] = afdata2D.get_Cd(aoa_array[i],mach);
         }
         plt.figure();
         plt.plot(aoa_array,CL_array,["label": "$AERODAS MODEL$"]);
@@ -100,8 +160,8 @@ void main(){
         plt.grid();
         plt.savefig("Cd.png");
         /*double aoa = 30.0;
-        double CL = afdata2D.getCL(aoa);
-        double CD = afdata2D.getCD(aoa);
+        double CL = afdata2D.get_Cl(aoa);
+        double CD = afdata2D.get_Cd(aoa);
         writeln("CL = ", CL);
         writeln("Cd = ", CD);*/
 

@@ -12,7 +12,7 @@ import opencopter.wake;
 import std.algorithm;
 import std.array;
 
-extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS, AS, I, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, I inflow, auto ref W wake, double time, double dt, size_t rotor_idx, size_t blade_idx)
+extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, I inflow, auto ref W wake, double time, double dt, size_t rotor_idx, size_t blade_idx)
 	if(is_blade_geometry!BG && is_blade_state!BS && is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
@@ -64,11 +64,12 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] + plunging_correction[];
 
-		
+		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa, zero);
+
 		immutable Chunk rescaled_u_t = u_t[]/blade.average_chord;
 		blade_state.circulation_model.compute_bound_circulation_band(blade_state, rescaled_u_t, chunk_idx);
 
-		Chunk dC_L = lift_model(u_p, rotor.radius, blade.chunks[chunk_idx], blade_state.chunks[chunk_idx], u_t, inflow_angle, time)[];
+		immutable Chunk dC_L = steady_lift_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];
@@ -92,7 +93,7 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
  +	With a given rotor angual velocity and angular acceleration, compute the lift, torque, power of the rotor.
  +	This is intended to by wrapped in some sort of trim algo.
  +/
-extern (C++) void compute_rotor_properties(alias lift_model, RG, RS, RIS, AS, I, W)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state, I inflow, auto ref W wake, double C_Ti, double time, double dt, size_t rotor_idx)
+extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state, I inflow, auto ref W wake, double C_Ti, double time, double dt, size_t rotor_idx)
 	if(is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
@@ -114,7 +115,7 @@ extern (C++) void compute_rotor_properties(alias lift_model, RG, RS, RIS, AS, I,
 
 	foreach(blade_idx; 0..rotor.blades.length) {
 
-		rotor.blades[blade_idx].compute_blade_properties!lift_model(
+		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
 			rotor,
 			rotor_input,
@@ -149,7 +150,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 	}
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
-		aircraft.rotors[rotor_idx].compute_rotor_properties!steady_lift_model(
+		aircraft.rotors[rotor_idx].compute_rotor_properties(
 			ac_state.rotor_states[rotor_idx],
 			ac_input_state.rotor_inputs[rotor_idx],
 			ac_state,

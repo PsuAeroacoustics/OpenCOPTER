@@ -1,571 +1,311 @@
 {
-	"authors": [
-		"Robert F. Rau II"
-	],
-	"buildTypes": {
-		"debug": {
-			"buildOptions": [
-				"debugMode",
-				"debugInfo"
-			]
-		},
-		"debug-native": {
-			"buildOptions": [
-				"debugMode",
-				"debugInfo"
-			],
-			"dflags": [
-				"-mcpu=native"
-			]
-		},
-		"debug-native-512": {
-			"buildOptions": [
-				"debugMode",
-				"debugInfo"
-			],
-			"dflags": [
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-mattr=-prefer-256-bit,prefer-mask-registers"
-			],
-			"versions": [
-				"AVX_512F"
-			]
-		},
-		"release": {
-			"buildOptions": [
-				"releaseMode",
-				"inline",
-				"optimize"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates"
-			]
-		},
-		"release-generic-avx": {
-			"buildOptions": [
-				"releaseMode",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=generic"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates",
-				"-mattr=+avx"
-			]
-		},
-		"release-generic-avx2": {
-			"buildOptions": [
-				"releaseMode",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=generic"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates",
-				"-mattr=+avx2"
-			]
-		},
-		"release-generic-avx512f": {
-			"buildOptions": [
-				"releaseMode",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=generic"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates",
-				"-mattr=-prefer-256-bit,+prefer-mask-registers",
-				"-mattr=+avx512f"
-			],
-			"versions": [
-				"AVX_512F"
-			]
-		},
-		"release-native": {
-			"buildOptions": [
-				"releaseMode",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates"
-			]
-		},
-		"release-native-512": {
-			"buildOptions": [
-				"releaseMode",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates",
-				"-mattr=-prefer-256-bit,+prefer-mask-registers"
-			],
-			"versions": [
-				"AVX_512F"
-			]
-		},
-		"release-native-dbinf": {
-			"buildOptions": [
-				"releaseMode",
-				"debugInfo",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates"
-			]
-		},
-		"release-native-dbinf-512": {
-			"buildOptions": [
-				"releaseMode",
-				"debugInfo",
-				"inline",
-				"optimize"
-			],
-			"dflags": [
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates",
-				"-mattr=-prefer-256-bit,+prefer-mask-registers"
-			],
-			"versions": [
-				"AVX_512F"
-			]
-		},
-		"release-native-unittest": {
-			"buildOptions": [
-				"releaseMode",
-				"debugInfo",
-				"inline",
-				"optimize",
-				"unittests"
-			],
-			"dflags": [
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates"
-			]
-		},
-		"unittest": {
-			"buildOptions": [
-				"debugMode",
-				"debugInfo",
-				"unittests"
-			],
-			"dflags": [
-				"-I./main.d"
-			]
-		},
-		"unittest-rel": {
-			"buildOptions": [
-				"releaseMode",
-				"debugInfo",
-				"inline",
-				"optimize",
-				"unittests"
-			],
-			"dflags": [
-				"-I./main.d",
-				"-mcpu=native"
-			],
-			"dflags-ldc": [
-				"-linkonce-templates"
-			]
-		}
+	"name": "opencopter",
+	"copyright": "Copyright © 2022, Robert F. Rau II, The Pennsylvania State University",
+	"license": "GPL-3.0",
+	"authors": ["Robert F. Rau II"],
+	"dependencies": {
+		"numd": {"path": "./dependencies/numd"}
 	},
+	"targetType": "dynamicLibrary",
+	"lflags-posix": ["-L/usr/local/lib", "-L$HOME/anaconda3/lib"],
+	"lflags-linux": ["-l:libsleef.a", "-l:libopenblas.a", "-l:liblapacke.a", "-l:liblapack.a"],
+	"lflags-osx": ["-L/usr/local/opt/openblas/lib", "/usr/local/lib/libsleef.a", "-lopenblas", "-Wl,-rpath,@loader_path/"],
+	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 	"configurations": [
 		{
-			"dependencies": {
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
-			"excludedSourceFiles": [
-				"source/opencopter/python.d"
-			],
 			"name": "library",
 			"targetName": "opencopter",
 			"targetType": "dynamicLibrary",
-			"versions": [
-				"Python_3_0_Or_Later"
-			]
+			"excludedSourceFiles": [ "source/opencopter/python.d" ],
+			"versions": [ "Python_3_0_Or_Later" ],
+			"dependencies": {
+				"vtkd": { "path": "./dependencies/vtkd" }
+			}
 		},
 		{
-			"excludedSourceFiles": [
-				"source/opencopter/python.d"
-			],
 			"name": "library-novtk",
 			"targetName": "opencopter",
 			"targetType": "dynamicLibrary",
-			"versions": [
-				"Python_3_0_Or_Later"
-			]
+			"excludedSourceFiles": [ "source/opencopter/python.d" ],
+			"versions": [ "Python_3_0_Or_Later" ]
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python33",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python33"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python33-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python33"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python34",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python37"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python34-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python34"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python35",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python35"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python35-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python35"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python36",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python36"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python36-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python36"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python37",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python37"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python37-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python37"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python38",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python38"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python38-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python38"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python39",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
 			"subConfigurations": {
 				"pyd": "python39"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python39-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
 			"subConfigurations": {
 				"pyd": "python39"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				},
-				"vtkd": {
-					"path": "./dependencies/vtkd",
-					"version": ">=0.0.0"
-				}
-			},
 			"name": "library-python310",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
-			"subConfigurations": {
-				"pyd": "python310"
-			},
 			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
-		},
-		{
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
 			"dependencies": {
-				"pyd": {
-					"path": "./dependencies/pyd",
-					"version": ">=0.0.0"
-				}
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
 			},
-			"name": "library-python310-novtk",
-			"postBuildCommands-osx": [
-				"cp libopencopter.dylib libopencopter.so"
-			],
 			"subConfigurations": {
 				"pyd": "python310"
-			},
-			"targetName": "opencopter",
-			"targetType": "dynamicLibrary"
+			}
 		},
 		{
-			"excludedSourceFiles": [
-				"source/opencopter/python.d"
-			],
+			"name": "library-python310-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python310"
+			}
+		},
+		{
 			"name": "library_huang",
 			"targetName": "opencopter_huang",
 			"targetType": "dynamicLibrary",
-			"versions": [
-				"Python_3_0_Or_Later"
-			]
+			"excludedSourceFiles": [ "source/opencopter/python.d" ],
+			"versions": [ "Python_3_0_Or_Later" ]
 		}
 	],
-	"copyright": "Copyright © 2022, Robert F. Rau II, The Pennsylvania State University",
-	"dependencies": {
-		"numd": {
-			"path": "./dependencies/numd",
-			"version": ">=0.0.0"
+	"buildTypes": {
+		"unittest": {
+			"buildOptions": ["unittests", "debugMode", "debugInfo"],
+			"dflags": ["-I./main.d"]
 		},
-		"pyd": "~>0.14.3"
-	},
-	"excludedSourceFiles": [
-		"source/opencopter/cpp.d"
-	],
-	"lflags-linux": [
-		"-l:libsleef.a",
-		"-l:libopenblas.a",
-		"-l:liblapacke.a",
-		"-l:liblapack.a"
-	],
-	"lflags-osx": [
-		"-L/usr/local/opt/openblas/lib",
-		"/usr/local/lib/libsleef.a",
-		"-lopenblas",
-		"-Wl,-rpath,@loader_path/"
-	],
-	"lflags-posix": [
-		"-L/usr/local/lib",
-		"-L$HOME/anaconda3/lib"
-	],
-	"license": "GPL-3.0",
-	"name": "opencopter",
-	"targetType": "dynamicLibrary"
+		"unittest-rel": {
+			"buildOptions": ["unittests", "releaseMode", "debugInfo", "optimize", "inline"],
+			"dflags-ldc": ["-linkonce-templates"],
+			"dflags": ["-I./main.d", "-mcpu=native"]
+		},
+		"debug": {
+			"buildOptions": ["debugMode", "debugInfo"]
+		},
+		"debug-native": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"dflags": ["-mcpu=native"]
+		},
+		"debug-native-512": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-mattr=-prefer-256-bit,prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		},
+		"release": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-native": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-native-unittest": {
+			"buildOptions": ["unittests", "releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-generic-avx": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=generic"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=+avx"]
+		},
+		"release-generic-avx2": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=generic"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=+avx2"]
+		},
+		"release-generic-avx512f": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=generic"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers", "-mattr=+avx512f"],
+			"versions": ["AVX_512F"]
+		},
+		"release-native-512": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		},
+		"release-native-dbinf": {
+			"buildOptions": ["releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-native-dbinf-512": {
+			"buildOptions": ["releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		}
+    }
 }

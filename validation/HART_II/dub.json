@@ -2,6 +2,7 @@
 	"name": "hart_val",
 	"dependencies": {
 		"opencopter": {"path": "../../"},
+		"numd": {"path": "../../dependencies/numd"},
 		"matplotlib-d": {"path": "../../../matplotlib-d"},
 		"wopwopd": "~master"
 	},
