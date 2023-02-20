@@ -67,15 +67,10 @@ unittest {
 	Chunk lift_coefficient;
 
 	import std.math : PI;
-	import std.stdio : writeln;
 
 	immutable Chunk sigma_hat = 2.0*chord[]/(PI*PI);
 
-	immutable Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
-	immutable Chunk u_squared = u_p[]*u_p[] + corrected_u_t[]*corrected_u_t[];
-	//immutable Chunk u_squared = (inflow[] + corrected_u_t[])*(inflow[] + corrected_u_t[]);
-	//immutable Chunk angle_of_attack = blade_chunk.twist[] - inflow_angle[];
-	//immutable Chunk C_l = blade_chunk.C_l_alpha[]*blade_state_chunk.aoa[] + blade_chunk.alpha_0[];
+	immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
 
 	lift_coefficient[] = 0.5*sigma_hat[]*u_squared[]*C_l[];
 

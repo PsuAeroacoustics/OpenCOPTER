@@ -114,7 +114,6 @@ extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG ro
 	}
 
 	foreach(blade_idx; 0..rotor.blades.length) {
-
 		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
 			rotor,

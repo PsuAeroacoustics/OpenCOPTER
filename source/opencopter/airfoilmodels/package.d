@@ -9,12 +9,15 @@ import opencopter.memory;
 
 import std.exception;
 
-interface AirfoilModel {
-    Chunk get_Cl(Chunk alpha_query, Chunk mach_query);
-    Chunk get_Cd(Chunk alpha_query, Chunk mach_query);
-
-    double get_Cl(double alpha_query, double mach_query);
-    double get_Cd(double alpha_query, double mach_query);
+class AirfoilModel {
+    Chunk get_Cl(Chunk alpha_query, Chunk mach_query) { assert(0); }
+    Chunk get_Cd(Chunk alpha_query, Chunk mach_query) { assert(0); }
+    double get_Cl(double alpha_query, double mach_query) { assert(0); }
+    double get_Cd(double alpha_query, double mach_query) { assert(0); }
+    //Chunk get_Cl(Chunk alpha_query, Chunk mach_query);
+    //Chunk get_Cd(Chunk alpha_query, Chunk mach_query);
+    //double get_Cl(double alpha_query, double mach_query);
+    //double get_Cd(double alpha_query, double mach_query);
 }
 
 struct AirfoilState {
@@ -33,21 +36,21 @@ unittest {
             name = _name;
         }
 
-        Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
+        override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
             Chunk c;
             return c;
         }
 
-        Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
+        override Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
             Chunk c;
             return c;
         }
 
-        double get_Cl(double alpha_query, double mach_query) {
+        override double get_Cl(double alpha_query, double mach_query) {
             return 0.0;
         }
 
-        double get_Cd(double alpha_query, double mach_query) {
+        override double get_Cd(double alpha_query, double mach_query) {
             return 0.0;
         }
     }
@@ -78,7 +81,7 @@ unittest {
     }
 }
 
-final class BladeAirfoil {
+class BladeAirfoil {
     alias AirfoilModels = AirfoilModel[];
     AirfoilModels[] airfoil_models;
 

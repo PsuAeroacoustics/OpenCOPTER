@@ -128,7 +128,7 @@ final class Coefftable {
     }
 }
 
-final class C81: AirfoilModel {
+class C81: AirfoilModel {
 
     string airfoilname;
 
@@ -148,19 +148,19 @@ final class C81: AirfoilModel {
         this.CM = new Coefftable(aoa_M, mach_m, Cm);
     }
 
-    Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
+    override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
         return CL.interpolation(alpha_query, mach_query);
     }
 
-    Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
+    override Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
         return CD.interpolation(alpha_query, mach_query);
     }
 
-    double get_Cl(double alpha_query, double mach_query) {
+    override double get_Cl(double alpha_query, double mach_query) {
         return CL.interpolation(alpha_query, mach_query);
     }
 
-    double get_Cd(double alpha_query, double mach_query) {
+    override double get_Cd(double alpha_query, double mach_query) {
         return CD.interpolation(alpha_query, mach_query);
     }
 
@@ -173,7 +173,7 @@ final class C81: AirfoilModel {
     }
 }
 
-auto loadfile(string filename) {
+auto load_c81_file(string filename) {
     /*reads airfoil tabel from C81 formatted File*/
     bool multilinedata;
     auto file = File(filename, "r");

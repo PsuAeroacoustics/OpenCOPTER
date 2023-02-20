@@ -7,6 +7,7 @@ import opencopter.memory;
 
 import std.stdio;
 import std.array;
+import std.exception;
 import std.math;
 import std.algorithm;
 import std.range;
@@ -43,37 +44,34 @@ class InputParam {
     double cd1max_2D; //maximum pre-stall drag coefficient at aoa= ACD1_2D (for infinite AR balde)
     int A0_indx;
 
-    this(double[] alpha, double[] CL, double[] CD) {
-        this.alpha = alpha;
-        this.CL = CL;
-        this.CD = CD;
-        this.A0 = A0;
-        this.ACL1_2D = ACL1_2D;
-        this.cl1max_2D = cl1max_2D;
-        this.S1_2D = S1_2D;
-        this.ACD1_2D = ACD1_2D;
-        this.CD0 = CD0;
-        this.cd1max_2D = cd1max_2D;
+    this(double[] _alpha, double[] _CL, double[] _CD) {
+        this.alpha = _alpha;
+        this.CL = _CL;
+        this.CD = _CD;
+        //this.A0 = A0;
+        //this.ACL1_2D = ACL1_2D;
+        //this.cl1max_2D = cl1max_2D;
+        //this.S1_2D = S1_2D;
+        //this.ACD1_2D = ACD1_2D;
+        //this.CD0 = CD0;
+        //this.cd1max_2D = cd1max_2D;
 
-        if (this.alpha.length != this.CL.length || this.alpha.length != this.CD.length || this.CL.length != this
-            .CD.length)
-        {
-            writeln("Error: Angle of attack, Cl, and Cd must have the same length");
-        }
+        enforce(alpha.length == CL.length && alpha.length == CD.length && CL.length == CD.length,
+            "Angle of attack, Cl, and Cd must have the same length"
+        );
+        //if (alpha.length != CL.length || alpha.length != CD.length || CL.length != CD.length) {
+        //    writeln("Error: Angle of attack, Cl, and Cd must have the same length");
+        //}
 
-        if (all(CL) > 0 || all(CL) < 0)
-        {
-            writeln("Error: CL should contain at leaset one positive and one negative value");
-        }
+        //if (all(CL) > 0 || all(CL) < 0) {
+        //    writeln("Error: CL should contain at leaset one positive and one negative value");
+        //}
 
-        if (canFind(this.CL, 0))
-        {
+        if (canFind(this.CL, 0)) {
             this.A0 = this.alpha[countUntil(this.CL, 0)];
-        }
-        else
-        {
+        } else {
             A0_indx = findindx(this.CL, 0);
-            writeln("aoa_0",this.alpha[A0_indx]);
+            debug writeln("aoa_0",this.alpha[A0_indx]);
             A0 = this.alpha[A0_indx] - ((this.alpha[A0_indx+1]-this.alpha[A0_indx])/(this.CL[A0_indx+1]-this.CL[A0_indx]))*this.CL[A0_indx];
         }
 
@@ -118,13 +116,14 @@ double getCD2(double aoa, double A0, double cd1max_3D, double ACL1_3D, double AC
         
         ans1 = 0;
     } else if (aoa > ACD1_3D) {
-        ans1 = cd1max_3D + (cd2max - cd1max_3D) * sin((aoa - ACD1_3D) * PI*0.5 / (
-                90.0 - ACD1_3D));
+        ans1 = cd1max_3D + (cd2max - cd1max_3D) * sin(((aoa - ACD1_3D) * 90.0 / (
+                90.0 - ACD1_3D))*(PI/180.0));
     }
+
     return ans1;
 }
 
-final class AeroDAS: AirfoilModel {
+class AeroDAS: AirfoilModel {
     double[] alpha; // alpha,cl, and cd from 2D airoil data file
     double[] CL;
     double[] CD;
@@ -136,7 +135,8 @@ final class AeroDAS: AirfoilModel {
     double CD1; //pre-stall drag coefficient
     double CL2; //post-stall lift coefficient
     double CD2; //post-stall drag coefficient
-    this(double[] alpha, double[] CL, double[] CD, double AR, double tbyc) {
+
+    this(double[] alpha, double[] CL, double[] CD, double tbyc, double AR = double.infinity) {
         this.alpha = alpha;
         this.CL = CL;
         this.CD = CD;
@@ -147,11 +147,13 @@ final class AeroDAS: AirfoilModel {
         debug writeln("A0 is",this.ip.A0);
     }
 
-    double get_Cl(double alpha_query, double mach_query) {
+    override double get_Cl(double alpha_query, double mach_query) {
+        alpha_query *= 180.0/PI;
 
         //finite aspect ratio adjustment
         double ACL1_3D = this.ip.ACL1_2D + this.ip.cd1max_2D * 18.2 * pow(this.AR,-0.9);
-        debug writeln("ACL1 = ",ACL1_3D);
+        debug writeln("ACL1_2d = ", this.ip.ACL1_2D);
+        debug writeln("ACL1_3d = ", ACL1_3D);
         
         double S1_3D = this.ip.S1_2D / (1 + this.ip.S1_2D * 18.2 * pow(this.AR,-0.9));
         double ACD1_3D = this.ip.ACD1_2D + this.ip.cl1max_2D * 18.2 * pow(this.AR,-0.9);
@@ -190,7 +192,9 @@ final class AeroDAS: AirfoilModel {
         return Cl;
     }
 
-    double get_Cd(double alpha_query, double mach_query) {
+    override double get_Cd(double alpha_query, double mach_query) {
+        alpha_query *= 180.0/PI;
+
         //finite aspect ratio adjustment
         double ACL1_3D = ip.ACL1_2D + ip.cd1max_2D * 18.2 * pow(this.AR,-0.9);
         //double S1_3D = this.ip.S1_2D / (1 + this.ip.S1_2D * 18.2 * pow(this.AR,-0.9));
@@ -205,17 +209,14 @@ final class AeroDAS: AirfoilModel {
         if ((2 * ip.A0 - ACD1_3D) <= alpha_query && alpha_query <= ACD1_3D){
             CD1 = ip.CD0 + (cd1max_3D - ip.CD0) * pow(
                 (alpha_query - ip.A0) / (ACD1_3D - ip.A0), 2);
-        }
-        else
-        {
+        } else {
             CD1 = 0;
         }
         debug writeln("CD1 = ",CD1);
 
         if (alpha_query > (2 * ip.A0 - ACD1_3D)){
             CD2 = getCD2(alpha_query, ip.A0, cd1max_3D, ACL1_3D, ACD1_3D, tbyc, AR);
-        }
-        else{
+        } else {
             double updated_alpha_query = -alpha_query + 2 * this.ip.A0;
             CD2 = getCD2(updated_alpha_query, ip.A0, cd1max_3D, ACL1_3D, ACD1_3D, tbyc, AR);
         }
@@ -225,7 +226,7 @@ final class AeroDAS: AirfoilModel {
         return Cd;
     }
 
-    Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
+    override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
         Chunk Cl;
         foreach(i; 0..chunk_size) {
             Cl[i] = get_Cl(alpha_query[i], mach_query[i]);
@@ -233,7 +234,7 @@ final class AeroDAS: AirfoilModel {
         return Cl;
     }
 
-    Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
+    override Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
         Chunk Cd;
         foreach(i; 0..chunk_size) {
             Cd[i] = get_Cd(alpha_query[i], mach_query[i]);
@@ -242,7 +243,7 @@ final class AeroDAS: AirfoilModel {
     }
 }
 
-auto load2Dfile(string filename, double AR, double tbyc) {
+auto create_aerodas_from_xfoil_polar(string filename, double tbyc) {
     /*reads 2D airfoil Data file*/
     auto file = File(filename, "r");
     writeln("file loaded");
@@ -268,24 +269,18 @@ auto load2Dfile(string filename, double AR, double tbyc) {
     double[] cl;
     double[] cd;
 
-    while (1)
-    {
+    while (1) {
         double[] line1 = split(file.readln).map!(x => to!double(x)).array;
-        //writeln(line1);
-        if (line1 is null)
-        {
+        if (line1 is null) {
             break;
+        } else {
+            aoa ~= line1[0];
+            cl ~= line1[1];
+            cd ~= line1[2];
         }
-        else
-        {
-            aoa = (aoa ~ line1[0]);
-            //writeln("alpha = ",aoa);
-            cl = (cl ~ line1[1]);
-            cd = (cd ~ line1[2]);
-        }
-
     }
+    
     debug writeln("File reading completed");
-    auto afmodel = new AeroDAS(aoa, cl, cd, AR, tbyc);
+    auto afmodel = new AeroDAS(aoa, cl, cd, tbyc, double.infinity);
     return afmodel;
 }
