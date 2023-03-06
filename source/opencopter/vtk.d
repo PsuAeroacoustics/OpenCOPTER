@@ -431,9 +431,8 @@ class VtkRotorWake {
 				d_volume = vtkDoubleArray.New;
 			}
 		}
-	}
 
-	~this() {
+		~this() {
 			writer.Delete;
 
 			foreach(ref shed_appender; shed_appenders) {
@@ -479,6 +478,7 @@ class VtkRotorWake {
 			foreach(ref d_volume; tip_d_volume) {
 				d_volume.Delete;
 			}
+		}
 	}
 }
 
