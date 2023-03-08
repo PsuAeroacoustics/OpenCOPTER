@@ -42,7 +42,7 @@ extern (C) {
 		core.simd.double2 Sleef_cosd2_u10sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_cosd2_u10sse2(core.simd.double2) @nogc nothrow;
 		//Sleef___m128d_2 Sleef_sincosd2_u10sse2(core.simd.double2) @nogc nothrow;
-		//Sleef___m128d_2 Sleef_cinz_sincosd2_u10sse2(core.simd.double2) @nogc nothrow;
+		core.simd.double2[2] Sleef_cinz_sincosd2_u10sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_tand2_u10sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_tand2_u10sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_asind2_u10sse2(core.simd.double2) @nogc nothrow;
@@ -194,7 +194,7 @@ extern (C) {
 		core.simd.double2 Sleef_cosd2_u10sse4(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_cosd2_u10sse4(core.simd.double2) @nogc nothrow;
 		//Sleef_core.simd.double2_2 Sleef_sincosd2_u10sse4(core.simd.double2) @nogc nothrow;
-		//Sleef_core.simd.double2_2 Sleef_cinz_sincosd2_u10sse4(core.simd.double2) @nogc nothrow;
+		core.simd.double2[2] Sleef_cinz_sincosd2_u10sse4(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_tand2_u10sse4(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_tand2_u10sse4(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_asind2_u10sse4(core.simd.double2) @nogc nothrow;
@@ -346,8 +346,8 @@ extern (C) {
 		core.simd.double4 Sleef_cinz_sind4_u10(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_cosd4_u10(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_cinz_cosd4_u10(core.simd.double4) @nogc nothrow;
-		//Sleef_core.simd.double4_2 Sleef_sincosd4_u10(core.simd.double4) @nogc nothrow;
-		//Sleef_core.simd.double4_2 Sleef_cinz_sincosd4_u10(core.simd.double4) @nogc nothrow;
+		core.simd.double4[2] Sleef_sincosd4_u10(core.simd.double4) @nogc nothrow;
+		core.simd.double4[2] Sleef_cinz_sincosd4_u10(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_tand4_u10(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_cinz_tand4_u10(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_asind4_u10(core.simd.double4) @nogc nothrow;
@@ -513,7 +513,7 @@ extern (C) {
 		core.simd.double4 Sleef_cosd4_u10avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_finz_cosd4_u10avx2(core.simd.double4) @nogc nothrow;
 		//Sleef_core.simd.double4_2 Sleef_sincosd4_u10avx2(core.simd.double4) @nogc nothrow;
-		//Sleef_core.simd.double4_2 Sleef_finz_sincosd4_u10avx2(core.simd.double4) @nogc nothrow;
+		core.simd.double4[2] Sleef_finz_sincosd4_u10avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_tand4_u10avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_finz_tand4_u10avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_asind4_u10avx2(core.simd.double4) @nogc nothrow;

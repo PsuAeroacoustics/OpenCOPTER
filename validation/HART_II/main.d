@@ -909,6 +909,8 @@ int main(string[] args) {
 
 	foreach(i, ref inflow; inflows) {
 		inflow = new HuangPetersInflow(4, 2, &aircraft.rotors[i], dt);
+		//inflow = new HuangPetersInflow(6, 4, &aircraft.rotors[i], dt);
+		//inflow = new HuangPetersInflow(6, 4, &aircraft.rotors[i], dt);
 	}
 	
 	auto wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history);
@@ -999,6 +1001,31 @@ int main(string[] args) {
 
 	size_t plot_blade = 2;
 
+
+	double x_min = -7.0;
+	double x_max = 7.0;
+	double z_min = -4.2;
+	double z_max = 1.2;
+	double y_min = -1.2;
+	double y_max = 1.2;
+
+	immutable x_res = 256;
+	immutable y_res = 256;
+	immutable z_res = 256;
+	double[] x_mesh = linspace(x_min, x_max, x_res);
+	//auto x_mesh = linspace(-1.0, 1.0, x_res);
+	double[] y_mesh = linspace(y_min, y_max, y_res);
+	double[] z_mesh = linspace(z_min, z_max, z_res);
+	//auto z_mesh = linspace(0.0, 2.0, z_res);
+	double[][] inflow_xz = new double[][](z_res, x_res);
+	double[][] inflow_xy = new double[][](y_res, x_res);
+	double[][] inflow_yz = new double[][](z_res, y_res);
+
+	Chunk y_slice = -0.0;
+	Chunk z_slice = 0.2;
+	Chunk x_slice = -0.0;
+	Chunk x_e = 0;
+
 	foreach(i; 0..iterations) {
 		average_C_T = average_C_T_array.sum/C_T_len.to!double;
 		average_C_My = average_C_My_array.sum/C_T_len.to!double;
@@ -1023,6 +1050,8 @@ int main(string[] args) {
 				write(", v_z_2: ", inflows[1].get_average_inflow, "; ");
 			}
 			writeln(now - start_time);
+			//writeln(inflows[0].lambda);
+			//writeln(inflows[0].lambda_s);
 
 			start_time = now;
 		}
@@ -1104,6 +1133,52 @@ int main(string[] args) {
 			if(i > (iterations - (360/d_psi).round.to!size_t)) {
 				write_wake_vtu("boxwell_wake_", i, vtk_wake, wake_history[0]);
 				write_rotor_vtu("rotor", i, 0, vtk_rotor, ac_timehistory.aircraft_history[0].rotor_states[0], input_state.rotor_inputs[0]);
+			}
+		}
+
+		if(i >= (iterations - 360)) {
+			if((i % 5) == 0) {
+				//Chunk x_e = 0;
+				double max_z = 0.15;//-double.infinity;
+				foreach(r_idx; 0..1) {
+					//inflows[r_idx].contraction_mapping = true;
+					inflows[r_idx].debug_coords = true;
+					foreach(z_idx, _z_m; z_mesh) {
+						foreach(y_idx, _y_m; y_mesh.chunks(chunk_size).enumerate) {
+
+							
+							immutable Chunk x_rel = x_slice[] - origins[r_idx][0];
+							immutable Chunk y_rel = _y_m[] - origins[r_idx][1];
+							immutable Chunk z_rel = _z_m - origins[r_idx][2];
+
+							immutable Chunk x_m = z_rel[];//x_rel[]*cos(aoa) - z_rel[]*sin(aoa);
+							immutable Chunk z_m = 0.0;//-x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
+
+							immutable Chunk infl = inflows[r_idx].inflow_at(x_m, y_rel, z_m, x_e, 0)[];
+
+							//max_z = max(max_z, infl[].maxElement);
+
+							inflow_yz[z_idx][y_idx*chunk_size..y_idx*chunk_size + chunk_size] = infl[];
+						}
+						//writeln("--------------------------------------------------------------------------------------------------");
+					}
+					//inflows[r_idx].contraction_mapping = false;
+					inflows[r_idx].debug_coords = false;
+					//writeln("========================================================================================================================================================");
+				}
+
+				//writeln("max_z:", max_z);
+				auto levels = linspace(-max_z, max_z, 17);
+				static import matplotlibd.pyplot;
+				matplotlibd.pyplot.clear();
+				plt.figure;
+				plt.title("YZ Plane Vertical Inflow");
+				//plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": 100], ["cmap": "bwr"], ["vmin": -max_z], ["vmax": max_z]);
+				//plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": 100], ["vmin": -max_z], ["vmax": max_z]);
+				plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": levels], ["cmap": "bwr"]);
+				plt.colorbar;
+				plt.axis("equal");
+				plt.savefig("vert_yz_"~i.to!string~".png", ["dpi": 500]);
 			}
 		}
 	}
@@ -1240,22 +1315,7 @@ int main(string[] args) {
 
 		//azimuth_history[] = -(azimuth_history[] - azimuth_history.maxElement);
 		+/
-		immutable x_res = 2048;
-		immutable y_res = 2048;
-		immutable z_res = 2048;
-		auto x_mesh = linspace(-10.0, 5.0, x_res);
-		//auto x_mesh = linspace(-1.0, 1.0, x_res);
-		auto y_mesh = linspace(-5.0, 5.0, y_res);
-		auto z_mesh = linspace(-5.0, 2.0, z_res);
-		//auto z_mesh = linspace(0.0, 2.0, z_res);
-		double[][] inflow_xz = new double[][](z_res, x_res);
-		double[][] inflow_xy = new double[][](y_res, x_res);
-		double[][] inflow_yz = new double[][](z_res, y_res);
 
-		Chunk y_slice = -0.0;
-		Chunk z_slice = 0.0;
-		Chunk x_slice = -0.0;
-		Chunk x_e = 0;
 
 		foreach(y_idx, _y_m; y_mesh) {
 			inflow_xy[y_idx][] = 0;
@@ -1267,8 +1327,8 @@ int main(string[] args) {
 		}
 
 		foreach(r_idx; 0..num_rotors) {
-			writeln(inflows[r_idx].contraction_array);
-			inflows[r_idx].contraction_mapping = true;
+			//writeln(inflows[r_idx].contraction_array);
+			//inflows[r_idx].contraction_mapping = true;
 			foreach(z_idx, _z_m; z_mesh) {
 				foreach(x_idx, _x_m; x_mesh.chunks(chunk_size).enumerate) {
 
@@ -1285,7 +1345,7 @@ int main(string[] args) {
 			}
 		}
 
-		/+
+		
 		foreach(r_idx; 0..num_rotors) {
 			foreach(y_idx, _y_m; y_mesh) {
 				foreach(x_idx, _x_m; x_mesh.chunks(chunk_size).enumerate) {
@@ -1321,13 +1381,13 @@ int main(string[] args) {
 				}
 			}
 		}
-		+/
+		
 		//writeln(inflow_xz);
 
 		plt.gca(["projection": "rectilinear"]);
 		plt.figure;
-		//plt.title("XZ Plane Vertical Inflow");
-		plt.contourf(x_mesh, z_mesh, inflow_xz, ["levels": 100]);
+		plt.title("XZ Plane Vertical Inflow");
+		plt.contourf(x_mesh, z_mesh, inflow_xz, ["levels": 100], ["cmap": "bwr"]);
 		plt.colorbar;
 		//if(save) plt.savefig("vert_xz.png", ["dpi": 500]);
 
@@ -1384,7 +1444,7 @@ int main(string[] args) {
 				//plt.plot([aircraft.rotors[r_idx].origin[1], y_b], [aircraft.rotors[r_idx].origin[2], z_b], [aircraft.rotors[r_idx].origin[0], x_b], "k-");
 			}
 		}
-
+		
 		plt.title("Side View: V = "~V_inf.to!string~", $\\gamma$ = "~_flight_path_angle.to!string~", Tilt angle = "~_tilt_angle.to!string);
 		
 		
@@ -1399,6 +1459,7 @@ int main(string[] args) {
 		plt.xticks(["fontsize": tick_font_size]);
 		plt.yticks(["fontsize": tick_font_size]);
 		if(save) plt.savefig("tilt_rotor_v"~V_inf.to!string~"_fpa"~_flight_path_angle.to!string~"_ta"~_tilt_angle.to!string~"_side.png", ["dpi": 500]);
+		+/
 
 		max_dim_1 = -double.infinity;
 		min_dim_1 = double.infinity;
@@ -1408,12 +1469,13 @@ int main(string[] args) {
 		plt.figure;
 
 		//plt.figure;
-		//plt.title("XY Plane Vertical Inflow");
-		plt.contourf(x_mesh, y_mesh, inflow_xy, ["levels": 100]);
+		plt.title("XY Plane Vertical Inflow");
+		plt.contourf(y_mesh, x_mesh, inflow_xy, ["levels": 100], ["cmap": "bwr"]);
 		plt.colorbar;
 		//plt.axis("square");
-		//if(save) plt.savefig("vert_xy.png", ["dpi": 500]);
+		if(save) plt.savefig("vert_xy.png", ["dpi": 500]);
 
+		/+
 		max_dim_1 = -double.infinity;
 		min_dim_1 = double.infinity;
 
@@ -1465,7 +1527,7 @@ int main(string[] args) {
 				//plt.plot([aircraft.rotors[r_idx].origin[1], y_b], [aircraft.rotors[r_idx].origin[2], z_b], [aircraft.rotors[r_idx].origin[0], x_b], "k-");
 			}
 		}
-
+		
 
 		plt.title("Top View: V = "~V_inf.to!string~", $\\gamma$ = "~_flight_path_angle.to!string~", Tilt angle = "~_tilt_angle.to!string);
 		plt.axis("square");
@@ -1479,11 +1541,13 @@ int main(string[] args) {
 		plt.yticks(["fontsize": tick_font_size]);
 		if(save) plt.savefig("tilt_rotor_v"~V_inf.to!string~"_fpa"~_flight_path_angle.to!string~"_ta"~_tilt_angle.to!string~"_top.png", ["dpi": 500]);
 		
+		+/
 		plt.figure;
 
-		plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": 100]);
+		plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": 100], ["cmap": "bwr"]);
 		plt.colorbar;
-
+		//if(save) plt.savefig("tilt_rotor_v"~V_inf.to!string~"_fpa"~_flight_path_angle.to!string~"_ta"~_tilt_angle.to!string~"_front.png", ["dpi": 500]);
+		/+
 		max_dim_1 = -double.infinity;
 		min_dim_1 = double.infinity;
 

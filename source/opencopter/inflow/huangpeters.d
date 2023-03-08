@@ -30,8 +30,8 @@ import std.typecons;
 	return ((PI/2.0)^^((-1.0)^^(n.to!double + m.to!double)))*H(m, n);
 }
 
-private void zero_matrix(ref double[][] M) {
-	foreach(ref _M; M) {
+private void zero_matrix(ref double[][] M_c) {
+	foreach(ref _M; M_c) {
 		_M[] = 0;
 	}
 }
@@ -102,8 +102,8 @@ unittest {
 
 		//writeln("tot states: ", huang_peters.total_states);
 
-		huang_peters.tau[] = 0;
-		huang_peters.tau[0] = abs(mu);//.03651;
+		huang_peters.tau_c[] = 0;
+		huang_peters.tau_c[0] = abs(mu);//.03651;
 		huang_peters.average_inflow = sqrt(C_T/2.0);
 		huang_peters.simple_harmonic_solution(mu, mu_z);
 
@@ -143,8 +143,8 @@ unittest {
 		double mu_z = 0;
 		auto huang_peters = new HuangPetersInflow(12, 8, &rotor, mu);
 
-		huang_peters.tau[] = 0;
-		huang_peters.tau[0] = abs(mu);//.11;
+		huang_peters.tau_c[] = 0;
+		huang_peters.tau_c[0] = abs(mu);//.11;
 		huang_peters.average_inflow = sqrt(C_T/2.0);
 		huang_peters.simple_harmonic_solution(mu, mu_z);
 
@@ -183,8 +183,8 @@ unittest {
 		auto huang_peters = new HuangPetersInflow(6, 4, &rotor, mu);
 
 		//writeln("tot states: ", huang_peters.total_states);
-		huang_peters.tau[] = 0;
-		huang_peters.tau[0] = abs(mu);//.724;
+		huang_peters.tau_c[] = 0;
+		huang_peters.tau_c[0] = abs(mu);//.724;
 		huang_peters.average_inflow = sqrt(C_T/2.0);
 
 		huang_peters.times = linspace(0., 50, huang_peters.time_history);
@@ -244,8 +244,8 @@ unittest {
 		//auto z_idx = huang_peters.find_z_bracket(10);
 		//writeln(z_idx);
 		//writeln(huang_peters.contraction_z_array_alias);
-		huang_peters.tau[] = 0;
-		huang_peters.tau[0] = abs(mu);//.71;
+		huang_peters.tau_c[] = 0;
+		huang_peters.tau_c[0] = abs(mu);//.71;
 		huang_peters.average_inflow = sqrt(C_T/2.0);
 		debug writeln("huang_peters.average_inflow: ", huang_peters.average_inflow);
 		huang_peters.simple_harmonic_solution(mu, mu_z);
@@ -318,6 +318,8 @@ unittest {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
 
+	//x[] = 2.0*x[] - 1.0;
+
 	Chunk p;
 	p[] = 0;
 	foreach(k; m..n + 1) {
@@ -339,6 +341,7 @@ unittest {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
 
+	//immutable Chunk x = 2.0*_x[] - 1.0;
 	Chunk p = 0;
 	Chunk r_bar = 1.0 - x[]*x[];
 	r_bar = sqrt(r_bar);
@@ -412,11 +415,14 @@ private struct CartisianCoords {
 	immutable Chunk one_m_s = (1.0 - S[]);
 	immutable Chunk tmp1 = one_m_s[]*one_m_s[] + 4.0*coords.z[]*coords.z[];
 	immutable Chunk tmp2 = opencopter.math.sqrt(tmp1);
-	immutable Chunk nu_tmp = 1.0 - S[] + tmp2[];
-	immutable Chunk eta_tmp = S[] - 1.0 + tmp2[];
+	immutable Chunk nu_tmp = one_m_s[] + tmp2[];
+	immutable Chunk eta_tmp = -one_m_s[] + tmp2[];
+	//immutable Chunk nu_tmp = 1.0 - S[] + tmp2[];
+	//immutable Chunk eta_tmp = S[] - 1.0 + tmp2[];
 
 	Chunk nu = (-sign(coords.z)[]/sqrt(2.0))*sqrt(nu_tmp)[];
-	nu = nu[].map!(a => a > 1.0 ? 1.0 : a).map!(a => a < -1.0 ? - 1.0 : a).staticArray!Chunk[];
+	//Chunk nu = (-sgn(coords.z)[]/sqrt(2.0))*sqrt(nu_tmp)[];
+	nu = nu[].map!(a => a > 1.0 ? 1.0 : a).map!(a => a < -1.0 ? -1.0 : a).staticArray!Chunk[];
 	immutable Chunk eta = (1.0/sqrt(2.0))*sqrt(eta_tmp)[];
 
 	immutable Chunk neg_y = -coords.y[];
@@ -425,7 +431,113 @@ private struct CartisianCoords {
 	return ElipticalCoords(nu, eta, psi);
 }
 
-@nogc private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, immutable ElipticalCoords coords) {
+private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
+
+	Chunk V = 0;
+
+	size_t sin_idx = 0;
+	auto _idx = iterate_odds!(
+		(m, n, idx) {
+			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
+			immutable Chunk Pmn = infl.P_nh_mn_bar[m][n];
+
+			immutable Chunk alpha = coefficients[idx];
+			if(m == 0) {
+				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+				V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+			} else {
+				immutable Chunk sin_mpsi = infl.sin_mpsi_buff[m];
+				immutable Chunk beta = coeffiecients_sin[sin_idx];
+				immutable Chunk Qmn_bar = infl.Qmn_bar[m][m+1][];
+				sin_idx++;
+				immutable Chunk a_cos = alpha[]*cos_mpsi[];
+				immutable Chunk b_sin = beta[]*sin_mpsi[];
+
+				V[] += Pmn[]*Qmn_bar[]*(a_cos[] + b_sin[]);
+			}
+		}
+	)(infl.Mo, 0);
+
+	iterate_evens!(
+		(m, n, idx) {
+			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
+			//immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
+
+			immutable Chunk alpha = coefficients[idx];
+			if(m == 0) {
+				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+				V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+			} else {
+				immutable Chunk sin_mpsi = infl.sin_mpsi_buff[m];
+				immutable Chunk beta = coeffiecients_sin[sin_idx];
+				immutable Chunk Qmn_bar = infl.Qmn_bar[m][m+1][];
+				sin_idx++;
+				immutable Chunk a_cos = alpha[]*cos_mpsi[];
+				immutable Chunk b_sin = beta[]*sin_mpsi[];
+
+				V[] += Pmn[]*Qmn_bar[]*(a_cos[] + b_sin[]);
+				//V[] += Pmn[]*Qmn_bar[]*(alpha[]*cos_mpsi[] + beta[]*sin_mpsi[]);
+			}
+			//V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+		}
+	)(infl.Me, _idx);
+
+	return V;
+}
+
+private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
+
+	Chunk V = 0;
+
+	size_t sin_idx = 0;
+	auto _idx = iterate_odds!(
+		(m, n, idx) {
+			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
+			//immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
+			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
+
+			immutable Chunk alpha = coefficients[idx];
+			//V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+			if(m == 0) {
+				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+				V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+			} else {
+				immutable Chunk sin_mpsi = infl.sin_mpsi_buff[m];
+				immutable Chunk beta = coeffiecients_sin[sin_idx];
+				immutable Chunk Qmn_bar = infl.Qmn_bar[m][m+1][];
+				sin_idx++;
+				V[] += Pmn[]*Qmn_bar[]*(alpha[]*cos_mpsi[] + beta[]*sin_mpsi[]);
+			}
+
+		}
+	)(infl.Mo, 0);
+
+	iterate_evens!(
+		(m, n, idx) {
+			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
+			//immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
+			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
+
+			immutable Chunk alpha = coefficients[idx];
+			//V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+			if(m == 0) {
+				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+				V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+			} else {
+				immutable Chunk sin_mpsi = infl.sin_mpsi_buff[m];
+				immutable Chunk beta = coeffiecients_sin[sin_idx];
+				immutable Chunk Qmn_bar = infl.Qmn_bar[m][m+1][];
+				sin_idx++;
+				V[] += Pmn[]*Qmn_bar[]*(alpha[]*cos_mpsi[] + beta[]*sin_mpsi[]);
+			}
+		}
+	)(infl.Me, _idx);
+
+	return V;
+}
+/+
+@nogc private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
 
 	Chunk V = 0;
 
@@ -454,7 +566,7 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, immutable ElipticalCoords coords) {
+@nogc private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
 
 	Chunk V = 0;
 
@@ -483,8 +595,8 @@ private struct CartisianCoords {
 
 	return V;
 }
-
-@nogc private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
++/
+private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, T[] coefficients_md_sin, T[] coefficients_nh_sin, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
 
 	// Recomended buffer zone in Huang's dissertation
 	immutable double eps = 0.01;
@@ -542,14 +654,17 @@ private struct CartisianCoords {
 	foreach(m; 0..max(infl.Mo, infl.Me) + 1) {
 		if(m == 0) {
 			infl.mpsi_buff[m] = 1.0;
+			infl.sin_mpsi_buff[m] = 0.0;
 		} else {
 			immutable Chunk mpsi = m.to!double*coords.psi[];
-			infl.mpsi_buff[m] = cos(mpsi);
+			immutable Chunk[2] sin_cos = sincos(mpsi);
+			infl.mpsi_buff[m] = sin_cos[1];
+			infl.sin_mpsi_buff[m] = sin_cos[0];
 		}
 	}
 
-	immutable Chunk V_md = compute_md ? compute_velocities_md(infl, coefficients_md, coords) : Z;
-	immutable Chunk V_nh = compute_nh ? compute_velocities_nh(infl, coefficients_nh, coords) : Z;
+	immutable Chunk V_md = compute_md ? compute_velocities_md(infl, coefficients_md, coefficients_md_sin, coords) : Z;
+	immutable Chunk V_nh = compute_nh ? compute_velocities_nh(infl, coefficients_nh, coefficients_nh_sin, coords) : Z;
 	
 	immutable Chunk V = blend_nh[]*V_nh[] + blend_md[]*V_md[];
 
@@ -581,9 +696,14 @@ private struct CartisianCoords {
 	return f;
 }
 
-@nogc private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, immutable CartisianCoords ccoords, Chunk t) {
+private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, T[] b, T[] beta, T[] delta_s, T[] lambda_s, immutable CartisianCoords ccoords, Chunk t) {
 
 	immutable auto coords = to_eliptical(ccoords);
+
+	// if(infl.debug_coords) {
+	// 	writeln("cart coords: ", ccoords);
+	// 	writeln("elip coords: ", coords);
+	// }
 
 	immutable Chunk rho_axial = 1;
 
@@ -600,9 +720,13 @@ private struct CartisianCoords {
 
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 
-	immutable Chunk V_bl = compute_velocities_bl(infl, a, alpha, ccoords, coords);
+	immutable Chunk V_bl = compute_velocities_bl(infl, a, alpha, b, beta, ccoords, coords);
 	Chunk V_ds = 0.0;
 	if(compute_ds) {
+
+		double devisor;
+		devisor = infl.advance_ratio;
+
 		Chunk t_delay = t[] - sigma[]*infl.sin_chi;
 
 		foreach(c_idx, ref t_d; t_delay) {
@@ -613,7 +737,9 @@ private struct CartisianCoords {
 			}
 		}
 
-		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2);
+		//t_delay[] = t_delay[]/devisor;
+
+		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
 		immutable CartisianCoords[3] ccoords_ds = [
 			CartisianCoords(neg_s_0, ccoords.y, ccoords.z),
@@ -627,9 +753,30 @@ private struct CartisianCoords {
 			to_eliptical(ccoords_ds[2])
 		];
 
-		immutable Chunk v_ds_bl = compute_velocities_bl(infl, infl.time_delay_a_2[0..infl.total_states], infl.time_delay_alpha_2[0..infl.total_states], ccoords_ds[0], coords_ds[0]);
-		immutable Chunk v_ds_bl_a_1 = compute_velocities_bl(infl, infl.time_delay_a_2[infl.total_states..$], infl.time_delay_alpha_2[infl.total_states..$], ccoords_ds[1], coords_ds[1]);
-		immutable Chunk v_ds_bl_a_2 = compute_velocities_bl(infl, delta, lambda, ccoords_ds[2], coords_ds[2]);
+		immutable Chunk v_ds_bl = compute_velocities_bl(infl,
+			infl.time_delay_a_2[0..infl.total_states],
+			infl.time_delay_alpha_2[0..infl.total_states],
+			infl.time_delay_b_2[0..infl.total_sin_states],
+			infl.time_delay_beta_2[0..infl.total_sin_states],
+			ccoords_ds[0],
+			coords_ds[0]
+		);
+		immutable Chunk v_ds_bl_a_1 = compute_velocities_bl(infl,
+			infl.time_delay_a_2[infl.total_states..$],
+			infl.time_delay_alpha_2[infl.total_states..$],
+			infl.time_delay_b_2[infl.total_sin_states..$],
+			infl.time_delay_beta_2[infl.total_sin_states..$],
+			ccoords_ds[1],
+			coords_ds[1]
+		);
+		immutable Chunk v_ds_bl_a_2 = compute_velocities_bl(infl,
+			delta,
+			lambda,
+			delta_s,
+			lambda_s,
+			ccoords_ds[2],
+			coords_ds[2]
+		);
 
 		V_ds[] = v_ds_bl[] + v_ds_bl_a_1[] - v_ds_bl_a_2[];
 	}
@@ -641,7 +788,7 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, immutable CartisianCoords ccoords, Chunk t) {
+private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, T[] b, T[] beta, T[] delta_s, T[] lambda_s, immutable CartisianCoords ccoords, Chunk t) {
 
 	immutable auto coords = to_eliptical(ccoords);
 
@@ -659,10 +806,14 @@ private struct CartisianCoords {
 	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 
-	immutable Chunk V_bl = compute_velocities_bl(infl, delta, lambda, ccoords, coords);
+	immutable Chunk V_bl = compute_velocities_bl(infl, delta, lambda, delta_s, lambda_s, ccoords, coords);
 	Chunk V_ds = 0.0;
 
 	if(compute_ds) {
+
+		double devisor;
+		devisor = infl.advance_ratio;
+
 		Chunk t_delay = t[] + sigma[]*infl.sin_chi;
 
 		foreach(c_idx, ref t_d; t_delay) {
@@ -673,7 +824,9 @@ private struct CartisianCoords {
 			}
 		}
 
-		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2);
+		//t_delay[] = t_delay[]/devisor;
+
+		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
 		immutable CartisianCoords[3] ccoords_ds = [
 			CartisianCoords(neg_s_0, ccoords.y, ccoords.z),
@@ -687,9 +840,31 @@ private struct CartisianCoords {
 			to_eliptical(ccoords_ds[2])
 		];
 
-		immutable Chunk v_ds_bl_a = compute_velocities_bl(infl, infl.time_delay_a_2[infl.total_states..$], infl.time_delay_alpha_2[infl.total_states..$], ccoords_ds[0], coords_ds[0]);
-		immutable Chunk v_ds_bl_1 = compute_velocities_bl(infl, infl.time_delay_a_2[0..infl.total_states], infl.time_delay_alpha_2[0..infl.total_states], ccoords_ds[1], coords_ds[1]);
-		immutable Chunk v_ds_bl_2 = compute_velocities_bl(infl, a, alpha, ccoords_ds[2], coords_ds[2]);
+		immutable Chunk v_ds_bl_a = compute_velocities_bl(infl,
+			infl.time_delay_a_2[infl.total_states..$],
+			infl.time_delay_alpha_2[infl.total_states..$],
+			infl.time_delay_b_2[infl.total_sin_states..$],
+			infl.time_delay_beta_2[infl.total_sin_states..$],
+			ccoords_ds[0],
+			coords_ds[0]
+		);
+
+		immutable Chunk v_ds_bl_1 = compute_velocities_bl(infl,
+			infl.time_delay_a_2[0..infl.total_states],
+			infl.time_delay_alpha_2[0..infl.total_states],
+			infl.time_delay_b_2[0..infl.total_sin_states],
+			infl.time_delay_beta_2[0..infl.total_sin_states],
+			ccoords_ds[1],
+			coords_ds[1]
+		);
+		immutable Chunk v_ds_bl_2 = compute_velocities_bl(infl,
+			a,
+			alpha,
+			b,
+			beta,
+			ccoords_ds[2],
+			coords_ds[2]
+		);
 
 		V_ds[] = v_ds_bl_a[] + v_ds_bl_1[] - v_ds_bl_2[];
 	}
@@ -702,7 +877,7 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, auto ref C x, auto ref C y, auto ref C z) {
+private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, auto ref C x, auto ref C y, auto ref C z) {
 	
 	static import opencopter.math;
 
@@ -725,7 +900,11 @@ private struct CartisianCoords {
 
 	if(all_above_or_on_disk || all_somewhere) {
 		Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
-		V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, coords, t);
+		// if(infl.debug_coords) {
+		// 	writeln("infl.b: ", infl.b);
+		// 	writeln("infl.beta: ", infl.beta);
+		// }
+		V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, infl.b, infl.beta, infl.delta_s, infl.lambda_s, coords, t);
 		if(all_above_or_on_disk && !all_somewhere) {
 			return V_above;
 		}
@@ -762,13 +941,37 @@ private struct CartisianCoords {
 			}
 		}
 
-		infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a);
+		//t_delay[] = t_delay[]/devisor;
+		infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a, infl.time_delay_beta, infl.time_delay_b);
 
 		CartisianCoords coords1 = CartisianCoords(x0_1, y0_1, zero);
 		CartisianCoords coords2 = CartisianCoords(x0_2, y0_2, zero);
 
-		immutable Chunk v_f = compute_velocities_final(infl, infl.time_delay_a[0..infl.total_states], infl.time_delay_alpha[0..infl.total_states], infl.time_delay_a[infl.total_states..$], infl.time_delay_alpha[infl.total_states..$], coords1, t_delay);
-		immutable Chunk v_f_a_1 = compute_velocities_final_adjoint(infl, infl.time_delay_a[0..infl.total_states], infl.time_delay_alpha[0..infl.total_states], infl.time_delay_a[infl.total_states..$], infl.time_delay_alpha[infl.total_states..$], coords2, t_delay);
+		immutable Chunk v_f = compute_velocities_final(infl,
+			infl.time_delay_a[0..infl.total_states],
+			infl.time_delay_alpha[0..infl.total_states],
+			infl.time_delay_a[infl.total_states..$],
+			infl.time_delay_alpha[infl.total_states..$],
+			infl.time_delay_b[0..infl.total_sin_states],
+			infl.time_delay_beta[0..infl.total_sin_states],
+			infl.time_delay_b[infl.total_sin_states..$],
+			infl.time_delay_beta[infl.total_sin_states..$],
+			coords1,
+			t_delay
+		);
+
+		immutable Chunk v_f_a_1 = compute_velocities_final_adjoint(infl,
+			infl.time_delay_a[0..infl.total_states],
+			infl.time_delay_alpha[0..infl.total_states],
+			infl.time_delay_a[infl.total_states..$],
+			infl.time_delay_alpha[infl.total_states..$],
+			infl.time_delay_b[0..infl.total_sin_states],
+			infl.time_delay_beta[0..infl.total_sin_states],
+			infl.time_delay_b[infl.total_sin_states..$],
+			infl.time_delay_beta[infl.total_sin_states..$],
+			coords2,
+			t_delay
+		);
 
 		immutable Chunk neg_z = -z[];
 		
@@ -776,7 +979,18 @@ private struct CartisianCoords {
 
 		CartisianCoords coords3 = CartisianCoords(x3, y0_2, neg_z);
 
-		immutable Chunk v_f_a_2 = compute_velocities_final_adjoint(infl, infl.a, infl.alpha, infl.delta, infl.lambda, coords3, t);
+		immutable Chunk v_f_a_2 = compute_velocities_final_adjoint(infl,
+			infl.a,
+			infl.alpha,
+			infl.delta,
+			infl.lambda,
+			infl.b,
+			infl.beta,
+			infl.delta_s,
+			infl.lambda_s,
+			coords3,
+			t
+		);
 
 		V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
 		
@@ -860,6 +1074,83 @@ private immutable even_states = [
 	]
 ];
 
+private size_t iterate_odds_sin(alias f, Args...)(long Mo, size_t idx, auto ref Args args) {
+	foreach(long _m; 1..Mo + 1) {
+		foreach(long _n; odd_states[Mo][_m]) {
+			f(_m.to!long, _n.to!long, idx, args);
+			idx++;
+		}
+	}
+
+	return idx;
+}
+
+private size_t iterate_evens_sin(alias f, Args...)(long Me, size_t idx, auto ref Args args) {
+	foreach(long _m; 1..Me + 1) {
+		foreach(long _n; even_states[Me][_m]) {
+			f(_m.to!long, _n.to!long, idx, args);
+			idx++;
+		}
+	}
+
+	return idx;
+}
+
+size_t iterate_even_odd_sin(alias f, Args...)(long Mo, long Me, size_t start_row_idx, size_t start_col_idx, auto ref Args args) {
+	return iterate_evens_sin!((r, j, row_idx) {
+		iterate_odds_sin!(
+			(m, n, col_idx) => f(r, j, m, n, row_idx, col_idx, args)
+		)(Mo, start_col_idx);
+	})(Me, start_row_idx);
+}
+
+size_t iterate_odd_even_sin(alias f, Args...)(long Mo, long Me, size_t start_row_idx, size_t start_col_idx, auto ref Args args) {
+	return iterate_odds_sin!((r, j, row_idx) {
+		iterate_evens_sin!(
+			(m, n, col_idx) => f(r, j, m, n, row_idx, col_idx, args)
+		)(Mo, start_col_idx);
+	})(Me, start_row_idx);
+}
+
+size_t iterate_odd_odd_sin(alias f, Args...)(long Mo, long start_row_idx, size_t start_col_idx, auto ref Args args) {
+	return iterate_odds_sin!((r, j, row_idx) {
+		iterate_odds_sin!(
+			(m, n, col_idx) => f(r, j, m, n, row_idx, col_idx, args)
+		)(Mo, start_col_idx);
+	})(Mo, start_row_idx);
+}
+
+size_t iterate_even_even_sin(alias f, Args...)(long Me, long start_row_idx, size_t start_col_idx, auto ref Args args) {
+	return iterate_evens_sin!((r, j, row_idx) {
+		iterate_evens_sin!(
+			(m, n, col_idx) => f(r, j, m, n, row_idx, col_idx, args)
+		)(Me, start_col_idx);
+	})(Me, start_row_idx);
+}
+
+void iterate_whole_matrix_sin(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args...)(long Mo, long Me, auto ref Args args) {
+
+	auto _row_idx = iterate_odds_sin!((r, j, row_idx) {
+		auto _col_idx = iterate_odds_sin!(
+			(m, n, col_idx) => f_oo(r, j, m, n, row_idx, col_idx, args)
+		)(Mo, 0);
+
+		iterate_evens_sin!(
+			(m, n, col_idx) => f_oe(r, j, m, n, row_idx, col_idx, args)
+		)(Me, _col_idx);
+	})(Mo, 0);
+
+	iterate_evens_sin!((r, j, row_idx) {
+		auto _col_idx = iterate_odds_sin!(
+			(m, n, col_idx) => f_eo(r, j, m, n, row_idx, col_idx, args)
+		)(Mo, 0);
+
+		iterate_evens_sin!(
+			(m, n, col_idx) => f_ee(r, j, m, n, row_idx, col_idx, args)
+		)(Me, _col_idx);
+	})(Me, _row_idx);
+}
+
 private size_t iterate_odds(alias f, Args...)(long Mo, size_t idx, auto ref Args args) {
 	foreach(long _m; 0..Mo + 1) {
 		foreach(long _n; odd_states[Mo][_m]) {
@@ -937,7 +1228,7 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 	})(Me, _row_idx);
 }
 
-@nogc void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
+void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
 
 	double[] alpha = infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states];
 	
@@ -952,70 +1243,218 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 
 	immutable X = tan(-infl.chi/2.0);
 
+	//writeln("X: ", X);
+
 	iterate_whole_matrix!(
 		// odd-odd
 		(r, j, m, n, row_idx, col_idx) {
-			if(r == 0) {
-				infl.L[row_idx][col_idx] = X^^(m.to!double)*infl.Gamma[row_idx][col_idx];
-			} else {
-				immutable double l = min(r, m);
-				immutable double exp1 = abs(r - m);
-				immutable double exp2 = abs(r + m);
+			immutable l = min(r, m);
+			immutable exp1 = abs(r - m);
+			immutable exp2 = abs(r + m);
 
-				infl.L[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+			immutable l_s = min(r + 1, m + 1);
+			immutable exp1_s = abs((r + 1) - (m + 1));
+			immutable exp2_s = abs((r + 1) + (m + 1));
+			if(r == 0) {
+				infl.L_c[row_idx][col_idx] = X^^(m.to!double)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = 0;
+			} else {
+				//immutable double l = min(r, m);
+				//immutable double exp1 = abs(r - m);
+				//immutable double exp2 = abs(r + m);
+
+				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			}
 		},
 		// odd-even
 		(r, j, m, n, row_idx, col_idx) {
+			immutable l = min(r, m);
+			immutable exp1 = abs(r - m);
+			immutable exp2 = abs(r + m);
+
+			immutable l_s = min(r + 1, m + 1);
+			immutable exp1_s = abs((r + 1) - (m + 1));
+			immutable exp2_s = abs((r + 1) + (m + 1));
 			if(r == 0) {
-				infl.L[row_idx][col_idx] = X^^(m.to!double)*infl.Gamma[row_idx][col_idx];
+				infl.L_c[row_idx][col_idx] = X^^(m.to!double)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = 0;
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+			} else {
+				//immutable double l = min(r, m);
+				//immutable double exp1 = abs(r - m);
+				//immutable double exp2 = abs(r + m);
+
+				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+			}
+		},
+		// even-odd
+		(r, j, m, n, row_idx, col_idx) {
+			immutable l = min(r, m);
+			immutable exp1 = abs(r - m);
+			immutable exp2 = abs(r + m);
+
+			immutable l_s = min(r + 1, m + 1);
+			immutable exp1_s = abs((r + 1) - (m + 1));
+			immutable exp2_s = abs((r + 1) + (m + 1));
+			if(r == 0) {
+				infl.L_c[row_idx][col_idx] = X^^m*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = 0;
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+			} else {
+				//immutable l = min(r, m);
+				//immutable exp1 = abs(r - m);
+				//immutable exp2 = abs(r + m);
+
+				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+			}
+		},
+		// even-even
+		(r, j, m, n, row_idx, col_idx) {
+			immutable l = min(r, m);
+			immutable exp1 = abs(r - m);
+			immutable exp2 = abs(r + m);
+
+			immutable l_s = min(r + 1, m + 1);
+			immutable exp1_s = abs((r + 1) - (m + 1));
+			immutable exp2_s = abs((r + 1) + (m + 1));
+			if(r == 0) {
+				infl.L_c[row_idx][col_idx] = X^^m*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = 0;
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+			} else {
+				
+
+				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
+			}
+		}
+	)(infl.Mo, infl.Me);
+
+
+	iterate_whole_matrix_sin!(
+		// odd-odd
+		(r, j, m, n, row_idx, col_idx) {
+
+			//writeln("oo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+			//if(row_idx == col_idx) {
+			//	infl.L_s[row_idx][col_idx] = 1;
+			//} else {
+			//	infl.L_s[row_idx][col_idx] = 0;
+			//}
+			
+			// if(r == 0) {
+			// 	M_s[row_idx][col_idx] = 0;
+			// } else {
+			// 	immutable double l = min(r, m);
+			// 	immutable double exp1 = abs(r - m);
+			// 	immutable double exp2 = abs(r + m);
+
+			// 	M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx][col_idx];
+			// }
+
+			immutable double l = min(r, m);
+			immutable double exp1 = abs(r - m);
+			immutable double exp2 = abs(r + m);
+
+			immutable gamma_col_idx = col_idx + odd_states[infl.Mo][0].length;
+			immutable gamma_row_idx = row_idx + odd_states[infl.Mo][0].length;
+
+			infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
+		},
+		// odd-even
+		(r, j, m, n, row_idx, col_idx) {
+			//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+			if(r == 0) {
+				infl.L_s[row_idx][col_idx] = 0;
 			} else {
 				immutable double l = min(r, m);
 				immutable double exp1 = abs(r - m);
 				immutable double exp2 = abs(r + m);
 
-				infl.L[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				//M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx + odd_states[Mo][0].length][col_idx + total_odd_states + odd_states[Mo][0].length];
+
+				immutable gamma_col_idx = col_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
+				immutable gamma_row_idx = row_idx + odd_states[infl.Mo][0].length;
+
+				
+				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+				infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
 			}
 		},
 		// even-odd
 		(r, j, m, n, row_idx, col_idx) {
+			//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 			if(r == 0) {
-				infl.L[row_idx][col_idx] = X^^m*infl.Gamma[row_idx][col_idx];
+				//Meo_s[row_idx][col_idx] = 0;
 			} else {
 				immutable l = min(r, m);
 				immutable exp1 = abs(r - m);
 				immutable exp2 = abs(r + m);
 
-				infl.L[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				immutable gamma_col_idx = col_idx + odd_states[infl.Mo][0].length;
+				immutable gamma_row_idx = row_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
+
+				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+
+				infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
 			}
 		},
 		// even-even
 		(r, j, m, n, row_idx, col_idx) {
+			//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 			if(r == 0) {
-				infl.L[row_idx][col_idx] = X^^m*infl.Gamma[row_idx][col_idx];
+				infl.L_s[row_idx][col_idx] = 0;
 			} else {
 				immutable l = min(r, m);
 				immutable exp1 = abs(r - m);
 				immutable exp2 = abs(r + m);
 
-				infl.L[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
+				immutable gamma_col_idx = col_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
+				immutable gamma_row_idx = row_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
+
+				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+				infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
 			}
 		}
 	)(infl.Mo, infl.Me);
 
-	foreach(r_idx; 0..infl.total_states) {
-		infl.L_inv[r_idx][] = infl.L[r_idx][];
+	//foreach(r_idx; 0..infl.total_states) {
+	foreach(r_idx, ref L_c_row; infl.L_c) {
+		infl.L_c_inv[r_idx][] = L_c_row[];
 	}
 
-	// Invert L matrix
-	int info = 0;
-	info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_states, infl.total_states, infl.L_inv[0].ptr, infl.total_states, infl.ipiv.ptr);
-	assert(info == 0, "Failed to invert L matrix");
-	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_states, infl.L_inv[0].ptr, infl.total_states, infl.ipiv.ptr);
-	assert(info == 0, "Failed to invert L matrix");
+	foreach(r_idx, ref L_s_row; infl.L_s) {
+		infl.L_s_inv[r_idx][] = L_s_row[];
+	}
 
-	// Multiply L_inv*M
-	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.L_inv[0].ptr, infl.total_states, infl.M[0].ptr, infl.total_states, 0.0, infl.VLM[0].ptr, infl.total_states);
+	//writeln("infl.L_s: ", infl.L_s);
+	//write("L_s: ");
+	//infl.L_s.print_matlab;
+	//writeln("infl.M_s: ", infl.M_s);
+	// Invert L_c matrix
+	int info = 0;
+	info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_states, infl.total_states, infl.L_c_inv[0].ptr, infl.total_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert L_c matrix");
+	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_states, infl.L_c_inv[0].ptr, infl.total_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert L_c matrix");
+
+	info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_sin_states, infl.total_sin_states, infl.L_s_inv[0].ptr, infl.total_sin_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert L_s matrix");
+	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_sin_states, infl.L_s_inv[0].ptr, infl.total_sin_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert L_s matrix");
+
+	//write("L_s^-1: ");
+	//infl.L_s_inv.print_matlab;
+
+	// Multiply L_c_inv*M_c
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.L_c_inv[0].ptr, infl.total_states, infl.M_c[0].ptr, infl.total_states, 0.0, infl.VLM_c[0].ptr, infl.total_states);
+
+	// Multiply L_s_inv*M_s
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, infl.total_sin_states, 1.0, infl.L_s_inv[0].ptr, infl.total_sin_states, infl.M_s[0].ptr, infl.total_sin_states, 0.0, infl.VLM_s[0].ptr, infl.total_sin_states);
 
 	
 
@@ -1030,95 +1469,161 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 	//debug writeln("Vt: ", Vt);
 	//debug writeln("V: ", V);
 
-	infl.LM_scratch[] = infl.VLM[0][];// * alpha[];
+	infl.LM_c_scratch[] = infl.VLM_c[0][];// * alpha[];
 	//immutable alpha_0_1 = infl.alpha_scratch.sum;
 	//infl.average_inflow = sqrt(3.0)*alpha_0_1;
 
 	// Build the non linearity matrix
-	infl.VLM[0][] *= Vt;
-	foreach(ref vlm; infl.VLM[1..$]) {
+	infl.VLM_c[0][] *= Vt;
+	//infl.VLM_s[0][] *= Vt;
+	foreach(idx, ref vlm; infl.VLM_c[1..$]) {
 		vlm[] *= V;
+		//infl.VLM_s[idx + 1][] *= V;
 	}
 
-	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.M_inv[0].ptr, infl.total_states, infl.L[0].ptr, infl.total_states, 0.0, infl.VLM_inv[0].ptr, infl.total_states);
-
-	foreach(ref vlm_inv; infl.VLM_inv) {
-		vlm_inv[0] *= 1.0/Vt;
-		vlm_inv[1..$] *= 1.0/V;
+	foreach(idx, ref vlm; infl.VLM_s[0..$]) {
+		vlm[] *= V;
+		//infl.VLM_s[idx + 1][] *= V;
 	}
 
-	//debug infl.VLM_inv.print_matlab;
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.M_c_inv[0].ptr, infl.total_states, infl.L_c[0].ptr, infl.total_states, 0.0, infl.VLM_c_inv[0].ptr, infl.total_states);
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, infl.total_sin_states, 1.0, infl.M_s_inv[0].ptr, infl.total_sin_states, infl.L_s[0].ptr, infl.total_sin_states, 0.0, infl.VLM_s_inv[0].ptr, infl.total_sin_states);
+
+	foreach(idx, ref vlM_c_inv; infl.VLM_c_inv) {
+		vlM_c_inv[0] *= 1.0/Vt;
+		vlM_c_inv[1..$] *= 1.0/V;
+
+		//infl.VLM_s_inv[idx][0] *= 1.0/Vt;
+		//infl.VLM_s_inv[idx][1..$] *= 1.0/V;
+	}
+
+	foreach(idx, ref vlM_s_inv; infl.VLM_s_inv) {
+		//vlM_s_inv[0] *= 1.0/Vt;
+		vlM_s_inv[0..$] *= 1.0/V;
+
+		//infl.VLM_s_inv[idx][0] *= 1.0/Vt;
+		//infl.VLM_s_inv[idx][1..$] *= 1.0/V;
+	}
+
+	//debug infl.VLM_c_inv.print_matlab;
 	//debug writeln(infl.adjoint_mat);
-	foreach(ref vlm_inv; infl.VLM_inv) {
-		vlm_inv[] *= infl.adjoint_mat[];
+	foreach(idx, ref vlM_c_inv; infl.VLM_c_inv) {
+		vlM_c_inv[] *= infl.adjoint_mat[];
+		//infl.VLM_s_inv[idx][] *= infl.adjoint_mat[];
 	}
 
-	//debug infl.VLM_inv.print_matlab;
+	foreach(idx, ref vlM_s_inv; infl.VLM_s_inv) {
+		vlM_s_inv[] *= infl.adjoint_mat_sin[];
+		//infl.VLM_s_inv[idx][] *= infl.adjoint_mat[];
+	}
 
-	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.VLM_inv[0].ptr, infl.total_states, infl.VLM[0].ptr, infl.total_states, 0.0, infl.QS_mat[0].ptr, infl.total_states);
+	//debug infl.VLM_c_inv.print_matlab;
+
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.VLM_c_inv[0].ptr, infl.total_states, infl.VLM_c[0].ptr, infl.total_states, 0.0, infl.QS_c_mat[0].ptr, infl.total_states);
+
+	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_s_inv[0].ptr, infl.total_sin_states, infl.VLM_s[0].ptr, infl.total_sin_states, 0.0, infl.QS_s_mat[0].ptr, infl.total_sin_states);
 
 }
 
-@nogc void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
+void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
 
 	infl.build_vlm_matrix(advance_ratio, axial_advance_ratio);
 
-	int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_states, infl.total_states, infl.VLM[0].ptr, infl.total_states, infl.ipiv.ptr);
-	assert(info == 0, "Failed to invert VLM matrix");
-	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_states, infl.VLM[0].ptr, infl.total_states, infl.ipiv.ptr);
-	assert(info == 0, "Failed to invert VLM matrix");
+	int info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_states, infl.total_states, infl.VLM_c[0].ptr, infl.total_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert VLM_c matrix");
+	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_states, infl.VLM_c[0].ptr, infl.total_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert VLM_c matrix");
 
-	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM[0].ptr, infl.total_states, infl.tau.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states].ptr, 1);
+
+	info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_sin_states, infl.total_sin_states, infl.VLM_s[0].ptr, infl.total_sin_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert VLM_s matrix");
+	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_sin_states, infl.VLM_s[0].ptr, infl.total_sin_states, infl.ipiv.ptr);
+	assert(info == 0, "Failed to invert VLM_s matrix");
+
+
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM_c[0].ptr, infl.total_states, infl.tau_c.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states].ptr, 1);
+
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_c[0].ptr, infl.total_sin_states, infl.tau_s.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
 	
 	infl.alpha = infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states];
+	infl.beta = infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states];
 
 	foreach(i; 0..infl.total_states) {
 		infl.state_history[infl.get_circular_index(infl.curr_state)][infl.total_states + i] = 0;
 		foreach(k; 0..infl.total_states) {
-			infl.state_history[infl.get_circular_index(infl.curr_state)][infl.total_states + i] += infl.QS_mat[i][k]*infl.alpha[k];
+			infl.state_history[infl.get_circular_index(infl.curr_state)][infl.total_states + i] += infl.QS_c_mat[i][k]*infl.alpha[k];
 		}
 	}
 
-	infl.lambda = infl.state_history[infl.get_circular_index(infl.curr_state)][infl.total_states..$];
+	foreach(i; 0..infl.total_sin_states) {
+		infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states + infl.total_sin_states + i] = 0;
+		foreach(k; 0..infl.total_sin_states) {
+			infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states + infl.total_sin_states + i] += infl.QS_s_mat[i][k]*infl.beta[k];
+		}
+	}
+
+	infl.lambda = infl.state_history[infl.get_circular_index(infl.curr_state)][infl.total_states..2*infl.total_states];
+
+	infl.lambda_s = infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states + infl.total_sin_states..$];
 
 	infl.a[] = 0;
+	infl.b[] = 0;
 	// Get MD state variables
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_odd_states, infl.total_odd_states, 1.0, infl.A_inv[0].ptr, infl.total_odd_states, infl.alpha.ptr, 1, 0.0, infl.a.ptr, 1);
+
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_odd_sin_states, infl.total_odd_sin_states, 1.0, infl.A_s_inv[0].ptr, infl.total_odd_sin_states, infl.beta.ptr, 1, 0.0, infl.b.ptr, 1);
 
 	// Get MD adjoint variables
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_odd_states, infl.total_odd_states, 1.0, infl.A_inv[0].ptr, infl.total_odd_states, infl.lambda.ptr, 1, 0.0, infl.delta.ptr, 1);
 
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_odd_sin_states, infl.total_odd_sin_states, 1.0, infl.A_s_inv[0].ptr, infl.total_odd_sin_states, infl.lambda_s.ptr, 1, 0.0, infl.delta_s.ptr, 1);
+
 	infl.a[infl.total_odd_states..$] = infl.alpha[infl.total_odd_states..$];
 	infl.delta[infl.total_odd_states..$] = infl.lambda[infl.total_odd_states..$];
 
+	infl.b[infl.total_odd_sin_states..$] = infl.beta[infl.total_odd_sin_states..$];
+	infl.delta_s[infl.total_odd_states..$] = infl.lambda_s[infl.total_odd_sin_states..$];
+
 }
 
-@nogc void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] state, double t, double dt, HuangPetersInflowT!AC infl, auto ref RIS rotor, auto ref RS rotor_state, double advance_ratio, double axial_advance_ratio) {
+void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] state, double t, double dt, HuangPetersInflowT!AC infl, auto ref RIS rotor, auto ref RS rotor_state, double advance_ratio, double axial_advance_ratio) {
 	
 	double[] alpha = state[0..infl.total_states];
-	double[] lambda = state[infl.total_states..$];
+	double[] lambda = state[infl.total_states..2*infl.total_states];
+
+	double[] beta = state[2*infl.total_states..2*infl.total_states + infl.total_sin_states];
+	double[] lambda_s = state[2*infl.total_states + infl.total_sin_states..$];
 
 	build_vlm_matrix(infl, advance_ratio, axial_advance_ratio);
 
-	// scratch * alpha = V*L_inv*M*alpha
-	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM[0].ptr, infl.total_states, alpha.ptr, 1, 0.0, infl.alpha_scratch.ptr, 1);
+	// scratch * alpha = V*L_c_inv*M_c*alpha
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM_c[0].ptr, infl.total_states, alpha.ptr, 1, 0.0, infl.alpha_scratch.ptr, 1);
 
-	// scratch * delta = V*L_inv*M*delta
-	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM[0].ptr, infl.total_states, lambda.ptr, 1, 0.0, infl.delta_scratch.ptr, 1);
+	// scratch * beta = V*L_s_inv*M_s*beta
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_s[0].ptr, infl.total_sin_states, beta.ptr, 1, 0.0, infl.beta_scratch.ptr, 1);
+
+	// scratch * delta = V*L_c_inv*M_c*delta
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM_c[0].ptr, infl.total_states, lambda.ptr, 1, 0.0, infl.delta_scratch.ptr, 1);
+
+	// scratch * delta_s = V*L_s_inv*M_s*delta_s
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_s[0].ptr, infl.total_sin_states, lambda_s.ptr, 1, 0.0, infl.delta_s_scratch.ptr, 1);
 	
-	// ADJ*tau
-	//infl.tau_scratch[] = infl.tau[]*infl.adjoint_mat[];
-	//infl.tau_scratch[] = infl.tau[]*infl.adjoint_mat[] - infl.delta_scratch[];
-	//infl.tau_scratch[] = infl.delta_scratch[] - infl.tau[]*infl.adjoint_mat[];
+	// ADJ*tau_c
+	//infl.tau_c_scratch[] = infl.tau_c[]*infl.adjoint_mat[];
+	//infl.tau_c_scratch[] = infl.tau_c[]*infl.adjoint_mat[] - infl.delta_scratch[];
+	//infl.tau_c_scratch[] = infl.delta_scratch[] - infl.tau_c[]*infl.adjoint_mat[];
 
-	infl.alpha_scratch[] = infl.tau[] - infl.alpha_scratch[];
-	//infl.alpha_scratch[] = infl.alpha_scratch[] - infl.tau[];
+	infl.alpha_scratch[] = infl.tau_c[] - infl.alpha_scratch[];
+	infl.beta_scratch[] = infl.tau_s[] - infl.beta_scratch[];
+	//infl.alpha_scratch[] = infl.alpha_scratch[] - infl.tau_c[];
 
-	// M_inv*D*alpha_scratch = M_inv*D*(tau - V*L_inv*M*alpha)
-	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.M_inv_D[0].ptr, infl.total_states, infl.alpha_scratch.ptr, 1, 0.0, state_dot[0..infl.total_states].ptr, 1);	
+	// M_c_inv*D*alpha_scratch = M_c_inv*D*(tau_c - V*L_c_inv*M_c*alpha)
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.M_c_inv_D[0].ptr, infl.total_states, infl.alpha_scratch.ptr, 1, 0.0, state_dot[0..infl.total_states].ptr, 1);
 
-	// M_inv*D*tau_scratch = M_inv*D*(V*L_inv*M*delta - ADJ*tau)
-	//cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.M_inv_D[0].ptr, infl.total_states, infl.tau_scratch.ptr, 1, 0.0, state_dot[infl.total_states..$].ptr, 1);
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.M_s_inv_D[0].ptr, infl.total_sin_states, infl.beta_scratch.ptr, 1, 0.0, state_dot[2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
+
+	// M_c_inv*D*tau_c_scratch = M_c_inv*D*(V*L_c_inv*M_c*delta - ADJ*tau_c)
+	//cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.M_c_inv_D[0].ptr, infl.total_states, infl.tau_c_scratch.ptr, 1, 0.0, state_dot[infl.total_states..$].ptr, 1);
 }
 
 alias HuangPetersInflow = HuangPetersInflowT!(ArrayContainer.none);
@@ -1132,21 +1637,33 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private long N;
 
 	private Chunk[] mpsi_buff;
+	private Chunk[] sin_mpsi_buff;
 
-	private double[][] M; // Constant.
-	private double[][] L_inv; // Modification on Gamma by skew angle then inverted each timestep.
-	private double[][] L; // Modification on Gamma by skew angle then inverted each timestep.
+	private double[][] M_c; // Constant.
+	private double[][] L_c_inv; // Modification on Gamma by skew angle then inverted each timestep.
+	private double[][] L_c; // Modification on Gamma by skew angle then inverted each timestep.
+	private double[][] M_s; // Constant.
+	private double[][] L_s_inv; // Modification on Gamma by skew angle then inverted each timestep.
+	private double[][] L_s; // Modification on Gamma by skew angle then inverted each timestep.
 	private double[][] Gamma; // Constant throughout.
-	private double[][] M_inv_D; // Damping. Constant
-	private double[][] VLM; // This holds the result of the matrix mults each timestep.
-	private double[][] VLM_inv; // This holds the result of the matrix mults each timestep.
-	double[][] QS_mat; // This holds the result of the matrix mults each timestep.
+	private double[][] M_c_inv_D; // Damping. Constant
+	private double[][] M_s_inv_D; // Damping. Constant
+	private double[][] VLM_c; // This holds the result of the matrix mults each timestep.
+	private double[][] VLM_c_inv; // This holds the result of the matrix mults each timestep.
+	private double[][] VLM_s; // This holds the result of the matrix mults each timestep.
+	private double[][] VLM_s_inv; // This holds the result of the matrix mults each timestep.
+	double[][] QS_c_mat; // This holds the result of the matrix mults each timestep.
+	double[][] QS_s_mat; // This holds the result of the matrix mults each timestep.
 	private double[][] A_inv;
 	private double[][] A;
-	private double[][] M_inv;
+	private double[][] A_s;
+	private double[][] A_s_inv;
+	private double[][] M_c_inv;
+	private double[][] M_s_inv;
 	private double[][] D;
+	private double[][] D_s;
 
-	Chunk[] V_buffer;
+	//Chunk[] V_buffer;
 
 	private int[] ipiv; // Used by lapack for matrix inversion. Keep it around instead of re-allocing each update
 
@@ -1155,28 +1672,45 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private ptrdiff_t curr_state;
 	private Chunk[] time_delay_alpha;
 	private Chunk[] time_delay_alpha_2;
-	//private Chunk[] time_average_alpha;
 	private Chunk[] time_delay_a;
 	private Chunk[] time_delay_a_2;
+	private Chunk[] time_delay_beta;
+	private Chunk[] time_delay_beta_2;
+	private Chunk[] time_delay_b;
+	private Chunk[] time_delay_b_2;
 	private double[][] state_history;
 	private double[] times;
-	double[] tau; // Pressure coefficients
-	private double[] tau_scratch;
+	double[] tau_c; // Pressure coefficients
+	double[] tau_s; // Pressure coefficients
+	private double[] tau_c_scratch;
+	private double[] tau_s_scratch;
 	double[] alpha; // NH state variables
+	double[] beta; // NH state variables
 	private double[] a; // MD state variables
+	private double[] b; // MD state variables
 	private double[] alpha_scratch;
+	private double[] beta_scratch;
 	double[] delta; // MD adjoint variables
 	double[] lambda; // NH adjoint variables
+	double[] delta_s; // MD adjoint variables
+	double[] lambda_s; // NH adjoint variables
 	private double[] delta_scratch;
+	private double[] delta_s_scratch;
 	private double[] adjoint_mat;
-	private double[] LM_scratch;
+	private double[] adjoint_mat_sin;
+	private double[] LM_c_scratch;
+	//private double[] LM_s_scratch;
 	private double[][] K_table;
 	private double[] average_inflow_array;
-	private size_t ai_idx;
+	//private size_t ai_idx;
 
 	int total_states;
 	int total_odd_states;
 	int total_even_states;
+
+	int total_sin_states;
+	int total_odd_sin_states;
+	int total_even_sin_states;
 
 	private double average_inflow;
 
@@ -1192,6 +1726,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	Integrator integrator;
 
 	private Chunk[] blade_scratch;
+	private Chunk[] blade_scratch_s;
 
 	private RG* rotor;
 
@@ -1199,13 +1734,33 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private double axial_advance_ratio;
 	private double omega;
 
+	private double chi;
+	private double sin_chi;
+	private double cos_chi;
+	private double tan_chi;
+
+	size_t n_r = 16;
+	size_t n_psi = 6;
+	double v_0;
+
+	Chunk[] contraction_array;
+	double[] contraction_array_alias;
+	Chunk[] contraction_z_array;
+	double[] contraction_z_array_alias;
+
+	bool contraction_mapping = false;
+	bool debug_coords = false;
+
+	//double[] zero;
+	//Chunk[] c_zero;
+
 	@nogc private ptrdiff_t get_circular_index(ptrdiff_t idx) {
 		return ((idx % time_history) + time_history) % time_history;
 	}
 
 	this(long _Mo, long _Me, RG* _rotor, double dt) {
 		size_t len = round(2.0*PI/(dt*235.325)).to!size_t;
-		ai_idx = 0;
+		//ai_idx = 0;
 		average_inflow_array = new double[len];
 		average_inflow_array[] = 0;
 		rotor = _rotor;
@@ -1221,11 +1776,13 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		contraction_array = cast(Chunk[])contraction_array_alias.ptr[0..z_length];
 
 		blade_scratch = new Chunk[num_chunks];
+		blade_scratch_s = new Chunk[num_chunks];
 
 		Mo = _Mo;
 		Me = _Me;
 
 		mpsi_buff = new Chunk[max(Mo, Me) + 1];
+		sin_mpsi_buff = new Chunk[max(Mo, Me) + 1];
 
 		N = 0;
 
@@ -1293,28 +1850,53 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			}
 		})(Me, 0);
 
-		integrator = new Integrator(2*total_states);
+		total_even_sin_states = total_even_states - even_states[Me][0].length.to!int;
+		total_odd_sin_states = total_odd_states - odd_states[Mo][0].length.to!int;
 
-		V_buffer = new Chunk[total_states];
+		total_sin_states = total_odd_sin_states + total_even_sin_states;
+
+		debug writeln("total_states: ", total_states);
+		debug writeln("total_odd_states: ", total_odd_states);
+		debug writeln("total_even_states: ", total_even_states);
+		debug writeln("total_sin_states: ", total_sin_states);
+		debug writeln("total_odd_sin_states: ", total_odd_sin_states);
+		debug writeln("total_even_sin_states: ", total_even_sin_states);
+		
+		integrator = new Integrator(2*total_states + 2*total_sin_states);
+
+		//V_buffer = new Chunk[total_states];
 
 		double[][] Meo = allocate_dense(total_even_states, total_odd_states);
 		double[][] Meo_new = allocate_dense(total_even_states, total_odd_states);
+		double[][] Meo_s = allocate_dense(total_even_sin_states, total_odd_sin_states);
+		double[][] Meo_s_new = allocate_dense(total_even_sin_states, total_odd_sin_states);
 		K_table = allocate_dense(max(Me, Mo) + 1, N);
 		D = allocate_dense(total_states, total_states);
-		QS_mat = allocate_dense(total_states, total_states);
-		M_inv = allocate_dense(total_states, total_states);
+		D_s = allocate_dense(total_sin_states, total_sin_states);
+		QS_c_mat = allocate_dense(total_states, total_states);
+		M_c_inv = allocate_dense(total_states, total_states);
+		QS_s_mat = allocate_dense(total_sin_states, total_sin_states);
+		M_s_inv = allocate_dense(total_sin_states, total_sin_states);
 		A_inv = allocate_dense(total_odd_states, total_odd_states);
+		A_s_inv = allocate_dense(total_odd_sin_states, total_odd_sin_states);
+		A_s = allocate_dense(total_odd_sin_states, total_odd_sin_states);
 		A = allocate_dense(total_odd_states, total_odd_states);
-		VLM = allocate_dense(total_states, total_states);
-		VLM_inv = allocate_dense(total_states, total_states);
-		M = allocate_dense(total_states, total_states);
-		M_inv_D = allocate_dense(total_states, total_states);
-		L_inv = allocate_dense(total_states, total_states);
-		L = allocate_dense(total_states, total_states);
+		VLM_c = allocate_dense(total_states, total_states);
+		VLM_c_inv = allocate_dense(total_states, total_states);
+		M_c = allocate_dense(total_states, total_states);
+		M_c_inv_D = allocate_dense(total_states, total_states);
+		L_c_inv = allocate_dense(total_states, total_states);
+		L_c = allocate_dense(total_states, total_states);
+		VLM_s = allocate_dense(total_sin_states, total_sin_states);
+		VLM_s_inv = allocate_dense(total_sin_states, total_sin_states);
+		M_s = allocate_dense(total_sin_states, total_sin_states);
+		M_s_inv_D = allocate_dense(total_sin_states, total_sin_states);
+		L_s_inv = allocate_dense(total_sin_states, total_sin_states);
+		L_s = allocate_dense(total_sin_states, total_sin_states);
 		Gamma = allocate_dense(total_states, total_states);
 
-		time_history = 100_000;
-		state_history = allocate_dense(time_history, 2*total_states);
+		time_history = 1_000_000;
+		state_history = allocate_dense(time_history, 2*total_states + 2*total_sin_states);
 		
 		//Qmn_bar = new Chunk[][](max(Me, Mo) + 1, N);
 		Qmn_bar = allocate_dense_chunk(max(Me, Mo) + 1, N);
@@ -1323,41 +1905,79 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 		times = new double[time_history];
 		
+		//zero = new double[total_sin_states];
+		//c_zero = new Chunk[total_sin_states];
 		time_delay_alpha = new Chunk[2*total_states];
 		time_delay_alpha_2 = new Chunk[2*total_states];
 		time_delay_a = new Chunk[2*total_states];
 		time_delay_a_2 = new Chunk[2*total_states];
-		a = new double[total_states];
-		delta = new double[total_states];
-		alpha_scratch = new double[total_states];
-		delta_scratch = new double[total_states];
-		tau = new double[total_states];
-		tau_scratch = new double[total_states];
-		adjoint_mat = new double[total_states];
-		LM_scratch = new double[total_states];
 
+		time_delay_beta = new Chunk[2*total_sin_states];
+		time_delay_beta_2 = new Chunk[2*total_sin_states];
+		time_delay_b = new Chunk[2*total_sin_states];
+		time_delay_b_2 = new Chunk[2*total_sin_states];
+
+		a = new double[total_states];
+		b = new double[total_sin_states];
+		delta = new double[total_states];
+		delta_s = new double[total_sin_states];
+		alpha_scratch = new double[total_states];
+		beta_scratch = new double[total_sin_states];
+		delta_scratch = new double[total_states];
+		delta_s_scratch = new double[total_sin_states];
+		tau_c = new double[total_states];
+		tau_c_scratch = new double[total_states];
+		tau_s = new double[total_sin_states];
+		tau_s_scratch = new double[total_sin_states];
+		adjoint_mat = new double[total_states];
+		adjoint_mat_sin = new double[total_sin_states];
+		LM_c_scratch = new double[total_states];
+		//LM_s_scratch = new double[total_sin_states];
+
+		/+zero[] = 0;
+		foreach(ref ch; c_zero) {
+			ch[] = 0;
+		}+/
 		alpha_scratch[] = 0;
+		beta_scratch[] = 0;
 		delta_scratch[] = 0;
-		tau[] = 0;
-		tau_scratch[] = 0;
+		delta_s_scratch[] = 0;
+		tau_c[] = 0;
+		tau_c_scratch[] = 0;
+		tau_s[] = 0;
+		tau_s_scratch[] = 0;
 		adjoint_mat[] = 0;
+		adjoint_mat_sin[] = 0;
 
 		state_history.zero_matrix;
 
 		alpha = state_history[0][0..total_states];
-		lambda = state_history[0][total_states..$];
+		lambda = state_history[0][total_states..2*total_states];
+
+		beta = state_history[0][2*total_states..2*total_states + total_sin_states];
+		lambda_s = state_history[0][2*total_states + total_sin_states..$];
 
 		A_inv.zero_matrix;
+		A_s_inv.zero_matrix;
 		Meo.zero_matrix;
 		Meo_new.zero_matrix;
-		M_inv.zero_matrix;
-		M.zero_matrix;
+		Meo_s.zero_matrix;
+		Meo_s_new.zero_matrix;
+		M_c_inv.zero_matrix;
+		M_c.zero_matrix;
+		M_s_inv.zero_matrix;
+		M_s.zero_matrix;
 		D.zero_matrix;
+		D_s.zero_matrix;
 		Gamma.zero_matrix;
-		L_inv.zero_matrix;
-		VLM.zero_matrix;
-		VLM_inv.zero_matrix;
-		QS_mat.zero_matrix;
+		L_c_inv.zero_matrix;
+		VLM_c.zero_matrix;
+		VLM_c_inv.zero_matrix;
+		QS_c_mat.zero_matrix;
+		L_s_inv.zero_matrix;
+		VLM_s.zero_matrix;
+		VLM_s_inv.zero_matrix;
+		QS_s_mat.zero_matrix;
 
 		iterate_even_odd!(
 			(r, j, m, n, row_idx, col_idx) {
@@ -1383,6 +2003,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			A[r_idx][] = A_inv[r_idx][];
 		}
 
+		iterate_odd_odd_sin!((r, j, m, n, row_idx, col_idx) {
+			if(r == m) {
+				A_s_inv[row_idx][col_idx] = 2.0*(-1.0)^^(0.5*(n + j - 2*r).to!double);
+				A_s_inv[row_idx][col_idx] *= sqrt((2.0*n.to!double + 1.0)*(2.0*j.to!double + 1.0));
+				A_s_inv[row_idx][col_idx] /= sqrt(H(r, n)*H(r, j))*(n + j).to!double*(n.to!double + j.to!double + 2.0)*((n.to!double - j.to!double)^^2.0 - 1.0);
+			}
+		})(Mo, 0, 0);
+
+		foreach(r_idx; 0..total_odd_sin_states) {
+			A_s[r_idx][] = A_s_inv[r_idx][];
+		}
+
 		int info = 0;
 		ipiv = new int[total_odd_states];
 
@@ -1391,13 +2023,21 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_odd_states, A_inv[0].ptr, total_odd_states, ipiv.ptr);
 		assert(info == 0, "Failed to invert A matrix");
 
+		info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, total_odd_sin_states, total_odd_sin_states, A_s_inv[0].ptr, total_odd_sin_states, ipiv.ptr);
+		assert(info == 0, "Failed to invert A_s matrix");
+		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_odd_sin_states, A_s_inv[0].ptr, total_odd_sin_states, ipiv.ptr);
+		assert(info == 0, "Failed to invert A_s matrix");
+
+		//A_s_inv.print_matlab;
+
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_even_states, total_odd_states, total_odd_states, 1.0, Meo[0].ptr, total_odd_states, A_inv[0].ptr, total_odd_states, 0.0, Meo_new[0].ptr, total_odd_states);
 
 		iterate_whole_matrix!(
 			// odd-odd
 			(r, j, m, n, row_idx, col_idx) {
+				//writeln("oo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(row_idx == col_idx) {
-					M[row_idx][col_idx] = 1;
+					M_c[row_idx][col_idx] = 1;
 				}
 
 				if(r == m) {
@@ -1417,10 +2057,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// odd-even
 			(r, j, m, n, row_idx, col_idx) {
+				//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == m) {
 					if((j == n - 1) || (j == n + 1)) {
-						M[row_idx][col_idx] = 1;
-						M[row_idx][col_idx] /= sqrt(H(m, n)*H(r, j))*sqrt((2*n + 1).to!double*(2*j + 1).to!double);
+						M_c[row_idx][col_idx] = 1;
+						M_c[row_idx][col_idx] /= sqrt(H(m, n)*H(r, j))*sqrt((2*n + 1).to!double*(2*j + 1).to!double);
 					}
 
 					D[row_idx][col_idx] = 2.0*sqrt((2*j + 1).to!double*(2*n + 1).to!double);
@@ -1441,14 +2082,14 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// even-odd
 			(r, j, m, n, row_idx, col_idx) {
-
+				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == m) {
 					D[row_idx][col_idx] = 2.0*sqrt((2.0*j.to!double + 1)*(2.0*n.to!double + 1));
 					D[row_idx][col_idx] *= (-1.0)^^(0.5*(j + 3*n - 1).to!double);
 					D[row_idx][col_idx] /= PI*sqrt(H(m, n)*H(m, j))*(j + n + 1).to!double*(j - n).to!double;
 				}
 
-				M[row_idx][col_idx] = Meo_new[row_idx - total_odd_states][col_idx];
+				M_c[row_idx][col_idx] = Meo_new[row_idx - total_odd_states][col_idx];
 
 				if((r + m) % 2 != 0) {
 					Gamma[row_idx][col_idx] = sgn(r - m)*4.0*(-1.0)^^(0.5*(3*n + j + 2*m - 2*r).to!double);
@@ -1463,10 +2104,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// even-even
 			(r, j, m, n, row_idx, col_idx) {
+				//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == m) {
-					M[row_idx][col_idx] = 8.0*(-1.0)^^(0.5*(n + j - 2*m + 2).to!double);
-					M[row_idx][col_idx] *= sqrt((2.0*n.to!double + 1.0)*(2.0*j.to!double + 1.0));
-					M[row_idx][col_idx] /= PI*PI*sqrt(H(m, n)*H(m, j))*(n + j).to!double*(n + j + 2).to!double*((n - j).to!double^^2.0 - 1.0);
+					M_c[row_idx][col_idx] = 8.0*(-1.0)^^(0.5*(n + j - 2*m + 2).to!double);
+					M_c[row_idx][col_idx] *= sqrt((2.0*n.to!double + 1.0)*(2.0*j.to!double + 1.0));
+					M_c[row_idx][col_idx] /= PI*PI*sqrt(H(m, n)*H(m, j))*(n + j).to!double*(n + j + 2).to!double*((n - j).to!double^^2.0 - 1.0);
 
 					D[row_idx][col_idx] = kronecker_delta(j, n)/K(m, n);
 				}
@@ -1484,27 +2126,183 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			}
 		)(Mo, Me);
 
+		//writeln;
+
+		double X = 0;
+		iterate_even_odd_sin!(
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				if(r == 0) {
+					Meo_s[row_idx][col_idx] = 0;
+				} else {
+					immutable l = min(r, m);
+					immutable exp1 = abs(r - m);
+					immutable exp2 = abs(r + m);
+
+					immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
+					immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length;
+
+					//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+
+					Meo_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[gamma_row_idx][gamma_col_idx];
+				}
+			}
+		)(Mo, Me, 0, 0);
+
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_even_sin_states, total_odd_sin_states, total_odd_sin_states, 1.0, Meo_s[0].ptr, total_odd_sin_states, A_s_inv[0].ptr, total_odd_sin_states, 0.0, Meo_s_new[0].ptr, total_odd_sin_states);
+
+		//writeln;
+		//writeln;
+
+		iterate_whole_matrix_sin!(
+			// odd-odd
+			(r, j, m, n, row_idx, col_idx) {
+
+				//writeln("oo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+
+				immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
+				immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
+
+				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+
+				if(row_idx == col_idx) {
+					M_s[row_idx][col_idx] = 1;
+				} else {
+					M_s[row_idx][col_idx] = 0;
+				}
+				
+				// if(r == 0) {
+				// 	M_s[row_idx][col_idx] = 0;
+				// } else {
+				// 	immutable double l = min(r, m);
+				// 	immutable double exp1 = abs(r - m);
+				// 	immutable double exp2 = abs(r + m);
+
+				// 	M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx][col_idx];
+				// }
+			},
+			// odd-even
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				if(r == 0) {
+					M_s[row_idx][col_idx] = 0;
+				} else {
+					immutable double l = min(r, m);
+					immutable double exp1 = abs(r - m);
+					immutable double exp2 = abs(r + m);
+
+					//M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx + odd_states[Mo][0].length][col_idx + total_odd_states + odd_states[Mo][0].length];
+
+					immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+					immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
+
+					
+					//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+					M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[gamma_row_idx][gamma_col_idx];
+				}
+			},
+			// even-odd
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				M_s[row_idx][col_idx] = Meo_s_new[row_idx - total_odd_sin_states][col_idx];
+				//M_s[row_idx][col_idx] = 0;
+				// if(r == 0) {
+				// 	Meo_s[row_idx][col_idx] = 0;
+				// } else {
+				// 	immutable l = min(r, m);
+				// 	immutable exp1 = abs(r - m);
+				// 	immutable exp2 = abs(r + m);
+
+				// 	Meo_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx][col_idx];
+				// }
+			},
+			// even-even
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				if(r == 0) {
+					M_s[row_idx][col_idx] = 0;
+				} else {
+					immutable l = min(r, m);
+					immutable exp1 = abs(r - m);
+					immutable exp2 = abs(r + m);
+
+					immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+					immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+
+					//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+					M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[gamma_row_idx][gamma_col_idx];
+				}
+			}
+		)(Mo, Me);
+
 		//Gamma[0][0] 
-		// We'll leave it at this size, as this is the same size as the L matrix will want.
+		// We'll leave it at this size, as this is the same size as the L_c matrix will want.
 		ipiv = new int[total_states];
 
-		// We need both M and M^-1 for timestep updates so copy M to M_inv and invert.
+		// We need both M_c and M_c^-1 for timestep updates so copy M_c to M_c_inv and invert.
 		foreach(r_idx; 0..total_states) {
-			M_inv[r_idx][] = M[r_idx][];
+			M_c_inv[r_idx][] = M_c[r_idx][];
 		}
 
-		//write("M: ");
-		//M_inv.print_matlab;
+		foreach(r_idx; 0..total_sin_states) {
+			M_s_inv[r_idx][] = M_s[r_idx][];
+		}
+
+		//write("M_s: ");
+		//M_s.print_matlab;
 		
-		info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, total_states, total_states, M_inv[0].ptr, total_states, ipiv.ptr);
-		assert(info == 0, "Failed to invert M matrix");
-		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_states, M_inv[0].ptr, total_states, ipiv.ptr);
-		assert(info == 0, "Failed to invert M matrix");
+		iterate_whole_matrix_sin!(
+			// odd-odd
+			(r, j, m, n, row_idx, col_idx) {
+				immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
+				immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
 
-		//write("\nM_inv: ");
-		//M_inv.print_matlab;
+				D_s[row_idx][col_idx] = D[gamma_row_idx][gamma_col_idx];
+			},
+			// odd-even
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+				immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
 
-		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_states, total_states, total_states, 1.0, M_inv[0].ptr, total_states, D[0].ptr, total_states, 0.0, M_inv_D[0].ptr, total_states);
+				D_s[row_idx][col_idx] = D[gamma_row_idx][gamma_col_idx];
+			},
+			// even-odd
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
+				immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+
+				D_s[row_idx][col_idx] = D[gamma_row_idx][gamma_col_idx];
+			},
+			// even-even
+			(r, j, m, n, row_idx, col_idx) {
+				//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+				immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+				immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
+
+				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
+				D_s[row_idx][col_idx] = D[gamma_row_idx][gamma_col_idx];
+			}
+		)(Mo, Me);
+
+		info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, total_states, total_states, M_c_inv[0].ptr, total_states, ipiv.ptr);
+		assert(info == 0, "Failed to invert M_c matrix");
+		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_states, M_c_inv[0].ptr, total_states, ipiv.ptr);
+		assert(info == 0, "Failed to invert M_c matrix");
+
+
+		info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, total_sin_states, total_sin_states, M_s_inv[0].ptr, total_sin_states, ipiv.ptr);
+		assert(info == 0, "Failed to invert M_s matrix");
+		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_sin_states, M_s_inv[0].ptr, total_sin_states, ipiv.ptr);
+		assert(info == 0, "Failed to invert M_s matrix");
+
+		//write("\nM_c_inv: ");
+		//M_c_inv.print_matlab;
+
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_states, total_states, total_states, 1.0, M_c_inv[0].ptr, total_states, D[0].ptr, total_states, 0.0, M_c_inv_D[0].ptr, total_states);
+
+		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_sin_states, total_sin_states, total_sin_states, 1.0, M_s_inv[0].ptr, total_sin_states, D_s[0].ptr, total_sin_states, 0.0, M_s_inv_D[0].ptr, total_sin_states);
 
 		iterate_odds!((m, n, idx) {
 			K_table[m][n] = K(m, n);
@@ -1516,7 +2314,14 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Me, total_odd_states);
 
-		//writeln("T: ", adjoint_mat);
+
+		iterate_odds_sin!((m, n, idx) {
+			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 0.0);
+		})(Mo, 0);
+
+		iterate_evens_sin!((m, n, idx) {
+			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 0.0);
+		})(Me, total_odd_sin_states);
 
 		foreach(n; 1..Qmn_bar[0].length - 1) {
 			immutable long m = 0;
@@ -1533,9 +2338,14 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		times[] = 0;
 		average_inflow = 0.01;
 		chi = 0;
-		tau[0] = 0.001;
+		tau_c[0] = 0.001;
+		tau_s[0] = 0.001;
+		tau_s[] = [-0.00155803, 0.000844799, -0.00282596, 0.000751855, -0.00304, -0.00204455, -0.000332659, -0.000887072];
+		//tau_s[0] = 0.001;
 
 		simple_harmonic_solution(this, 0.0, 0.0);
+
+		//A_s_inv.print_matlab;
 
 	}
 
@@ -1588,7 +2398,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return 0;
 	}
 
-	@nogc void interpolate_to_time(immutable Chunk t, ref Chunk[] time_delay_alpha_buffer, ref Chunk[] time_delay_a_buffer) {
+	@nogc void interpolate_to_time(immutable Chunk t, ref Chunk[] time_delay_alpha_buffer, ref Chunk[] time_delay_a_buffer, ref Chunk[] time_delay_beta_buffer, ref Chunk[] time_delay_b_buffer) {
 
 		ptrdiff_t[chunk_size] upper_bounds;
 		ptrdiff_t[chunk_size] lower_bounds;
@@ -1641,6 +2451,45 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 				}
 			}
 		}
+
+		foreach(idx; 0..2*total_sin_states) {
+			Chunk t_lower;
+			Chunk t_upper;
+			Chunk state_u;
+			Chunk state_l;
+			foreach(c_idx; 0..chunk_size) {
+				if(lower_bounds[c_idx] < 0) {
+					state_u[c_idx] = 0;
+					state_l[c_idx] = 0;
+					t_lower[c_idx] = 0;
+					t_upper[c_idx] = 1;
+				} else {
+					t_lower[c_idx] = times[lower_bounds[c_idx]];
+					t_upper[c_idx] = times[upper_bounds[c_idx]];
+
+					state_u[c_idx] = state_history[upper_bounds[c_idx]][2*total_states + idx];
+					state_l[c_idx] = state_history[lower_bounds[c_idx]][2*total_states + idx];
+				}
+			}
+
+			immutable Chunk dt = t_upper[] - t_lower[];
+			immutable Chunk curr_t = times[get_circular_index(curr_state)];
+			immutable Chunk t_delta = curr_t[] - t[];
+			immutable Chunk t_delta_abs = abs(t_delta);
+			time_delay_beta_buffer[idx][] = 0;
+			
+			immutable Chunk time_delta = t[] - t_lower[];
+			immutable Chunk state_delta = state_u[] - state_l[];
+			time_delay_beta_buffer[idx][] = state_l[] + time_delta[]*state_delta[]/dt[];
+
+			foreach(c_idx; 0..chunk_size) {
+				if(lower_bounds[c_idx] >= 0) {
+					if(t_delta_abs[c_idx] <= dt[c_idx]) {
+						time_delay_beta_buffer[idx][c_idx] = state_history[get_circular_index(curr_state)][2*total_states + idx];
+					}
+				}
+			}
+		}
 		
 		foreach(i; 0..total_odd_states) {
 			time_delay_a_buffer[i][] = 0;
@@ -1657,9 +2506,29 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			}
 		}
 
+		foreach(i; 0..total_odd_sin_states) {
+			time_delay_b_buffer[i][] = 0;
+			time_delay_b_buffer[total_sin_states + i][] = 0;
+			foreach(k; 0..total_odd_sin_states) {
+				Chunk tmp1 = (time_delay_b_buffer[i][]);
+				Chunk tmp2 = A_s_inv[i][k]*time_delay_beta_buffer[k][];
+
+				time_delay_b_buffer[i][] = (tmp1[] + tmp2[]);
+
+				tmp1 = (time_delay_b_buffer[total_sin_states + i][]);
+				tmp2 = A_s_inv[i][k]*time_delay_beta_buffer[total_sin_states + k][];
+				time_delay_b_buffer[total_sin_states + i][] = (tmp1[] + tmp2[]);
+			}
+		}
+
 		foreach(i; 0..total_even_states) {
 			time_delay_a_buffer[i + total_odd_states][] = time_delay_alpha_buffer[i + total_odd_states][];
 			time_delay_a_buffer[i + total_odd_states + total_states][] = time_delay_alpha_buffer[i + total_odd_states + total_states][];
+		}
+
+		foreach(i; 0..total_even_sin_states) {
+			time_delay_b_buffer[i + total_odd_sin_states][] = time_delay_beta_buffer[i + total_odd_sin_states][];
+			time_delay_b_buffer[i + total_odd_sin_states + total_sin_states][] = time_delay_beta_buffer[i + total_odd_sin_states + total_sin_states][];
 		}
 	}
 
@@ -1697,11 +2566,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return K;
 	}
 
-	private double chi;
-	private double sin_chi;
-	private double cos_chi;
-	private double tan_chi;
-
 	@nogc double wake_skew() {
 		return chi;
 	}
@@ -1720,7 +2584,92 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 	private void compute_loading(RS)(auto ref RS rotor_state) {
 
-		tau[] = 0;
+		tau_c[] = 0;
+		tau_s[] = 0;
+
+		immutable omega_sgn = sgn(omega);
+
+		foreach(b_idx, ref blade_state; rotor_state.blade_states) {
+			size_t sin_idx = 0;
+			auto _idx = iterate_odds!(
+				(m, n, idx) {
+					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
+
+						//Chunk atan_num = -omega_sgn*chunk.xi[];
+						//immutable Chunk psi_r = atan2(atan_num, chunk.r);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ + PI/2.0);
+
+						Chunk cos_mpsi;
+						Chunk sin_mpsi;
+						if(m == 0) {
+							cos_mpsi[] = 1.0/(1.0*PI);
+							sin_mpsi[] = 0;
+						} else {
+							immutable Chunk[2] sin_cos = sincos(mpsi)[];
+							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
+						}
+
+						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
+						nu = sqrt(nu);
+						
+						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
+						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
+						if(m != 0) {
+							blade_scratch_s[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*sin_mpsi[];
+						}
+					}
+
+					tau_c[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
+					if(m != 0) {
+						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
+						sin_idx++;
+					}
+
+				}
+			)(Mo, 0);
+
+			iterate_evens!(
+				(m, n, idx) {
+					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
+						//Chunk atan_num = -omega_sgn*chunk.xi[];
+						//immutable Chunk psi_r = atan2(atan_num, chunk.r);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ + PI/2.0);
+
+						Chunk cos_mpsi;
+						Chunk sin_mpsi;
+						if(m == 0) {
+							cos_mpsi[] = 1.0/(1.0*PI);
+							sin_mpsi[] = 0;
+						} else {
+							immutable Chunk[2] sin_cos = sincos(mpsi)[];
+							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
+						}
+						
+						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
+						nu = sqrt(nu);
+						
+						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
+
+						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
+						if(m != 0) {
+							blade_scratch_s[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*sin_mpsi[];
+						}
+					}
+					tau_c[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
+
+					if(m != 0) {
+						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
+						sin_idx++;
+					}
+
+				}
+			)(Me, _idx);
+		}
+		/+
+		tau_c[] = 0;
+		tau_s[] = 0;
 
 		foreach(b_idx, ref blade_state; rotor_state.blade_states) {
 
@@ -1729,7 +2678,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 				immutable mpsi = m.to!double*blade_state.azimuth;
 				mpsi_buff[m] = cos(mpsi);
 			}+/
-
+			size_t sin_idx = 0;
 			auto _idx = iterate_odds!(
 				(m, n, idx) {
 					//immutable mpsi = m.to!double*(blade_state.azimuth + PI/4.0);
@@ -1740,6 +2689,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					//immutable Chunk cos_mpsi = m == 0 ? 0.5 : cos(mpsi);
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0) : 1.0/(2.0)*cos(mpsi);
 					Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
+					Chunk sin_mpsi = m == 0 ? 0.0 : 2.0/(PI)*sin(mpsi);
 					//Chunk cos_mpsi = m == 0 ? 1.0/(2.0*PI) : 1.0/(PI)*cos(mpsi);
 
 					/+if((m != 0) && (m != 4)) {
@@ -1754,9 +2704,16 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						
 						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
 						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
+						if(m != 0) {
+							blade_scratch_s[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*sin_mpsi[];
+						}
 					}
 
-					tau[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
+					tau_c[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
+					if(m != 0) {
+						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
+						sin_idx++;
+					}
 
 				}
 			)(Mo, 0);
@@ -1772,6 +2729,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*cos(mpsi);
 					//Chunk cos_mpsi = m == 0 ? 1.0/(2.0*PI) : 1.0/(PI)*cos(mpsi);
 					Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
+					Chunk sin_mpsi = m == 0 ? 0.0 : 2.0/(PI)*sin(mpsi);
 
 					/+if((m != 0) && (m != 4)) {
 						cos_mpsi[] = -cos_mpsi[];
@@ -1786,22 +2744,20 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
 
 						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
+						if(m != 0) {
+							blade_scratch_s[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*sin_mpsi[];
+						}
 					}
-					tau[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
-
+					tau_c[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
+					if(m != 0) {
+						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
+						sin_idx++;
+					}
 				}
 			)(Me, _idx);
 		}
+		+/
 	}
-
-	size_t n_r = 16;
-	size_t n_psi = 6;
-	double v_0;
-
-	Chunk[] contraction_array;
-	double[] contraction_array_alias;
-	Chunk[] contraction_z_array;
-	double[] contraction_z_array_alias;
 
 	private void update_impl(RIS, RS)(double C_T, auto ref RIS rotor, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
@@ -1816,34 +2772,100 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 		integrator.step!(system_derivative)(state_history[get_circular_index(curr_state + 1)], state_history[get_circular_index(curr_state)], time, dt*abs(rotor.angular_velocity), this, rotor, rotor_state, advance_ratio, axial_advance_ratio);
 
-		alpha = state_history[get_circular_index(curr_state + 1)][0..total_states];
+		//state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states..$] = 0;
 
+		alpha = state_history[get_circular_index(curr_state + 1)][0..total_states];
+		beta = state_history[get_circular_index(curr_state + 1)][2*total_states..2*total_states + total_sin_states];
+
+		//b[] = 0;
+		//beta[] = 0;
 		// Get MD state variables
 		cblas_dgemv(CblasRowMajor, CblasNoTrans, total_odd_states, total_odd_states, 1.0, A_inv[0].ptr, total_odd_states, alpha.ptr, 1, 0.0, a.ptr, 1);
 
+		cblas_dgemv(CblasRowMajor, CblasNoTrans, total_odd_sin_states, total_odd_sin_states, 1.0, A_s_inv[0].ptr, total_odd_sin_states, beta.ptr, 1, 0.0, b.ptr, 1);
+
 		a[total_odd_states..$] = alpha[total_odd_states..$];
+		b[total_odd_sin_states..$] = beta[total_odd_sin_states..$];
 
-		LM_scratch[] *= alpha[];
+		LM_c_scratch[] *= alpha[];
 
-		immutable alpha_0_1 = LM_scratch.sum;
+		immutable alpha_0_1 = LM_c_scratch.sum;
 
 		average_inflow = sqrt(3.0)*alpha_0_1;
 
 		foreach(i; 0..total_states) {
 			state_history[get_circular_index(curr_state + 1)][total_states + i] = 0;
 			foreach(k; 0..total_states) {
-				state_history[get_circular_index(curr_state + 1)][total_states + i] += QS_mat[i][k]*alpha[k];
+				state_history[get_circular_index(curr_state + 1)][total_states + i] += QS_c_mat[i][k]*alpha[k];
 			}
 		}
-		lambda = state_history[get_circular_index(curr_state + 1)][total_states..$];
+
+		/+size_t sin_idx = 0;
+		auto _idx = iterate_odds!(
+			(m, n, idx) {
+				if(m != 0) {
+					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = state_history[get_circular_index(curr_state + 1)][total_states + idx];
+					sin_idx++;
+				}
+			}
+		)(Mo, 0);
+
+		iterate_evens!(
+			(m, n, idx) {
+				if(m != 0) {
+					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = state_history[get_circular_index(curr_state + 1)][total_states + idx];
+					sin_idx++;
+				}
+			}
+		)(Me, _idx);+/
+
+		foreach(i; 0..total_sin_states) {
+			state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + i] = 0;
+			foreach(k; 0..total_sin_states) {
+				state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + i] += QS_s_mat[i][k]*beta[k];
+			}
+		}
+
+		lambda = state_history[get_circular_index(curr_state + 1)][total_states..2*total_states];
+		lambda_s = state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states..$];
 
 		// Get MD adjoint variables
 		cblas_dgemv(CblasRowMajor, CblasNoTrans, total_odd_states, total_odd_states, 1.0, A_inv[0].ptr, total_odd_states, lambda.ptr, 1, 0.0, delta.ptr, 1);
+
+		cblas_dgemv(CblasRowMajor, CblasNoTrans, total_odd_sin_states, total_odd_sin_states, 1.0, A_s_inv[0].ptr, total_odd_sin_states, lambda_s.ptr, 1, 0.0, delta_s.ptr, 1);
 		
 		delta[total_odd_states..$] = lambda[total_odd_states..$];
+		delta_s[total_odd_sin_states..$] = lambda_s[total_odd_sin_states..$];
+		//delta_s[] = 0;
+		//lambda_s[] = 0;
+		/+size_t sin_idx = 0;
+		auto _idx = iterate_odds!(
+			(m, n, idx) {
+				if(m != 0) {
+					lambda_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*lambda[idx];
+					delta_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*delta[idx];
+					sin_idx++;
+				}
+			}
+		)(Mo, 0);
+
+		iterate_evens!(
+			(m, n, idx) {
+				if(m != 0) {
+					lambda_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*lambda[idx];
+					delta_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*delta[idx];
+					sin_idx++;
+				}
+			}
+		)(Me, _idx);+/
 
 		curr_state++;
 
+		//delta_s[] = 0;
+		//lambda_s[] = 0;
+		//b[] = 0;
+		//beta[] = 0;
+		//state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states..$] = 0;
 		v_0 = compute_inflow_average_at_disk;
 
 		auto v_inf = sqrt(advance_ratio*advance_ratio + axial_advance_ratio*axial_advance_ratio);
@@ -1855,7 +2877,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		}
 	}
 
-	@nogc double compute_inflow_average_at_disk() {
+	double compute_inflow_average_at_disk() {
 		Chunk v_z = 0;
 
 		double d_psi = 2.0*PI/n_psi.to!double;
@@ -1879,7 +2901,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return v_z.sum*d_r*d_psi*1.0/PI;
 	}
 
-	@nogc Chunk compute_inflow_average_at_z(immutable Chunk z) {
+	Chunk compute_inflow_average_at_z(immutable Chunk z) {
 		Chunk v_z = 0;
 
 		immutable Chunk x_c = -z[]*tan_chi;
@@ -1904,8 +2926,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return v_z;
 	}
 
-	bool contraction_mapping = false;
-
 	@nogc Chunk compute_contraction_multiplier(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
 		immutable K = interpolate_contraction_ratio(z);
 
@@ -1927,11 +2947,12 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return k_bar;
 	}
 
-	@nogc Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		// Rotate into the coord frame the huang model expects.
 		if(!contraction_mapping) {
-			immutable Chunk neg_y = -y[];
-			immutable V = omega > 0 ? inflow_at_impl(this, x, neg_y, z) : inflow_at_impl(this, x, y, z);
+			//immutable Chunk neg_y = -y[];
+			//immutable V = omega > 0 ? inflow_at_impl(this, x, neg_y, z) : inflow_at_impl(this, x, y, z);
+			immutable V = inflow_at_impl(this, x, y, z);
 			return V;
 		} else {
 
@@ -1940,7 +2961,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			immutable Chunk x_c = x[]/k_bar[];
 			immutable Chunk y_c = y[]/k_bar[];
 			immutable Chunk neg_y = -y_c[];
-			immutable V = omega > 0 ? inflow_at_impl(this, x_c, neg_y, z) : inflow_at_impl(this, x_c, y_c, z);
+			//immutable V = omega > 0 ? inflow_at_impl(this, x_c, neg_y, z) : inflow_at_impl(this, x_c, y_c, z);
+			immutable V = inflow_at_impl(this, x_c, y_c, z);
 			return V;
 		}
 	}
