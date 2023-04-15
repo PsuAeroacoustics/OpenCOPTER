@@ -398,6 +398,14 @@ unittest {
 	return res;
 }
 
+@nogc double sign(double x) {
+	if(x > 0.0) {
+		return 1.0;
+	} else {
+		return -1.0;
+	}
+}
+
 private struct ElipticalCoords {
 	Chunk nu;
 	Chunk eta;
@@ -671,16 +679,16 @@ private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	return V;
 }
 
-@nogc private auto final_blend(double cos_chi, double sin_chi, immutable Chunk y, immutable Chunk sigma, immutable Chunk z) {
+@nogc private auto final_blend(double cos_chi, double sin_chi, immutable Chunk y, immutable Chunk sigma, immutable Chunk z, immutable Chunk x, immutable Chunk s_0) {
 
 	immutable g = 1.84*sqrt(cos_chi) - 4.06*cos_chi + 11.84*cos_chi^^(1.5);
 	immutable double sin_xi_2 = sin_chi*sin_chi;
 
 	immutable Chunk f =
-		zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[])
+		zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[], x[], s_0[])
 		.map!(
 			(sxgy) {
-				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || ((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14))) {
+				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || /+((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14)) ||+/ (sxgy[5] > -sxgy[6]) /+|| (sxgy[4] > 0.0)+/) {
 					return 0.0;
 				} else {
 					if(abs(sxgy[3]) <= 1.0) {
@@ -696,7 +704,7 @@ private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	return f;
 }
 
-private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, T[] b, T[] beta, T[] delta_s, T[] lambda_s, immutable CartisianCoords ccoords, Chunk t) {
+private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, T[] b, T[] beta, T[] delta_s, T[] lambda_s, immutable CartisianCoords ccoords, Chunk t, immutable Chunk x_0, immutable Chunk z_0, bool above_disk) {
 
 	immutable auto coords = to_eliptical(ccoords);
 
@@ -707,31 +715,48 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 
 	immutable Chunk rho_axial = 1;
 
-	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
+	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
+	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
-	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	Chunk s_0 = 0;
+	
+	if(above_disk) {
+		s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
+	} else {
+		s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	}
 
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
 	immutable Chunk sigma = -ccoords.x[] - s_0[];
 	immutable Chunk sigma_p_s = sigma[] + s_0[];
 
-	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
-
+	//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
+	
+	//Chunk f = 0.0;
+	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
-
+	
 	immutable Chunk V_bl = compute_velocities_bl(infl, a, alpha, b, beta, ccoords, coords);
 	Chunk V_ds = 0.0;
 	if(compute_ds) {
 
+		//f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
 		double devisor;
 		devisor = infl.advance_ratio;
 
-		Chunk t_delay = t[] - sigma[]*infl.sin_chi;
+		Chunk t_delay = t[] - sigma[]*infl.sin_chi;///devisor;
 
 		foreach(c_idx, ref t_d; t_delay) {
 			if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
 				while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+					if(abs(f[c_idx]) > 1.0e-14) {
+						writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
+					}
+					
 					t_d -= 2.0*PI;
 				}
 			}
@@ -742,9 +767,9 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
 		immutable CartisianCoords[3] ccoords_ds = [
-			CartisianCoords(neg_s_0, ccoords.y, ccoords.z),
-			CartisianCoords(s_0, neg_y, ccoords.z),
-			CartisianCoords(sigma_p_s, neg_y, ccoords.z)
+			CartisianCoords(neg_s_0, ccoords.y, z_0),
+			CartisianCoords(s_0, neg_y, z_0),
+			CartisianCoords(sigma_p_s, neg_y, z_0)
 		];
 
 		immutable ElipticalCoords[3] coords_ds = [
@@ -756,16 +781,24 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 		immutable Chunk v_ds_bl = compute_velocities_bl(infl,
 			infl.time_delay_a_2[0..infl.total_states],
 			infl.time_delay_alpha_2[0..infl.total_states],
+			
+			//infl.c_zero,
+			//infl.c_zero,
 			infl.time_delay_b_2[0..infl.total_sin_states],
 			infl.time_delay_beta_2[0..infl.total_sin_states],
+			
 			ccoords_ds[0],
 			coords_ds[0]
 		);
 		immutable Chunk v_ds_bl_a_1 = compute_velocities_bl(infl,
 			infl.time_delay_a_2[infl.total_states..$],
 			infl.time_delay_alpha_2[infl.total_states..$],
+			
+			//infl.c_zero,
+			//infl.c_zero,
 			infl.time_delay_b_2[infl.total_sin_states..$],
 			infl.time_delay_beta_2[infl.total_sin_states..$],
+			
 			ccoords_ds[1],
 			coords_ds[1]
 		);
@@ -788,22 +821,29 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 	return V;
 }
 
-private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, T[] b, T[] beta, T[] delta_s, T[] lambda_s, immutable CartisianCoords ccoords, Chunk t) {
+private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, T[] b, T[] beta, T[] delta_s, T[] lambda_s, immutable CartisianCoords ccoords, Chunk t, immutable Chunk x_0, immutable Chunk z_0) {
 
 	immutable auto coords = to_eliptical(ccoords);
 
 	immutable Chunk rho_axial = 1;
 
-	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
+	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
+	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
-	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	immutable Chunk s_0 = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
 
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
 	immutable Chunk sigma = -ccoords.x[] - s_0[];
 	immutable Chunk sigma_p_s = sigma[] + s_0[];
 
-	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
+	//Chunk f = 0.0;
+	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
+
+	//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 
 	immutable Chunk V_bl = compute_velocities_bl(infl, delta, lambda, delta_s, lambda_s, ccoords, coords);
@@ -811,10 +851,12 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 
 	if(compute_ds) {
 
+		//f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
+
 		double devisor;
 		devisor = infl.advance_ratio;
 
-		Chunk t_delay = t[] + sigma[]*infl.sin_chi;
+		Chunk t_delay = t[] + sigma[]*infl.sin_chi;///devisor;
 
 		foreach(c_idx, ref t_d; t_delay) {
 			if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
@@ -829,9 +871,9 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
 		immutable CartisianCoords[3] ccoords_ds = [
-			CartisianCoords(neg_s_0, ccoords.y, ccoords.z),
-			CartisianCoords(s_0, neg_y, ccoords.z),
-			CartisianCoords(sigma_p_s, neg_y, ccoords.z)
+			CartisianCoords(neg_s_0, ccoords.y, z_0),
+			CartisianCoords(s_0, neg_y, z_0),
+			CartisianCoords(sigma_p_s, neg_y, z_0)
 		];
 
 		immutable ElipticalCoords[3] coords_ds = [
@@ -843,8 +885,12 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 		immutable Chunk v_ds_bl_a = compute_velocities_bl(infl,
 			infl.time_delay_a_2[infl.total_states..$],
 			infl.time_delay_alpha_2[infl.total_states..$],
+			
+			//infl.c_zero,
+			//infl.c_zero,
 			infl.time_delay_b_2[infl.total_sin_states..$],
 			infl.time_delay_beta_2[infl.total_sin_states..$],
+
 			ccoords_ds[0],
 			coords_ds[0]
 		);
@@ -852,8 +898,12 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 		immutable Chunk v_ds_bl_1 = compute_velocities_bl(infl,
 			infl.time_delay_a_2[0..infl.total_states],
 			infl.time_delay_alpha_2[0..infl.total_states],
+			
+			//infl.c_zero,
+			//infl.c_zero,
 			infl.time_delay_b_2[0..infl.total_sin_states],
 			infl.time_delay_beta_2[0..infl.total_sin_states],
+
 			ccoords_ds[1],
 			coords_ds[1]
 		);
@@ -875,6 +925,202 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 	immutable Chunk V = V_bl[]*one_m_f[] + V_ds_f[];
 
 	return V;
+}
+
+private auto under_disk_solution(ArrayContainer AC, T, C)(HuangPetersInflowT!AC infl, T[] lambda, T[] delta, T[] lambda_s, T[] delta_s, auto ref C x, auto ref C y, auto ref C z, Chunk t) {
+	immutable tan_chi = tan(infl.chi);
+	immutable Chunk x_offset = z[]*tan_chi;
+	immutable Chunk x0_1 = x[] + x_offset[];
+	immutable Chunk y0_1 = y[];
+	immutable Chunk x0_2 = -x0_1[];
+	immutable Chunk y0_2 = -y[];
+	immutable Chunk zero = 0;
+
+	Chunk s = z[]*z[] + x_offset[]*x_offset[];
+	s = sqrt(s);
+	//immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
+
+	double devisor;
+	if(abs(infl.chi) < 1.0e-12) {
+		devisor = ((infl.v_0 + infl.axial_advance_ratio*infl.cos_chi));
+	} else {
+		devisor = ((infl.v_0 + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
+	}
+	Chunk t_minus = s[];
+	Chunk t_delay = t[] - t_minus[];///devisor;
+
+	foreach(c_idx, ref t_d; t_delay) {
+		if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+
+			while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+				t_d -= 2.0*PI;
+			}
+		}
+	}
+
+	//t_delay[] = t_delay[]/devisor;
+	infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a, infl.time_delay_beta, infl.time_delay_b);
+
+	CartisianCoords ccoords1 = CartisianCoords(x0_1, y0_1, zero);
+	CartisianCoords ccoords2 = CartisianCoords(x0_2, y0_2, zero);
+	
+	immutable Chunk neg_z = -z[];
+	immutable Chunk x3 = -x[];
+	CartisianCoords ccoords3 = CartisianCoords(x3, y0_2, neg_z);
+
+	ElipticalCoords coords1 = to_eliptical(ccoords1);
+	ElipticalCoords coords2 = to_eliptical(ccoords2);
+	ElipticalCoords coords3 = to_eliptical(ccoords3);
+
+	//private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, T[] coefficients_md_sin, T[] coefficients_nh_sin, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
+	immutable Chunk v_f = compute_velocities_bl(infl,
+		infl.time_delay_a[0..infl.total_states],
+		infl.time_delay_alpha[0..infl.total_states],
+		//infl.time_delay_a[infl.total_states..$],
+		//infl.time_delay_alpha[infl.total_states..$],
+		infl.time_delay_b[0..infl.total_sin_states],
+		infl.time_delay_beta[0..infl.total_sin_states],
+		
+		//infl.c_zero,
+		//infl.c_zero,
+		//infl.time_delay_b[infl.total_sin_states..$],
+		//infl.time_delay_beta[infl.total_sin_states..$],
+
+		ccoords1,
+		coords1
+		//t_delay,
+		//x,
+		//z,
+		//false
+	);
+
+	immutable Chunk v_f_a_1 = compute_velocities_bl(infl,
+		//infl.time_delay_a[0..infl.total_states],
+		//infl.time_delay_alpha[0..infl.total_states],
+		infl.time_delay_a[infl.total_states..$],
+		infl.time_delay_alpha[infl.total_states..$],
+		
+		//infl.c_zero,
+		//infl.c_zero,
+		//infl.time_delay_b[0..infl.total_sin_states],
+		//infl.time_delay_beta[0..infl.total_sin_states],
+
+		infl.time_delay_b[infl.total_sin_states..$],
+		infl.time_delay_beta[infl.total_sin_states..$],
+		ccoords2,
+		coords2
+		//coords2,
+		//t_delay,
+		//x,
+		//z
+	);
+
+	
+
+	immutable Chunk v_f_a_2 = compute_velocities_bl(infl,
+		//infl.a,
+		//infl.alpha,
+		delta,
+		lambda,
+		
+		//infl.zero,
+		//infl.zero,
+		//infl.b,
+		//infl.beta,
+
+		delta_s,
+		lambda_s,
+
+		ccoords3,
+		coords3
+
+		//coords3,
+		//t,
+		//x,
+		//z
+	);
+
+	immutable Chunk V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
+	return V_below;
+}
+
+private auto under_disk_solution_adjoint(ArrayContainer AC, T, C)(HuangPetersInflowT!AC infl, T[] alpha, T[] a, T[] beta, T[] b, auto ref C x, auto ref C y, auto ref C z, Chunk t) {
+	immutable tan_chi = tan(infl.chi);
+	immutable Chunk x_offset = z[]*tan_chi;
+	immutable Chunk x0_1 = x[] + x_offset[];
+	immutable Chunk y0_1 = y[];
+	immutable Chunk x0_2 = -x0_1[];
+	immutable Chunk y0_2 = -y[];
+	immutable Chunk zero = 0;
+
+	Chunk s = z[]*z[] + x_offset[]*x_offset[];
+	s = sqrt(s);
+
+	/+double devisor;
+	if(abs(infl.chi) < 1.0e-12) {
+		devisor = ((infl.v_0 + infl.axial_advance_ratio*infl.cos_chi));
+	} else {
+		devisor = ((infl.v_0 + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
+	}+/
+	Chunk t_minus = s[];
+	Chunk t_delay = t[] + t_minus[];///devisor;
+
+	foreach(c_idx, ref t_d; t_delay) {
+		if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+
+			while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+				//t_d -= 2.0*PI;
+				t_d -= 1.0;
+			}
+		}
+	}
+
+	//t_delay[] = t_delay[]/devisor;
+	infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a, infl.time_delay_beta, infl.time_delay_b);
+
+	CartisianCoords ccoords1 = CartisianCoords(x0_1, y0_1, zero);
+	CartisianCoords ccoords2 = CartisianCoords(x0_2, y0_2, zero);
+	
+	immutable Chunk neg_z = -z[];
+	immutable Chunk x3 = -x[];
+	CartisianCoords ccoords3 = CartisianCoords(x3, y0_2, neg_z);
+
+	ElipticalCoords coords1 = to_eliptical(ccoords1);
+	ElipticalCoords coords2 = to_eliptical(ccoords2);
+	ElipticalCoords coords3 = to_eliptical(ccoords3);
+
+	//private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, T[] coefficients_md_sin, T[] coefficients_nh_sin, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
+
+	// a + r - r
+	immutable Chunk v_f_a = compute_velocities_bl(infl,
+		infl.time_delay_a[infl.total_states..$],
+		infl.time_delay_alpha[infl.total_states..$],
+		infl.time_delay_b[infl.total_sin_states..$],
+		infl.time_delay_beta[infl.total_sin_states..$],
+		ccoords1,
+		coords1
+	);
+
+	immutable Chunk v_f_1 = compute_velocities_bl(infl,
+		infl.time_delay_a[0..infl.total_states],
+		infl.time_delay_alpha[0..infl.total_states],
+		infl.time_delay_b[0..infl.total_sin_states],
+		infl.time_delay_beta[0..infl.total_sin_states],
+		ccoords2,
+		coords2
+	);
+
+	immutable Chunk v_f_2 = compute_velocities_bl(infl,
+		a,
+		alpha,
+		b,
+		beta,
+		ccoords3,
+		coords3
+	);
+
+	immutable Chunk V_below = v_f_a[] + v_f_1[] - v_f_2[];
+	return V_below;
 }
 
 private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, auto ref C x, auto ref C y, auto ref C z) {
@@ -904,13 +1150,133 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 		// 	writeln("infl.b: ", infl.b);
 		// 	writeln("infl.beta: ", infl.beta);
 		// }
-		V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, infl.b, infl.beta, infl.delta_s, infl.lambda_s, coords, t);
+		V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, infl.b, infl.beta, infl.delta_s, infl.lambda_s, coords, t, x, z, true);
 		if(all_above_or_on_disk && !all_somewhere) {
 			return V_above;
 		}
 	}
 	
 	if(all_below_disk || all_somewhere) {
+
+		immutable Chunk rho_axial = 1;
+		//immutable Chunk y2z2 = y[]*y[];
+		immutable Chunk y2z2 = y[]*y[];// + z[]*z[];
+		//immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+		immutable Chunk rho2 = rho_axial[]*rho_axial[];
+		//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+		immutable Chunk s_0 = zip(y2z2[], rho2[], y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z[]*infl.tan_chi;
+	
+		immutable all_downstream = zip(x[], s_0[]).map!(a => a[0] <= -a[1]).fold!((res, a) => a && res)(true);
+		immutable all_elsewhere = zip(x[], s_0[]).map!(a => a[0] > -a[1]).fold!((res, a) => a && res)(true);
+
+		immutable all_somewhere_under = !all_downstream && !all_elsewhere;
+
+		//Chunk V_ds_below = 0;
+		//Chunk V_below = 0;
+
+		immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
+
+		V_below = under_disk_solution(infl, infl.lambda, infl.delta, infl.lambda_s, infl.delta_s, x, y, z, t);
+
+
+
+		Chunk V_ds = 0;
+		immutable Chunk neg_s_0 = -s_0[];
+		immutable Chunk neg_y = -y[];
+		immutable Chunk sigma = -x[] - s_0[];
+		immutable Chunk sigma_p_s = sigma[] + s_0[];
+
+		//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
+		
+		//Chunk f = 0.0;
+		Chunk f = final_blend(infl.cos_chi, infl.sin_chi, y, sigma, z, x, s_0);
+		immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
+
+		if((all_downstream || all_somewhere_under) && (abs(infl.chi) > 1.0e-14)) {
+
+			Chunk t_delay = t[] - sigma[];//*infl.sin_chi;///devisor;
+			//Chunk t_delay_2 = t[] + sigma[]*infl.sin_chi;///devisor;
+
+			foreach(c_idx, ref t_d; t_delay) {
+				if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+					while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+						if(abs(f[c_idx]) > 1.0e-14) {
+							//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
+						}
+						
+						t_d -= 2.0*PI;
+					}
+				}
+			}
+
+			/+foreach(c_idx, ref t_d; t_delay_2) {
+				if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+					while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+						if(abs(f[c_idx]) > 1.0e-14) {
+							//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
+						}
+						
+						t_d -= 2.0*PI;
+					}
+				}
+			}+/
+
+			//t_delay[] = t_delay[]/devisor;
+
+			infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
+
+			immutable CartisianCoords[3] ccoords_ds = [
+				CartisianCoords(neg_s_0, y, z),
+				CartisianCoords(s_0, neg_y, z),
+				CartisianCoords(sigma_p_s, neg_y, z)
+			];
+
+			/+immutable ElipticalCoords[3] coords_ds = [
+				to_eliptical(ccoords_ds[0]),
+				to_eliptical(ccoords_ds[1]),
+				to_eliptical(ccoords_ds[2])
+			];+/
+			//private auto under_disk_solution(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, C lambda, C delta, C lambda_s, C delta_s, auto ref C x, auto ref C y, auto ref C z, Chunk t)
+			immutable Chunk v_ds_bl = under_disk_solution(infl,
+				infl.time_delay_a_2[infl.total_states..$],
+				infl.time_delay_alpha_2[infl.total_states..$],
+				infl.time_delay_b_2[infl.total_sin_states..$],
+				infl.time_delay_beta_2[infl.total_sin_states..$],
+				ccoords_ds[0].x,
+				ccoords_ds[0].y,
+				ccoords_ds[0].z,
+				t_delay
+			);
+
+			immutable Chunk v_ds_bl_a_1 = under_disk_solution_adjoint(infl,
+				infl.time_delay_a_2[infl.total_states..$],
+				infl.time_delay_alpha_2[infl.total_states..$],
+				infl.time_delay_b_2[infl.total_sin_states..$],
+				infl.time_delay_beta_2[infl.total_sin_states..$],
+				ccoords_ds[1].x,
+				ccoords_ds[1].y,
+				ccoords_ds[1].z,
+				t_delay
+			);
+			immutable Chunk v_ds_bl_a_2 = under_disk_solution_adjoint(infl,
+				infl.a,
+				infl.alpha,
+				infl.b,
+				infl.beta,
+				ccoords_ds[2].x,
+				ccoords_ds[2].y,
+				ccoords_ds[2].z,
+				t
+			);
+
+			V_ds[] = v_ds_bl[] + v_ds_bl_a_1[] - v_ds_bl_a_2[];
+		}
+
+		Chunk one_m_f = 1.0 - f[];
+
+		immutable Chunk V_ds_f = V_ds[]*f[];
+		V_below = V_below[]*one_m_f[] + V_ds_f[];
+		/+
 		immutable tan_chi = tan(infl.chi);
 		immutable Chunk x_offset = z[]*tan_chi;
 		immutable Chunk x0_1 = x[] + x_offset[];
@@ -925,12 +1291,12 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 
 		double devisor;
 		if(abs(infl.chi) < 1.0e-12) {
-			devisor = ((infl.average_inflow + infl.axial_advance_ratio*infl.cos_chi));
+			devisor = ((infl.v_0 + infl.axial_advance_ratio*infl.cos_chi));
 		} else {
-			devisor = ((infl.average_inflow + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
+			devisor = ((infl.v_0 + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
 		}
 		Chunk t_minus = s[];
-		Chunk t_delay = t[] - t_minus[];
+		Chunk t_delay = t[] - t_minus[];///devisor;
 
 		foreach(c_idx, ref t_d; t_delay) {
 			if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
@@ -954,10 +1320,17 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			infl.time_delay_alpha[infl.total_states..$],
 			infl.time_delay_b[0..infl.total_sin_states],
 			infl.time_delay_beta[0..infl.total_sin_states],
+			
+			//infl.c_zero,
+			//infl.c_zero,
 			infl.time_delay_b[infl.total_sin_states..$],
 			infl.time_delay_beta[infl.total_sin_states..$],
+
 			coords1,
-			t_delay
+			t_delay,
+			x,
+			z,
+			false
 		);
 
 		immutable Chunk v_f_a_1 = compute_velocities_final_adjoint(infl,
@@ -965,12 +1338,18 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			infl.time_delay_alpha[0..infl.total_states],
 			infl.time_delay_a[infl.total_states..$],
 			infl.time_delay_alpha[infl.total_states..$],
+			
+			//infl.c_zero,
+			//infl.c_zero,
 			infl.time_delay_b[0..infl.total_sin_states],
 			infl.time_delay_beta[0..infl.total_sin_states],
+
 			infl.time_delay_b[infl.total_sin_states..$],
 			infl.time_delay_beta[infl.total_sin_states..$],
 			coords2,
-			t_delay
+			t_delay,
+			x,
+			z
 		);
 
 		immutable Chunk neg_z = -z[];
@@ -984,16 +1363,22 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			infl.alpha,
 			infl.delta,
 			infl.lambda,
+			
+			//infl.zero,
+			//infl.zero,
 			infl.b,
 			infl.beta,
+
 			infl.delta_s,
 			infl.lambda_s,
 			coords3,
-			t
+			t,
+			x,
+			z
 		);
 
 		V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
-		
+		+/
 		if(all_below_disk && !all_somewhere) {
 			return V_below;
 		}
@@ -1240,6 +1625,7 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 	infl.sin_chi = sin(infl.chi);
 	infl.cos_chi = cos(infl.chi);
 	infl.tan_chi = tan(infl.chi);
+	//infl.cot_chi = cot(infl.chi);
 
 	immutable X = tan(-infl.chi/2.0);
 
@@ -1582,7 +1968,7 @@ void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, dou
 	infl.delta[infl.total_odd_states..$] = infl.lambda[infl.total_odd_states..$];
 
 	infl.b[infl.total_odd_sin_states..$] = infl.beta[infl.total_odd_sin_states..$];
-	infl.delta_s[infl.total_odd_states..$] = infl.lambda_s[infl.total_odd_sin_states..$];
+	infl.delta_s[infl.total_odd_sin_states..$] = infl.lambda_s[infl.total_odd_sin_states..$];
 
 }
 
@@ -1738,6 +2124,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private double sin_chi;
 	private double cos_chi;
 	private double tan_chi;
+	private double cot_chi;
 
 	size_t n_r = 16;
 	size_t n_psi = 6;
@@ -1751,8 +2138,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	bool contraction_mapping = false;
 	bool debug_coords = false;
 
-	//double[] zero;
-	//Chunk[] c_zero;
+	double[] zero;
+	Chunk[] c_zero;
 
 	@nogc private ptrdiff_t get_circular_index(ptrdiff_t idx) {
 		return ((idx % time_history) + time_history) % time_history;
@@ -1905,8 +2292,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 		times = new double[time_history];
 		
-		//zero = new double[total_sin_states];
-		//c_zero = new Chunk[total_sin_states];
+		zero = new double[total_sin_states];
+		c_zero = new Chunk[total_sin_states];
 		time_delay_alpha = new Chunk[2*total_states];
 		time_delay_alpha_2 = new Chunk[2*total_states];
 		time_delay_a = new Chunk[2*total_states];
@@ -1934,10 +2321,10 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		LM_c_scratch = new double[total_states];
 		//LM_s_scratch = new double[total_sin_states];
 
-		/+zero[] = 0;
+		zero[] = 0;
 		foreach(ref ch; c_zero) {
 			ch[] = 0;
-		}+/
+		}
 		alpha_scratch[] = 0;
 		beta_scratch[] = 0;
 		delta_scratch[] = 0;
@@ -2316,11 +2703,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 
 		iterate_odds_sin!((m, n, idx) {
-			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 0.0);
+			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Mo, 0);
 
 		iterate_evens_sin!((m, n, idx) {
-			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 0.0);
+			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Me, total_odd_sin_states);
 
 		foreach(n; 1..Qmn_bar[0].length - 1) {
@@ -2597,7 +2984,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 						//Chunk atan_num = -omega_sgn*chunk.xi[];
 						//immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ + PI/2.0);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ /++ PI/12.0+/);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
@@ -2634,7 +3021,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
 						//Chunk atan_num = -omega_sgn*chunk.xi[];
 						//immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ + PI/2.0);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ /++ PI/12.0+/);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
@@ -2799,7 +3186,29 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 				state_history[get_circular_index(curr_state + 1)][total_states + i] += QS_c_mat[i][k]*alpha[k];
 			}
 		}
+/+
+		size_t sin_idx = 0;
+		auto _idx = iterate_odds!(
+			(m, n, idx) {
+				if(m != 0) {
+					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = (1.0)^^(n.to!double + 0.0)*state_history[get_circular_index(curr_state + 1)][total_states + idx];
+					//delta_s[sin_idx] = (1.0)^^(n.to!double + 0.0)*delta[idx];
+					sin_idx++;
+				}
+			}
+		)(Mo, 0);
 
+		iterate_evens!(
+			(m, n, idx) {
+				if(m != 0) {
+					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = (1.0)^^(n.to!double + 0.0)*state_history[get_circular_index(curr_state + 1)][total_states + idx];
+					//lambda_s[sin_idx] = (1.0)^^(n.to!double + 0.0)*lambda[idx];
+					//delta_s[sin_idx] = (1.0)^^(n.to!double + 0.0)*delta[idx];
+					sin_idx++;
+				}
+			}
+		)(Me, _idx);
++/
 		/+size_t sin_idx = 0;
 		auto _idx = iterate_odds!(
 			(m, n, idx) {

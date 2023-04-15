@@ -83,6 +83,7 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 		blade_state.chunks[chunk_idx].dC_My[] = dC_T[]*blade.chunks[chunk_idx].r[]*cos_azimuth;
 	}
 
+	//blade_state.set_state_array!"dC_T"([-1.07296e-06, -3.87126e-06, -7.48887e-06, -1.115e-05, -1.42369e-05, -1.58938e-05, -1.49358e-05, -9.98399e-06, 4.18314e-07, 1.77348e-05, 4.33815e-05, 7.86773e-05, 0.000124797, 0.000182727, 0.00025323, 0.00033681, 0.000433695, 0.000543816, 0.000666808, 0.000802011, 0.000948482, 0.00110502, 0.00127019, 0.00144238, 0.00161979, 0.00180053, 0.00198266, 0.0021642, 0.0023432, 0.0025178, 0.00268623, 0.00284688, 0.00299829, 0.00313919, 0.0032685, 0.00338532, 0.00348893, 0.00357878, 0.00365451, 0.00371609, 0.00376475, 0.00380634, 0.00385909, 0.00396032, 0.00414499, 0.0043899, 0.00461532, 0.00476076]);
 	blade_state.C_T = integrate_trapaziodal!"dC_T"(blade_state, blade);
 	blade_state.C_Mx = integrate_trapaziodal!"dC_Mx"(blade_state, blade);
 	blade_state.C_My = integrate_trapaziodal!"dC_My"(blade_state, blade);

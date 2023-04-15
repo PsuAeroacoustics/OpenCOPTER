@@ -8,7 +8,7 @@
 	},
 	"targetType": "dynamicLibrary",
 	"lflags-posix": ["-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib"],
-	"lflags-linux": ["-l:libsleef.a", "-l:libopenblas.a", "-l:liblapacke.a", "-l:liblapack.a"],
+	"lflags-linux": ["-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack_pic.a", "-l:libopenblas.a", "-lgfortran"],
 	"lflags-osx": ["-L/usr/local/opt/openblas/lib", "/usr/local/lib/libsleef.a", "-lopenblas", "-Wl,-rpath,@loader_path/"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 	"configurations": [

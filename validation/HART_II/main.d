@@ -524,6 +524,7 @@ int main(string[] args) {
 	immutable num_blades = 4;
 	
 	immutable theta_tw_1 = -8.0*(PI/180.0);
+	//immutable theta_tw_1 = -12.0*(PI/180.0);
 	
 	double theta_1c = 0;
 	double theta_1s = 0;
@@ -756,7 +757,7 @@ int main(string[] args) {
 	input_state.rotor_inputs[0].angular_accel = 0;
 	input_state.rotor_inputs[0].freestream_velocity = V_inf;
 	input_state.rotor_inputs[0].azimuth = 0;
-	input_state.rotor_inputs[0].r_0[] = 0.1*aircraft.rotors[0].blades[0].average_chord;
+	input_state.rotor_inputs[0].r_0[] = 0.0000001*aircraft.rotors[0].blades[0].average_chord;
 	//ac_timehistory.aircraft_history[0].rotor_states[0].C_T = 0.005;
 
 	if(num_rotors > 1) {
@@ -852,7 +853,15 @@ int main(string[] args) {
 				nt: observer_nt,
 				tMin: tMin,
 				tMax: tMin + 2.0*(2.0*PI/abs(omega)),
-				fileName: observer_filename,
+				nbx: 23,
+				nby: 17,
+				nbz: 1,
+				xMin: -2.0*R,
+				xMax: 2.0*R,
+				yMin: -1.345*R,
+				yMax: 1.345*R,
+				zMin: -1.1075*R,
+				zMax: -1.1075*R,
 				highPassFrequency: lower_mid_freq,
 				lowPassFrequency: upper_mid_freq,
 				cobs: [aircraft_cob]
@@ -908,8 +917,8 @@ int main(string[] args) {
 	HuangPetersInflow[] inflows = new HuangPetersInflow[num_rotors];
 
 	foreach(i, ref inflow; inflows) {
-		inflow = new HuangPetersInflow(4, 2, &aircraft.rotors[i], dt);
-		//inflow = new HuangPetersInflow(6, 4, &aircraft.rotors[i], dt);
+		//inflow = new HuangPetersInflow(4, 2, &aircraft.rotors[i], dt);
+		inflow = new HuangPetersInflow(6, 4, &aircraft.rotors[i], dt);
 		//inflow = new HuangPetersInflow(6, 4, &aircraft.rotors[i], dt);
 	}
 	
@@ -1009,9 +1018,9 @@ int main(string[] args) {
 	double y_min = -1.2;
 	double y_max = 1.2;
 
-	immutable x_res = 256;
-	immutable y_res = 256;
-	immutable z_res = 256;
+	size_t x_res = 512;
+	size_t y_res = 512;
+	size_t z_res = 512;
 	double[] x_mesh = linspace(x_min, x_max, x_res);
 	//auto x_mesh = linspace(-1.0, 1.0, x_res);
 	double[] y_mesh = linspace(y_min, y_max, y_res);
@@ -1021,9 +1030,9 @@ int main(string[] args) {
 	double[][] inflow_xy = new double[][](y_res, x_res);
 	double[][] inflow_yz = new double[][](z_res, y_res);
 
-	Chunk y_slice = -0.0;
-	Chunk z_slice = 0.2;
-	Chunk x_slice = -0.0;
+	Chunk y_slice = 0.96;
+	Chunk z_slice = 0.0017;
+	Chunk x_slice = -0.25;
 	Chunk x_e = 0;
 
 	foreach(i; 0..iterations) {
@@ -1136,10 +1145,11 @@ int main(string[] args) {
 			}
 		}
 
+		
 		if(i >= (iterations - 360)) {
 			if((i % 5) == 0) {
 				//Chunk x_e = 0;
-				double max_z = 0.15;//-double.infinity;
+				double max_z = 0.20;//-double.infinity;
 				foreach(r_idx; 0..1) {
 					//inflows[r_idx].contraction_mapping = true;
 					inflows[r_idx].debug_coords = true;
@@ -1152,7 +1162,7 @@ int main(string[] args) {
 							immutable Chunk z_rel = _z_m - origins[r_idx][2];
 
 							immutable Chunk x_m = z_rel[];//x_rel[]*cos(aoa) - z_rel[]*sin(aoa);
-							immutable Chunk z_m = 0.0;//-x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
+							immutable Chunk z_m = 0.17;//-x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
 
 							immutable Chunk infl = inflows[r_idx].inflow_at(x_m, y_rel, z_m, x_e, 0)[];
 
@@ -1168,7 +1178,7 @@ int main(string[] args) {
 				}
 
 				//writeln("max_z:", max_z);
-				auto levels = linspace(-max_z, max_z, 17);
+				auto levels = linspace(-max_z, max_z, 18);
 				static import matplotlibd.pyplot;
 				matplotlibd.pyplot.clear();
 				plt.figure;
@@ -1187,12 +1197,22 @@ int main(string[] args) {
 
 	writeln("Sim took ", total_time);
 
-	size_t num_x = 512;
-	size_t num_y = 512;
-	size_t num_z = 512;
-	auto starts = Vec3(-2, -2, -2);
-	auto ends = Vec3(2, 2, 2);
-	auto deltas = Vec3((ends[0] - starts[0])/num_x, (ends[1] - starts[1])/num_y, (ends[2] - starts[2])/num_z);
+	//size_t num_x = 512;
+	//size_t num_y = 512;
+	//size_t num_z = 512;
+	//auto starts = Vec3(-2, -2, -2);
+	//auto ends = Vec3(2, 2, 2);
+	//auto deltas = Vec3((ends[0] - starts[0])/num_x, (ends[1] - starts[1])/num_y, (ends[2] - starts[2])/num_z);
+
+	x_res = 2048;
+	y_res = 2048;
+	z_res = 2048;
+	x_mesh = linspace(x_min, x_max, x_res);
+	y_mesh = linspace(y_min, y_max, y_res);
+	z_mesh = linspace(z_min, z_max, z_res);
+	inflow_xz = new double[][](z_res, x_res);
+	inflow_xy = new double[][](y_res, x_res);
+	inflow_yz = new double[][](z_res, y_res);
 
 	foreach(r_idx, ref rotor; ac_timehistory.aircraft_history[0].rotor_states) {
 		foreach(b_idx, ref _blade; rotor.blade_states) {
@@ -1326,6 +1346,8 @@ int main(string[] args) {
 			inflow_yz[z_idx][] = 0;
 		}
 
+		double max_infl = 0;
+
 		foreach(r_idx; 0..num_rotors) {
 			//writeln(inflows[r_idx].contraction_array);
 			//inflows[r_idx].contraction_mapping = true;
@@ -1334,12 +1356,17 @@ int main(string[] args) {
 
 					immutable Chunk x_rel = _x_m[] - origins[r_idx][0];
 					immutable Chunk y_rel = y_slice[] - origins[r_idx][1];
-					immutable Chunk z_rel = _z_m - origins[r_idx][2];
+					//immutable Chunk z_rel = _z_m - origins[r_idx][2];
 
-					immutable Chunk x_m = x_rel[]*cos(aoa) - z_rel[]*sin(aoa);
-					immutable Chunk z_m = -x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
+					//immutable Chunk x_m = x_rel[]*cos(aoa) - z_rel[]*sin(aoa);
+					//immutable Chunk z_m = -x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
 
+					immutable Chunk x_m = x_rel[];
+					immutable Chunk z_m = -_z_m;
 					auto infl = inflows[r_idx].inflow_at(x_m, y_rel, z_m, x_e, 0);
+
+					max_infl = (max_infl~infl[]).map!(a => abs(a)).maxElement;
+
 					inflow_xz[z_idx][x_idx*chunk_size..x_idx*chunk_size + chunk_size] += infl[];
 				}
 			}
@@ -1357,7 +1384,9 @@ int main(string[] args) {
 					immutable Chunk x_m = x_rel[]*cos(aoa) - z_rel[]*sin(aoa);
 					//immutable Chunk z_m = -x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
 
-					immutable Chunk infl = inflows[r_idx].inflow_at(x_m, y_rel, z_slice, x_e, 0)[]*cos(aoa).to!double;
+					immutable Chunk infl = inflows[r_idx].inflow_at(x_m, y_rel, z_slice, x_e, 0)[]/+*cos(aoa).to!double+/;
+
+					max_infl = (max_infl~infl[]).map!(a => abs(a)).maxElement;
 
 					inflow_xy[y_idx][x_idx*chunk_size..x_idx*chunk_size + chunk_size] += infl[];
 				}
@@ -1373,21 +1402,24 @@ int main(string[] args) {
 					immutable Chunk z_rel = _z_m - origins[r_idx][2];
 
 					//immutable Chunk x_m = x_rel[]*cos(aoa) - z_rel[]*sin(aoa);
-					immutable Chunk z_m = -x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
+					immutable Chunk z_m = -z_rel[];//-x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
 
-					immutable Chunk infl = inflows[r_idx].inflow_at(x_slice, y_rel, z_m, x_e, 0)[]*cos(aoa).to!double;
+					immutable Chunk infl = inflows[r_idx].inflow_at(x_slice, y_rel, z_m, x_e, 0)[]/+*cos(aoa).to!double+/;
+
+					max_infl = (max_infl~infl[]).map!(a => abs(a)).maxElement;
 
 					inflow_yz[z_idx][y_idx*chunk_size..y_idx*chunk_size + chunk_size] += infl[];
 				}
 			}
 		}
 		
+		auto levels = linspace(-max_infl, max_infl, 50);
 		//writeln(inflow_xz);
 
 		plt.gca(["projection": "rectilinear"]);
 		plt.figure;
 		plt.title("XZ Plane Vertical Inflow");
-		plt.contourf(x_mesh, z_mesh, inflow_xz, ["levels": 100], ["cmap": "bwr"]);
+		plt.contourf(x_mesh, z_mesh, inflow_xz, ["levels": levels], ["cmap": "bwr"]);
 		plt.colorbar;
 		//if(save) plt.savefig("vert_xz.png", ["dpi": 500]);
 
@@ -1470,7 +1502,7 @@ int main(string[] args) {
 
 		//plt.figure;
 		plt.title("XY Plane Vertical Inflow");
-		plt.contourf(y_mesh, x_mesh, inflow_xy, ["levels": 100], ["cmap": "bwr"]);
+		plt.contourf(y_mesh, x_mesh, inflow_xy, ["levels": levels], ["cmap": "bwr"]);
 		plt.colorbar;
 		//plt.axis("square");
 		if(save) plt.savefig("vert_xy.png", ["dpi": 500]);
@@ -1544,7 +1576,7 @@ int main(string[] args) {
 		+/
 		plt.figure;
 
-		plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": 100], ["cmap": "bwr"]);
+		plt.contourf(y_mesh, z_mesh, inflow_yz, ["levels": levels], ["cmap": "bwr"]);
 		plt.colorbar;
 		//if(save) plt.savefig("tilt_rotor_v"~V_inf.to!string~"_fpa"~_flight_path_angle.to!string~"_ta"~_tilt_angle.to!string~"_front.png", ["dpi": 500]);
 		/+
@@ -1716,12 +1748,14 @@ int main(string[] args) {
 			plt.ylabel("z/R");
 		}+/
 
-		auto blade_loads = ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].get_state_array!"dC_L";
+		//auto dC_ = ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].get_state_array!"dC_T";
+		auto blade_loads = ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].get_state_array!"dC_T";
+		writeln(blade_loads);
 		plt.figure;
 		plt.plot(r, blade_loads, ["linewidth": 0.5]);
 		plt.title("Blade spanwise loading");
 		plt.xlabel("r");
-		plt.ylabel("$dC_L$");
+		plt.ylabel("$dC_T$");
 		if(save) plt.savefig("blade_loading.png", ["dpi": 500]);
 
 		writeln("aircraft.rotors[0].blades[plot_blade].azimuth_offset: ", aircraft.rotors[0].blades[plot_blade].azimuth_offset);

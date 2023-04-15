@@ -604,6 +604,8 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 			immutable x_f = cos_beta*inboard_factor;
 			immutable z_f = -sin_beta*inboard_factor;
+			//immutable x_f = inboard_factor;
+			//immutable z_f = 0;//inboard_factor;
 
 			immutable x_tpp = ac.rotors[rotor_idx].origin[0] + x_f*std.math.cos(blade.azimuth - vortex_offset);
 			immutable y_tpp = ac.rotors[rotor_idx].origin[1] + inboard_factor*std.math.sin(blade.azimuth - vortex_offset);
@@ -746,11 +748,11 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					immutable Chunk z_rel = chunk.z[];// - ac.rotors[i_rotor_idx].origin[2];
 
 					immutable Chunk x_tppc = (x_rel[]*i_cos_aoa - z_rel[]*i_sin_aoa)[] - ac.rotors[i_rotor_idx].origin[0];
-					immutable Chunk z_tppc = (-x_rel[]*i_sin_aoa - z_rel[]*i_cos_aoa)[] + ac.rotors[i_rotor_idx].origin[2];
+					immutable Chunk z_tppc = (-x_rel[]*i_sin_aoa - z_rel[]*i_cos_aoa)[] + ac.rotors[i_rotor_idx].origin[2];// + 0.1125;
 					
 					immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
 
-					immutable Chunk lambda_i = i_omega*inflow.inflow_at(x_tppc, y_rel, z_tppc, chunk.x_e, i_aoa)[];
+					immutable Chunk lambda_i = /+1.12*+/i_omega*inflow.inflow_at(x_tppc, y_rel, z_tppc, chunk.x_e, i_aoa)[];
 					
 					lambda_i_z[] += -lambda_i[]*i_cos_aoa;
 					lambda_i_x[] += -lambda_i[]*i_sin_aoa;
