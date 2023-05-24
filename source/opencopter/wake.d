@@ -9,6 +9,7 @@ import opencopter.memory;
 
 import std.algorithm;
 import std.math;
+import std.stdio;
 import std.traits;
 
 extern (C++) struct FilamentChunk {
@@ -115,7 +116,7 @@ alias Wake = WakeT!(ArrayContainer.none);
 /++
  +	Holds the wake data for the specified number of rotors. This represents a single timestep
  +/
-extern (C++) struct WakeT(ArrayContainer AC) {
+struct WakeT(ArrayContainer AC) {
 
 	mixin ArrayDeclMixin!(AC, RotorWakeT!(AC), "rotor_wakes");
 
@@ -129,6 +130,28 @@ extern (C++) struct WakeT(ArrayContainer AC) {
 			rotor_wake = RotorWakeT!AC(num_blades);
 			foreach(ref filament; rotor_wake.tip_vortices) {
 				filament = VortexFilamentT!AC(actual_wake_history);
+			}
+
+			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
+				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history);
+			}
+		}
+	}
+
+	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t radial_elements, size_t shed_history) {
+
+		//immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
+
+		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
+
+		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
+
+		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
+		foreach(r_idx, ref rotor_wake; rotor_wakes) {
+
+			rotor_wake = RotorWakeT!AC(num_blades);
+			foreach(ref filament; rotor_wake.tip_vortices) {
+				filament = VortexFilamentT!AC(actual_wake_history[r_idx]);
 			}
 
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
@@ -154,12 +177,21 @@ alias WakeHistory = WakeHistoryT!(ArrayContainer.none);
  +	Contains the history of the wake at each timestep. The number of timesteps
  +	to store is configurable, but at least 2 are required.
  +/
-extern (C++) struct WakeHistoryT(ArrayContainer AC) {
+struct WakeHistoryT(ArrayContainer AC) {
 
 	mixin ArrayDeclMixin!(AC, WakeT!(AC), "history");
 	alias history this;
 
 	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
+
+		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
+
+		foreach(ref wake; history) {
+			wake = WakeT!AC(num_rotors, num_blades, wake_history, radial_elements, shed_history);
+		}
+	}
+
+	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
 
 		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
 

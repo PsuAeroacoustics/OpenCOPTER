@@ -310,7 +310,13 @@ void wrap_array(T)() {
 	}
 }
 
+opencopter.wake.InducedVelocities compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref PyAircraftState ac_state, double angular_velocity, size_t rotor_idx) {
+	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, angular_velocity, rotor_idx, 0);
+}
+
 extern(C) void PydMain() {
+
+	def!(compute_wake_induced_velocities);
 
 	def!(chunk_size, Docstring!q{
 		Returns the chunk size used by the internal data structures
@@ -638,12 +644,12 @@ extern(C) void PydMain() {
 	);
 
 	
-	//wrap_struct!(
-	//	opencopter.wake.InducedVelocities,
-	//	Member!"v_x",
-	//	Member!"v_y",
-	//	Member!"v_z"
-	//);
+	wrap_struct!(
+		opencopter.wake.InducedVelocities,
+		Member!"v_x",
+		Member!"v_y",
+		Member!"v_z"
+	);
 
 	wrap_struct!(
 		opencopter.wake.FilamentChunk,
@@ -689,14 +695,14 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWake,
 		PyName!"Wake",
-		Init!(size_t, size_t, size_t, size_t, size_t),
+		Init!(size_t, size_t, size_t[], size_t, size_t),
 		Member!("rotor_wakes", Docstring!q{An array of :class:`RotorWake`})
 	);
 
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t, size_t, size_t, size_t, size_t),
+		Init!(size_t, size_t, size_t[], size_t, size_t, size_t),
 		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep}),
 		Docstring!("Top level structure for holding the wake and its history")
 	);
