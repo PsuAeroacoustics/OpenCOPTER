@@ -29,7 +29,6 @@ private auto P(double xi_y, double xi_eta, double y, double eta, double local_as
 	}
 }
 
-//private auto R(double sweep, double y, double eta, double aspect) {
 private auto R(double xi_y, double xi_eta, double xi_p_eta, double y, double eta, double local_aspect) {
 	immutable numerator = xi_y - xi_eta + 0.5 + xi_p_eta*(eta - y);
 	immutable denominator = (
@@ -82,21 +81,14 @@ struct WeissingerL(ArrayContainer AC) {
 
 				immutable local_aspect = blade.blade_length/(2.0*true_chord);
 
-				debug writeln("local_aspect: ", local_aspect);
-
 				foreach(ch2; 0..chunks) {
 					foreach(c2; 0..chunk_size) {
 						immutable n = ch2*chunk_size + c2;
-						
-						//immutable eta = 2.0*y_array[i] - 1.0;
-						
-						//immutable sweep = blade.chunks[ch1].sweep[c1];
 
 						immutable psi_n = ((elements - n).to!double)*PI/(elements.to!double + 1.0);
 
 						immutable first = 1.0/(elements.to!double + 1.0)*iota(1.0, elements.to!double + 1.0).map!(mu => mu*sin(mu*psi_n)*sin(mu*psi_v)/sin(psi_v)).sum;
 
-						//private auto P(double xi_y, double xi_eta, double y, double eta, double local_aspect) {
 						immutable second = 1.0/(4.0*(integration_elements.to!double + 1.0))*(
 							0.5*(P(xi_y, blade.chunks[0].xi[0], y, -1.0, local_aspect)*h_n(elements, psi_n, 0) + P(xi_y, blade.chunks[$-1].xi[$-1], y, 1.0, local_aspect)*h_n(elements, psi_n, PI)) +
 							iota(1.0, integration_elements.to!double + 1.0).enumerate.map!((e) {
@@ -110,21 +102,12 @@ struct WeissingerL(ArrayContainer AC) {
 								immutable true_chord_eta = blade.chunks[eta_ch_idx].chord[eta_c_idx]*radius;
 								immutable xi_eta = blade.chunks[eta_ch_idx].xi[eta_c_idx]*radius/true_chord_eta;
 
-								//debug writeln("xi_eta: ", xi_eta);
-
 								immutable p = P(xi_y, xi_eta, y, eta_mu, local_aspect)*h_n(elements, psi_n, psi_mu);
-								//debug writeln("xi_y: ", xi_y);
-								//debug writeln("xi_eta: ", xi_eta);
-								//debug writeln("y: ", y);
-								//debug writeln("eta_mu: ", eta_mu);
-								//debug writeln("p: ", p);
+
 								return p;
 							}).array.sum
 						);
-						//import core.stdc.stdlib : exit;
-						//if(true) debug exit(0);
-						//private auto R(double xi_y, double xi_eta, double xi_p_eta, double y, double eta, double local_aspect) {
-						//immutable third = 1.0/(16.0*(integration_elements.to!double + 1.0))*local_aspect*local_aspect*(
+
 						immutable third = 1.0/(4.0*(integration_elements.to!double + 1.0))*local_aspect*local_aspect*(
 							iota(1.0, integration_elements.to!double + 1.0).enumerate.map!((e) {
 								immutable mu = e[1];
@@ -135,20 +118,15 @@ struct WeissingerL(ArrayContainer AC) {
 								immutable eta_ch_idx = eta_idx/chunk_size;
 								immutable eta_c_idx = eta_idx%chunk_size;
 
-								//debug writeln("eta_ch_idx: ", eta_ch_idx, ", eta_c_idx: ", eta_c_idx);
 								immutable true_chord_eta = blade.chunks[eta_ch_idx].chord[eta_c_idx]*radius;
 
 								immutable xi_eta = blade.chunks[eta_ch_idx].xi[eta_c_idx]*radius/true_chord_eta;
 								immutable xi_p_eta = blade.chunks[eta_ch_idx].xi_p[eta_c_idx]*radius/true_chord_eta;
 
-								//return R(sweep, y, eta_mu, aspect)*f_n(elements, psi_n, psi_mu)*sin(psi_mu);
 								return R(xi_y, xi_eta, xi_p_eta, y, eta_mu, local_aspect)*f_n(elements, psi_n, psi_mu)*sin(psi_mu);
 							}).array.sum
 						);
 
-						debug writeln("first: ", first);
-						debug writeln("second: ", second);
-						debug writeln("third: ", third);
 						// The 0.5 is to compensate for the fact that we are
 						// actually integrating over half the length as the
 						// original formulation.
@@ -162,7 +140,6 @@ struct WeissingerL(ArrayContainer AC) {
 			_influence_inv[r_idx][] = influence[r_idx][];
 		}
 
-		debug writeln("_influence_inv: ", _influence_inv);
 		openblas_set_num_threads(1);
 
 		int info = 0;
@@ -173,7 +150,6 @@ struct WeissingerL(ArrayContainer AC) {
 
 		assert(info == 0, "Failed to invert influence matrix");
 
-
 		influence_inv = allocate_dense_chunk_aliased(elements, elements);
 
 		foreach(r; 0..elements) {
@@ -182,24 +158,6 @@ struct WeissingerL(ArrayContainer AC) {
 			}
 		}
 	}
-
-	/+
-	void compute_bound_circulation(BS)(auto ref BS blade_state) {
-		foreach(ch1; 0..influence_inv[0].length) {
-			foreach(c1; 0..chunk_size) {
-				immutable r = ch1*chunk_size + c1;
-				double gamma = 0;
-				foreach(ch, ref inf; influence_inv[r]) {
-					Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
-					gamma += tmp.sum;
-				}
-
-				blade_state.chunks[ch1].d_gamma[c1] = blade_state.chunks[ch1].gamma[c1] - gamma;
-				blade_state.chunks[ch1].gamma[c1] = gamma;
-			}
-		}
-	}
-	+/
 
 	void compute_bound_circulation_band(BS)(auto ref BS blade_state, immutable Chunk u, size_t chunk_idx) {
 		foreach(c1; 0..chunk_size) {

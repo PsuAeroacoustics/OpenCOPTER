@@ -32,17 +32,6 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 	immutable sin_alpha = rotor_input.sin_aoa;
 
 	foreach(chunk_idx; 0..blade.chunks.length) {
-		/+
-		immutable Chunk x_f = cos_beta*blade.chunks[chunk_idx].r[];
-		immutable Chunk z_f = -sin_beta*blade.chunks[chunk_idx].r[];
-
-		immutable Chunk x_tpp = rotor.origin[0] + x_f[]*cos_azimuth;
-		immutable Chunk y = rotor.origin[1] + x_f[]*sin_azimuth;
-		immutable Chunk z_tpp = rotor.origin[2] + z_f[];
-
-		immutable Chunk x = x_tpp[]*cos_alpha + z_tpp[]*sin_alpha;
-		immutable Chunk z = -x_tpp[]*sin_alpha + z_tpp[]*cos_alpha;
-		+/
 
 		auto wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, std.math.abs(rotor_input.angular_velocity), rotor_idx, blade_idx);
 
@@ -66,9 +55,7 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] + plunging_correction[];
 
-		
-		immutable Chunk rescaled_u_t = u_t[]/blade.average_chord;
-		blade_state.circulation_model.compute_bound_circulation_band(blade_state, rescaled_u_t, chunk_idx);
+		blade_state.circulation_model.compute_bound_circulation_band(blade_state, u_t, chunk_idx);
 
 		Chunk dC_L = lift_model(u_p, rotor.radius, blade.chunks[chunk_idx], blade_state.chunks[chunk_idx], u_t, inflow_angle, time)[];
 
