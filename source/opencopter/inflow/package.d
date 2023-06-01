@@ -5,6 +5,7 @@ import opencopter.memory;
 
 public import opencopter.inflow.beddos;
 public import opencopter.inflow.huangpeters;
+public import opencopter.inflow.decayed;
 
 enum Direction {
 	clockwise,

@@ -20,6 +20,7 @@ import std.math : abs, fmod, PI;
 import std.traits : isBasicType;
 
 alias BI = opencopter.inflow.BeddosInflow!(ArrayContainer.array);
+alias DI = opencopter.inflow.DecayedInflow!(ArrayContainer.array);
 alias HP = opencopter.inflow.HuangPetersInflowT!(ArrayContainer.array);
 
 size_t chunk_size() {
@@ -145,6 +146,34 @@ class Beddoes : Inflow {
 
 	override double wake_skew() {
 		return beddoes.wake_skew();
+	}
+}
+
+class Decayed : Inflow {
+	private DI decayed;
+
+	this() {
+		decayed = new DI();
+	}
+
+	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		decayed.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		decayed.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+		return decayed.inflow_at(x, y, z, x_e, angle_of_attack);
+	}
+
+	override Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
+		return decayed.inflow_at(r, cos_azimuth, sin_azimuth);
+	}
+
+	override double wake_skew() {
+		return decayed.wake_skew();
 	}
 }
 
@@ -1031,7 +1060,54 @@ extern(C) void PydMain() {
 		})
 	)();
 
+	wrap_class!(
+		Decayed,
+		Init!(),
+		Docstring!q{
+			This class instantiates a dynamic inflow model for a single rotor.
+			One of these will be needed for each rotor in the aircraft.
 
+			Constructor:
+
+			:param Mo: The number of odd modes used in the model. 4 typically works well.
+			:param Me: The number of even modes used in the model. 2 typically works well.
+			:param rotor: The geometry of the rotor this inflow model is modeling.
+			:param dt: The timestep of the simulation.
+		},
+		Def!(Decayed.update, Docstring!q{
+			Updates the inflow model by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+
+			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+			:param rotor: The current input state for the rotor.
+			:param rotor_state: The current rotor state.
+			:param advance_ratio: The current advance ratio for the rotor.
+			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param dt: The current timestep size.
+		}),
+		Def!(Decayed.inflow_at,
+			Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
+			PyName!"inflow_at",
+			Docstring!q{
+				Computes the rotor induced flow at the requested location.
+
+				:param x: A chunk of x positions to compute the induced velocity at.
+				:param y: A chunk of y positions to compute the induced velocity at.
+				:param z: A chunk of z positions to compute the induced velocity at.
+				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+				:return: A chunk of z induced velocities.
+			}
+		),
+		//Def!(HuangPeters.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
+		Def!(Decayed.wake_skew, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		})
+	)();
 
 	import std.meta : AliasSeq, staticMap;
 	import std.traits : FunctionTypeOf;
