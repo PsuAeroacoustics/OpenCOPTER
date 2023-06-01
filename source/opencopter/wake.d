@@ -524,18 +524,16 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 
 	immutable chunk_offset = 1;
 
-	foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
-		foreach(i_blade_idx; 0..ac_state.rotor_states[i_rotor_idx].blade_states.length) {
-			foreach(fil_idx, ref shed_filament; wake.rotor_wakes[i_rotor_idx].shed_vortices[i_blade_idx].shed_filaments) {
+	if(single_rotor) {
+		foreach(i_blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length) {
+			foreach(fil_idx, ref shed_filament; wake.rotor_wakes[rotor_idx].shed_vortices[i_blade_idx].shed_filaments) {
 				auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0);
 				ret_shed.v_x[] += ind_vel.v_x[];
 				ret_shed.v_y[] += ind_vel.v_y[];
 				ret_shed.v_z[] += ind_vel.v_z[];
 			}
 		}
-	}
 
-	if(single_rotor) {
 		foreach(i_blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length) {
 			auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset);
 			ret.v_x[] += ind_vel.v_x[];
@@ -543,6 +541,17 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 			ret.v_z[] += ind_vel.v_z[];
 		}
 	} else {
+		foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
+			foreach(i_blade_idx; 0..ac_state.rotor_states[i_rotor_idx].blade_states.length) {
+				foreach(fil_idx, ref shed_filament; wake.rotor_wakes[i_rotor_idx].shed_vortices[i_blade_idx].shed_filaments) {
+					auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0);
+					ret_shed.v_x[] += ind_vel.v_x[];
+					ret_shed.v_y[] += ind_vel.v_y[];
+					ret_shed.v_z[] += ind_vel.v_z[];
+				}
+			}
+		}
+
 		foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
 			foreach(i_blade_idx; 0..i_rotor.blade_states.length) {
 				auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset);
