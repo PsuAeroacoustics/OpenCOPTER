@@ -266,8 +266,23 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 
 	aircraft.update_wake(ac_state, ac_input_state, wake_history, inflows, atmo, iteration, dt);
 
-	foreach(rotor_idx; 0..aircraft.rotors.length) {
-		inflows[rotor_idx].update(ac_state.rotor_states[rotor_idx].C_T, ac_input_state.rotor_inputs[rotor_idx], ac_state.rotor_states[rotor_idx], ac_state.rotor_states[rotor_idx].advance_ratio, ac_state.rotor_states[rotor_idx].axial_advance_ratio, &ac_state, dt);
+	foreach(rotor_idx; 0..inflows.length) {
+		if(rotor_idx >= aircraft.rotors.length) {
+			inflows[rotor_idx].update(0, null, null, ac_state.rotor_states[0].advance_ratio, ac_state.rotor_states[0].axial_advance_ratio, dt);
+		} else {
+			inflows[rotor_idx].update(ac_state.rotor_states[rotor_idx].C_T, ac_input_state.rotor_inputs[rotor_idx], ac_state.rotor_states[rotor_idx], ac_state.rotor_states[rotor_idx].advance_ratio, ac_state.rotor_states[rotor_idx].axial_advance_ratio, dt);
+		}
 	}
 }
 
+import core.thread;
+import core.sync.barrier;
+//import core.sync.barrier;
+
+auto run(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, size_t iterations) {
+	immutable size_t cores_per_blade = 8;
+}
+
+auto process_blade(ArrayContainer AC = ArrayContainer.None)() {
+
+}

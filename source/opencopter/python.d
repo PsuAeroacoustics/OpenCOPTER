@@ -23,6 +23,7 @@ import std.traits : isBasicType;
 
 alias BI = opencopter.inflow.BeddosInflow!(ArrayContainer.array);
 alias HP = opencopter.inflow.HuangPetersInflowT!(ArrayContainer.array);
+alias SW = opencopter.inflow.SimpleWingT!(ArrayContainer.array);
 
 size_t chunk_size() {
 	static import opencopter.config;
@@ -89,10 +90,11 @@ class Inflow {
 	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) { assert(0); }
 	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState ac_state, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) { assert(0); }
-	Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) { assert(0); }
+	//Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) { assert(0); }
 	double wake_skew() { assert(0); }
 	Frame* frame() { assert(0); }
 	Mat4 inverse_global_frame() { assert(0); }
+	Vec3 origin() { assert(0); }
 }
 
 
@@ -119,10 +121,6 @@ class HuangPeters : Inflow {
 		return huang_peters.inflow_at(x, y, z, x_e, angle_of_attack);
 	}
 
-	override Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
-		return huang_peters.inflow_at(r, cos_azimuth, sin_azimuth);
-	}
-
 	override double wake_skew() {
 		return huang_peters.wake_skew();
 	}
@@ -134,6 +132,9 @@ class HuangPeters : Inflow {
 	override Mat4 inverse_global_frame() {
 		return huang_peters.inverse_global_frame;
 	}
+
+	override Vec3 origin() { return Vec3(0, 0, 0); }
+
 }
 
 class Beddoes : Inflow {
@@ -159,12 +160,34 @@ class Beddoes : Inflow {
 		return beddoes.inflow_at(x, y, z, x_e, angle_of_attack);
 	}
 
-	override Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
-		return beddoes.inflow_at(r, cos_azimuth, sin_azimuth);
+	override double wake_skew() {
+		return beddoes.wake_skew();
+	}
+
+	override Vec3 origin() { return Vec3(0, 0, 0); }
+}
+
+class SimpleWing : Inflow {
+	private SW simple_wing;
+
+	this(double _C_L, double V_inf, double V_tip, double y_0, double c, Vec3 origin) {
+		simple_wing = new SW(_C_L, V_inf, V_tip, y_0, c, origin);
+	}
+
+	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+		return simple_wing.inflow_at(x, y, z, x_e, angle_of_attack);
 	}
 
 	override double wake_skew() {
-		return beddoes.wake_skew();
+		return simple_wing.wake_skew();
 	}
 
 	override Frame* frame() {
@@ -174,6 +197,8 @@ class Beddoes : Inflow {
 	override Mat4 inverse_global_frame() {
 		return Mat4.identity;
 	}
+
+	override Vec3 origin() { return simple_wing.origin; }
 }
 
 alias PyWakeHistory = opencopter.wake.WakeHistoryT!(ArrayContainer.array);
@@ -1463,7 +1488,7 @@ extern(C) void PydMain() {
 		Inflow,
 		Def!(Inflow.update),
 		Def!(Inflow.inflow_at, Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double), PyName!"inflow_at_xyz"),
-		Def!(Inflow.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
+		//Def!(Inflow.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
 		Def!(Inflow.wake_skew)
 	)();
 
@@ -1512,6 +1537,9 @@ extern(C) void PydMain() {
 			}
 		),
 		Def!(HuangPeters.wake_skew, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		}),
+		Def!(HuangPeters.origin, Docstring!q{
 			:return: The current wake skew angle of the rotor in radians.
 		})
 	)();
@@ -1562,6 +1590,60 @@ extern(C) void PydMain() {
 		),
 		//Def!(HuangPeters.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
 		Def!(Beddoes.wake_skew, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		}),
+		Def!(Beddoes.origin, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		})
+	)();
+
+	wrap_class!(
+		SimpleWing,
+		Init!(double, double, double, double, double, Vec3),
+		Docstring!q{
+			This class instantiates a dynamic inflow model for a single rotor.
+			One of these will be needed for each rotor in the aircraft.
+
+			Constructor:
+
+			:param Mo: The number of odd modes used in the model. 4 typically works well.
+			:param Me: The number of even modes used in the model. 2 typically works well.
+			:param rotor: The geometry of the rotor this inflow model is modeling.
+			:param dt: The timestep of the simulation.
+		},
+		Def!(SimpleWing.update, Docstring!q{
+			Updates the inflow model by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+
+			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+			:param rotor: The current input state for the rotor.
+			:param rotor_state: The current rotor state.
+			:param advance_ratio: The current advance ratio for the rotor.
+			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param dt: The current timestep size.
+		}),
+		Def!(SimpleWing.inflow_at,
+			Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
+			PyName!"inflow_at",
+			Docstring!q{
+				Computes the rotor induced flow at the requested location.
+
+				:param x: A chunk of x positions to compute the induced velocity at.
+				:param y: A chunk of y positions to compute the induced velocity at.
+				:param z: A chunk of z positions to compute the induced velocity at.
+				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+				:return: A chunk of z induced velocities.
+			}
+		),
+		Def!(SimpleWing.wake_skew, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		}),
+		Def!(SimpleWing.origin, Docstring!q{
 			:return: The current wake skew angle of the rotor in radians.
 		})
 	)();

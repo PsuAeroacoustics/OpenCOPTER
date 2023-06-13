@@ -993,6 +993,14 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 				foreach(i_rotor_idx, ref inflow; inflows) {
 
+					Vec3 origin;
+					if(i_rotor_idx >= ac_state.rotor_states.length) {
+						i_rotor_idx = 0;
+						origin = inflow.origin;
+					} else {
+						origin = ac.rotors[i_rotor_idx].origin;
+					}
+
 					if((i_rotor_idx == 0) && (rotor_idx == 1) && wake_history.hybrid) {
 					 	auto wake_velocities = wake_history.history[1].compute_wake_induced_velocities(chunk.x, chunk.y, chunk.z, ac_state, i_rotor_idx, blade_idx, true, false, false);
 						global_infow[0][] += wake_velocities.v_x[];
