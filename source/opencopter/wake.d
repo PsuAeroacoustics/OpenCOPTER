@@ -683,18 +683,26 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					Chunk lambda_i_z = 0;
 					Chunk lambda_i_x = 0;
 					foreach(i_rotor_idx, ref inflow; inflows) {
+						Vec3 origin;
+						if(i_rotor_idx >= ac_state.rotor_states.length) {
+							i_rotor_idx = 0;
+							origin = inflow.origin;
+						} else {
+							origin = ac.rotors[i_rotor_idx].origin;
+						}
+						
 						immutable i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
 						immutable i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
 
 						immutable Chunk x_rel = chunk.x[];// - ac.rotors[rotor_idx].origin[0];
-						immutable Chunk y_rel = -(chunk.y[] - ac.rotors[i_rotor_idx].origin[1]);
+						immutable Chunk y_rel = -(chunk.y[] - origin[1]);
 						immutable Chunk z_rel = chunk.z[];// - ac.rotors[rotor_idx].origin[2];
 
-						immutable Chunk x_tppv = x_rel[]*i_cos_aoa - z_rel[]*i_sin_aoa - ac.rotors[i_rotor_idx].origin[0];
-						immutable Chunk z_tppv = -x_rel[]*i_sin_aoa - z_rel[]*i_cos_aoa + ac.rotors[i_rotor_idx].origin[2];
+						immutable Chunk x_tppv = x_rel[]*i_cos_aoa - z_rel[]*i_sin_aoa - origin[0];
+						immutable Chunk z_tppv = -x_rel[]*i_sin_aoa - z_rel[]*i_cos_aoa + origin[2];
 
 						immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
-						immutable Chunk lambda_i = i_omega*inflows[i_rotor_idx].inflow_at(x_tppv, y_rel, z_tppv, chunk.x_e, ac_input_state.rotor_inputs[i_rotor_idx].angle_of_attack)[];
+						immutable Chunk lambda_i = i_omega*inflow.inflow_at(x_tppv, y_rel, z_tppv, chunk.x_e, ac_input_state.rotor_inputs[i_rotor_idx].angle_of_attack)[];
 						lambda_i_z[] += -lambda_i[]*i_cos_aoa;
 						lambda_i_x[] += -lambda_i[]*i_sin_aoa;
 					}
@@ -746,16 +754,24 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 				foreach(i_rotor_idx, ref inflow; inflows) {
 
+					Vec3 origin;
+					if(i_rotor_idx >= ac_state.rotor_states.length) {
+						i_rotor_idx = 0;
+						origin = inflow.origin;
+					} else {
+						origin = ac.rotors[i_rotor_idx].origin;
+					}
+
 					immutable i_aoa = ac_input_state.rotor_inputs[i_rotor_idx].angle_of_attack;
 					immutable i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
 					immutable i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
 
 					immutable Chunk x_rel = chunk.x[];// - ac.rotors[i_rotor_idx].origin[0];
-					immutable Chunk y_rel = -(chunk.y[] - ac.rotors[i_rotor_idx].origin[1]);
+					immutable Chunk y_rel = -(chunk.y[] - origin[1]);
 					immutable Chunk z_rel = chunk.z[];// - ac.rotors[i_rotor_idx].origin[2];
 
-					immutable Chunk x_tppc = (x_rel[]*i_cos_aoa - z_rel[]*i_sin_aoa)[] - ac.rotors[i_rotor_idx].origin[0];
-					immutable Chunk z_tppc = (-x_rel[]*i_sin_aoa - z_rel[]*i_cos_aoa)[] + ac.rotors[i_rotor_idx].origin[2];
+					immutable Chunk x_tppc = (x_rel[]*i_cos_aoa - z_rel[]*i_sin_aoa)[] - origin[0];
+					immutable Chunk z_tppc = (-x_rel[]*i_sin_aoa - z_rel[]*i_cos_aoa)[] + origin[2];
 					
 					immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
 
