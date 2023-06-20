@@ -32,9 +32,7 @@ jobs:
         wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
         echo Extracting sleef tarball
         tar xf 3.5.1.tar.gz
-        ls -alh
-        echo cd'ing into sleef dir
-        cd 3.5.1
+        cd sleef-3.5.1
         mkdir build
         cd build
         cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
