@@ -30,7 +30,10 @@ jobs:
       run: |
         sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
         wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
+        echo Extracting sleef tarball
         tar xf 3.5.1.tar.gz
+        ls -alh
+        echo cd'ing into sleef dir
         cd 3.5.1
         mkdir build
         cd build
