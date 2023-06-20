@@ -1,0 +1,44 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+name: D
+
+on:
+  push:
+    branches: [ "development" ]
+  pull_request:
+    branches: [ "development" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
+      with:
+        compiler: ldc-latest
+    - name: Install Dependencies
+      run: |
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
+        wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
+        tar xf 3.5.1.tar.gz
+        cd 3.5.1
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        make
+        sudo make install
+        
+    - name: 'Build'
+      run: |
+        # Build the project, with its main file included, without unittests
+        dub build -c library-python310-novtk -b release --compiler=$DC
