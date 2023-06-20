@@ -28,8 +28,6 @@ jobs:
     - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
       with:
         compiler: ldc-latest
-    - uses: SimenB/github-actions-cpu-cores@v1
-        id: cpu-cores
     - name: Install Dependencies
       run: |
         sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
@@ -40,8 +38,7 @@ jobs:
         mkdir build
         cd build
         cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-        echo Building SLEEF with ${{ steps.cpu-cores.outputs.count }} cores
-        make -j ${{ steps.cpu-cores.outputs.count }}
+        make
         sudo make install
         
     - name: 'Build'
