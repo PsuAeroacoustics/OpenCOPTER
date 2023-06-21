@@ -2,7 +2,7 @@
 # They are provided by a third-party and are governed by
 # separate terms of service, privacy policy, and support
 # documentation.
-name: D
+name: Python Library Build
 
 on:
   push:
@@ -45,3 +45,27 @@ jobs:
       run: |
         # Build the project, with its main file included, without unittests
         dub build -c library-python310-novtk -b release --compiler=$DC
+
+    - uses: ammaraskar/sphinx-action@master
+      with:
+        build-command: "sphinx-build -b html . _build -a"
+        docs-folder: "./pyhtml/"
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload entire repository
+          path: './pyhtml/_build/'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
