@@ -1,0 +1,14 @@
+[
+	{
+		"Aircraft": "evtol",
+		"AR": 7.5,
+		"number_of_blades": 3,
+		"number_of_rotors": 2,
+		"origin": [
+			[0, 0, 0],
+			[-3, 0, 0.25]
+		],
+		"radii": [1.5, 1.5],
+		"theta_tw_1": -8.0
+	}
+]
