@@ -1,16 +1,16 @@
 [
 	{
-		"Aircraft": "xyz",
-		"AR": 7.5,
-		"collective": [
-			5.06
-		],
-		"number_of_blades": 5,
-		"number_of_rotors": 1,
-		"origin": [
-			[0, 0, 0]
-		],
-		"radii": [1.5],
-		"theta_tw_1": -8.0
+		"name": "single",
+		"rotors": [
+			{
+				"radius": 1.5,
+				"origin": [0, 0, 0],
+				"number_of_blades": 5,
+				"blade": {
+					"AR": 7.5,
+					"theta_tw": -8.0
+				}
+			}
+		]
 	}
 ]

@@ -5,20 +5,16 @@ import os
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/OpenCOPTER')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
 
-import scipy.optimize as scp
 from libopencopter import *
 from libwopwopd import *
 import wopwop_input_files_generator
 import numpy as np
 import math
 import time
-import argparse
-from collections.abc import Iterable
-import functools
 
-from os import walk, path, makedirs
+from os import path, makedirs
 
-def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_history, atmo, omegas, V_inf, r, twist, AR, d_psi, elements, wopwop_rotor_idx, write_wake, vtu_output_path, wopwop_output_path, do_compute, flight_condition, convergence_criteria):
+def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_history, atmo, omegas, V_inf, r, d_psi, elements, wopwop_rotor_idx, write_wake, vtu_output_path, wopwop_output_path, do_compute, flight_condition, convergence_criteria):
 
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
@@ -58,18 +54,14 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 	loading_data.set_x_loading_array(np.zeros(elements, dtype=np.single))
 	loading_data.set_y_loading_array(np.zeros(elements, dtype=np.single))
 
-	#iterations = int(round(2*math.pi/d_psi*rotor_revs))
-	#iterations = int(round(iter_per_rev*rotor_revs))
-	#log_file.write("Number of iterations = ", iterations)
-
 	naca0012_xsection = naca0012()
 
 	wopwop_data_path = f'{wopwop_output_path}/data'
 
-	if not path.isdir(wopwop_data_path):
-		makedirs(wopwop_data_path, exist_ok=True)
+	# if not path.isdir(wopwop_data_path):
+	# 	makedirs(wopwop_data_path, exist_ok=True)
 
-	wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, aircraft.rotors[wopwop_rotor_idx].radius, AR, wopwop_data_path)
+	# wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, aircraft.rotors[wopwop_rotor_idx].radius, AR, wopwop_data_path)
 
 	loading_files = []
 

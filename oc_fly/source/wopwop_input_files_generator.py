@@ -193,7 +193,7 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	def build_blade_cntr(rotor_idx, blade_idx):
 		blade_cntr = ContainerIn()
 		blade_cntr.Title = "blade "+str(blade_idx)+" containter"
-		blade_cntr.patchGeometryFile = f"../data/blade_geom.dat"
+		blade_cntr.patchGeometryFile = f"../data/blade_geom_{rotor_idx}_{blade_idx}.dat"
 		blade_cntr.patchLoadingFile = f"../data/blade_{rotor_idx if full_system else actual_rotor_idx}_{blade_idx}_loading.dat"
 
 		blade_cob = CB()
@@ -296,7 +296,7 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	return namelist
 
 
-def write_wopwop_geometry(airfoil_xsection, r, twist, R, AR, output_path):
+def write_wopwop_geometry(airfoil_xsection, r, twist, R, AR, output_path, rotor_idx, blade_idx):
 	print("Building wopwop geometry")
 
 	real_chord = (R/AR)*np.ones(len(r))
@@ -329,7 +329,7 @@ def write_wopwop_geometry(airfoil_xsection, r, twist, R, AR, output_path):
 		]
 	)
 
-	geom_file = create_geometry_file(wopwop_geom, f"{output_path}/blade_geom.dat")
+	geom_file = create_geometry_file(wopwop_geom, f"{output_path}/blade_geom_{rotor_idx}_{blade_idx}.dat")
 	append_geometry_data(geom_file, blade_geom, 0)
 	append_geometry_data(geom_file, lifting_line_geom, 1)
 	close_geometry_file(geom_file)

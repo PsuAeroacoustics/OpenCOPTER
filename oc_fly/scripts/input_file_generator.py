@@ -154,26 +154,7 @@ def main():
 	with open(args.base_param) as param_file:
 		base_param = json.load(param_file)
 
-	#num_rotors = 2
-	#num_blades = 4
-	#radius = 2
-	#AR = 16.5
-	#theta_tw_1 = -8.0
-	#collective = 5.06*np.ones(num_rotors)
-	#collective = collective.tolist()
-	#aoa = np.linspace(-5,5,3).tolist()
-	#aoa_rotors = [2,2]
-
-	#omega = 109.12
-
-	#V_inf = np.linspace(30.0,35.0,5).tolist()
-	#h_sep = np.linspace(-2,2,5)
-	#v_sep = np.linspace(-2,2,5)
-	#l_sep = np.linspace(-2,2,5)
-
 	print(base_geom)
-
-	
 
 	origin_idx = 1
 	aircrafts = []
@@ -181,10 +162,8 @@ def main():
 	b=0
 	c=0
 	origin = np.zeros((h_sep.size*v_sep.size*l_sep.size, 3))
-	#origin_aft_rotor = np.zeros((h_sep.size*v_sep.size*l_sep.size, 3))
-	#origin_front_rotor = [0, 0, 0]
+
 	for i in range(h_sep.size*v_sep.size*l_sep.size - 1):
-		#print("a =",a," b =",b , " c =",c)
 		origin_aft_rotor = [-(2 + h_sep[a]), l_sep[c], v_sep[b]]
 		
 		if(a==h_sep.size-1 and b!=v_sep.size-1):
@@ -199,56 +178,10 @@ def main():
 		origin[i] = origin_aft_rotor
 	
 		ac = copy.deepcopy(base_geom[0])
-		ac["origin"][origin_idx] = origin_aft_rotor
-		ac["Aircraft"] = f'{ac["Aircraft"]}_h{h_sep[a]:.2f}_v{v_sep[b]}_l{l_sep[c]}'
+		ac['rotors'][origin_idx]["origin"] = origin_aft_rotor
+		ac["name"] = f'{ac["Aircraft"]}_h{h_sep[a]:.2f}_v{v_sep[b]}_l{l_sep[c]}'
 
 		aircrafts.append(ac)
-
-	#origin = origin.tolist()
-
-
-	# Data to be written in geometry file
-	# Geom = {
-	# 	"Aircraft": [
-	# 		"Hart_II"
-	# 	],
-	# 	"AR": AR,
-	# 	"collective": collective,
-	# 	"number of blades": num_rotors,
-	# 	"number of rotors": num_blades,
-	# 	"origin": origin,
-	# 	"radius": radius,
-	# 	"theta_tw_1": theta_tw_1
-	# }
-
-	#geom_object = json.dumps(Geom, indent=2)
-	#with open("geometry_file_test.json", "w") as geom_file:
-	#	geom_file.write(geom_object)
-
-	# Data to be written in parameters file
-	# param = {
-	# 	"Aircraft": "xyz",
-	# 	"computational parameters": [
-	# 		{
-	# 			"d_psi": 1.0,
-	# 			"iterations": 5,
-	# 			"requested elements": 48,
-	# 			"shed_history_angle": 45.0,
-	# 			"wake_dist": [ 2.5 ],
-	# 			"wopwop_rotor_indx" : 0
-	# 		}
-	# 	],
-	# 	"flight conditions": [
-	# 		{
-	# 			"aoa": aoas,
-	# 			"aoa_rotors": aoa_rotors,
-	# 			"density": 1.125,
-	# 			"omega": omega,
-	# 			"sos": 343,
-	# 			"V inf": V_inf
-	# 		}
-	# 	]
-	# }
 
 	density = base_param["flight conditions"][0]["density"]
 	omegas = base_param["flight conditions"][0]["omegas"]

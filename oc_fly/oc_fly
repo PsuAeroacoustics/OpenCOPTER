@@ -4,27 +4,20 @@ from collections import namedtuple
 import sys
 import os
 import json
-import subprocess
 
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/../')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/source')
 #sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/wopwop2aam')
 
-import scipy.optimize as scp
 from libopencopter import *
 from libwopwopd import *
 from source import compute_aero
 from source import compute_acoustics
 import numpy as np
 import math
-import time
 import argparse
-from collections.abc import Iterable
-import functools
-import matplotlib
-import matplotlib.pyplot as plt
-from os import walk, path, makedirs
+from os import path, makedirs
 from mpi4py import MPI
 
 def read_hart_tecplot(filename):
@@ -203,10 +196,9 @@ def main():
 	for aircraft in geom:
 		for flight_condition in flight_conditions:
 
-			origins = aircraft["origin"]
-			origins = [Vec3(origin) for origin in origins]
-			R = np.asarray(aircraft["radii"])
-			num_rotors = aircraft["number_of_rotors"]
+			origins = [Vec3(aircraft['rotors'][r_idx]["origin"]) for r_idx in range(len(aircraft['rotors']))]
+			R = np.asarray([aircraft["rotors"][r_idx]["radius"] for r_idx in range(len(aircraft["rotors"]))])
+			num_rotors = R.size # aircraft["number_of_rotors"]
 			V_inf = flight_condition["V_inf"]
 			wake_dists = np.zeros(num_rotors)
 			omegas =  np.asarray(flight_condition["omegas"])
@@ -291,7 +283,7 @@ def main():
 				else:
 					state_dir = f'theta{"_".join([str(theta) for theta in flight_condition["collective"]])}'
 
-				root_path = f'./{case.aircraft["Aircraft"]}/{aoa_dir}/{V_inf_dir}/{state_dir}'
+				root_path = f'./{case.aircraft["name"]}/{aoa_dir}/{V_inf_dir}/{state_dir}'
 
 				if not path.isdir(root_path):
 					makedirs(root_path, exist_ok=True)
