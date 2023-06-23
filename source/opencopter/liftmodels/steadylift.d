@@ -48,7 +48,6 @@ unittest {
 
 	immutable blade_C_T = integrate_trapaziodal!"dC_T"(bs, blade);
 
-	
 	writeln("C_T: ", blade_C_T);
 	writeln("u_t: ", u_t);
 	writeln("inflow_angle: ", inflow_angle);
@@ -66,10 +65,12 @@ unittest {
 	import std.math : PI;
 	import std.stdio : writeln;
 
-	immutable Chunk sigma_hat = 2.0*blade_chunk.chord[]/(PI*PI);
+	//immutable Chunk sigma_hat = 2.0*blade_chunk.chord[]/(PI*PI);
+	//immutable Chunk sigma_hat = blade_chunk.chord[]/(PI*rotor_radius);
+	immutable Chunk sigma_hat = blade_chunk.chord[]/(2.0*/+PI*+/PI);
 
-	immutable Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
-	immutable Chunk u_squared = inflow[]*inflow[] + corrected_u_t[]*corrected_u_t[];
+	//immutable Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
+	immutable Chunk u_squared = inflow[]*inflow[] + u_t[]*u_t[];
 	//immutable Chunk u_squared = (inflow[] + corrected_u_t[])*(inflow[] + corrected_u_t[]);
 	//immutable Chunk angle_of_attack = blade_chunk.twist[] - inflow_angle[];
 	immutable Chunk C_l = blade_chunk.C_l_alpha[]*blade_state_chunk.aoa[] + blade_chunk.alpha_0[];

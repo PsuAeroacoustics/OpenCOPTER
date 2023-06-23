@@ -6,6 +6,7 @@ import opencopter.math;
 import opencopter.math.blas;
 import opencopter.math.lapacke;
 import opencopter.memory;
+import opencopter.io;
 
 import numd.utility;
 
@@ -95,7 +96,7 @@ struct WeissingerL(ArrayContainer AC) {
 								immutable mu = e[1];
 								immutable eta_idx = e[0];
 								immutable psi_mu = mu*PI/(integration_elements.to!double + 1.0);
-								immutable eta_mu = -cos(psi_mu);
+								immutable eta_mu = cos(psi_mu);
 								immutable eta_ch_idx = eta_idx/chunk_size;
 								immutable eta_c_idx = eta_idx%chunk_size;
 
@@ -113,7 +114,7 @@ struct WeissingerL(ArrayContainer AC) {
 								immutable mu = e[1];
 								immutable eta_idx = e[0];
 								immutable psi_mu = mu*PI/(integration_elements.to!double + 1.0);
-								immutable eta_mu = -cos(psi_mu);
+								immutable eta_mu = cos(psi_mu);
 
 								immutable eta_ch_idx = eta_idx/chunk_size;
 								immutable eta_c_idx = eta_idx%chunk_size;
@@ -121,7 +122,7 @@ struct WeissingerL(ArrayContainer AC) {
 								immutable true_chord_eta = blade.chunks[eta_ch_idx].chord[eta_c_idx]*radius;
 
 								immutable xi_eta = blade.chunks[eta_ch_idx].xi[eta_c_idx]*radius/true_chord_eta;
-								immutable xi_p_eta = blade.chunks[eta_ch_idx].xi_p[eta_c_idx]*radius/true_chord_eta;
+								immutable xi_p_eta = blade.chunks[eta_ch_idx].xi_p[eta_c_idx];///true_chord_eta;
 
 								return R(xi_y, xi_eta, xi_p_eta, y, eta_mu, local_aspect)*f_n(elements, psi_n, psi_mu)*sin(psi_mu);
 							}).array.sum
@@ -140,6 +141,8 @@ struct WeissingerL(ArrayContainer AC) {
 			_influence_inv[r_idx][] = influence[r_idx][];
 		}
 
+		debug writeln;
+		debug _influence_inv.print_matlab;
 		openblas_set_num_threads(1);
 
 		int info = 0;
@@ -159,16 +162,20 @@ struct WeissingerL(ArrayContainer AC) {
 		}
 	}
 
-	void compute_bound_circulation_band(BS)(auto ref BS blade_state, immutable Chunk u, size_t chunk_idx) {
+	void compute_bound_circulation_band(BS)(auto ref BS blade_state, immutable Chunk u, size_t chunk_idx, double direction_multiplier) {
 		foreach(c1; 0..chunk_size) {
+			//immutable r = ((elements/chunk_size - 1) - chunk_idx)*chunk_size + c1;
 			immutable r = chunk_idx*chunk_size + c1;
 			double gamma = 0;
 			foreach(ch, ref inf; influence_inv[r]) {
 				Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
+				//Chunk tmp = inf[]*blade_state.chunks[ch].aoa[];
 				gamma += tmp.sum;
 			}
 
 			gamma *= u[c1];
+			gamma *= -direction_multiplier;
+			//blade_state.chunks[chunk_idx].d_gamma[c1] = gamma - blade_state.chunks[chunk_idx].gamma[c1];
 			blade_state.chunks[chunk_idx].d_gamma[c1] = blade_state.chunks[chunk_idx].gamma[c1] - gamma;
 			blade_state.chunks[chunk_idx].gamma[c1] = gamma;
 		}

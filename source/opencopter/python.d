@@ -157,6 +157,14 @@ void set_sweep(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"sweep"(data);
 }
 
+void set_xi(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi"(data);
+}
+
+void set_xi_p(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi_p"(data);
+}
+
 double[] get_dC_T(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_T";
 }
@@ -450,6 +458,21 @@ extern(C) void PydMain() {
 
 	def!(set_sweep, Docstring!q{
 		Set the spanwise sweep angle (in radians) distribution of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(set_xi, Docstring!q{
+		Set the spanwise quarter chord position distribution of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(set_xi_p, Docstring!q{
+		Set the spanwise quarter chord derivative position distribution of a :class:`BladeGeometry`
+		from a linear array.
 
 		:param bg: :class:`BladeGeometry` object to apply twist to.
 		:param data: List of sweep angles (in radians) for each radial station
@@ -781,7 +804,8 @@ extern(C) void PydMain() {
 		Member!("azimuth_offset", Docstring!q{
 			The azimuthal offset for this blade. This is added to the :class:`RotorInputState` azimuth.
 		}),
-		Member!("average_chord", Docstring!q{The dimensional average chord of the blade})
+		Member!("average_chord", Docstring!q{The dimensional average chord of the blade}),
+		Member!("blade_length", Docstring!q{The dimensional actual length of the blade not accounting for root cutout})
 	);
 
 	wrap_struct!(
