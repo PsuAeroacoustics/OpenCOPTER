@@ -7,3 +7,6 @@
 [submodule "dependencies/vtkd"]
 	path = dependencies/vtkd
 	url = ../vtkd.git
+[submodule "oc_fly/dependencies/wopwopd"]
+	path = oc_fly/dependencies/wopwopd
+	url = ../wopwopd.git

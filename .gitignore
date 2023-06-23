@@ -16,3 +16,4 @@ pressure_plot
 *.vtu
 *.vtk
 *.txt
+__pycache__
