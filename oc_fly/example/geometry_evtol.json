@@ -28,7 +28,7 @@
 			{
 				"radius": 1.5,
 				"origin": [-3, 0, 0.25],
-				"number_of_blades": 2,
+				"number_of_blades": 3,
 				"blade": {
 					"AR": 7.5,
 					"theta_tw": -8.0,
