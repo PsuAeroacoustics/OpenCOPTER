@@ -1,8 +1,0 @@
-{
-	"fileVersion": 1,
-	"versions": {
-		"numd": {"path":"dependencies/numd"},
-		"pyd": {"path":"dependencies/pyd"},
-		"vtkd": {"path":"dependencies/vtkd"}
-	}
-}

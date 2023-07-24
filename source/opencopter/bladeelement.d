@@ -64,11 +64,12 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] + plunging_correction[];
 
-		
+		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa, zero);
+
 		immutable Chunk rescaled_u_t = u_t[]/blade.average_chord;
 		blade_state.circulation_model.compute_bound_circulation_band(blade_state, rescaled_u_t, chunk_idx);
 
-		Chunk dC_L = lift_model(u_p, rotor.radius, blade.chunks[chunk_idx], blade_state.chunks[chunk_idx], u_t, inflow_angle, time)[];
+		immutable Chunk dC_L = steady_lift_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];

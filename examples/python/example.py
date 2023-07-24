@@ -99,7 +99,7 @@ if __name__ == "__main__":
 	
 	# AircraftState is the top level container for holding the current
 	# aerodynamic state of the aircraft. It breaks down into rotors
-	# the the individual blades. There is a series of functions provided
+	# then the individual blades. There is a series of functions provided
 	# to turn internal state data into a linear array.
 	ac_state = AircraftState(num_rotors, num_blades, elements, aircraft)
 

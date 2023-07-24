@@ -1,0 +1,19 @@
+{
+  "computational_parameters": {
+    "d_psi": 1.0,
+    "spanwise_elements": 48,
+    "shed_history_angle": 45.0,
+    "convergence_criteria": 1.0e-4
+  },
+  "flight_conditions": [
+    {
+      "aoa": 0.0,
+      "aoa_rotors": [],
+      "density": 1.125,
+      "omegas": [ 109.12, -109.12 ],
+      "sos": 343,
+      "collective": [5.06, 5.06],
+      "V_inf": 30.0
+    }
+  ]
+}

@@ -1,0 +1,311 @@
+#!/usr/bin/env python3
+
+from collections import namedtuple
+import sys
+import os
+import json
+
+sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/../')
+sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
+sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/source')
+#sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/wopwop2aam')
+
+from libopencopter import *
+from libwopwopd import *
+from source import compute_aero
+from source import compute_acoustics
+import numpy as np
+import math
+import argparse
+from os import path, makedirs
+from mpi4py import MPI
+
+def calculate_sound_power_level(oaspl_db,area):
+
+	spatial_avg_pressure = 0
+	for i in range(23):
+		for j in range(17):
+			ms_pressure_temp = math.exp(oaspl_db[i][j]*0.1)
+			spatial_avg_pressure = spatial_avg_pressure + ms_pressure_temp
+			
+	spatial_avg_pressure = spatial_avg_pressure/(np.size(oaspl_db))
+	print("total number of grid points is", np.size(oaspl_db))
+
+	sound_power_level = 10*np.log10(spatial_avg_pressure) + 10*np.log10(area)
+
+	return sound_power_level
+
+def main():
+	# push check
+	parser = argparse.ArgumentParser("computational_toolchain", description="computational pipeline")
+
+	parser.add_argument(
+		'-s',
+		type=float,
+		help="Non-dimensional longitudinal separation betwen rotors. A value of 0 has the edge the tip path planes touching. A positive value will move the rotor away from the from rotor",
+		required=False
+	)
+	parser.add_argument(
+		'-a',
+		type=float,
+		help="Shaft angle of attack of rotor system",
+		required=False
+	)
+	parser.add_argument(
+		'-d',
+		type=float,
+		help="Non-dimensional vertical separation between rotors. A value of 0 has the rotors in the same plane. A negative puts the rear rotor below the plane of the front rotor."
+	)
+	parser.add_argument(
+		"-v",
+		type=float,
+		help="Advance ratio of the rotor system",
+		required=False,
+		default=None
+	)
+	parser.add_argument(
+		"-c1",
+		type=float,
+		help="Collective pitch of the front rotor in degrees"
+	)
+	parser.add_argument(
+		"-c2",
+		type=float,
+		help="Collective pitch of the rear rotor in degrees"
+	)
+	parser.add_argument(
+		"-ct",
+		type=float,
+		help="Desired C_T for trim algo",
+		default=0.008,
+		required=False
+	)
+	parser.add_argument(
+		"-r",
+		type=int,
+		help="Number of rotor revs to simulate",
+		default=20, 
+		required=False
+	)
+	parser.add_argument(
+		"-w",
+		type=int,
+		help="Number of rotor revolutions to trail wake",
+		default=4,
+		required=False
+	)
+	parser.add_argument(
+		"-ws",
+		action='store_true',
+		help="Save the last revolution of the wake to vtu files for visualization",
+		default=False,
+		required=False
+	)
+	parser.add_argument(
+		"--aero",
+		action='store_true',
+		help="Compute aerodynamics",
+		default=False,
+		required=False
+	)
+	parser.add_argument(
+		"--acoustics",
+		action='store_true',
+		help="Compute acoustics",
+		default=False,
+		required=False
+	)
+	parser.add_argument(
+		"-ar",
+		type=int,
+		help="aoa restart index",
+		default=0, 
+		required=False
+	)
+	parser.add_argument(
+		"-hr",
+		type=int,
+		help="h_sep restart index",
+		default=0, 
+		required=False
+	)
+	parser.add_argument(
+		"--aam",
+		action='store_true',
+		help="Convert wopwop spheres to AAM spheres",
+		default=False, 
+		required=False
+	)
+	parser.add_argument(
+		"-input_geom",
+		type= str,
+		required=True
+	)
+	parser.add_argument(
+		"-input_param",
+		type= str,
+		required=True
+	)
+
+	comm = MPI.COMM_WORLD
+	rank = comm.Get_rank()
+
+	args = parser.parse_args()
+
+	case_list = CaseList()
+	cases = []
+
+	geom_directory = path.dirname(path.realpath(args.input_geom))
+
+	with open(args.input_geom) as geom_file:
+		geom = json.load(geom_file)
+	with open(args.input_param) as param_file:
+		param = json.load(param_file)
+
+
+	FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake")
+
+	flight_conditions = param["flight_conditions"]
+	computational_parameters = param["computational_parameters"]
+
+	flat_cases = []
+	for aircraft in geom:
+		for flight_condition in flight_conditions:
+
+			origins = [Vec3(aircraft['rotors'][r_idx]["origin"]) for r_idx in range(len(aircraft['rotors']))]
+			R = np.asarray([aircraft["rotors"][r_idx]["radius"] for r_idx in range(len(aircraft["rotors"]))])
+			num_rotors = R.size # aircraft["number_of_rotors"]
+			V_inf = flight_condition["V_inf"]
+			wake_dists = np.zeros(num_rotors)
+			omegas =  np.asarray(flight_condition["omegas"])
+			mus = V_inf/(np.abs(omegas)*R)
+
+			d_psi = computational_parameters["d_psi"]*math.pi/180.0
+
+			for o_idx, origin in enumerate(origins):
+				for other_origin in origins:
+					delta_x = origin[0] - other_origin[0]
+
+					# plus 1R to finish going past the other rotor, and then 6 more radii after that
+					wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + 6)
+
+				if wake_dists[o_idx] <= 0:
+					# if all others are upstream, just trail 6 radii behind
+					wake_dists[o_idx] = 6
+
+			wake_history_revs = np.round(wake_dists/(mus*2.0*math.pi)) # this is an array
+			
+			wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
+			total_wake_history = wake_history_length.sum()
+			
+			flat_cases.append(FlightCase(aircraft, flight_condition, wake_history_length.tolist(), total_wake_history))
+
+	# sort cases by total number of wake points. This will helps with load balancing
+	# across many cores
+	flat_cases = sorted(flat_cases, key=lambda tup: tup[3])
+	
+	total_procs = comm.Get_size()
+
+	cases_per_core = int(len(flat_cases)/total_procs)
+	left_over_cases = len(flat_cases)%total_procs
+
+	lock_file_name = f'./iris.lock'
+
+	lock_exists = os.path.exists(lock_file_name)
+
+	comm.barrier()
+
+	if rank == 0:
+		if not lock_exists:
+			lock_file = open(lock_file_name, 'w')
+	
+	comm.barrier()
+
+	case_slice = []
+	for case_idx in range(len(flat_cases)):
+		if case_idx*total_procs + rank < len(flat_cases):
+			case_slice.append(flat_cases[case_idx*total_procs + rank])
+	
+	print(f'Rank {rank}: len(case_slice): {len(case_slice)}')
+
+	prog_file_name = f"rank_{rank}.prog"
+	start_idx = 0
+
+	prog_file_exists = os.path.exists(prog_file_name)
+
+	print(f'Prog file: {prog_file_name}')
+	if prog_file_exists:
+		with open(prog_file_name, "r") as prog_file:
+			prog_lines = prog_file.readlines()
+			num_lines = len(prog_lines)
+
+			print(f"{rank}: number of lines in prog file: {num_lines}")
+			if num_lines > 0:
+				start_idx = int(prog_lines[0]) + 1
+
+	if (prog_file_exists and lock_exists) or (not prog_file_exists and not lock_exists):
+		with open(prog_file_name, "w+") as prog_file:
+			for idx, case in enumerate(case_slice[start_idx:]):
+				flight_condition = case.condition
+				aircraft = case.aircraft
+				V_inf = case.condition["V_inf"]
+				aoa = case.condition["aoa"]
+				aoa_dir = f'aoa_{aoa:.3}'
+				V_inf_dir = f'V_inf_{V_inf:.3}'
+
+				state_dir = ''
+				if "c_t" in flight_condition:
+					state_dir = f'ct{"_".join([str(c_t) for c_t in flight_condition["c_t"]])}'
+				else:
+					state_dir = f'theta{"_".join([str(theta) for theta in flight_condition["collective"]])}'
+
+				root_path = f'./{case.aircraft["name"]}/{aoa_dir}/{V_inf_dir}/{state_dir}'
+
+				if not path.isdir(root_path):
+					makedirs(root_path, exist_ok=True)
+
+				log_file_name = f"{root_path}/run_{rank}.log"
+				with open(log_file_name, "w+") as log_file:
+
+					log_file.write('\n')
+					log_file.write(f'Running sim with aoa: {aoa}\n')
+					log_file.write( '----------------------------------------------\n')
+
+					log_file.write("simulating aero\n")
+					wopwop_cases = compute_aero.compute_aero(log_file, args, V_inf if args.v is None else args.v, aoa*(math.pi/180.0), f'{root_path}/', args.aero, aircraft, flight_condition, computational_parameters, geom_directory)
+					cases = cases + wopwop_cases
+
+					for case in wopwop_cases:
+						write_namelist(case.namelist, f'{case.globalFolderName}/{case.caseNameFile}')
+
+					prog_file.seek(0)
+					prog_file.write(str(idx + start_idx))
+					prog_file.flush()
+
+		os.remove(prog_file_name)
+
+	else:
+		print(f"{rank}: Waiting on other procs to finish")
+
+	# wait for all other procs to finish.
+	comm.barrier()
+
+	if rank == 0:
+		os.remove(lock_file_name)
+
+	case_list.cases = cases
+
+	print(f'case_list.cases: {case_list.cases}')
+	write_caselist_custom_name(case_list, "./", f'case_{rank}.nam')
+	
+	wopwop_results = []
+	if args.acoustics:
+		print("calculating acoustics")
+		wopwop_results = compute_acoustics.compute_acoustics(case_list)
+
+	print("done")
+
+
+if __name__ == "__main__":
+	main()
+	print("exiting main.py")

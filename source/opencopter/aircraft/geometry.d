@@ -4,6 +4,7 @@ import opencopter.aircraft;
 import opencopter.config;
 import opencopter.math;
 import opencopter.memory;
+import opencopter.airfoilmodels;
 
 import numd.linearalgebra.matrix;
 
@@ -199,17 +200,22 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 	double azimuth_offset;
 	double average_chord;
 
-	this(size_t num_elements, double azimuth_offset, double average_chord) {
+	BladeAirfoil airfoil;
+
+	this(size_t num_elements, double azimuth_offset, double average_chord, BladeAirfoil airfoil) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "BladeGeometryChunk", "chunks", "num_chunks"));
+
+		this.airfoil = airfoil;
 
 		this.azimuth_offset = azimuth_offset;
 		this.average_chord = average_chord;
 	}
 
 	ref typeof(this) opAssign(typeof(this) blade) {
+		this.airfoil = blade.airfoil;
 		this.chunks = blade.chunks;
 		this.azimuth_offset = blade.azimuth_offset;
 		this.average_chord = blade.average_chord;
@@ -217,6 +223,7 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 	}
 
 	ref typeof(this) opAssign(ref typeof(this) blade) {
+		this.airfoil = blade.airfoil;
 		this.chunks = blade.chunks;
 		this.azimuth_offset = blade.azimuth_offset;
 		this.average_chord = blade.average_chord;
@@ -224,6 +231,7 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 	}
 
 	ref typeof(this) opAssign(typeof(this)* blade) {
+		this.airfoil = blade.airfoil;
 		this.chunks = blade.chunks;
 		this.azimuth_offset = blade.azimuth_offset;
 		this.average_chord = blade.average_chord;

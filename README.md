@@ -1,5 +1,19 @@
 # OpenCOPTER
-OpenCOPTER (COupled Potential Theory Extensions for Rotors) is a library for fast and efficient simulation of multirotor aerodynamics.
+OpenCOPTER (COupled Potential Theory Extensions for Rotors) is a library for fast and efficient simulation of multirotor aerodynamics. Documentation for OpenCOPTER can be found [here](https://psuaeroacoustics.github.io/)
+
+# Table of Contents
+1. [Dependencies](#dependencies)
+	1. [Required Dependencies](#required-dependencies)
+	2. [Optional Dependencies](#optional-dependencies)
+	3. [Example/Validation Project Dependencies](#examplevalidation-project-dependencies)
+2. [Building](#building)
+	1. [Build Types (`-b`)](#build-types--b)
+	2. [Configurations (`-c`)](#configurations--c)
+3. [Running the Examples](#running-the-examples)
+4. [OC Fly](#oc-fly)
+	1. [Dependencies](#oc-fly-dependencies)
+	2. [Geometry File](#geometry-file)
+	3. [Parameters File](#parameters-file)
 
 ## Dependencies
 
@@ -132,3 +146,114 @@ The HART-II validation can also be referenced as an example project. It has a nu
 ```
 	./hart_val -h
 ```
+
+## OC Fly
+OC Fly is a python front-end for OpenCOPTER. It takes input files in the form of JSON describing a vehicle configuration and flight conditions. OC Fly can be run in parallel using MPI, running one input case per provided core.
+
+### OC Fly Dependencies
+
+OC Fly has the following dependencies:
+- Numpy
+- Scipy
+- mpi4py
+
+These can be installed through your package manager, pip, or an anaconda distribution.
+
+### Geometry File
+
+The geometry JSON file has the following layout:
+```JSON
+[
+	{
+		"name": "vehicle name",
+		"rotors": [
+			{
+				"radius": 1.5,
+				"origin": [0, 0, 0],
+				"number_of_blades": 3,
+				"blade": {
+					"AR": 7.5,
+					"theta_tw": -8.0
+				}
+			},
+			{
+				"radius": 1.5,
+				"origin": [-3, 0, 0.25],
+				"number_of_blades": 3,
+				"blade": {
+					"AR": 7.5,
+					"theta_tw": -8.0
+				}
+			}
+		]
+	}
+]
+```
+
+At the top level is an array of ```Aircraft``` objects so multiple vehicles can be defined in a single file. The fields expected in an ```Aircraft``` objects is as follows:
+| Field | Description |
+|-------|-------------|
+| ```name```   | Name of the vehicle. A directory will be created with this name that stores all output files  |
+| ```rotors``` | An array of ```Rotor``` objects defining the geometry of each rotor on the aircraft |
+
+Each ```Rotor``` object has the following fields:
+| Field | Description |
+|-------|-------------|
+| ```radius``` | Radius of the rotor. Units don't matter as long as all input units are consistent|
+| ```origin``` | Origin of the rotor center specified in non-dimensionally |
+| ```number_of_blades``` | Optional. Number of blades on the rotor |
+| ```blade``` | Optional. ```Blade``` object to be used for all ```number_of_blades``` blades  |
+| ```blades``` | Optional. Array of ```Blade``` objects. If this is specified, ```number_of_blades``` and the ```blade``` field are ignored |
+
+Each ```Blade``` object has the following fields:
+| Field | Description |
+|-------|-------------|
+| ```AR``` | aspect ratio of the blade |
+| ```theta_tw``` | Linear twist slope of the blade |
+
+### Parameters File
+The parameters file contains two top-level fields: the first field defines the computational parameters, and the second field defines the flight condition for all vehicles to be simulated at. The parameter file has the following layout:
+```JSON
+{
+  "computational_parameters": {
+    "d_psi": 1.0,
+    "spanwise_elements": 48,
+    "shed_history_angle": 45.0,
+    "convergence_criteria": 1.0e-4
+  },
+  "flight_conditions": [
+    {
+      "aoa": 0.0,
+      "aoa_rotors": [0, 0],
+      "density": 1.125,
+      "omegas": [ 109.12, -109.12 ],
+      "sos": 343,
+      "c_t": [0.005, 0.005],
+	  "collective": [5.06, 5.06],
+      "V_inf": 30.0
+    }
+  ]
+}
+```
+
+The ```computational_parameters``` object has the following fields:
+| Field | Description |
+|-------|-------------|
+| ```d_psi``` | The delta azimuth angle to step the simulation by. The fastest rotor is used to compute the timestep from this angle |
+| ```spanwise_elements``` | The number of spanwise elements of the blade. This will be rounded up to the nearest multiple of 8 |
+| ```shed_history_angle``` | The amount of shed wake history to maintain. Defined in degrees azimuth |
+| ```convergence_criteria``` | The convergence criteria of the wake. All wake filaments must must converge to less than this value over a revolution |
+
+The ```flight_conditions``` field is an array of ```flight_condition``` objects that have the following fields:
+| Field | Description |
+|-------|-------------|
+| ```aoa``` | Optional, un-used if ```aoa_rotors``` is defined. The freestream velocity angle relative to the tip-path-plane of all rotors |
+| ```aoa_rotors``` | Optional. The freestream velocity angle relative to the tip-path-plane of each specific rotors. Allows rotors to have different orientations from each other |
+| ```density``` | The reference density |
+| ```omegas``` | Array of rotor angular velocities, specified in rad/s. Positive is counter-clockwise rotation, Negative is clockwise rotation |
+| ```sos``` | The reference speed of sound |
+| ```c_t``` | Optional. An array of thrust coefficients to trim each rotor to |
+| ```collective``` | Optional, ignored if ```c_t``` is set. An array of collective pitches to set each rotor to |
+| ```V_inf``` | The reference free-stream velocity |
+
+If multiple ```flight_condition```s are specified, oc_fly will simulate each one.

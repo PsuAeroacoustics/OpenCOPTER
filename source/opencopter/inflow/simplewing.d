@@ -30,10 +30,13 @@ class SimpleWingT(ArrayContainer AC = ArrayContainer.none) {
 	private double C_L;
 
 	this(double _C_L, double V_inf, double V_tip, double y_0, double c, Vec3 _origin) {
+
+		
 		C_L = _C_L;
 		wing_origin = _origin;
 		wing_filament = VortexFilamentT!AC(chunk_size);
 
+		debug writeln("wing_filament.chunks.length: ", wing_filament.chunks.length);
 		foreach(c_idx; 0..chunk_size) {
 			wing_filament.chunks[0].x[c_idx] = 0;//origin[0];
 			wing_filament.chunks[0].y[c_idx] = 2*y_0*c_idx.to!double/((chunk_size - 1).to!double) - y_0;// + origin[1];
@@ -41,6 +44,13 @@ class SimpleWingT(ArrayContainer AC = ArrayContainer.none) {
 			wing_filament.chunks[0].r_c[c_idx] = 0.5*c;
 			wing_filament.chunks[0].gamma[c_idx] = V_inf*C_L/(2.0*V_tip);
 		}
+
+		debug writeln("C_L: ", C_L);
+		debug writeln("wing_origin: ", wing_origin);
+		debug writeln("V_inf: ", V_inf);
+		debug writeln("V_tip: ", V_tip);
+		debug writeln("c: ", c);
+		debug writeln("y_0: ", y_0);
 	}
 
 	double get_average_inflow() {
@@ -69,6 +79,7 @@ class SimpleWingT(ArrayContainer AC = ArrayContainer.none) {
 		auto ind_vel = compute_filament_induced_velocities(wing_filament.chunks, x, y, z, 0);
 
 		immutable Chunk neg_z = -2.0*PI*ind_vel.v_z[];
+		debug writeln("neg_z: ", neg_z);
 		return neg_z;
 	}
 

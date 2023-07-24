@@ -159,6 +159,46 @@ struct WakeT(ArrayContainer AC) {
 			}
 		}
 	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t radial_elements, size_t shed_history) {
+
+		immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
+		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
+
+		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
+		foreach(r_idx, ref rotor_wake; rotor_wakes) {
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx]);
+			foreach(ref filament; rotor_wake.tip_vortices) {
+				filament = VortexFilamentT!AC(actual_wake_history);
+			}
+
+			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
+				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history);
+			}
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t radial_elements, size_t shed_history) {
+
+		//immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
+
+		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
+
+		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
+
+		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
+		foreach(r_idx, ref rotor_wake; rotor_wakes) {
+
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx]);
+			foreach(ref filament; rotor_wake.tip_vortices) {
+				filament = VortexFilamentT!AC(actual_wake_history[r_idx]);
+			}
+
+			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
+				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history);
+			}
+		}
+	}
 }
 
 template is_wake_history(A) {
@@ -192,6 +232,24 @@ struct WakeHistoryT(ArrayContainer AC) {
 	}
 
 	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
+
+		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
+
+		foreach(ref wake; history) {
+			wake = WakeT!AC(num_rotors, num_blades, wake_history, radial_elements, shed_history);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
+
+		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
+
+		foreach(ref wake; history) {
+			wake = WakeT!AC(num_rotors, num_blades, wake_history, radial_elements, shed_history);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
 
 		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
 
@@ -684,15 +742,18 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					Chunk lambda_i_x = 0;
 					foreach(i_rotor_idx, ref inflow; inflows) {
 						Vec3 origin;
+
+						auto i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
+						auto i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
+
 						if(i_rotor_idx >= ac_state.rotor_states.length) {
 							i_rotor_idx = 0;
 							origin = inflow.origin;
+							i_sin_aoa = 0;
+							i_cos_aoa = 1;
 						} else {
 							origin = ac.rotors[i_rotor_idx].origin;
 						}
-						
-						immutable i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
-						immutable i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
 
 						immutable Chunk x_rel = chunk.x[];// - ac.rotors[rotor_idx].origin[0];
 						immutable Chunk y_rel = -(chunk.y[] - origin[1]);
@@ -754,17 +815,20 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 				foreach(i_rotor_idx, ref inflow; inflows) {
 
+					auto i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
+					auto i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
+
 					Vec3 origin;
 					if(i_rotor_idx >= ac_state.rotor_states.length) {
 						i_rotor_idx = 0;
 						origin = inflow.origin;
+						i_sin_aoa = 0;
+						i_cos_aoa = 1;
 					} else {
 						origin = ac.rotors[i_rotor_idx].origin;
 					}
 
 					immutable i_aoa = ac_input_state.rotor_inputs[i_rotor_idx].angle_of_attack;
-					immutable i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
-					immutable i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
 
 					immutable Chunk x_rel = chunk.x[];// - ac.rotors[i_rotor_idx].origin[0];
 					immutable Chunk y_rel = -(chunk.y[] - origin[1]);
