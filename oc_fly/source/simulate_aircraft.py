@@ -32,7 +32,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 
 	omegas = np.asarray(omegas)
 	log_file.write(f'num_rotors: {num_rotors}\n')
-	num_blades = aircraft.rotors[0].blades.length()
+	num_blades = [aircraft.rotors[r_idx].blades.length() for r_idx in range(aircraft.rotors.length())]
 
 	dt = d_psi*(math.pi/180.0)/max(abs(omegas))
 	iter_per_rev = 360/d_psi
@@ -66,7 +66,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 	loading_files = []
 
 	if do_compute:
-		loading_files = [[wopwop_input_files_generator.build_wopwop_loading(r_idx, blade_idx, int(round(2*iter_per_rev)), r, naca0012_xsection, wopwop_data_path) for blade_idx in range(num_blades)] for r_idx in range(num_rotors)]
+		loading_files = [[wopwop_input_files_generator.build_wopwop_loading(r_idx, blade_idx, int(round(2*iter_per_rev)), r, naca0012_xsection, wopwop_data_path) for blade_idx in range(num_blades[r_idx])] for r_idx in range(num_rotors)]
 
 	log_file.write("Performing acoustic resolution simulation\n")
 	start_time = time.perf_counter()
@@ -178,7 +178,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 				for r_idx, rotor_state in enumerate(ac_state.rotor_states):
 					thetas[r_idx,:] = thetas[r_idx,:] + trim_ode(thetas[r_idx,:], taus[r_idx], c_t_bars[r_idx], Ks[r_idx], curr_c_ts[r_idx])
 					
-					for b_idx in range(num_blades):
+					for b_idx in range(num_blades[r_idx]):
 						input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = thetas[r_idx, 0]
 
 			loading_data.time = dt*acoustic_iteration
@@ -209,7 +209,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 
 			iteration = iteration + 1
 		for rotor_idx in range(num_rotors):
-			for blade_idx in range(num_blades):
+			for blade_idx in range(num_blades[rotor_idx]):
 				close_loading_file(loading_files[rotor_idx][blade_idx])
 
 	acoustic_source_start_iter = 0 #acoustic_iteration - 2*iter_per_rev
@@ -233,7 +233,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 			[aircraft.rotors[r_idx].origin for r_idx in range(num_rotors)],
 			atmo,
 			1,
-			num_blades,
+			num_blades[r_idx],
 			omegas,
 			dt,
 			V_inf,
@@ -259,7 +259,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 		[aircraft.rotors[r_idx].origin for r_idx in range(num_rotors)],
 		atmo,
 		num_rotors,
-		num_blades,
+		num_blades[r_idx],
 		omegas,
 		dt,
 		V_inf,

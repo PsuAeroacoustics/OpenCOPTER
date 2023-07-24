@@ -16,4 +16,7 @@ pressure_plot
 *.vtu
 *.vtk
 *.txt
-__pycache__
+*.xfi
+validation/af_data/afdata_val
+*.bl
+*.out

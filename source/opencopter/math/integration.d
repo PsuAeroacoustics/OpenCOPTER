@@ -99,7 +99,16 @@ double integrate_trapaziodal(ref double[] f, ref double[] r) {
 }
 
 unittest {
+	import numd.utility;
 
+	import std.algorithm;
+	import std.array;
+	import std.conv;
+	import std.math;
+	import std.stdio;
+	import std.range;
+	
+	writeln("hello int");
 	void set_array(ref Chunk[] chunk_data, double[] data) {
 
 		foreach(c_idx, ref chunk; chunk_data) {
@@ -114,14 +123,6 @@ unittest {
 		}
 	}
 
-	import numd.utility;
-
-	import std.algorithm;
-	import std.array;
-	import std.conv;
-	import std.math;
-	import std.stdio;
-	import std.range;
 	double[] generate_radius_points(double end, size_t n_sections) {
 	    return iota(1.0, n_sections + 1.0).map!((n) {
 	    	immutable psi = n*PI/(n_sections.to!double + 1.0);

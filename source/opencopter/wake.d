@@ -159,6 +159,46 @@ struct WakeT(ArrayContainer AC) {
 			}
 		}
 	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t radial_elements, size_t shed_history) {
+
+		immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
+		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
+
+		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
+		foreach(r_idx, ref rotor_wake; rotor_wakes) {
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx]);
+			foreach(ref filament; rotor_wake.tip_vortices) {
+				filament = VortexFilamentT!AC(actual_wake_history);
+			}
+
+			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
+				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history);
+			}
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t radial_elements, size_t shed_history) {
+
+		//immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
+
+		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
+
+		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
+
+		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
+		foreach(r_idx, ref rotor_wake; rotor_wakes) {
+
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx]);
+			foreach(ref filament; rotor_wake.tip_vortices) {
+				filament = VortexFilamentT!AC(actual_wake_history[r_idx]);
+			}
+
+			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
+				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history);
+			}
+		}
+	}
 }
 
 template is_wake_history(A) {
@@ -192,6 +232,24 @@ struct WakeHistoryT(ArrayContainer AC) {
 	}
 
 	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
+
+		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
+
+		foreach(ref wake; history) {
+			wake = WakeT!AC(num_rotors, num_blades, wake_history, radial_elements, shed_history);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
+
+		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
+
+		foreach(ref wake; history) {
+			wake = WakeT!AC(num_rotors, num_blades, wake_history, radial_elements, shed_history);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t shed_history = 20) {
 
 		mixin(array_ctor_mixin!(AC, "WakeT!(AC)", "history", "time_history"));
 

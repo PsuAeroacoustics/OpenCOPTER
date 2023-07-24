@@ -1,7 +1,7 @@
 {
 	"name": "afdata_val",
 	"dependencies": {
-		"murosim": {"path": "../../"},
+		"opencopter": {"path": "../../"},
 		"matplotlib-d": {"path": "../../../matplotlib-d"},
 	},
 	"configurations": [
@@ -12,6 +12,9 @@
 			"sourceFiles": ["main.d"]
 		}
 	],
+	"subConfigurations": {
+		"opencopter": "library"
+	},
 	"buildTypes": {
 		"debug": {
 			"buildOptions": ["debugMode", "debugInfo"]

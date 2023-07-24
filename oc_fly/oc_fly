@@ -20,30 +20,6 @@ import argparse
 from os import path, makedirs
 from mpi4py import MPI
 
-def read_hart_tecplot(filename):
-	with open(filename, 'r') as tecfile:
-		_ = tecfile.readline()
-		_ = tecfile.readline()
-		_ = tecfile.readline()
-
-		i_max = 17
-		j_max = 13
-
-		x_grid = np.zeros((i_max, j_max))
-		y_grid = np.zeros((i_max, j_max))
-		mid_freq = np.zeros((i_max, j_max))
-
-		#i = 0
-		#j = 0
-		for j in range(j_max):
-			for i in range(i_max):
-				str_vals = tecfile.readline().split()
-				x_grid[i, j] = float(str_vals[0])/R
-				y_grid[i, j] = -float(str_vals[1])/R
-				mid_freq[i, j] = float(str_vals[3])
-		
-	return x_grid, y_grid, mid_freq
-
 def calculate_sound_power_level(oaspl_db,area):
 
 	spatial_avg_pressure = 0
@@ -179,13 +155,13 @@ def main():
 	case_list = CaseList()
 	cases = []
 
+	geom_directory = path.dirname(path.realpath(args.input_geom))
+
 	with open(args.input_geom) as geom_file:
 		geom = json.load(geom_file)
 	with open(args.input_param) as param_file:
 		param = json.load(param_file)
 
-	#aoas = param["flight conditions"][0]["aoa"]
-	#R = geom["radius"]
 
 	FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake")
 
@@ -296,7 +272,7 @@ def main():
 					log_file.write( '----------------------------------------------\n')
 
 					log_file.write("simulating aero\n")
-					wopwop_cases = compute_aero.compute_aero(log_file, args, V_inf if args.v is None else args.v, aoa*(math.pi/180.0), f'{root_path}/', args.aero, aircraft, flight_condition, computational_parameters)
+					wopwop_cases = compute_aero.compute_aero(log_file, args, V_inf if args.v is None else args.v, aoa*(math.pi/180.0), f'{root_path}/', args.aero, aircraft, flight_condition, computational_parameters, geom_directory)
 					cases = cases + wopwop_cases
 
 					for case in wopwop_cases:

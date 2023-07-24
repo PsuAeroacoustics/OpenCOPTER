@@ -8,16 +8,44 @@
 				"number_of_blades": 5,
 				"blade": {
 					"AR": 7.5,
-					"theta_tw": -8.0
+					"theta_tw": -8.0,
+					"airfoils": [
+						{
+							"type": "aerodas",
+							"extent": [0.0, 0.2],
+							"xfoil_polar": "polars/NACA0014_1000000_polar.dat",
+							"thickness": 0.14
+						},
+						{
+							"type": "aerodas",
+							"extent": [0.2, 1.0],
+							"xfoil_polar": "polars/NACA0012_1000000_polar.dat",
+							"thickness": 0.12
+						}
+					]
 				}
 			},
 			{
 				"radius": 1.5,
 				"origin": [-3, 0, 0.25],
-				"number_of_blades": 5,
+				"number_of_blades": 2,
 				"blade": {
 					"AR": 7.5,
-					"theta_tw": -8.0
+					"theta_tw": -8.0,
+					"airfoils": [
+						{
+							"type": "aerodas",
+							"extent": [0.0, 0.2],
+							"xfoil_polar": "polars/NACA0014_1000000_polar.dat",
+							"thickness": 0.14
+						},
+						{
+							"type": "aerodas",
+							"extent": [0.2, 1.0],
+							"xfoil_polar": "polars/NACA0012_1000000_polar.dat",
+							"thickness": 0.12
+						}
+					]
 				}
 			}
 		]

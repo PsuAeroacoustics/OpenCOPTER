@@ -50,7 +50,7 @@ template is_aircraft_state(A) {
 
 alias AircraftState = AircraftStateT!(ArrayContainer.none); 
 
- extern (C++) struct AircraftStateT(ArrayContainer _AC) {
+ struct AircraftStateT(ArrayContainer _AC) {
 	alias AC = _AC;
 	mixin ArrayDeclMixin!(AC, RotorStateT!(AC), "rotor_states");
 
@@ -71,6 +71,26 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
 		foreach(i, ref rotor_state; rotor_states) {
 			rotor_state = RotorStateT!AC(num_blades, num_chunks, ac.rotors[i]);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, ref AircraftT!AC ac) {
+		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
+		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+		immutable num_chunks = actual_num_elements/chunk_size;
+		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		foreach(i, ref rotor_state; rotor_states) {
+			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i]);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, AircraftT!AC* ac) {
+		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
+		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+		immutable num_chunks = actual_num_elements/chunk_size;
+		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		foreach(i, ref rotor_state; rotor_states) {
+			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i]);
 		}
 	}
 

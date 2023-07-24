@@ -201,8 +201,13 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		blade_cob.AxisType = AxisType_time_independant()
 		blade_cob.AngleType = AngleType_time_independant()
 		blade_cob.AxisValue = FVec3([0, 0, 1])
-		blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades)
-		blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades)
+
+		if isinstance(num_blades, list):
+			blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades[rotor_idx])
+			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades[rotor_idx])
+		else:
+			blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades)
+			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades)
 
 		blade_cntr.cobs = [blade_cob]
 
@@ -237,13 +242,20 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 
 		rotor_cntr.cobs = [rotor_offset_cb, rotor_rotation_cb]
 
-		rotor_cntr.children = [build_blade_cntr(rotor_idx, blade_idx) for blade_idx in range(num_blades)]
+		if isinstance(num_blades, list):
+			rotor_cntr.children = [build_blade_cntr(rotor_idx, blade_idx) for blade_idx in range(num_blades[rotor_idx])]
+		else:
+			rotor_cntr.children = [build_blade_cntr(rotor_idx, blade_idx) for blade_idx in range(num_blades)]
 
 		return rotor_cntr
 
 	wopwop_aircraft.children = [build_rotor_cntr(rotor_idx) for rotor_idx in range(num_rotors)]
 
-	blade_passing_freq = num_blades*abs(omegas[0])*RAD_TO_HZ
+	if isinstance(num_blades, list):
+		blade_passing_freq = min(num_blades)*abs(omegas[0])*RAD_TO_HZ
+	else:
+		blade_passing_freq = num_blades*abs(omegas[0])*RAD_TO_HZ
+
 	lower_mid_freq = 6*blade_passing_freq
 	upper_mid_freq = 25*blade_passing_freq
 

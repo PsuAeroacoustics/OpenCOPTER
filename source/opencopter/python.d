@@ -1,6 +1,7 @@
 module opencopter.python;
 
 import opencopter.aircraft;
+import opencopter.airfoilmodels;
 import opencopter.atmosphere;
 import opencopter.math;
 import opencopter.memory;
@@ -647,7 +648,47 @@ extern(C) void PydMain() {
 		:param dt: the current timestep size
 	}));
 
+	def!(create_aerodas_from_xfoil_polar);
+
+	def!(load_c81_file);
+
 	module_init;
+
+	wrap_class!(
+		AirfoilModel
+	);
+
+	wrap_class!(
+		BladeAirfoil,
+		Init!(AirfoilModel[], size_t[2][])
+	);
+
+	wrap_class!(
+		AeroDAS,
+		Init!(double[], double[], double[], double, double),
+		Def!(AeroDAS.get_Cl, double function(double, double)),
+		Def!(AeroDAS.get_Cd, double function(double, double)),
+		Member!("CL"),
+		Member!("CD"),
+		Member!("alpha")
+	);
+
+	wrap_class!(
+		C81,
+		Init!(string, double[], double[], double[][],
+			  double[], double[], double[][],
+			  double[], double[], double[][]
+		),
+		Def!(C81.get_Cl, double function(double, double)),
+		Def!(C81.get_Cd, double function(double, double))
+	);
+
+	wrap_class!(
+		ThinAirfoil,
+		Init!(double),
+		Def!(ThinAirfoil.get_Cl, double function(double, double)),
+		Def!(ThinAirfoil.get_Cd, double function(double, double))
+	);
 
 	wrap_class!(
 		opencopter.vtk.VtkRotor,
@@ -727,14 +768,14 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWake,
 		PyName!"Wake",
-		Init!(size_t, size_t, size_t[], size_t, size_t),
+		Init!(size_t, size_t[], size_t[], size_t, size_t),
 		Member!("rotor_wakes", Docstring!q{An array of :class:`RotorWake`})
 	);
 
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t, size_t[], size_t, size_t, size_t),
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t),
 		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep}),
 		Docstring!("Top level structure for holding the wake and its history")
 	);
@@ -775,7 +816,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyAircraftInputState,
 		PyName!"AircraftInputState",
-		Init!(size_t, size_t),
+		Init!(size_t, size_t[]),
 		Docstring!q{
 			This class represents the input parameters for the entire aircraft.
 			
@@ -799,7 +840,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyBladeGeometry,
 		PyName!"BladeGeometry",
-		Init!(size_t, double, double),
+		Init!(size_t, double, double, BladeAirfoil),
 		Docstring!q{
 			This class allocates and holds the blade geomteric parameters.
 
@@ -810,6 +851,7 @@ extern(C) void PydMain() {
 			:param average_chord: The average chord of the blade.
 		},
 		Member!"chunks",
+		Member!"airfoil",
 		Member!("azimuth_offset", Docstring!q{
 			The azimuthal offset for this blade. This is added to the :class:`RotorInputState` azimuth.
 		}),
@@ -895,6 +937,8 @@ extern(C) void PydMain() {
 		},
 		Member!("blade_states", Docstring!q{An array of :class:`BladeState`, one for each blade of this rotor}),
 		Member!("C_T", Docstring!q{The current thrust coefficient of this rotor}),
+		Member!("C_Mx", Docstring!q{The current x moment coefficient of this rotor}),
+		Member!("C_My", Docstring!q{The current y moment coefficient of this rotor}),
 		Member!("advance_ratio", Docstring!q{The current advance ratio of this rotor}),
 		Member!("axial_advance_ratio", Docstring!q{The current axial advance ratio of this rotor})
 	);
@@ -902,7 +946,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyAircraftState,
 		PyName!"AircraftState",
-		Init!(size_t, size_t, size_t, PyAircraft*),
+		Init!(size_t, size_t[], size_t, PyAircraft*),
 		Docstring!q{
 			This is the top level class that holds the current aerodynamic state of an aircraft.
 
@@ -916,15 +960,6 @@ extern(C) void PydMain() {
 		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft})
 	);
 
-	/+
-	wrap_struct!(
-		PyAircraftTimehistory,
-		PyName!"AircraftTimehistory",
-		Init!(PyAircraft*, size_t),
-		Member!"aircraft_history"
-	);
-	+/
-	
 	wrap_class!(
 		Inflow,
 		Def!(Inflow.update),
