@@ -63,8 +63,8 @@ unittest {
     auto af_models = [af1, af2, af3, af4];
 
     size_t[2][] extents = [
-        [0, 9],
-        [10, 22],
+        [0, 6],
+        [7, 22],
         [23, 26],
         [27,31]
     ];
@@ -89,73 +89,22 @@ class BladeAirfoil {
         import std.stdio : writeln;
         enforce(af_models.length == extents.length, "The supplied number of airfoil models should be the same number of supplied extents.");
 
-        size_t last_chunk_idx  = 0;
-        size_t last_sub_idx = 0;
+        immutable size_t num_chunks = (extents[$-1][1] - extents[0][0] + 1)/chunk_size;
+
+        airfoil_models = new AirfoilModels[num_chunks];
+
+        debug writeln("num_chunks: ", num_chunks);
+
         foreach(e_idx, extent; extents) {
-            immutable extent_size = extent[1] - extent[0] + 1;
-
             debug writeln("extent: ", extent);
-            debug writeln("extent_size: ", extent_size);
-            
-            if((extent_size >= chunk_size) && (last_sub_idx == 0)) {
-                immutable number_of_chunks = extent_size/chunk_size;
-                debug writeln("number_of_chunks: ", number_of_chunks);
-                foreach(chunk_idx; 0..number_of_chunks) {
-                    airfoil_models ~= [af_models[e_idx]];
-                    last_chunk_idx++;
-                }
+            foreach(c_idx; (e_idx != 0 ? extent[0] - 1 : extent[0])..(e_idx != extents.length - 1 ? extent[1] : extent[1] + 1)) {
+                debug writeln("c_idx: ", c_idx);
+                immutable chunk_idx = c_idx/chunk_size;
 
-                //debug writeln(airfoil_models);
-                immutable remainder = extent_size%chunk_size;
+                debug writeln("chunk_idx: ", chunk_idx);
 
-                debug writeln("remainder: ", remainder);
-                if(remainder > 0) {
-                    airfoil_models.length++;
-                    //debug writeln(airfoil_models);
-                    foreach(sub_idx; 0..remainder) {
-                        airfoil_models[last_chunk_idx] ~= af_models[e_idx];
-                        last_sub_idx++;
-                    }
-                }
-            } else if((extent_size >= chunk_size) && (last_sub_idx != 0)) {
-                immutable remaining_in_chunk = chunk_size - last_sub_idx;
-                debug writeln("remaining in chunk: ", remaining_in_chunk);
-                foreach(sub_idx; 0..remaining_in_chunk) {
-                    airfoil_models[last_chunk_idx] ~= af_models[e_idx];
-                }
-                last_sub_idx = 0;
-                last_chunk_idx++;
+                airfoil_models[chunk_idx] ~= af_models[e_idx];
 
-                immutable number_of_chunks = (extent_size - remaining_in_chunk)/chunk_size;
-
-                debug writeln("number_of_chunks: ", number_of_chunks);
-                foreach(chunk_idx; 0..number_of_chunks) {
-                    airfoil_models ~= [af_models[e_idx]];
-                    last_chunk_idx++;
-                }
-
-                immutable remainder = (extent_size - remaining_in_chunk)%chunk_size;
-                debug writeln("remaining remainder: ", remainder);
-                if(remainder > 0) {
-                    airfoil_models.length++;
-                    foreach(sub_idx; 0..remainder) {
-                        airfoil_models[last_chunk_idx] ~= af_models[e_idx];
-                        last_sub_idx++;
-                    }
-                }
-            } else {
-                foreach(sub_idx; 0..extent_size) {
-                    if(last_sub_idx >= chunk_size) {
-                        airfoil_models.length++;
-                        last_chunk_idx++;
-                        last_sub_idx = 0;
-                        airfoil_models[last_chunk_idx] ~= af_models[e_idx];
-                    } else {
-                        airfoil_models[last_chunk_idx] ~= af_models[e_idx];
-                    }
-                    
-                    last_sub_idx++;
-                }
             }
         }
     }

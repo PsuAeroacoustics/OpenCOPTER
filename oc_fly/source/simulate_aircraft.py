@@ -259,7 +259,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 		[aircraft.rotors[r_idx].origin for r_idx in range(num_rotors)],
 		atmo,
 		num_rotors,
-		num_blades[r_idx],
+		num_blades,
 		omegas,
 		dt,
 		V_inf,

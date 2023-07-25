@@ -131,12 +131,10 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
                 airfoil = ThinAirfoil(0)
 
             extent[0] = int(round(af_extent[0]*elements))
-            extent[1] = int(round(af_extent[1]*elements))
+            extent[1] = int(round(af_extent[1]*elements)) - 1
 
             extents.append(extent)
             airfoils.append(airfoil)
-
-        extents[-1][1] = extents[-1][1] - 1
 
         blade_airfoil = BladeAirfoil(airfoils, extents)
 
