@@ -426,6 +426,16 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 		immutable Chunk dy_p1 = (y_bp1[] - y_ap1[]);
 		immutable Chunk dz_p1 = (z_bp1[] - z_ap1[]);
 
+		Chunk dl1 = (dx[]*dx[] + dy[]*dy[] + dz[]*dz[]);
+		Chunk dl2 = (dx_m1[]*dx_m1[] + dy_m1[]*dy_m1[] + dz_m1[]*dz_m1[]);
+		Chunk dl3 = (dx_p1[]*dx_p1[] + dy_p1[]*dy_p1[] + dz_p1[]*dz_p1[]);
+
+		dl1 = sqrt(dl1);
+		dl2 = sqrt(dl2);
+		dl3 = sqrt(dl3);
+
+		immutable Chunk dl = (1.0/3.0)*(dl1[] + dl2[] + dl3[]);
+
 		// Perform Biot-savart calc for each passed in point.
 		foreach(n_idx; 0..Chunk.length) {
 			immutable Chunk x_p = x[n_idx];
@@ -466,10 +476,9 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 
 			immutable Chunk miss_dist = (1.0/3.0)*(miss_dist1[] + miss_dist2[] + miss_dist3[]);
 
-			immutable Chunk unorm = 1.0/(miss_dist[] + r_c[]*r_c[]);
-
 			import std.stdio : writeln;
 
+			immutable Chunk unorm = 1.0/(miss_dist[] + r_c[]*r_c[]);
 			immutable Chunk norm = sqrt(unorm)[]*unorm[];
 
 			immutable Chunk circulation = norm[]*gamma[]*one_over_four_pi[];
@@ -479,9 +488,9 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 			// I uh, i don't even know
 			immutable Chunk random_mult_by_one = 1.0;
 			
-			immutable Chunk tmp_v_x = random_mult_by_one[]*circulation[]*x_cross[];
-			immutable Chunk tmp_v_y = random_mult_by_one[]*circulation[]*y_cross[];
-			immutable Chunk tmp_v_z = random_mult_by_one[]*circulation[]*z_cross[];
+			immutable Chunk tmp_v_x = random_mult_by_one[]*circulation[]*x_cross[]*dl[];
+			immutable Chunk tmp_v_y = random_mult_by_one[]*circulation[]*y_cross[]*dl[];
+			immutable Chunk tmp_v_z = random_mult_by_one[]*circulation[]*z_cross[]*dl[];
 
 			v_x[n_idx][] += tmp_v_x[];
 			v_y[n_idx][] += tmp_v_y[];

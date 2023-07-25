@@ -37,33 +37,24 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 
 		immutable Chunk effective_azimuth = blade_state.azimuth - std.math.sgn(rotor_input.angular_velocity)*blade.chunks[chunk_idx].sweep[];
 		immutable Chunk cos_sweep = cos(blade.chunks[chunk_idx].sweep);
-		immutable Chunk sin_sweep = 1;//sin(blade.chunks[chunk_idx].sweep);
 		immutable Chunk cos_azimuth = cos(effective_azimuth);
 		immutable Chunk sin_azimuth = sin(effective_azimuth);
 
 		auto wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, std.math.abs(rotor_input.angular_velocity), rotor_idx, blade_idx);
 
-		//immutable Chunk wake_z = (wake_velocities.v_x[]/rotor.radius)*sin_alpha + wake_velocities.v_z[]/rotor.radius*cos_alpha;
-		//immutable Chunk wake_y = wake_velocities.v_y[]/rotor.radius;
-		//immutable Chunk wake_x = wake_velocities.v_x[]/rotor.radius*cos_alpha - wake_velocities.v_z[]/rotor.radius*sin_alpha;
-		
 		immutable Chunk wake_z = (wake_velocities.v_x[])*sin_alpha + wake_velocities.v_z[]*cos_alpha;
 		immutable Chunk wake_y = wake_velocities.v_y[];
 		immutable Chunk wake_x = wake_velocities.v_x[]*cos_alpha - wake_velocities.v_z[]*sin_alpha;
 
 		Chunk u_p = -wake_z[] + rotor_state.axial_advance_ratio;
-		// if(time/dt < 1024) {
-		// 	u_p[] = 0;
-		// }
 		blade_state.chunks[chunk_idx].u_p[] = u_p[];
 
 		immutable Chunk mu_sin_azimuth = -rotor_state.advance_ratio*sin_azimuth[];
 		//immutable Chunk wake_u_t = sin_azimuth[]*wake_x[] + cos_azimuth[]*wake_y[];
 		immutable Chunk wake_u_t = cos_azimuth[]*wake_x[] + sin_azimuth[]*wake_y[];
-		immutable Chunk sweep_corrected_r = blade.chunks[chunk_idx].r[]*sin_sweep[];
+		immutable Chunk sweep_corrected_r = blade.chunks[chunk_idx].r[]*cos_sweep[];
 		immutable Chunk u_t = sweep_corrected_r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[];// + std.math.sgn(rotor_input.angular_velocity)*wake_u_t[]*sin_sweep[];
 
-		//Chunk corrected_u_t = u_t[];
 		Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
 		immutable Chunk inflow_angle = atan2(u_p, corrected_u_t);
 
@@ -73,37 +64,16 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] + plunging_correction[];
 
-		//immutable Chunk rescaled_u_t = u_t[]*std.math.abs(rotor_input.angular_velocity)*rotor.radius*blade.blade_length;
-		//immutable Chunk rescaled_u_t = 1.0/blade.blade_length;
-		//immutable Chunk u_squared = (u_t[] + u_p[])*(u_t[] + u_p[])*std.math.abs(rotor_input.angular_velocity)*rotor.radius;
-		//immutable Chunk rescaled_u_t = u_t[]*blade.blade_length/rotor.radius;
-		
 		immutable Chunk u_squared = (corrected_u_t[]*corrected_u_t[] + u_p[]*u_p[]);
 		immutable Chunk u_inf = sqrt(u_squared);
 
-		immutable Chunk rescaled_u_t = u_inf[]*blade.blade_length/(blade.average_chord*rotor.radius*std.math.abs(rotor_input.angular_velocity));
+		immutable Chunk rescaled_u_t = u_inf[]*blade.blade_length/rotor.radius;
 		blade_state.circulation_model.compute_bound_circulation_band(blade_state, rescaled_u_t, chunk_idx, std.math.sgn(rotor_input.angular_velocity));
 
-		Chunk f = (1.0 - blade.chunks[chunk_idx].r[])[]/rotor_state.ffi;
-		f[] *= -0.5*rotor.blades.length.to!double;
+		blade_state.chunks[chunk_idx].aoa_eff[] = -std.math.sgn(rotor_input.angular_velocity)*blade_state.chunks[chunk_idx].gamma[];
+		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.chunks[chunk_idx].chord[]*PI*2.0*PI);
 
-		immutable Chunk exp_f = exp(f);
-		Chunk F = 2.0/PI*acos(exp_f)[];
-
-		blade_state.chunks[chunk_idx].F[] = F[];
-		//Chunk dC_L = lift_model(u_p, rotor.radius, blade.chunks[chunk_idx], blade_state.chunks[chunk_idx], corrected_u_t, inflow_angle, time)[]*F[];
-		//Chunk dC_L = blade_state.chunks[chunk_idx].gamma[];///rotor_state.advance_ratio;
-
-		//immutable Chunk u_squared = (u_t[] + u_p[])*(u_t[] + u_p[]);//*std.math.abs(rotor_input.angular_velocity)*rotor.radius;
-		//Chunk dC_L = std.math.abs(rotor_input.angular_velocity)^^2.0*blade_state.chunks[chunk_idx].gamma[]*u_inf[]*blade.average_chord*rotor.radius/PI;
-		Chunk dC_L = -PI*std.math.sgn(rotor_input.angular_velocity)*blade_state.chunks[chunk_idx].gamma[]*u_inf[]*blade.average_chord/(2.0*rotor.radius*rotor.radius);
-		//Chunk dC_L = 2.0*PI*std.math.sgn(rotor_input.angular_velocity)*blade_state.chunks[chunk_idx].gamma[]*u_inf[]*blade.average_chord/(/+PI*+/rotor.radius);
-		//immutable Chunk c_real = blade.chunks[chunk_idx].c[]*rotor.radius;
-
-		/+if(chunk_idx == blade.chunks.length - 1) {
-			dC_L[$-1] = 0;
-			dC_L[$-2] = dC_L[$-3]/2.0;
-		}+/
+		Chunk dC_L = lift_model(u_p, rotor.radius, blade.chunks[chunk_idx], blade_state.chunks[chunk_idx], corrected_u_t, inflow_angle, time)[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];
@@ -120,7 +90,6 @@ extern (C++) void compute_blade_properties(alias lift_model, BG, BS, RG, RIS, RS
 		blade_state.chunks[chunk_idx].dC_T[] = dC_T[];
 		blade_state.chunks[chunk_idx].dC_N[] = dC_N[];
 		blade_state.chunks[chunk_idx].dC_c[] = dC_c[];
-		//blade_state.chunks[chunk_idx].dT[] = 0.5*u_squared[]*c_real[]*dC_T[];
 
 		blade_state.chunks[chunk_idx].dC_Mx[] = dC_T[]*blade.chunks[chunk_idx].r[]*sin_azimuth[];
 		blade_state.chunks[chunk_idx].dC_My[] = dC_T[]*blade.chunks[chunk_idx].r[]*cos_azimuth[];
@@ -151,10 +120,6 @@ extern (C++) void compute_rotor_properties(alias lift_model, RG, RS, RIS, AS, I,
 	rotor_state.advance_ratio = rotor_input.freestream_velocity*rotor_input.cos_aoa/abs(rotor_input.angular_velocity*rotor.radius);
 	rotor_state.axial_advance_ratio = rotor_input.freestream_velocity*rotor_input.sin_aoa/abs(rotor_input.angular_velocity*rotor.radius);
 
-	//foreach(blade_idx; 0..rotor.blades.length) {
-	//	rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
-	//}
-
 	foreach(blade_idx; 0..rotor.blades.length) {
 
 		rotor.blades[blade_idx].compute_blade_properties!lift_model(
@@ -175,22 +140,6 @@ extern (C++) void compute_rotor_properties(alias lift_model, RG, RS, RIS, AS, I,
 		rotor_state.C_Mx += rotor_state.blade_states[blade_idx].C_Mx;
 		rotor_state.C_My += rotor_state.blade_states[blade_idx].C_My;
 	}
-
-	static import std.math;
-	import std.math : sqrt, PI;
-	import std.numeric : findRoot;
-
-	double hover_inflow = sqrt(0.5*rotor_state.C_T);
-
-	double forward_flight_inflow(double _ffi) {
-		
-		auto axial_plus_ffi = rotor_state.axial_advance_ratio + _ffi;
-		auto ret = _ffi - hover_inflow*hover_inflow/(sqrt(rotor_state.advance_ratio*rotor_state.advance_ratio + axial_plus_ffi*axial_plus_ffi));
-		
-		return ret;
-	}
-
-	rotor_state.ffi = findRoot(&forward_flight_inflow, -0.7, 0.7);
 }
 
 void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt) {

@@ -67,13 +67,13 @@ unittest {
 
 	//immutable Chunk sigma_hat = 2.0*blade_chunk.chord[]/(PI*PI);
 	//immutable Chunk sigma_hat = blade_chunk.chord[]/(PI*rotor_radius);
-	immutable Chunk sigma_hat = blade_chunk.chord[]/(2.0*/+PI*+/PI);
+	immutable Chunk sigma_hat = blade_chunk.chord[]/(/+2.0*PI*+/PI);
 
 	//immutable Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
 	immutable Chunk u_squared = inflow[]*inflow[] + u_t[]*u_t[];
 	//immutable Chunk u_squared = (inflow[] + corrected_u_t[])*(inflow[] + corrected_u_t[]);
 	//immutable Chunk angle_of_attack = blade_chunk.twist[] - inflow_angle[];
-	immutable Chunk C_l = blade_chunk.C_l_alpha[]*blade_state_chunk.aoa[] + blade_chunk.alpha_0[];
+	immutable Chunk C_l = blade_chunk.C_l_alpha[]*blade_state_chunk.aoa_eff[] + blade_chunk.alpha_0[];
 
 	lift_coefficient[] = 0.5*sigma_hat[]*u_squared[]*C_l[];
 

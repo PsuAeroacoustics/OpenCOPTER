@@ -124,7 +124,6 @@ class VtkRotor {
 		private vtkDoubleArray* dC_L_dot;
 		private vtkDoubleArray* dC_N;
 		private vtkDoubleArray* dC_c;
-		private vtkDoubleArray* F;
 
 		private this(size_t num_blades) {
 			azimuth_offsets = new double[num_blades];
@@ -141,7 +140,6 @@ class VtkRotor {
 			gamma = vtkDoubleArray.New;
 			grid = vtkUnstructuredGrid.New;
 			points = vtkPoints.New;
-			F = vtkDoubleArray.New;
 		}
 	}
 }
@@ -226,7 +224,6 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 					rotor.aoa.SetTuple1(id, blade.chunks[chunk_idx].aoa[inner_idx]);
 					rotor.inflow_angle.SetTuple1(id, blade.chunks[chunk_idx].inflow_angle[inner_idx]);
 					rotor.gamma.SetTuple1(id, blade.chunks[chunk_idx].gamma[inner_idx]);
-					rotor.F.SetTuple1(id, blade.chunks[chunk_idx].F[inner_idx]);
 				}
 			}
 		}
@@ -291,10 +288,6 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		vtk_rotor.gamma.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
 		vtk_rotor.gamma.SetName("gamma");
 
-		vtk_rotor.F.SetNumberOfComponents(1);
-		vtk_rotor.F.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
-		vtk_rotor.F.SetName("F");
-
 		foreach(b_idx, ref blade_geo; rotor_geo.blades) {
 
 			vtk_rotor.azimuth_offsets[b_idx] = blade_geo.azimuth_offset;
@@ -356,7 +349,6 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		point_data.AddArray(vtk_rotor.u_t);
 		point_data.AddArray(vtk_rotor.inflow_angle);
 		point_data.AddArray(vtk_rotor.gamma);
-		point_data.AddArray(vtk_rotor.F);
 
 		return vtk_rotor;
 	} else {
