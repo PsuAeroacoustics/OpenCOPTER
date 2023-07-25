@@ -12,13 +12,13 @@
 					"airfoils": [
 						{
 							"type": "aerodas",
-							"extent": [0.0, 0.2],
+							"extent": [0.0, 0.1],
 							"xfoil_polar": "polars/NACA0014_1000000_polar.dat",
 							"thickness": 0.14
 						},
 						{
 							"type": "aerodas",
-							"extent": [0.2, 1.0],
+							"extent": [0.1, 1.0],
 							"xfoil_polar": "polars/NACA0012_1000000_polar.dat",
 							"thickness": 0.12
 						}
@@ -35,13 +35,13 @@
 					"airfoils": [
 						{
 							"type": "aerodas",
-							"extent": [0.0, 0.2],
+							"extent": [0.0, 0.1],
 							"xfoil_polar": "polars/NACA0014_1000000_polar.dat",
 							"thickness": 0.14
 						},
 						{
 							"type": "aerodas",
-							"extent": [0.2, 1.0],
+							"extent": [0.1, 1.0],
 							"xfoil_polar": "polars/NACA0012_1000000_polar.dat",
 							"thickness": 0.12
 						}

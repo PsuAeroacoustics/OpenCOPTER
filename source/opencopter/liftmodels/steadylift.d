@@ -12,8 +12,61 @@ import std.array;
 import std.math;
 
 unittest {
+	import std.conv : to;
 	import std.stdio : writeln;
 	writeln("hello int");
+
+	import opencopter.airfoilmodels;
+	
+    class DummyAF: AirfoilModel {
+        string name;
+        this(string _name) {
+            name = _name;
+        }
+
+        override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
+            Chunk c;
+            return c;
+        }
+
+        override Chunk get_Cd(Chunk alpha_query, Chunk mach_query) {
+            Chunk c;
+            return c;
+        }
+
+        override double get_Cl(double alpha_query, double mach_query) {
+            return 0.0;
+        }
+
+        override double get_Cd(double alpha_query, double mach_query) {
+            return 0.0;
+        }
+    }
+
+    AirfoilModel af1 = new DummyAF("af1");
+    AirfoilModel af2 = new DummyAF("af2");
+    AirfoilModel af3 = new DummyAF("af3");
+    AirfoilModel af4 = new DummyAF("af4");
+
+    auto af_models = [af1, af2, af3, af4];
+
+    size_t[2][] extents = [
+        [0, 6],
+        [7, 22],
+        [23, 26],
+        [27,31]
+    ];
+
+    auto blade_af = new BladeAirfoil(af_models, extents);
+
+    writeln("blade_af.airfoil_models.length: ", blade_af.airfoil_models.length);
+    foreach(blade_af_models; blade_af.airfoil_models) {
+        writeln("blade_af_models.length: ", blade_af_models.length);
+        foreach(af_model; blade_af_models) {
+            writeln("af_model.name: ", af_model.to!DummyAF.name);
+        }
+        writeln;
+    }
 
 	Chunk generate_radius_points(size_t n_sections) {
 		import std.conv : to;
@@ -24,7 +77,7 @@ unittest {
 	}
 
 	double AR = 15;
-	auto blade = BladeGeometry(8, 0, 1/AR);
+	auto blade = BladeGeometry(8, 0, 1/AR, blade_af);
 	//BladeGeometryChunk chunk;
 	blade.chunks[0].r[] = generate_radius_points(8);// linspace(0., 1., chunk_size);
 	blade.chunks[0].twist[] = (12*(PI/180.0))/blade.chunks[0].r[];

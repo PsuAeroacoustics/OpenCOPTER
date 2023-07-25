@@ -801,8 +801,19 @@ extern(C) void PydMain() {
 		PyWakeHistory,
 		PyName!"WakeHistory",
 		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t),
-		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep}),
-		Docstring!("Top level structure for holding the wake and its history")
+		Docstring!q{
+			Top level structure for holding the wake and its history.
+			
+			Contructor:
+
+			:param num_rotors: Number of rotors the aircraft has.
+			:param num_blades: A list of the number of blades per rotor. The length of the list must match the number of rotors.
+			:param wake_history: The length of the wake history per rotor. The length of the list must match the number of rotors.
+			:param time_history: The number of timesteps to store. 2 is the minimum number.
+			:param radial_elements: The number of radial elements down the blade span.
+			:param shed_history: The number of timesteps to store the shed wake for.
+		},
+		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep})
 	);
 
 	wrap_struct!(
