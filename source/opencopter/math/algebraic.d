@@ -1,6 +1,7 @@
 module opencopter.math.algebraic;
 
 import std.conv;
+import std.traits;
 
 @nogc double factorial(long n) {
 	double r = 1;

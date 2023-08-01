@@ -122,6 +122,8 @@ class VtkRotor {
 		private vtkDoubleArray* gamma;
 		private vtkDoubleArray* dC_T_dot;
 		private vtkDoubleArray* dC_L_dot;
+		private vtkDoubleArray* dC_N;
+		private vtkDoubleArray* dC_c;
 
 		private this(size_t num_blades) {
 			azimuth_offsets = new double[num_blades];
@@ -129,6 +131,8 @@ class VtkRotor {
 			loads = vtkDoubleArray.New;
 			dC_T_dot = vtkDoubleArray.New;
 			dC_L_dot = vtkDoubleArray.New;
+			dC_N = vtkDoubleArray.New;
+			dC_c = vtkDoubleArray.New;
 			u_p = vtkDoubleArray.New;
 			u_t = vtkDoubleArray.New;
 			inflow_angle = vtkDoubleArray.New;
@@ -147,11 +151,16 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 
 		auto rotor_writer = vtkXMLUnstructuredGridWriter.New;
 
+		auto rotor_sgn = sgn(rotor_input.angular_velocity);
+		double flip_angle = 0;
+		if(rotor_input.angular_velocity < 0) {
+			flip_angle = -PI;
+		}
 		auto aoa_rotation =
 			Mat3(
-				std.math.cos(rotor_input.angle_of_attack), 0, std.math.sin(rotor_input.angle_of_attack),
+				std.math.cos(rotor_input.angle_of_attack /++ flip_angle+/), 0, std.math.sin(rotor_input.angle_of_attack/+ + flip_angle+/),
 				0, 1, 0,
-				-std.math.sin(rotor_input.angle_of_attack), 0, std.math.cos(rotor_input.angle_of_attack)
+				-std.math.sin(rotor_input.angle_of_attack /++ flip_angle+/), 0, std.math.cos(rotor_input.angle_of_attack /++ flip_angle+/)
 			);
 
 		rotor.grid.SetPoints(rotor.points);
@@ -160,16 +169,16 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 
 			auto azimuth_rotation =
 				Mat3(
-					cos(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), -sin(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), 0,
-					sin(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), cos(rotor_input.azimuth + rotor.azimuth_offsets[b_idx]), 0,
+					cos((rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), -sin((rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), 0,
+					sin((rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), cos((rotor_input.azimuth + rotor.azimuth_offsets[b_idx])), 0,
 					0, 0, 1
 				);
 
 			auto pitch_rotation =
 				Mat3(
 					1, 0, 0,
-					0, cos(rotor_input.blade_pitches[b_idx]), -sin(rotor_input.blade_pitches[b_idx]),
-					0, sin(rotor_input.blade_pitches[b_idx]), cos(rotor_input.blade_pitches[b_idx])
+					0, cos(rotor_sgn*rotor_input.blade_pitches[b_idx] + flip_angle), -sin(rotor_sgn*rotor_input.blade_pitches[b_idx] + flip_angle),
+					0, sin(rotor_sgn*rotor_input.blade_pitches[b_idx] + flip_angle), cos(rotor_sgn*rotor_input.blade_pitches[b_idx] + flip_angle)
 				);
 			
 			auto flap_rotation =
@@ -183,10 +192,15 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 				vtkIdType id = pi.key;
 				Vec3 point = pi.value;
 
+				auto origin = rotor.origin;
+				if(rotor_input.angular_velocity < 0) {
+					origin[0] = origin[0];
+					origin[2] = origin[2];
+				}
 				//auto pitch_rotated = pitch_rotation*point;
 				//auto az_rotated = azimuth_rotation*pitch_rotated;
 				//auto pitch_az_rot = azimuth_rotation*pitch_rotation;
-				auto post_az_rot = azimuth_rotation*flap_rotation*pitch_rotation*point + rotor.origin;
+				auto post_az_rot = azimuth_rotation*flap_rotation*pitch_rotation*point + origin;
 				//auto post_az_rot = az_rotated + origin;
 				auto final_p = aoa_rotation*post_az_rot;
 
@@ -203,6 +217,8 @@ void write_rotor_vtu(RS, RIS)(string base_filename, size_t iteration, size_t rot
 					rotor.loads.SetTuple1(id, blade.chunks[chunk_idx].dC_T[inner_idx]);
 					rotor.dC_L_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_L_dot[inner_idx]);
 					rotor.dC_T_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_T_dot[inner_idx]);
+					rotor.dC_N.SetTuple1(id, blade.chunks[chunk_idx].dC_N[inner_idx]);
+					rotor.dC_c.SetTuple1(id, blade.chunks[chunk_idx].dC_c[inner_idx]);
 					rotor.u_p.SetTuple1(id, blade.chunks[chunk_idx].u_p[inner_idx]);
 					rotor.u_t.SetTuple1(id, blade.chunks[chunk_idx].u_t[inner_idx]);
 					rotor.aoa.SetTuple1(id, blade.chunks[chunk_idx].aoa[inner_idx]);
@@ -244,6 +260,14 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		vtk_rotor.dC_T_dot.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
 		vtk_rotor.dC_T_dot.SetName("dC_T_dot");
 
+		vtk_rotor.dC_N.SetNumberOfComponents(1);
+		vtk_rotor.dC_N.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_N.SetName("dC_N");
+
+		vtk_rotor.dC_c.SetNumberOfComponents(1);
+		vtk_rotor.dC_c.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_c.SetName("dC_c");
+
 		vtk_rotor.aoa.SetNumberOfComponents(1);
 		vtk_rotor.aoa.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
 		vtk_rotor.aoa.SetName("aoa");
@@ -264,7 +288,6 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		vtk_rotor.gamma.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
 		vtk_rotor.gamma.SetName("gamma");
 
-
 		foreach(b_idx, ref blade_geo; rotor_geo.blades) {
 
 			vtk_rotor.azimuth_offsets[b_idx] = blade_geo.azimuth_offset;
@@ -278,12 +301,13 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 					vtk_rotor.r_to_point_map ~= new vtkIdType[naca0012.length];
 
 					foreach(yz_idx, ref yz_point; naca0012) {
-						auto yp0 = c0*(yz_point[0] - 0.25);
+						auto yp0 = c0*(yz_point[0] - 0.25);// + chunk.xi[c_idx];
 						auto zp0 = c0*yz_point[1];
 
 						auto y0 = yp0*std.math.cos(t0) - zp0*std.math.sin(t0);
 						auto z0 = yp0*std.math.sin(t0) + zp0*std.math.cos(t0);
 
+						y0 -= chunk.xi[c_idx];
 						auto p0 = Vec3(x0, y0, z0);
 						
 						auto id0 = vtk_rotor.points.InsertNextPoint(p0[0], p0[1], p0[2]);
@@ -318,6 +342,8 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		point_data.AddArray(vtk_rotor.loads);
 		point_data.AddArray(vtk_rotor.dC_L_dot);
 		point_data.AddArray(vtk_rotor.dC_T_dot);
+		point_data.AddArray(vtk_rotor.dC_N);
+		point_data.AddArray(vtk_rotor.dC_c);
 		point_data.AddArray(vtk_rotor.aoa);
 		point_data.AddArray(vtk_rotor.u_p);
 		point_data.AddArray(vtk_rotor.u_t);

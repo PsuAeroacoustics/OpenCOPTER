@@ -25,7 +25,7 @@ class ThinAirfoil: AirfoilModel {
 	}
 
     override double get_Cl(double alpha_query, double mach_query) {
-		return 2.0*PI*alpha_query;
+		return 2.0*PI*alpha_query + C_l_alpha_0;
 	}
 
     override double get_Cd(double alpha_query, double mach_query) {

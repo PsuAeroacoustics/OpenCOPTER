@@ -413,11 +413,14 @@ private struct CartisianCoords {
 	immutable Chunk one_m_s = (1.0 - S[]);
 	immutable Chunk tmp1 = one_m_s[]*one_m_s[] + 4.0*coords.z[]*coords.z[];
 	immutable Chunk tmp2 = opencopter.math.sqrt(tmp1);
-	immutable Chunk nu_tmp = 1.0 - S[] + tmp2[];
-	immutable Chunk eta_tmp = S[] - 1.0 + tmp2[];
+	immutable Chunk nu_tmp = one_m_s[] + tmp2[];
+	immutable Chunk eta_tmp = -one_m_s[] + tmp2[];
+	//immutable Chunk nu_tmp = 1.0 - S[] + tmp2[];
+	//immutable Chunk eta_tmp = S[] - 1.0 + tmp2[];
 
 	Chunk nu = (-sign(coords.z)[]/sqrt(2.0))*sqrt(nu_tmp)[];
-	nu = nu[].map!(a => a > 1.0 ? 1.0 : a).map!(a => a < -1.0 ? - 1.0 : a).staticArray!Chunk[];
+	//Chunk nu = (-sgn(coords.z)[]/sqrt(2.0))*sqrt(nu_tmp)[];
+	nu = nu[].map!(a => a > 1.0 ? 1.0 : a).map!(a => a < -1.0 ? -1.0 : a).staticArray!Chunk[];
 	immutable Chunk eta = (1.0/sqrt(2.0))*sqrt(eta_tmp)[];
 
 	immutable Chunk neg_y = -coords.y[];
@@ -1534,9 +1537,10 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		times[] = 0;
 		average_inflow = 0.01;
 		chi = 0;
-		tau[0] = 0.001;
-
-		simple_harmonic_solution(this, 0.0, 0.0);
+		tau[0] = 0.01;
+		//tau[0] = 100;
+		//tau = [0.747537, -0.269834, 0.0383942, 0.00363633, -0.0094145, -0.00924006, -0.0131007, -0.00207485, -0.00131037, 0.249196, -0.11669, -0.00285531, -0.0100665];
+		simple_harmonic_solution(this, 0, 0.0);
 
 	}
 
@@ -1719,9 +1723,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	private void compute_loading(RS)(auto ref RS rotor_state) {
+	private void compute_loading(RS)(auto ref RS rotor_state, double radius, double V_inf) {
 
 		tau[] = 0;
+
+		immutable omega_sgn = sgn(omega);
 
 		foreach(b_idx, ref blade_state; rotor_state.blade_states) {
 
@@ -1734,13 +1740,13 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			auto _idx = iterate_odds!(
 				(m, n, idx) {
 					//immutable mpsi = m.to!double*(blade_state.azimuth + PI/4.0);
-					immutable mpsi = m.to!double*(blade_state.azimuth);
+					
 					//immutable mpsi = m.to!double*(blade_state.azimuth + PI);
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*mpsi_buff[m][0];
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*cos(mpsi);
 					//immutable Chunk cos_mpsi = m == 0 ? 0.5 : cos(mpsi);
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0) : 1.0/(2.0)*cos(mpsi);
-					Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
+					//Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
 					//Chunk cos_mpsi = m == 0 ? 1.0/(2.0*PI) : 1.0/(PI)*cos(mpsi);
 
 					/+if((m != 0) && (m != 4)) {
@@ -1750,11 +1756,26 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
 					//foreach(c_idx; 0..rotor.blades[b_idx].chunks.length) {
 						//BladeGeometryChunk* chunk = rotor.blades[b_idx].chunks[c_idx];
+						//immutable Chunk atan_arg = -omega_sgn*chunk.xi[]/chunk.r[];
+						Chunk atan_num = -omega_sgn*chunk.xi[];
+						immutable Chunk psi_r = atan2(atan_num, chunk.r);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
+
+						Chunk cos_mpsi;// = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi)[];
+						if(m == 0) {
+							cos_mpsi[] = 1.0/(2.0*PI);
+						} else {
+							cos_mpsi[] = 1.0/(PI)*cos(mpsi)[];
+						}
+
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
 						nu = sqrt(nu);
 						
 						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
-						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
+						
+						immutable Chunk dP = blade_state.chunks[c_idx].dC_T[];//*PI*radius*radius*radius*radius*abs(omega)*abs(omega)/(rotor.blades[b_idx].chunks[c_idx].chord[]*(V_inf*V_inf));
+
+						blade_scratch[c_idx][] = dP[]*Pmn[]*cos_mpsi[];//*rotor.blades[b_idx].chunks[c_idx].chord[];
 					}
 
 					tau[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
@@ -1764,7 +1785,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 			iterate_evens!(
 				(m, n, idx) {
-					immutable mpsi = m.to!double*(blade_state.azimuth);
+					//immutable mpsi = m.to!double*(blade_state.azimuth);
 					//immutable mpsi = m.to!double*(blade_state.azimuth + PI/4.0);
 					//immutable mpsi = m.to!double*(blade_state.azimuth + PI);
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*mpsi_buff[m][0];
@@ -1772,7 +1793,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0) : 1.0/(2.0)*cos(mpsi);
 					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*cos(mpsi);
 					//Chunk cos_mpsi = m == 0 ? 1.0/(2.0*PI) : 1.0/(PI)*cos(mpsi);
-					Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
+					//Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
 
 					/+if((m != 0) && (m != 4)) {
 						cos_mpsi[] = -cos_mpsi[];
@@ -1780,19 +1801,37 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
 					//foreach(c_idx; 0..rotor.blades[b_idx].chunks.length) {
 						//BladeGeometryChunk* chunk = rotor.blades[b_idx].chunks[c_idx];
+						//immutable Chunk atan_arg = -omega_sgn*chunk.xi[]/chunk.r[];
+						//immutable Chunk psi_r = atan(atan_arg);
+						Chunk atan_num = -omega_sgn*chunk.xi[];
+						immutable Chunk psi_r = atan2(atan_num, chunk.r);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
 
+						Chunk cos_mpsi;// = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi)[];
+						if(m == 0) {
+							cos_mpsi[] = 1.0/(2.0*PI);
+						} else {
+							cos_mpsi[] = 1.0/(PI)*cos(mpsi)[];
+						}
+						
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
 						nu = sqrt(nu);
 						
 						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
 
-						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
+						//blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];//*rotor.blades[b_idx].chunks[c_idx].chord[];
+						immutable Chunk dP = blade_state.chunks[c_idx].dC_T[];//*PI*radius*radius*radius*radius*abs(omega)*abs(omega)/(rotor.blades[b_idx].chunks[c_idx].chord[]*(V_inf*V_inf));
+
+						//writeln(dP);
+						blade_scratch[c_idx][] = dP[]*Pmn[]*cos_mpsi[];//*rotor.blades[b_idx].chunks[c_idx].chord[];
 					}
 					tau[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
 
 				}
 			)(Me, _idx);
 		}
+
+		//writeln(tau);
 	}
 
 	size_t n_r = 16;
@@ -1804,18 +1843,22 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	Chunk[] contraction_z_array;
 	double[] contraction_z_array_alias;
 
-	private void update_impl(RIS, RS)(double C_T, auto ref RIS rotor, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	private void update_impl(RIS, RS)(double C_T, auto ref RIS rotor_input, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
-		advance_ratio = _advance_ratio;
-		axial_advance_ratio = _axial_advance_ratio;
-		omega = rotor.angular_velocity;
-		auto time = dt*curr_state.to!double*abs(omega);
+		omega = rotor_input.angular_velocity;
+		immutable V_inf = rotor_input.freestream_velocity;
+		immutable t_scale = abs(omega);//V_inf/rotor.radius;
+
+		advance_ratio = _advance_ratio;//*abs(omega)*rotor.radius/V_inf;
+		axial_advance_ratio = _axial_advance_ratio;//*abs(omega)*rotor.radius/V_inf;
+		
+		auto time = dt*curr_state.to!double*t_scale;//abs(omega);
 
 		times[get_circular_index(curr_state + 1)] = time;
 
-		compute_loading(rotor_state);
-
-		integrator.step!(system_derivative)(state_history[get_circular_index(curr_state + 1)], state_history[get_circular_index(curr_state)], time, dt*abs(rotor.angular_velocity), this, rotor, rotor_state, advance_ratio, axial_advance_ratio);
+		compute_loading(rotor_state, rotor.radius, V_inf);
+		
+		integrator.step!(system_derivative)(state_history[get_circular_index(curr_state + 1)], state_history[get_circular_index(curr_state)], time, dt*t_scale, this, rotor_input, rotor_state, advance_ratio, axial_advance_ratio);
 
 		alpha = state_history[get_circular_index(curr_state + 1)][0..total_states];
 
@@ -1932,7 +1975,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		// Rotate into the coord frame the huang model expects.
 		if(!contraction_mapping) {
 			immutable Chunk neg_y = -y[];
-			immutable V = omega > 0 ? inflow_at_impl(this, x, neg_y, z) : inflow_at_impl(this, x, y, z);
+			//immutable V = omega > 0 ? inflow_at_impl(this, x, neg_y, z) : inflow_at_impl(this, x, y, z);
+			immutable V = inflow_at_impl(this, x, y, z);
 			return V;
 		} else {
 

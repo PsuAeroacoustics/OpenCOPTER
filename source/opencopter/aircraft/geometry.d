@@ -18,7 +18,7 @@ import std.typecons;
 	size_t num_points;
 }+/
 
-double[] generate_radius_points(size_t n_sections) {
+/+double[] generate_radius_points(size_t n_sections) {
 	import std.algorithm : map;
 	import std.array : array;
 	import std.math : cos, PI;
@@ -28,6 +28,20 @@ double[] generate_radius_points(size_t n_sections) {
     return iota(1.0, num_points + 1.0).map!((n) {
     	immutable psi = n*PI/(num_points.to!double + 1.0);
     	auto r = 0.5*(cos(psi) + 1.0).to!double;
+    	return r;
+    }).retro.array;
+}+/
+
+double[] generate_radius_points(size_t n_sections, double root_cutout = 0.0) {
+	import std.algorithm : map;
+	import std.array : array;
+	import std.math : cos, PI;
+	import std.range : iota, retro;
+
+	immutable num_points = n_sections%chunk_size == 0 ? n_sections : n_sections + (chunk_size - n_sections%chunk_size);
+    return iota(1.0, num_points + 1.0).map!((n) {
+    	immutable psi = n*PI/(num_points.to!double + 1.0);
+    	auto r = (1.0 - root_cutout)*0.5*(cos(psi) + 1.0).to!double + root_cutout;
     	return r;
     }).retro.array;
 }
@@ -180,7 +194,17 @@ extern (C++) struct BladeGeometryChunk {
 	/++
 	 +	Blade quarter chord sweep angle
 	 +/
-	 Chunk sweep;
+	Chunk sweep;
+
+	/++
+	 +	Blade local normalized x offset;
+	 +/
+	Chunk xi;
+
+	/++
+	 +	Blade local normalized x offset derivative;
+	 +/
+	Chunk xi_p;
 }
 
 template is_blade_geometry(A) {
@@ -199,6 +223,11 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 
 	double azimuth_offset;
 	double average_chord;
+
+	/++
+	 +	True length of the blade accounting for root cutout.
+	 +/
+	double blade_length;
 
 	BladeAirfoil airfoil;
 
@@ -219,6 +248,7 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 		this.chunks = blade.chunks;
 		this.azimuth_offset = blade.azimuth_offset;
 		this.average_chord = blade.average_chord;
+		this.blade_length = blade.blade_length;
 		return this;
 	}
 
@@ -227,6 +257,7 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 		this.chunks = blade.chunks;
 		this.azimuth_offset = blade.azimuth_offset;
 		this.average_chord = blade.average_chord;
+		this.blade_length = blade.blade_length;
 		return this;
 	}
 
@@ -235,8 +266,33 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 		this.chunks = blade.chunks;
 		this.azimuth_offset = blade.azimuth_offset;
 		this.average_chord = blade.average_chord;
+		this.blade_length = blade.blade_length;
 		return this;
 	}
+}
+
+double[] sweep_from_quarter_chord(double[] r, double[] xi) {
+	double[] sweep = new double[xi.length];
+
+	double rise = 0;
+	double run = 0;
+	foreach(idx; 0..xi.length) {
+		if(idx == 0) {
+			rise = xi[idx + 1] - xi[idx];
+			run = r[idx + 1] - r[idx];
+		} else if(idx == xi.length - 1) {
+			rise = xi[idx] - xi[idx - 1];
+			run = r[idx] - r[idx - 1];
+		} else {
+			rise = xi[idx + 1] - xi[idx - 1];
+			run = r[idx + 1] - r[idx - 1];
+		}
+
+		static import std.math;
+		sweep[idx] = std.math.atan(-rise/run);
+	}
+
+	return sweep;
 }
 
 void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade, double[] data) {
@@ -251,4 +307,20 @@ void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC b
 
 		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
 	}
+}
+
+double[] get_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade) {
+	immutable elements = blade.chunks.length*chunk_size;
+	double[] geom_array = new double[elements];
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = elements - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("geom_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+	return geom_array;
 }

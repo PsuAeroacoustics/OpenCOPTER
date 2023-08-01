@@ -58,11 +58,6 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 
 	wopwop_data_path = f'{wopwop_output_path}/data'
 
-	# if not path.isdir(wopwop_data_path):
-	# 	makedirs(wopwop_data_path, exist_ok=True)
-
-	# wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, aircraft.rotors[wopwop_rotor_idx].radius, AR, wopwop_data_path)
-
 	loading_files = []
 
 	if do_compute:
@@ -97,15 +92,6 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 	acoustic_iteration = 0
 
 	if do_compute:
-		# x_inflow = np.linspace(-13, 2, 2048)
-
-		# y_slice = np.zeros(chunk_size())
-		# x_e_slice = np.zeros(chunk_size())
-		# z_slice = np.zeros(chunk_size())
-
-		# x_inflow = x_inflow.reshape((int(2048/chunk_size()), chunk_size()))
-		# inflow_induced_velocities = np.zeros((int(2048/chunk_size()), chunk_size()))
-		# wake_induced_velocities = np.zeros((int(2048/chunk_size()), chunk_size()))
 
 		rotor_aoas = [input_state.rotor_inputs[r_idx].angle_of_attack for r_idx in range(num_rotors)]
 
@@ -139,7 +125,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 
 				now = time.perf_counter()
 				elapsed = now - start_time
-				#log_file.write(f'{elapsed:.5f}: rotor rev: {iteration/360}, C_T1: {average_C_T1:.8f}, C_T2: {average_C_T2:.8f}, χ1: {average_chi1:.4}, χ2: {average_chi2:.4}')
+
 				log_file.write(f'{elapsed:.5f}: rotor rev: {iteration/iter_per_rev},'+''.join([f' C_T{r_idx}: {average_C_Ts[r_idx]:.8f},' for r_idx in range(num_rotors)])+''.join([f' χ{r_idx}: {average_chis[r_idx]:.4f},' for r_idx in range(num_rotors)])+f' combined_C_T: {average_C_Ts.sum()}, max L_2: {max_l2}\n')
 				start_time = now
 				log_file.flush()
@@ -164,7 +150,6 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 				average_C_Ts[r_idx] = np.sum(average_C_T_arrays[r_idx])/C_T_len
 				average_chis[r_idx] = np.sum(average_chi_arrays[r_idx])/C_T_len
 
-
 			if trim:
 				for r_idx, rotor_state in enumerate(ac_state.rotor_states):
 					curr_c_ts[r_idx] = rotor_state.C_T
@@ -183,20 +168,19 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 
 			loading_data.time = dt*acoustic_iteration
 
-			if converged:
+			# if write_wake:
+			# 	for r_idx in range(num_rotors):
+			# 		write_rotor_vtu(f"{vtu_output_path}/rotor", iteration, r_idx, vtk_rotors[r_idx], ac_state.rotor_states[r_idx], input_state.rotor_inputs[r_idx])
 
+			# 		write_wake_vtu(f"{vtu_output_path}/wake", iteration, vtk_wake, wake_history.history[0])
+
+			if converged:
 				if write_wake:
 					for r_idx in range(num_rotors):
 						write_rotor_vtu(f"{vtu_output_path}/rotor", acoustic_iteration, r_idx, vtk_rotors[r_idx], ac_state.rotor_states[r_idx], input_state.rotor_inputs[r_idx])
 
 						write_wake_vtu(f"{vtu_output_path}/wake", acoustic_iteration, vtk_wake, wake_history.history[0])
 
-				# for c_idx, x_chunk in enumerate(x_inflow):
-				# 	induced_velocities = compute_wake_induced_velocities(wake_history.history[0], x_chunk, y_slice, z_slice, ac_state, omegas[0], 0, True)
-
-				# 	inflow_induced_velocities[c_idx, :] = inflow_induced_velocities[c_idx, :] + np.asarray(inflows[0].inflow_at(x_chunk, y_slice, z_slice, x_e_slice, input_state.rotor_inputs[0].angle_of_attack))/(2*iter_per_rev)
-				# 	wake_induced_velocities[c_idx, :] = wake_induced_velocities[c_idx, :] + np.asarray(induced_velocities.v_z)/(2*iter_per_rev)
-	
 				for rotor_idx, rotor in enumerate(ac_state.rotor_states):
 					for blade_idx, blade in enumerate(rotor.blade_states):
 						z_loading = get_dC_T(blade)
@@ -212,8 +196,7 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 			for blade_idx in range(num_blades[rotor_idx]):
 				close_loading_file(loading_files[rotor_idx][blade_idx])
 
-	acoustic_source_start_iter = 0 #acoustic_iteration - 2*iter_per_rev
-	tau_min = 0#acoustic_source_start_iter*dt
+	tau_min = 0
 
 	t_min = tau_min + 20*aircraft.rotors[wopwop_rotor_idx].radius/343
 	t_max = t_min + (2.0*math.pi/abs(omegas[wopwop_rotor_idx]))
@@ -275,8 +258,4 @@ def simulate_aircraft(log_file, aircraft, ac_state, input_state, inflows, wake_h
 
 	namelists.append(namelist)
 
-	#inflow_induced_velocities = inflow_induced_velocities.reshape(2048)
-	#wake_induced_velocities = wake_induced_velocities.reshape(2048)
-	#x_inflow = x_inflow.reshape(2048)
-
-	return average_C_Ts, namelists#, x_inflow, inflow_induced_velocities, wake_induced_velocities
+	return average_C_Ts, namelists

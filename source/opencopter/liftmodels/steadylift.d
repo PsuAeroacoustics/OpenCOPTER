@@ -104,7 +104,6 @@ unittest {
 
 	immutable blade_C_T = integrate_trapaziodal!"dC_T"(bs, blade);
 
-	
 	writeln("C_T: ", blade_C_T);
 	writeln("u_t: ", u_t);
 	writeln("inflow_angle: ", inflow_angle);
@@ -121,7 +120,7 @@ unittest {
 
 	import std.math : PI;
 
-	immutable Chunk sigma_hat = 2.0*chord[]/(PI*PI);
+	immutable Chunk sigma_hat = chord[]/PI;
 
 	immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
 

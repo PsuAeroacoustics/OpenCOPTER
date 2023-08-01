@@ -177,23 +177,36 @@ def main():
 			num_rotors = R.size # aircraft["number_of_rotors"]
 			V_inf = flight_condition["V_inf"]
 			wake_dists = np.zeros(num_rotors)
-			omegas =  np.asarray(flight_condition["omegas"])
+			omegas =  np.asarray([flight_condition["omegas"][r_idx] for r_idx in range(num_rotors)])
 			mus = V_inf/(np.abs(omegas)*R)
 
 			d_psi = computational_parameters["d_psi"]*math.pi/180.0
 
 			for o_idx, origin in enumerate(origins):
 				for other_origin in origins:
-					delta_x = origin[0] - other_origin[0]
+					if mus[o_idx] == 0:
+						delta_z = origin[2] - other_origin[2]
 
-					# plus 1R to finish going past the other rotor, and then 6 more radii after that
-					wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + 6)
+						# plus 1R to finish going past the other rotor, and then 6 more radii after that
+						wake_dists[o_idx] = max(wake_dists[o_idx], delta_z + 1 + 6)
+
+					else:
+						delta_x = origin[0] - other_origin[0]
+
+						# plus 1R to finish going past the other rotor, and then 6 more radii after that
+						wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + 6)
 
 				if wake_dists[o_idx] <= 0:
 					# if all others are upstream, just trail 6 radii behind
 					wake_dists[o_idx] = 6
 
-			wake_history_revs = np.round(wake_dists/(mus*2.0*math.pi)) # this is an array
+			wake_history_revs = np.zeros(wake_dists.size)
+
+			for idx, mu in enumerate(mus):
+				if mu != 0:
+					wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
+				else:
+					wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
 			
 			wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 			total_wake_history = wake_history_length.sum()

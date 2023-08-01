@@ -170,8 +170,16 @@ void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
 }
 
+double[] get_twist(ref PyBladeGeometry bg) {
+	return bg.get_geometry_array!"twist";
+}
+
 void set_chord(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"chord"(data);
+}
+
+double[] get_chord(ref PyBladeGeometry bg) {
+	return bg.get_geometry_array!"chord";
 }
 
 void set_r(ref PyBladeGeometry bg, double[] data) {
@@ -188,6 +196,14 @@ void set_alpha_0(ref PyBladeGeometry bg, double[] data) {
 
 void set_sweep(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"sweep"(data);
+}
+
+void set_xi(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi"(data);
+}
+
+void set_xi_p(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi_p"(data);
 }
 
 double[] get_dC_T(ref PyBladeState blade) {
@@ -244,6 +260,14 @@ void fill_u_pf(ref PyBladeState blade, float[] data) {
 
 double[] get_gamma(ref PyBladeState blade) {
 	return blade.get_state_array!"gamma";
+}
+
+double[] get_u_p(ref PyBladeState blade) {
+	return blade.get_state_array!"u_p";
+}
+
+double[] get_aoa_eff(ref PyBladeState blade) {
+	return blade.get_state_array!"aoa_eff";
 }
 
 double[] get_d_gamma(ref PyBladeState blade) {
@@ -451,11 +475,23 @@ extern(C) void PydMain() {
 		:param data: List of twist angles (in radians) for each radial station
 	});
 
+	def!(get_twist, Docstring!q{
+		Get the spanwise twist distribution of a :class:`BladeGeometry`
+
+		:param bg: :class:`BladeGeometry` object get twist from.
+	});
+
 	def!(set_chord, Docstring!q{
 		Set the spanwise chord distribution (non-dimensional) of a :class:`BladeGeometry` from a linear array.
 
 		:param bg: :class:`BladeGeometry` object to apply twist to.
 		:param data: List of chord lengths (non-dimensional) for each radial station
+	});
+
+	def!(get_chord, Docstring!q{
+		Get the spanwise chord distribution (non-dimensional) of a :class:`BladeGeometry`
+
+		:param bg: :class:`BladeGeometry` object get chord from.
 	});
 
 	def!(set_r, Docstring!q{
@@ -486,6 +522,29 @@ extern(C) void PydMain() {
 
 		:param bg: :class:`BladeGeometry` object to apply twist to.
 		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(set_xi, Docstring!q{
+		Set the spanwise quarter chord position distribution of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(set_xi_p, Docstring!q{
+		Set the spanwise quarter chord derivative position distribution of a :class:`BladeGeometry`
+		from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(sweep_from_quarter_chord, Docstring!q{
+		Set the spanwise quarter chord derivative position distribution of a :class:`BladeGeometry`
+		from a linear array.
+
+		:param r: spanwise radial station
+		:param x: x location of the quarter chord
 	});
 
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
@@ -571,6 +630,21 @@ extern(C) void PydMain() {
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\Gamma}` from
 		:return: List of spanwise circulation values
 	});
+
+	def!(get_u_p, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise bound circulation (:math:`{\Gamma}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\Gamma}` from
+		:return: List of spanwise circulation values
+	});
+
+	def!(get_aoa_eff, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise effective angle of attack (:math:`{\alpha_{eff}}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\alpha_{eff}}` from
+		:return: List of spanwise effective angle of attack values
+	});
+
 	def!(get_d_gamma, double[] function(ref PyBladeState), Docstring!q{
 		Extract blade spanwise change in bound circulation (:math:`{\Delta}`:math:`{\Gamma}`) to a linear array.
 
@@ -866,7 +940,8 @@ extern(C) void PydMain() {
 		Member!("azimuth_offset", Docstring!q{
 			The azimuthal offset for this blade. This is added to the :class:`RotorInputState` azimuth.
 		}),
-		Member!("average_chord", Docstring!q{The dimensional average chord of the blade})
+		Member!("average_chord", Docstring!q{The dimensional average chord of the blade}),
+		Member!("blade_length", Docstring!q{The dimensional actual length of the blade not accounting for root cutout})
 	);
 
 	wrap_struct!(

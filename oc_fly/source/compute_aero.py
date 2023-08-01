@@ -12,20 +12,125 @@ import simulate_aircraft
 import numpy as np
 import math
 import scipy.io
+from scipy.interpolate import interp1d
+from scipy.misc import derivative
+import numpy as np
+
 from os import path, makedirs
+
+def build_blade_from_json(blade_object, requested_elements, geom_directory):
+    theta_tw_1 = blade_object['theta_tw']
+    airfoil_descs = blade_object['airfoils']
+    r_c = 0
+    if "r_c" in blade_object:
+        r_c = blade_object["r_c"]
+
+    r = generate_radius_points(requested_elements, r_c)
+    elements = len(r)
+
+    non_dim_length = 1.0 - r_c
+    
+    airfoils = []
+    extents = []
+    for airfoil_desc in airfoil_descs:
+        type = airfoil_desc['type']
+        extent = [0, 0]
+        af_extent = airfoil_desc['extent']
+        airfoil = None
+        if type == 'aerodas':
+            airfoil = create_aerodas_from_xfoil_polar(f"{geom_directory}/{airfoil_desc['xfoil_polar']}", airfoil_desc['thickness'])
+        elif type == 'thinaf':
+            airfoil = ThinAirfoil(0.0401)
+        else:
+            print(f"Unsupported airfoil type: {type}. Defaulting to ThinAirfoil theory")
+            airfoil = ThinAirfoil(0.0401)
+
+        extent[0] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[0] - r_c)/non_dim_length) - 1.0))*elements))
+        extent[1] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[1] - r_c)/non_dim_length) - 1.0))*elements)) - 1
+
+        extents.append(extent)
+        airfoils.append(airfoil)
+
+    blade_airfoil = BladeAirfoil(airfoils, extents)
+
+    x = np.zeros(elements)
+
+    linear_x = None
+    linear_r = None
+    linear_c = None
+    if 'x' in blade_object:
+        linear_x = blade_object['x']
+        linear_r = np.linspace(r_c, 1.0, len(linear_x))
+        f_x = interp1d(linear_r, linear_x)
+        x = f_x(r)
+    # else:
+    #     linear_x = np.zeros(elements)
+    #     linear_r = np.linspace(r_c, 1.0, len(linear_x))
+
+    c = None
+    if "AR" in blade_object:
+        AR = blade_object["AR"]
+        c = (1.0/AR)*np.ones(elements)
+        if linear_r is not None:
+            linear_c = (1.0/AR)*np.ones(len(linear_r))
+        else:
+            linear_r = np.linspace(r_c, 1.0, elements)
+            linear_x = np.zeros(len(linear_r))
+            linear_c = (1.0/AR)*np.ones(len(linear_r))
+
+    else:
+        linear_c = blade_object['c']
+        if linear_r is None:
+            linear_x = np.zeros(len(linear_c))
+            linear_r = np.linspace(r_c, 1.0, len(linear_c))
+
+        f_c = interp1d(linear_r, linear_c)
+        c = f_c(r)
+
+    x_over_c = np.asarray(linear_x)/np.asarray(linear_c)
+    
+    f_x_over_c = interp1d(linear_r, x_over_c, bounds_error=False, fill_value='extrapolate')
+
+    linear_x_over_c_p = [derivative(f_x_over_c, _r, 1.0e-12) for _r in linear_r[3:-3]]
+
+    f_x_over_c_p = interp1d(linear_r[3:-3], linear_x_over_c_p, bounds_error=False, fill_value='extrapolate')
+
+    xp = f_x_over_c_p(r)
+
+    twist = np.asarray([(_r - 0.75)*theta_tw_1*(math.pi/180.0) for _r in generate_radius_points(requested_elements, 0.0)])
+
+    # Build the geom of the blades
+    blade = BladeGeometry(
+        num_elements = elements,
+        azimuth_offset = 0,
+        average_chord = 0,
+        airfoil = blade_airfoil
+    )
+    
+    sweep = sweep_from_quarter_chord(r, x)
+
+    # Convert from linear array format to OpenCOPTER chunk format
+    set_r(blade, r)
+    set_xi(blade, x)
+    set_xi_p(blade, xp)
+    set_twist(blade, twist)
+    set_chord(blade, c)
+    set_sweep(blade, sweep)
+
+    return blade, r_c
 
 def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, flight_condition, computational_parameters, geom_directory):
 
-    aoa_rotors = flight_condition["aoa_rotors"]   # angle of attack for each rotor rather than for entire aircraft
+    num_rotors = len(geometry["rotors"])
 
-    omegas =  np.asarray(flight_condition["omegas"])
+    omegas =  np.asarray([flight_condition["omegas"][r_idx] for r_idx in range(num_rotors)])
     d_psi = computational_parameters["d_psi"]*math.pi/180.0
     dt = d_psi/np.max(np.abs(omegas))
 
     requested_elements = computational_parameters["spanwise_elements"]
 
-    num_rotors = len(geometry["rotors"])
-    #num_blades = geometry["number_of_blades"]
+    
+
     R = np.asarray([geometry["rotors"][r_idx]["radius"] for r_idx in range(len(geometry["rotors"]))])
 
     mus = V_inf/(np.abs(omegas)*R)
@@ -43,14 +148,15 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     density = flight_condition["density"]
     dynamic_viscosity = 18.03e-6
 
-    #AR = geometry['AR']
     sos = flight_condition["sos"]
     
-    #V_inf = param["flight conditions"][0]["V inf"]
-    #theta_tw_1 = geometry["theta_tw_1"]*math.pi/180.0
-
     shed_history_angle = computational_parameters["shed_history_angle"]
     shed_history = round(shed_history_angle/(d_psi*180.0/math.pi))
+
+    blade_dict = {}
+    if "blades" in geometry:
+        for blade_obj in geometry['blades']:
+            blade_dict[blade_obj["name"]] = blade_obj
 
 	# Create the spanwise distributions for our blades
 	# We will later apply these to murosims internal
@@ -59,9 +165,6 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     r = generate_radius_points(requested_elements)
     elements = len(r)
     log_file.write(f"requested_elements: {requested_elements}, actual elements:  {elements}\n")
-    
-    C_l_alpha = 2.0*math.pi*np.ones(elements)
-    sweep = np.zeros(elements)
 
     atmo = Atmosphere(density = density, dynamic_viscosity = dynamic_viscosity)
 	
@@ -85,14 +188,20 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
             wake_dists[o_idx] = 6
 
     log_file.write(f'wake_dists: {wake_dists}\n')
-    wake_history_revs = np.round(wake_dists/(mus*2.0*math.pi)) # this is an array
+    #wake_history_revs = np.round(wake_dists/(mus*2.0*math.pi)) # this is an array
+
+    wake_history_revs = np.zeros(wake_dists.size)
+
+    for idx, mu in enumerate(mus):
+        if mu != 0:
+            wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
+        else:
+            wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
 
     log_file.write(f'wake_history_revs: {wake_history_revs}\n')
-    #log_file.write(type(wake_history_revs))
 
     wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
     wake_history_length = wake_history_length.tolist()
-    #wake_history_length[0] = 2
 
     naca0012_xsection = naca0012()
 
@@ -105,62 +214,28 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
 
     def build_blade(r_idx, b_idx, num_blades):
 
-        AR = 0
-        theta_tw_1 = 0
-        airfoil_descs = []
+        blade = None
+        r_c = 0
         if "number_of_blades" in geometry['rotors'][r_idx]:
-            AR = geometry['rotors'][r_idx]['blade']['AR']
-            theta_tw_1 = geometry['rotors'][r_idx]['blade']["theta_tw"]*math.pi/180.0
-            airfoil_descs = geometry['rotors'][r_idx]['blade']['airfoils']
-        else:
-            AR = geometry['rotors'][r_idx]['blades'][b_idx]['AR']
-            theta_tw_1 = geometry['rotors'][r_idx]['blades'][b_idx]["theta_tw"]*math.pi/180.0
-            airfoil_descs = geometry['rotors'][r_idx]['blades'][b_idx]['airfoils']
-
-        airfoils = []
-        extents = []
-        for airfoil_desc in airfoil_descs:
-            type = airfoil_desc['type']
-            extent = [0, 0]
-            af_extent = airfoil_desc['extent']
-            airfoil = None
-            if type == 'aerodas':
-                airfoil = create_aerodas_from_xfoil_polar(f"{geom_directory}/{airfoil_desc['xfoil_polar']}", airfoil_desc['thickness'])
+            if isinstance(geometry['rotors'][r_idx]['blade'], str):
+                blade, r_c = build_blade_from_json(blade_dict[geometry['rotors'][r_idx]['blade']], requested_elements, geom_directory)
             else:
-                print(f"Unsupported airfoil type: {type}. Defaulting to ThinAirfoil theory")
-                airfoil = ThinAirfoil(0)
-
-            extent[0] = int(round(af_extent[0]*elements))
-            extent[1] = int(round(af_extent[1]*elements)) - 1
-
-            extents.append(extent)
-            airfoils.append(airfoil)
-
-        blade_airfoil = BladeAirfoil(airfoils, extents)
-
-        c = (1.0/AR)*np.ones(elements)
-        alpha_0 = -2.5*(math.pi/180.0)*np.ones(elements)
-        twist = [(_r - 0.75)*theta_tw_1 for _r in r]
+                blade, r_c = build_blade_from_json(geometry['rotors'][r_idx]['blade'], requested_elements, geom_directory)
+        else:
+            if isinstance(geometry['rotors'][r_idx]['blades'], List[str]):
+                blade, r_c = build_blade_from_json(blade_dict[geometry['rotors'][r_idx]['blade'][b_idx]], requested_elements, geom_directory)
+            else:
+                blade, r_c = build_blade_from_json(geometry['rotors'][r_idx]['blades'][b_idx], requested_elements, geom_directory)
 
         d_azimuth = 2.0*math.pi/num_blades
 
-		# Build the geom of the blades
-        blade = BladeGeometry(
-            num_elements = elements,
-            azimuth_offset = b_idx*d_azimuth,
-            average_chord = R[r_idx]*np.sum(c)/len(c),
-            airfoil = blade_airfoil
-        )
-        
-        # Convert from linear array format to OpenCOPTER chunk format
-        set_r(blade, r)
-        set_twist(blade, twist)
-        set_alpha_0(blade, alpha_0)
-        set_C_l_alpha(blade, C_l_alpha)
-        set_chord(blade, c)
-        set_sweep(blade, sweep)
+        blade.azimuth_offset = b_idx*d_azimuth
 
-        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, R[r_idx], AR, wopwop_data_path, r_idx, b_idx)
+        c = get_chord(blade)
+        blade.average_chord = R[r_idx]*np.sum(c)/len(c)
+        blade.blade_length = R[r_idx]*(1.0 - r_c)
+
+        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, get_twist(blade), R[r_idx], 10, wopwop_data_path, r_idx, b_idx)
 
         return blade
 
@@ -178,7 +253,9 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
 			solidity = 0 # we set this later because we don't have the average blade chord
 		)
 
-        rotor.blades = [build_blade(r_idx, b_idx, num_blades) for b_idx in range(num_blades)]
+        tmp_blades = [build_blade(r_idx, b_idx, num_blades) for b_idx in range(num_blades)]
+
+        rotor.blades = tmp_blades
         rotor.solidity = num_blades*rotor.blades[0].average_chord/(math.pi*rotor.radius)
         return rotor
 
@@ -204,8 +281,8 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     rotorcraft_input_state = AircraftInputState(num_rotors, num_blades)
 
     for r_idx in range(num_rotors):
-        if aoa_rotors:
-            rotorcraft_input_state.rotor_inputs[r_idx].angle_of_attack = aoa_rotors[r_idx]*(math.pi/180.0)
+        if "aoa_rotors" in flight_condition:
+            rotorcraft_input_state.rotor_inputs[r_idx].angle_of_attack = flight_condition["aoa_rotors"][r_idx]*(math.pi/180.0)
         else:
             rotorcraft_input_state.rotor_inputs[r_idx].angle_of_attack = aoa
         rotorcraft_input_state.rotor_inputs[r_idx].angular_velocity = omegas[r_idx]
@@ -213,12 +290,11 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
         rotorcraft_input_state.rotor_inputs[r_idx].azimuth = azimuths[r_idx]
         rotorcraft_input_state.rotor_inputs[r_idx].freestream_velocity = V_inf
         for b_idx in range(num_blades[r_idx]):
-            rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = 0.1*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord
+            rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = 0.1*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/R[r_idx]
             rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
             rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0
             rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 
-    #rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if r_idx > 0 else Decayed() for r_idx in range(num_rotors)]
     rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
@@ -230,12 +306,7 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     log_file.write(f"sim_revs = {sim_revs}\n")
 
     wopwop_rotor_indx = 0
-    # if (num_rotors == 1):
-    #     wopwop_rotor_indx = 0
-    # else:
-    #     wopwop_rotor_indx = computational_parameters["wopwop_rotor_indx"]
 
-    #rotorcraft_thrusts, rotorcraft_namelists, x_inflow, inflow_induced_velocities, wake_induced_velocities = simulate_aircraft.simulate_aircraft(rotorcraft_system, rotorcraft_state, rotorcraft_input_state, rotorcraft_inflows, rotor_wake_history, atmo, omegas, V_inf, r, twist, AR, 1, elements, wopwop_rotor_indx, args.ws, f'{output_base}/vtu', f'{output_base}/acoustics', do_compute, flight_condition, computational_parameters["convergence_criteria"])
     rotorcraft_thrusts, rotorcraft_namelists = simulate_aircraft.simulate_aircraft(log_file, rotorcraft_system, rotorcraft_state, rotorcraft_input_state, rotorcraft_inflows, rotor_wake_history, atmo, omegas, V_inf, r, 1, elements, wopwop_rotor_indx, args.ws, f'{output_base}/vtu', f'{output_base}/acoustics', do_compute, flight_condition, computational_parameters["convergence_criteria"])
 
     if do_compute:
@@ -255,10 +326,6 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
         results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
         results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
     
-        #results_dictionary["x_inflow"] = x_inflow
-        #results_dictionary["wake_induced_velocities"] = wake_induced_velocities
-        #results_dictionary["inflow_induced_velocities"] = inflow_induced_velocities
-        
         scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
     
     cases = []

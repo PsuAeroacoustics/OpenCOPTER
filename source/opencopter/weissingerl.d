@@ -6,6 +6,7 @@ import opencopter.math;
 import opencopter.math.blas;
 import opencopter.math.lapacke;
 import opencopter.memory;
+import opencopter.io;
 
 import numd.utility;
 
@@ -14,13 +15,12 @@ import std.conv;
 import std.math;
 import std.range;
 
-private auto P(double sweep, double y, double eta, double aspect) {
-	immutable tan_sweep = tan(sweep);
+private auto P(double xi_y, double xi_eta, double y, double eta, double local_aspect) {
 	immutable global_divisor = 1.0/(y - eta);
-	immutable numerator = y*tan_sweep - eta*tan_sweep + 0.5;
+	immutable numerator = xi_y - xi_eta + 0.5;
 	immutable denominator = sqrt(
-		(y*tan_sweep - eta*tan_sweep + 0.5)^^2.0
-		+ 0.25*aspect*aspect*(y - eta)^^2.0
+		(xi_y - xi_eta + 0.5)^^2.0
+		+ local_aspect*local_aspect*(y - eta)^^2.0
 	);
 	immutable arg = numerator/denominator - 1;
 	if(abs(arg) < 1.0e-14) {
@@ -30,12 +30,11 @@ private auto P(double sweep, double y, double eta, double aspect) {
 	}
 }
 
-private auto R(double sweep, double y, double eta, double aspect) {
-	immutable tan_sweep = tan(sweep);
-	immutable numerator = y*tan_sweep - eta*tan_sweep + 0.5 + tan_sweep*(y - eta);
+private auto R(double xi_y, double xi_eta, double xi_p_eta, double y, double eta, double local_aspect) {
+	immutable numerator = xi_y - xi_eta + 0.5 + xi_p_eta*(eta - y);
 	immutable denominator = (
-		(y*tan_sweep - eta*tan_sweep + 0.5)^^2.0
-		+ 0.25*aspect*aspect*(y - eta)^^2.0
+		(xi_y - xi_eta + 0.5)^^2.0
+		+ local_aspect*local_aspect*(y - eta)^^2.0
 	)^^1.5;
 
 	return numerator/denominator;
@@ -58,7 +57,7 @@ struct WeissingerL(ArrayContainer AC) {
 	private Chunk[][] influence_inv;
 	private size_t elements;
 
-	this(size_t _elements, ref BladeGeometryT!AC blade) {
+	this(size_t _elements, ref BladeGeometryT!AC blade, double radius) {
 		import std.stdio : writeln;
 		
 		elements = _elements;
@@ -69,41 +68,63 @@ struct WeissingerL(ArrayContainer AC) {
 		auto influence = allocate_dense(elements, elements);
 		double[][] _influence_inv = allocate_dense(elements, elements);
 
+		auto y_array = generate_radius_points(elements);
+
 		foreach(ch1; 0..chunks) {
 			foreach(c1; 0..chunk_size) {
 				immutable v = ch1*chunk_size + c1;
-				immutable y = 2.0*blade.chunks[ch1].r[c1] - 1.0;
+				immutable y = 2.0*y_array[v] - 1.0;
+
+				immutable true_chord = blade.chunks[ch1].chord[c1]*radius;
+				immutable xi_y = blade.chunks[ch1].xi[c1]*radius/true_chord;
 
 				immutable psi_v = ((elements - v).to!double)*PI/(elements.to!double + 1.0);
+
+				immutable local_aspect = blade.blade_length/(2.0*true_chord);
+
 				foreach(ch2; 0..chunks) {
 					foreach(c2; 0..chunk_size) {
 						immutable n = ch2*chunk_size + c2;
-						
-						immutable eta = 2.0*blade.chunks[ch2].r[c2] - 1.0;
-						
-						immutable sweep = blade.chunks[ch1].sweep[c1];
-						immutable aspect = 1.0/blade.chunks[ch1].chord[c1];
 
 						immutable psi_n = ((elements - n).to!double)*PI/(elements.to!double + 1.0);
 
 						immutable first = 1.0/(elements.to!double + 1.0)*iota(1.0, elements.to!double + 1.0).map!(mu => mu*sin(mu*psi_n)*sin(mu*psi_v)/sin(psi_v)).sum;
 
 						immutable second = 1.0/(4.0*(integration_elements.to!double + 1.0))*(
-							0.5*(P(sweep, y, -1.0, aspect)*h_n(elements, psi_n, 0) + P(sweep, y, 1.0, aspect)*h_n(elements, psi_n, PI)) +
-							iota(1.0, integration_elements.to!double + 1.0).map!((mu) {
+							0.5*(P(xi_y, blade.chunks[0].xi[0], y, -1.0, local_aspect)*h_n(elements, psi_n, 0) + P(xi_y, blade.chunks[$-1].xi[$-1], y, 1.0, local_aspect)*h_n(elements, psi_n, PI)) +
+							iota(1.0, integration_elements.to!double + 1.0).enumerate.map!((e) {
+								immutable mu = e[1];
+								immutable eta_idx = e[0];
 								immutable psi_mu = mu*PI/(integration_elements.to!double + 1.0);
 								immutable eta_mu = cos(psi_mu);
+								immutable eta_ch_idx = eta_idx/chunk_size;
+								immutable eta_c_idx = eta_idx%chunk_size;
 
-								return P(sweep, y, eta_mu, aspect)*h_n(elements, psi_n, psi_mu);
+								immutable true_chord_eta = blade.chunks[eta_ch_idx].chord[eta_c_idx]*radius;
+								immutable xi_eta = blade.chunks[eta_ch_idx].xi[eta_c_idx]*radius/true_chord_eta;
+
+								immutable p = P(xi_y, xi_eta, y, eta_mu, local_aspect)*h_n(elements, psi_n, psi_mu);
+
+								return p;
 							}).array.sum
 						);
 
-						immutable third = 1.0/(16.0*(integration_elements.to!double + 1.0))*aspect*aspect*(
-							iota(1.0, integration_elements.to!double + 1.0).map!((mu) {
+						immutable third = 1.0/(4.0*(integration_elements.to!double + 1.0))*local_aspect*local_aspect*(
+							iota(1.0, integration_elements.to!double + 1.0).enumerate.map!((e) {
+								immutable mu = e[1];
+								immutable eta_idx = e[0];
 								immutable psi_mu = mu*PI/(integration_elements.to!double + 1.0);
 								immutable eta_mu = cos(psi_mu);
 
-								return R(sweep, y, eta_mu, aspect)*f_n(elements, psi_n, psi_mu)*sin(psi_mu);
+								immutable eta_ch_idx = eta_idx/chunk_size;
+								immutable eta_c_idx = eta_idx%chunk_size;
+
+								immutable true_chord_eta = blade.chunks[eta_ch_idx].chord[eta_c_idx]*radius;
+
+								immutable xi_eta = blade.chunks[eta_ch_idx].xi[eta_c_idx]*radius/true_chord_eta;
+								immutable xi_p_eta = blade.chunks[eta_ch_idx].xi_p[eta_c_idx];///true_chord_eta;
+
+								return R(xi_y, xi_eta, xi_p_eta, y, eta_mu, local_aspect)*f_n(elements, psi_n, psi_mu)*sin(psi_mu);
 							}).array.sum
 						);
 
@@ -120,6 +141,8 @@ struct WeissingerL(ArrayContainer AC) {
 			_influence_inv[r_idx][] = influence[r_idx][];
 		}
 
+		debug writeln;
+		debug _influence_inv.print_matlab;
 		openblas_set_num_threads(1);
 
 		int info = 0;
@@ -130,7 +153,6 @@ struct WeissingerL(ArrayContainer AC) {
 
 		assert(info == 0, "Failed to invert influence matrix");
 
-
 		influence_inv = allocate_dense_chunk_aliased(elements, elements);
 
 		foreach(r; 0..elements) {
@@ -140,34 +162,21 @@ struct WeissingerL(ArrayContainer AC) {
 		}
 	}
 
-	void compute_bound_circulation(BS)(auto ref BS blade_state) {
-		foreach(ch1; 0..influence_inv[0].length) {
-			foreach(c1; 0..chunk_size) {
-				immutable r = ch1*chunk_size + c1;
-				double gamma = 0;
-				foreach(ch, ref inf; influence_inv[r]) {
-					Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
-					gamma += tmp.sum;
-				}
-
-				blade_state.chunks[ch1].d_gamma[c1] = blade_state.chunks[ch1].gamma[c1] - gamma;
-				blade_state.chunks[ch1].gamma[c1] = gamma;
-			}
-		}
-	}
-
-	void compute_bound_circulation_band(BS)(auto ref BS blade_state, immutable Chunk u, size_t chunk_idx) {
+	void compute_bound_circulation_band(BS)(auto ref BS blade_state, immutable Chunk u, size_t chunk_idx, double direction_multiplier) {
 		foreach(c1; 0..chunk_size) {
+			//immutable r = ((elements/chunk_size - 1) - chunk_idx)*chunk_size + c1;
 			immutable r = chunk_idx*chunk_size + c1;
 			double gamma = 0;
 			foreach(ch, ref inf; influence_inv[r]) {
 				Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
+				//Chunk tmp = inf[]*blade_state.chunks[ch].aoa[];
 				gamma += tmp.sum;
 			}
 
-			gamma *= /+5*+/u[c1];
-			blade_state.chunks[chunk_idx].d_gamma[c1] = blade_state.chunks[chunk_idx].gamma[c1] - gamma;
+			gamma *= u[c1];
+			gamma *= -direction_multiplier;
 			//blade_state.chunks[chunk_idx].d_gamma[c1] = gamma - blade_state.chunks[chunk_idx].gamma[c1];
+			blade_state.chunks[chunk_idx].d_gamma[c1] = blade_state.chunks[chunk_idx].gamma[c1] - gamma;
 			blade_state.chunks[chunk_idx].gamma[c1] = gamma;
 		}
 	}
