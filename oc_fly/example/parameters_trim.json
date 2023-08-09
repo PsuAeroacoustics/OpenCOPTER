@@ -8,11 +8,11 @@
   "flight_conditions": [
     {
       "aoa": 0.0,
-      "aoa_rotors": [90, 0],
+      "aoa_rotors": [0, 0],
       "density": 1.125,
       "omegas": [ 109.12, -109.12 ],
       "sos": 343,
-      "c_t": [0.005, 0.005],
+      "c_t": [0.02, 0.02],
       "V_inf": 30.0
     }
   ]

@@ -63,20 +63,17 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory):
         linear_r = np.linspace(r_c, 1.0, len(linear_x))
         f_x = interp1d(linear_r, linear_x)
         x = f_x(r)
-    # else:
-    #     linear_x = np.zeros(elements)
-    #     linear_r = np.linspace(r_c, 1.0, len(linear_x))
 
     c = None
     if "AR" in blade_object:
         AR = blade_object["AR"]
-        c = (1.0/AR)*np.ones(elements)
+        c = ((1.0 - r_c)/AR)*np.ones(elements)
         if linear_r is not None:
-            linear_c = (1.0/AR)*np.ones(len(linear_r))
+            linear_c = ((1.0 - r_c)/AR)*np.ones(len(linear_r))
         else:
             linear_r = np.linspace(r_c, 1.0, elements)
             linear_x = np.zeros(len(linear_r))
-            linear_c = (1.0/AR)*np.ones(len(linear_r))
+            linear_c = ((1.0 - r_c)/AR)*np.ones(len(linear_r))
 
     else:
         linear_c = blade_object['c']

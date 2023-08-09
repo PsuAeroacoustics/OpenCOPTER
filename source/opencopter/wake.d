@@ -660,7 +660,7 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 		immutable omega_sgn = std.math.sgn(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
 
-		immutable double inboard_factor = ac.rotors[rotor_idx].blades[0].chunks[$-1].r[$-2];
+		immutable double inboard_factor = 1.0 - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/2.0;//ac.rotors[rotor_idx].blades[0].chunks[$-1].r[$-2];
 
 		immutable Chunk free_stream_x = -ac_input_state.rotor_inputs[rotor_idx].freestream_velocity/(ac.rotors[rotor_idx].radius);
 		
