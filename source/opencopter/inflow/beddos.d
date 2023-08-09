@@ -11,7 +11,7 @@ import std.algorithm;
 import std.math;
 import std.range;
 
-private auto inflow_at_impl(C)(BeddosInflow bi, auto ref C x, auto ref C y) {
+private auto inflow_at_impl(BI, C)(BI bi, auto ref C x, auto ref C y) {
 	version(LDC) pragma(inline, true);
 	static import std.math;
 	import std.math : PI;
@@ -28,36 +28,30 @@ private auto inflow_at_impl(C)(BeddosInflow bi, auto ref C x, auto ref C y) {
 	return inflow;
 }
 
-class BeddosInflow : Inflow {
+class BeddosInflow(ArrayContainer AC = ArrayContainer.none) {
 
 	double ffi;
 	private double kx;
 	private double ky;
 	private double k0;
 	private double xi;
-	//private double rotation_dir = 1.0;
 
-	this(/+Direction direction+/) {
-		/+if(direction == Direction.clockwise) {
-			rotation_dir = 1.0;
-		} else {
-			rotation_dir = -1.0;
-		}+/
+	this() {
 	}
 
 	@nogc double get_average_inflow() {
 		return ffi;
 	}
 
-	@nogc void update(double C_T, ref RotorInputState rotor, ref RotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(C_T, rotor, advance_ratio, axial_advance_ratio, dt);
+	void update(double C_T, ref RotorInputStateT!AC rotor, ref RotorStateT!AC rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	@nogc void update(double C_T, RotorInputState* rotor, RotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(C_T, rotor, advance_ratio, axial_advance_ratio, dt);
+	void update(double C_T, RotorInputStateT!AC* rotor, RotorStateT!AC* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	private @nogc void update_impl(RIS)(double C_T, auto ref RIS rotor, double advance_ratio, double axial_advance_ratio, double dt)
+	private void update_impl(RIS, RS)(double C_T, auto ref RIS rotor, auto ref RS rotor_state, double advance_ratio, double axial_advance_ratio, double dt)
 		if(is_rotor_input_state!RIS)
 	{
 		import std.stdio : writeln;

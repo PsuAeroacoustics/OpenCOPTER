@@ -1,7 +1,8 @@
 import opencopter.aircraft;
-import opencopter.config;
+import opencopter.airfoilmodels;
 import opencopter.atmosphere;
 import opencopter.bladeelement;
+import opencopter.config;
 import opencopter.inflow;
 import opencopter.liftmodels;
 import opencopter.math;
@@ -670,6 +671,11 @@ int main(string[] args) {
 
 	Vec3[] origins = [Vec3(0, 0, 0), Vec3(-2.3, 0, 0), Vec3(4, 0, 0)];
 
+	AirfoilModel thin_airfoil = new ThinAirfoil(-2.5*(PI/180.0));
+	size_t[2][] af_extent = [[0, elements - 1]];
+
+	BladeAirfoil blade_airfoil = new BladeAirfoil([thin_airfoil], af_extent);
+
 	foreach(r_idx, ref rotor; aircraft.rotors) {
 		rotor = RotorGeometry(
 			num_blades,
@@ -715,6 +721,7 @@ int main(string[] args) {
 
 		foreach(b_idx, ref blade; rotor.blades) {
 			blade.chunks = new BladeGeometryChunk[num_chunks];
+			blade.airfoil = blade_airfoil;
 			blade.set_geometry_array!"r"(r);
 			blade.set_geometry_array!"twist"(twist);
 			blade.set_geometry_array!"sweep"(sweep);
@@ -1715,8 +1722,10 @@ int main(string[] args) {
 				immutable Chunk inflow_angle = atan2(_u_p, _u_t);
 				immutable Chunk old_inflow_angle = atan2(old_u_p, old_u_t);
 
-				immutable Chunk dC_L = steady_lift_model(_u_p, R, aircraft.rotors[0].blades[0].chunks[chunk_idx], ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].chunks[chunk_idx], _u_t, inflow_angle, 0);
-				immutable Chunk old_dC_L = steady_lift_model(old_u_p, R, aircraft.rotors[0].blades[0].chunks[chunk_idx], ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].chunks[chunk_idx], old_u_t, old_inflow_angle, 0);
+				immutable Chunk dC_L = 0.0;//steady_lift_model(_u_p, R, aircraft.rotors[0].blades[0].chunks[chunk_idx], ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].chunks[chunk_idx], _u_t, inflow_angle, 0);
+				immutable Chunk old_dC_L = 0.0;
+				//immutable Chunk dC_L = steady_lift_model(_u_p, R, aircraft.rotors[0].blades[0].chunks[chunk_idx], ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].chunks[chunk_idx], _u_t, inflow_angle, 0);
+				//immutable Chunk old_dC_L = steady_lift_model(old_u_p, R, aircraft.rotors[0].blades[0].chunks[chunk_idx], ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0].chunks[chunk_idx], old_u_t, old_inflow_angle, 0);
 
 				//writeln("p_idx: ", p_idx);
 				//writeln("wake_u_t.length: ", wake_u_t.length);

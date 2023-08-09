@@ -1,0 +1,23 @@
+{
+    "aircraft": "xyz",
+
+    "flight conditions":[
+        {
+        "V_inf" : 32.9,
+        "density" : 1.125,
+        "omega" : -109.12,
+        "sos" : 343,
+        "aoa" : -5.3
+        }
+    ],
+    
+    "computational parameters": [
+        {
+        "iterations" : 5400,
+        "wake_hist_length": 1024,
+        "requested elements" : 45,
+        "d_psi" : 1.0,
+        "shed_history_angle" : 45.0
+        }
+    ]
+}

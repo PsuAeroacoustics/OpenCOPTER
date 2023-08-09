@@ -1,6 +1,7 @@
 module opencopter.python;
 
 import opencopter.aircraft;
+import opencopter.airfoilmodels;
 import opencopter.atmosphere;
 import opencopter.math;
 import opencopter.memory;
@@ -19,7 +20,7 @@ import std.exception : enforce;
 import std.math : abs, fmod, PI;
 import std.traits : isBasicType;
 
-alias BI = opencopter.inflow.BeddosInflow;
+alias BI = opencopter.inflow.BeddosInflow!(ArrayContainer.array);
 alias HP = opencopter.inflow.HuangPetersInflowT!(ArrayContainer.array);
 
 size_t chunk_size() {
@@ -116,6 +117,38 @@ class HuangPeters : Inflow {
 	}
 }
 
+class Beddoes : Inflow {
+	private BI beddoes;
+
+	this() {
+		beddoes = new BI();
+	}
+
+	this(PyRotorGeometry* rotor, double dt) {
+		beddoes = new BI();
+	}
+
+	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		beddoes.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+		beddoes.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+		return beddoes.inflow_at(x, y, z, x_e, angle_of_attack);
+	}
+
+	override Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
+		return beddoes.inflow_at(r, cos_azimuth, sin_azimuth);
+	}
+
+	override double wake_skew() {
+		return beddoes.wake_skew();
+	}
+}
+
 alias PyWakeHistory = opencopter.wake.WakeHistoryT!(ArrayContainer.array);
 alias PyWake = opencopter.wake.WakeT!(ArrayContainer.array);
 alias PyRotorWake = opencopter.wake.RotorWakeT!(ArrayContainer.array);
@@ -137,8 +170,16 @@ void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
 }
 
+double[] get_twist(ref PyBladeGeometry bg) {
+	return bg.get_geometry_array!"twist";
+}
+
 void set_chord(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"chord"(data);
+}
+
+double[] get_chord(ref PyBladeGeometry bg) {
+	return bg.get_geometry_array!"chord";
 }
 
 void set_r(ref PyBladeGeometry bg, double[] data) {
@@ -155,6 +196,14 @@ void set_alpha_0(ref PyBladeGeometry bg, double[] data) {
 
 void set_sweep(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"sweep"(data);
+}
+
+void set_xi(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi"(data);
+}
+
+void set_xi_p(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi_p"(data);
 }
 
 double[] get_dC_T(ref PyBladeState blade) {
@@ -213,6 +262,14 @@ double[] get_gamma(ref PyBladeState blade) {
 	return blade.get_state_array!"gamma";
 }
 
+double[] get_u_p(ref PyBladeState blade) {
+	return blade.get_state_array!"u_p";
+}
+
+double[] get_aoa_eff(ref PyBladeState blade) {
+	return blade.get_state_array!"aoa_eff";
+}
+
 double[] get_d_gamma(ref PyBladeState blade) {
 	return blade.get_state_array!"d_gamma";
 }
@@ -261,6 +318,7 @@ void write_wake_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkWa
 	opencopter.vtk.write_wake_vtu(base_filename, iteration, vtk_wake, wake);
 }
 
+alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!Inflow;
 
 void wrap_array(T)() {
 	static if(isBasicType!T) {
@@ -310,7 +368,13 @@ void wrap_array(T)() {
 	}
 }
 
+opencopter.wake.InducedVelocities compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref PyAircraftState ac_state, double angular_velocity, size_t rotor_idx, bool single_rotor = false) {
+	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, angular_velocity, rotor_idx, 0, single_rotor);
+}
+
 extern(C) void PydMain() {
+
+	def!(compute_wake_induced_velocities);
 
 	def!(chunk_size, Docstring!q{
 		Returns the chunk size used by the internal data structures
@@ -412,11 +476,23 @@ extern(C) void PydMain() {
 		:param data: List of twist angles (in radians) for each radial station
 	});
 
+	def!(get_twist, Docstring!q{
+		Get the spanwise twist distribution of a :class:`BladeGeometry`
+
+		:param bg: :class:`BladeGeometry` object get twist from.
+	});
+
 	def!(set_chord, Docstring!q{
 		Set the spanwise chord distribution (non-dimensional) of a :class:`BladeGeometry` from a linear array.
 
 		:param bg: :class:`BladeGeometry` object to apply twist to.
 		:param data: List of chord lengths (non-dimensional) for each radial station
+	});
+
+	def!(get_chord, Docstring!q{
+		Get the spanwise chord distribution (non-dimensional) of a :class:`BladeGeometry`
+
+		:param bg: :class:`BladeGeometry` object get chord from.
 	});
 
 	def!(set_r, Docstring!q{
@@ -447,6 +523,29 @@ extern(C) void PydMain() {
 
 		:param bg: :class:`BladeGeometry` object to apply twist to.
 		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(set_xi, Docstring!q{
+		Set the spanwise quarter chord position distribution of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(set_xi_p, Docstring!q{
+		Set the spanwise quarter chord derivative position distribution of a :class:`BladeGeometry`
+		from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	def!(sweep_from_quarter_chord, Docstring!q{
+		Set the spanwise quarter chord derivative position distribution of a :class:`BladeGeometry`
+		from a linear array.
+
+		:param r: spanwise radial station
+		:param x: x location of the quarter chord
 	});
 
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
@@ -532,6 +631,21 @@ extern(C) void PydMain() {
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\Gamma}` from
 		:return: List of spanwise circulation values
 	});
+
+	def!(get_u_p, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise bound circulation (:math:`{\Gamma}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\Gamma}` from
+		:return: List of spanwise circulation values
+	});
+
+	def!(get_aoa_eff, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise effective angle of attack (:math:`{\alpha_{eff}}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\alpha_{eff}}` from
+		:return: List of spanwise effective angle of attack values
+	});
+
 	def!(get_d_gamma, double[] function(ref PyBladeState), Docstring!q{
 		Extract blade spanwise change in bound circulation (:math:`{\Delta}`:math:`{\Gamma}`) to a linear array.
 
@@ -609,7 +723,49 @@ extern(C) void PydMain() {
 		:param dt: the current timestep size
 	}));
 
+	def!(create_aerodas_from_xfoil_polar);
+
+	def!(load_c81_file);
+
+	def!(write_inflow_vtu);
+
 	module_init;
+
+	wrap_class!(
+		AirfoilModel
+	);
+
+	wrap_class!(
+		BladeAirfoil,
+		Init!(AirfoilModel[], size_t[2][])
+	);
+
+	wrap_class!(
+		AeroDAS,
+		Init!(double[], double[], double[], double, double),
+		Def!(AeroDAS.get_Cl, double function(double, double)),
+		Def!(AeroDAS.get_Cd, double function(double, double)),
+		Member!("CL"),
+		Member!("CD"),
+		Member!("alpha")
+	);
+
+	wrap_class!(
+		C81,
+		Init!(string, double[], double[], double[][],
+			  double[], double[], double[][],
+			  double[], double[], double[][]
+		),
+		Def!(C81.get_Cl, double function(double, double)),
+		Def!(C81.get_Cd, double function(double, double))
+	);
+
+	wrap_class!(
+		ThinAirfoil,
+		Init!(double),
+		Def!(ThinAirfoil.get_Cl, double function(double, double)),
+		Def!(ThinAirfoil.get_Cd, double function(double, double))
+	);
 
 	wrap_class!(
 		opencopter.vtk.VtkRotor,
@@ -638,12 +794,12 @@ extern(C) void PydMain() {
 	);
 
 	
-	//wrap_struct!(
-	//	opencopter.wake.InducedVelocities,
-	//	Member!"v_x",
-	//	Member!"v_y",
-	//	Member!"v_z"
-	//);
+	wrap_struct!(
+		opencopter.wake.InducedVelocities,
+		Member!"v_x",
+		Member!"v_y",
+		Member!"v_z"
+	);
 
 	wrap_struct!(
 		opencopter.wake.FilamentChunk,
@@ -689,16 +845,27 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWake,
 		PyName!"Wake",
-		Init!(size_t, size_t, size_t[], size_t, size_t),
+		Init!(size_t, size_t[], size_t[], size_t, size_t),
 		Member!("rotor_wakes", Docstring!q{An array of :class:`RotorWake`})
 	);
 
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t, size_t[], size_t, size_t, size_t),
-		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep}),
-		Docstring!("Top level structure for holding the wake and its history")
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t),
+		Docstring!q{
+			Top level structure for holding the wake and its history.
+			
+			Contructor:
+
+			:param num_rotors: Number of rotors the aircraft has.
+			:param num_blades: A list of the number of blades per rotor. The length of the list must match the number of rotors.
+			:param wake_history: The length of the wake history per rotor. The length of the list must match the number of rotors.
+			:param time_history: The number of timesteps to store. 2 is the minimum number.
+			:param radial_elements: The number of radial elements down the blade span.
+			:param shed_history: The number of timesteps to store the shed wake for.
+		},
+		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep})
 	);
 
 	wrap_struct!(
@@ -737,7 +904,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyAircraftInputState,
 		PyName!"AircraftInputState",
-		Init!(size_t, size_t),
+		Init!(size_t, size_t[]),
 		Docstring!q{
 			This class represents the input parameters for the entire aircraft.
 			
@@ -761,7 +928,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyBladeGeometry,
 		PyName!"BladeGeometry",
-		Init!(size_t, double, double),
+		Init!(size_t, double, double, BladeAirfoil),
 		Docstring!q{
 			This class allocates and holds the blade geomteric parameters.
 
@@ -772,10 +939,12 @@ extern(C) void PydMain() {
 			:param average_chord: The average chord of the blade.
 		},
 		Member!"chunks",
+		Member!"airfoil",
 		Member!("azimuth_offset", Docstring!q{
 			The azimuthal offset for this blade. This is added to the :class:`RotorInputState` azimuth.
 		}),
-		Member!("average_chord", Docstring!q{The dimensional average chord of the blade})
+		Member!("average_chord", Docstring!q{The dimensional average chord of the blade}),
+		Member!("blade_length", Docstring!q{The dimensional actual length of the blade not accounting for root cutout})
 	);
 
 	wrap_struct!(
@@ -857,6 +1026,8 @@ extern(C) void PydMain() {
 		},
 		Member!("blade_states", Docstring!q{An array of :class:`BladeState`, one for each blade of this rotor}),
 		Member!("C_T", Docstring!q{The current thrust coefficient of this rotor}),
+		Member!("C_Mx", Docstring!q{The current x moment coefficient of this rotor}),
+		Member!("C_My", Docstring!q{The current y moment coefficient of this rotor}),
 		Member!("advance_ratio", Docstring!q{The current advance ratio of this rotor}),
 		Member!("axial_advance_ratio", Docstring!q{The current axial advance ratio of this rotor})
 	);
@@ -864,7 +1035,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyAircraftState,
 		PyName!"AircraftState",
-		Init!(size_t, size_t, size_t, PyAircraft*),
+		Init!(size_t, size_t[], size_t, PyAircraft*),
 		Docstring!q{
 			This is the top level class that holds the current aerodynamic state of an aircraft.
 
@@ -878,15 +1049,6 @@ extern(C) void PydMain() {
 		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft})
 	);
 
-	/+
-	wrap_struct!(
-		PyAircraftTimehistory,
-		PyName!"AircraftTimehistory",
-		Init!(PyAircraft*, size_t),
-		Member!"aircraft_history"
-	);
-	+/
-	
 	wrap_class!(
 		Inflow,
 		Def!(Inflow.update),
@@ -943,6 +1105,57 @@ extern(C) void PydMain() {
 			:return: The current wake skew angle of the rotor in radians.
 		})
 	)();
+
+	wrap_class!(
+		Beddoes,
+		Init!(),
+		Docstring!q{
+			This class instantiates a dynamic inflow model for a single rotor.
+			One of these will be needed for each rotor in the aircraft.
+
+			Constructor:
+
+			:param Mo: The number of odd modes used in the model. 4 typically works well.
+			:param Me: The number of even modes used in the model. 2 typically works well.
+			:param rotor: The geometry of the rotor this inflow model is modeling.
+			:param dt: The timestep of the simulation.
+		},
+		Def!(Beddoes.update, Docstring!q{
+			Updates the inflow model by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+
+			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+			:param rotor: The current input state for the rotor.
+			:param rotor_state: The current rotor state.
+			:param advance_ratio: The current advance ratio for the rotor.
+			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param dt: The current timestep size.
+		}),
+		Def!(Beddoes.inflow_at,
+			Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
+			PyName!"inflow_at",
+			Docstring!q{
+				Computes the rotor induced flow at the requested location.
+
+				:param x: A chunk of x positions to compute the induced velocity at.
+				:param y: A chunk of y positions to compute the induced velocity at.
+				:param z: A chunk of z positions to compute the induced velocity at.
+				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+				:return: A chunk of z induced velocities.
+			}
+		),
+		//Def!(HuangPeters.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
+		Def!(Beddoes.wake_skew, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		})
+	)();
+
+
 
 	import std.meta : AliasSeq, staticMap;
 	import std.traits : FunctionTypeOf;

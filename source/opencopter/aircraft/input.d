@@ -18,7 +18,7 @@ template is_aircraft_input_state(A) {
 
 alias AircraftInputState = AircraftInputStateT!(ArrayContainer.none);
 
-extern (C++) struct AircraftInputStateT(ArrayContainer AC) {
+struct AircraftInputStateT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, RotorInputStateT!(AC), "rotor_inputs");
 
 	this(size_t num_rotors, size_t num_blades) {
@@ -28,6 +28,16 @@ extern (C++) struct AircraftInputStateT(ArrayContainer AC) {
 			mixin(array_ctor_mixin!(AC, "double", "rotor.blade_pitches", "num_blades"));
 			mixin(array_ctor_mixin!(AC, "double", "rotor.blade_flapping_rate", "num_blades"));
 			mixin(array_ctor_mixin!(AC, "double", "rotor.blade_flapping", "num_blades"));
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades) {
+		mixin(array_ctor_mixin!(AC, "RotorInputStateT!(AC)", "rotor_inputs", "num_rotors"));
+		foreach(r_idx, ref rotor; rotor_inputs) {
+			mixin(array_ctor_mixin!(AC, "double", "rotor.r_0", "num_blades[r_idx]"));
+			mixin(array_ctor_mixin!(AC, "double", "rotor.blade_pitches", "num_blades[r_idx]"));
+			mixin(array_ctor_mixin!(AC, "double", "rotor.blade_flapping_rate", "num_blades[r_idx]"));
+			mixin(array_ctor_mixin!(AC, "double", "rotor.blade_flapping", "num_blades[r_idx]"));
 		}
 	}
 	// Orientation data?

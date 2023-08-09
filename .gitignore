@@ -16,3 +16,7 @@ pressure_plot
 *.vtu
 *.vtk
 *.txt
+*.xfi
+validation/af_data/afdata_val
+*.bl
+*.out

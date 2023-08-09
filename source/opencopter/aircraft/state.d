@@ -50,7 +50,7 @@ template is_aircraft_state(A) {
 
 alias AircraftState = AircraftStateT!(ArrayContainer.none); 
 
- extern (C++) struct AircraftStateT(ArrayContainer _AC) {
+ struct AircraftStateT(ArrayContainer _AC) {
 	alias AC = _AC;
 	mixin ArrayDeclMixin!(AC, RotorStateT!(AC), "rotor_states");
 
@@ -71,6 +71,26 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
 		foreach(i, ref rotor_state; rotor_states) {
 			rotor_state = RotorStateT!AC(num_blades, num_chunks, ac.rotors[i]);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, ref AircraftT!AC ac) {
+		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
+		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+		immutable num_chunks = actual_num_elements/chunk_size;
+		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		foreach(i, ref rotor_state; rotor_states) {
+			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i]);
+		}
+	}
+
+	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, AircraftT!AC* ac) {
+		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
+		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+		immutable num_chunks = actual_num_elements/chunk_size;
+		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		foreach(i, ref rotor_state; rotor_states) {
+			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i]);
 		}
 	}
 
@@ -115,25 +135,21 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	this(size_t num_blades, size_t num_chunks, ref RotorGeometryT!AC rotor) {
 		mixin(array_ctor_mixin!(AC, "BladeStateT!(AC)", "blade_states", "num_blades"));
 		foreach(i, ref blade_state; blade_states) {
-			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i]);
+			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i], rotor.radius);
 		}
 	}
 
 	this(size_t num_blades, size_t num_chunks, RotorGeometryT!AC* rotor) {
 		mixin(array_ctor_mixin!(AC, "BladeStateT!(AC)", "blade_states", "num_blades"));
 		foreach(i, ref blade_state; blade_states) {
-			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i]);
+			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i], rotor.radius);
 		}
 	}
 
 	@nogc ~this() {
-		import std.stdio : writeln;
-		//debug writeln("Destroying RotorState");
 	}
 
 	ref typeof(this) opAssign(typeof(this) rotor) {
-		import std.stdio : writeln;
-		//debug writeln("BladeGeometryT opAssign");
 		this.blade_states = rotor.blade_states;
 		this.C_T = rotor.C_T;
 		this.advance_ratio = rotor.advance_ratio;
@@ -143,8 +159,6 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	}
 
 	ref typeof(this) opAssign(ref typeof(this) rotor) {
-		//import std.stdio : writeln;
-		//debug writeln("BladeGeometryT ref opAssign: ", blade.chunks.length);
 		this.blade_states = rotor.blade_states;
 		this.C_T = rotor.C_T;
 		this.advance_ratio = rotor.advance_ratio;
@@ -153,8 +167,6 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	}
 
 	ref typeof(this) opAssign(typeof(this)* rotor) {
-		//import std.stdio : writeln;
-		//debug writeln("BladeGeometryT ptr opAssign: ", blade.chunks.length);
 		this.blade_states = rotor.blade_states;
 		this.C_T = rotor.C_T;
 		this.advance_ratio = rotor.advance_ratio;
@@ -178,6 +190,14 @@ extern (C++) struct BladeStateChunk {
 	 +  Spanwise thrust coefficient distribution
 	 +/
 	Chunk dC_T;
+	/++
+	 +  Spanwise sectional normal force coefficient distribution
+	 +/
+	Chunk dC_N;
+	/++
+	 +  Spanwise sectional chordwise force coefficient distribution
+	 +/
+	Chunk dC_c;
 	/++
 	 +  Spanwise thrust coefficient distribution time derivative
 	 +/
@@ -209,6 +229,10 @@ extern (C++) struct BladeStateChunk {
 	/++
 	 +	Spanwise angle of attack
 	 +/
+	Chunk aoa_eff;
+	/++
+	 +	Spanwise angle of attack
+	 +/
 	Chunk inflow_angle;
 	/++
 	 +	Spanwise circulation
@@ -218,6 +242,12 @@ extern (C++) struct BladeStateChunk {
 	 +	Spanwise change in circulation
 	 +/
 	Chunk d_gamma;
+
+	Chunk x;
+	Chunk y;
+	Chunk z;
+
+	Chunk r_c;
 }
 
 template is_blade_state(A) {
@@ -241,11 +271,11 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, BladeStateChunk, "chunks");
 
 	WeissingerL!AC* circulation_model;
-
-	this(size_t num_chunks, ref BladeGeometryT!AC blade) {
+	
+	this(size_t num_chunks, ref BladeGeometryT!AC blade, double radius) {
 		mixin(array_ctor_mixin!(AC, "BladeStateChunk", "chunks", "num_chunks"));
 
-		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, blade);
+		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, blade, radius);
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			chunk.dC_T[] = 0;
@@ -256,14 +286,15 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 			chunk.d_gamma[] = 0;
 			chunk.dC_Mx[] = 0;
 			chunk.dC_My[] = 0;
+			chunk.r_c[] = 0;//0.22;
 		}
 	}
 
-	this(size_t num_chunks, BladeGeometryT!AC* blade) {
+	this(size_t num_chunks, BladeGeometryT!AC* blade, double radius) {
 		assert(blade !is null);
 		mixin(array_ctor_mixin!(AC, "BladeStateChunk", "chunks", "num_chunks"));
 
-		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, *blade);
+		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, *blade, radius);
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			chunk.dC_T[] = 0;
@@ -274,6 +305,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 			chunk.d_gamma[] = 0;
 			chunk.dC_Mx[] = 0;
 			chunk.dC_My[] = 0;
+			chunk.r_c[] = 0;//0.22;
 		}
 	}
 
