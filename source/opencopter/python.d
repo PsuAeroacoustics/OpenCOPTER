@@ -318,6 +318,7 @@ void write_wake_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkWa
 	opencopter.vtk.write_wake_vtu(base_filename, iteration, vtk_wake, wake);
 }
 
+alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!Inflow;
 
 void wrap_array(T)() {
 	static if(isBasicType!T) {
@@ -725,6 +726,8 @@ extern(C) void PydMain() {
 	def!(create_aerodas_from_xfoil_polar);
 
 	def!(load_c81_file);
+
+	def!(write_inflow_vtu);
 
 	module_init;
 

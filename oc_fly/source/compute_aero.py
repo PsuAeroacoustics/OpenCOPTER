@@ -303,7 +303,7 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     log_file.write(f"sim_revs = {sim_revs}\n")
 
     wopwop_rotor_indx = 0
-
+    
     rotorcraft_thrusts, rotorcraft_namelists = simulate_aircraft.simulate_aircraft(log_file, rotorcraft_system, rotorcraft_state, rotorcraft_input_state, rotorcraft_inflows, rotor_wake_history, atmo, omegas, V_inf, r, 1, elements, wopwop_rotor_indx, args.ws, f'{output_base}/vtu', f'{output_base}/acoustics', do_compute, flight_condition, computational_parameters["convergence_criteria"])
 
     if do_compute:
@@ -325,6 +325,16 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     
         scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
     
+
+        res_x = 8
+        res_y = 1536
+        res_z = 1024
+
+        deltas = Vec3([0.1/res_x, 3.0/res_y, 2.0/res_z])
+        start = Vec3([-1.5, -1.5, -1])
+
+        write_inflow_vtu(f"{output_base}/inflow_model.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
+
     cases = []
     for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
         wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
