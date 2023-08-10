@@ -167,6 +167,7 @@ def main():
 
 	flight_conditions = param["flight_conditions"]
 	computational_parameters = param["computational_parameters"]
+	results = param["results"]
 
 	flat_cases = []
 	for aircraft in geom:
@@ -285,7 +286,7 @@ def main():
 					log_file.write( '----------------------------------------------\n')
 
 					log_file.write("simulating aero\n")
-					wopwop_cases = compute_aero.compute_aero(log_file, args, V_inf if args.v is None else args.v, aoa*(math.pi/180.0), f'{root_path}/', args.aero, aircraft, flight_condition, computational_parameters, geom_directory)
+					wopwop_cases = compute_aero.compute_aero(log_file, args, V_inf if args.v is None else args.v, aoa*(math.pi/180.0), f'{root_path}/', args.aero, aircraft, flight_condition, computational_parameters, results, geom_directory)
 					cases = cases + wopwop_cases
 
 					for case in wopwop_cases:

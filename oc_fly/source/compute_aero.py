@@ -116,7 +116,7 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory):
 
     return blade, r_c
 
-def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, flight_condition, computational_parameters, geom_directory):
+def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, flight_condition, computational_parameters, results, geom_directory):
 
     num_rotors = len(geometry["rotors"])
 
@@ -322,18 +322,18 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
         results_dictionary["rotor_c_t"] = rotorcraft_thrusts
         results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
         results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
-    
+
         scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
-    
 
-        res_x = 8
-        res_y = 1536
-        res_z = 1024
+        for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
+            res_x = inflow_slice["resolution"][0]
+            res_y = inflow_slice["resolution"][1]
+            res_z = inflow_slice["resolution"][2]
 
-        deltas = Vec3([0.1/res_x, 3.0/res_y, 2.0/res_z])
-        start = Vec3([-1.5, -1.5, -1])
+            deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+            start = Vec3(inflow_slice["slice_start"])
 
-        write_inflow_vtu(f"{output_base}/inflow_model.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
+            write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
 
     cases = []
     for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
