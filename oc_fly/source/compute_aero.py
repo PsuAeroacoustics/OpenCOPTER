@@ -9,6 +9,7 @@ from libopencopter import *
 from libwopwopd import *
 import wopwop_input_files_generator
 import simulate_aircraft
+from simulated_vehicle import SimulatedVehicle
 import numpy as np
 import math
 import scipy.io
@@ -116,7 +117,7 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory):
 
     return blade, r_c
 
-def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, flight_condition, computational_parameters, results, geom_directory):
+def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condition, computational_parameters, results, geom_directory, observer, acoustics):
 
     num_rotors = len(geometry["rotors"])
 
@@ -126,11 +127,9 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
 
     requested_elements = computational_parameters["spanwise_elements"]
 
-    
-
     R = np.asarray([geometry["rotors"][r_idx]["radius"] for r_idx in range(len(geometry["rotors"]))])
 
-    mus = V_inf/(np.abs(omegas)*R)
+    mus = flight_condition["V_inf"]/(np.abs(omegas)*R)
 
     log_file.write(f'mus: {mus}\n')
     log_file.write(f'R: {R}\n')
@@ -185,7 +184,6 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
             wake_dists[o_idx] = 6
 
     log_file.write(f'wake_dists: {wake_dists}\n')
-    #wake_history_revs = np.round(wake_dists/(mus*2.0*math.pi)) # this is an array
 
     wake_history_revs = np.zeros(wake_dists.size)
 
@@ -206,8 +204,8 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
 
     if not path.isdir(wopwop_data_path):
         makedirs(wopwop_data_path, exist_ok=True)
-                
-    log_file.write(f'wake_history_length: {wake_history_length}\n') #this must be a list of intigers
+
+    log_file.write(f'wake_history_length: {wake_history_length}\n') # this must be a list of integers
 
     def build_blade(r_idx, b_idx, num_blades):
 
@@ -256,7 +254,6 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
         rotor.solidity = num_blades*rotor.blades[0].average_chord/(math.pi*rotor.radius)
         return rotor
 
-    
     rotorcraft_system.rotors = [build_rotor(r_idx) for r_idx in range(num_rotors)]
     
     num_blades = [rotor.blades.length() for rotor in rotorcraft_system.rotors]
@@ -269,7 +266,7 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
     if do_compute:
         rotorcraft_state = AircraftState(num_rotors, num_blades, elements, rotorcraft_system)
 
-    log_file.write(f"Freestream vel: {V_inf} m/s\n")
+    log_file.write(f"Freestream vel: {flight_condition['V_inf']} m/s\n")
 
     azimuths = [0, 0*(math.pi/180.0)]
 	# Create and setup the input state. This would be the
@@ -281,18 +278,18 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
         if "aoa_rotors" in flight_condition:
             rotorcraft_input_state.rotor_inputs[r_idx].angle_of_attack = flight_condition["aoa_rotors"][r_idx]*(math.pi/180.0)
         else:
-            rotorcraft_input_state.rotor_inputs[r_idx].angle_of_attack = aoa
+            rotorcraft_input_state.rotor_inputs[r_idx].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
         rotorcraft_input_state.rotor_inputs[r_idx].angular_velocity = omegas[r_idx]
         rotorcraft_input_state.rotor_inputs[r_idx].angular_accel = 0
         rotorcraft_input_state.rotor_inputs[r_idx].azimuth = azimuths[r_idx]
-        rotorcraft_input_state.rotor_inputs[r_idx].freestream_velocity = V_inf
+        rotorcraft_input_state.rotor_inputs[r_idx].freestream_velocity = flight_condition["V_inf"]
         for b_idx in range(num_blades[r_idx]):
             rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = 0.1*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/R[r_idx]
             rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
             rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0
             rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 
-    rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+    rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
@@ -301,10 +298,31 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
 
     sim_revs = wake_history_revs.max() + args.r
     log_file.write(f"sim_revs = {sim_revs}\n")
-
-    wopwop_rotor_indx = 0
     
-    rotorcraft_thrusts, rotorcraft_namelists = simulate_aircraft.simulate_aircraft(log_file, rotorcraft_system, rotorcraft_state, rotorcraft_input_state, rotorcraft_inflows, rotor_wake_history, atmo, omegas, V_inf, r, 1, elements, wopwop_rotor_indx, args.ws, f'{output_base}/vtu', f'{output_base}/acoustics', do_compute, flight_condition, computational_parameters["convergence_criteria"])
+    vehicle = SimulatedVehicle(
+        rotorcraft_system,
+        rotorcraft_state,
+        rotorcraft_input_state,
+        rotorcraft_inflows,
+        rotor_wake_history
+    )
+
+    rotorcraft_thrusts, rotorcraft_namelists = simulate_aircraft.simulate_aircraft(
+        log_file,
+        vehicle,
+        atmo,
+        r,
+        computational_parameters["d_psi"],
+        elements,
+        args.ws,
+        f'{output_base}/vtu',
+        f'{output_base}/acoustics',
+        do_compute,
+        flight_condition,
+        computational_parameters["convergence_criteria"],
+        observer,
+        acoustics
+    )
 
     if do_compute:
         results_dictionary = {}
@@ -325,15 +343,16 @@ def compute_aero(log_file, args, V_inf, aoa, output_base, do_compute, geometry, 
 
         scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
 
-        for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
-            res_x = inflow_slice["resolution"][0]
-            res_y = inflow_slice["resolution"][1]
-            res_z = inflow_slice["resolution"][2]
+        if results is not None:
+            for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
+                res_x = inflow_slice["resolution"][0]
+                res_y = inflow_slice["resolution"][1]
+                res_z = inflow_slice["resolution"][2]
 
-            deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-            start = Vec3(inflow_slice["slice_start"])
+                deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+                start = Vec3(inflow_slice["slice_start"])
 
-            write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
+                write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
 
     cases = []
     for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):

@@ -379,9 +379,18 @@ unittest {
 
 			immutable Chunk Qmn_delta = Qmn_bar[m][n - 1][] - Qtmp[];
 
-			Qmn_bar[m + 1][n][] = Qmn_delta[]*one_over_sqrt_opxs[];
+			Qmn_bar[m + 1][n][] = Qmn_delta[];
+			//Qmn_bar[m + 1][n][] = Qmn_delta[]*one_over_sqrt_opxs[];
 		}
 	}
+	foreach(m; 0..Qmn_bar.length - 1) {
+		foreach(n; 1..Qmn_bar[m + 1].length) {
+			foreach(_; 1..m) {
+				Qmn_bar[m + 1][n][] *= one_over_sqrt_opxs[];
+			}
+		}
+	}
+
 }
 
 @nogc Chunk sign(Chunk x) {

@@ -15,29 +15,5 @@
       "c_t": [0.02, 0.02],
       "V_inf": 30.0
     }
-  ],
-  "results": {
-    "inflow_slices": [
-      {
-        "resolution": [8, 1536, 1024],
-        "slice_start": [-1.5, -1.5, -1],
-        "slice_size": [0.1, 3.0, 2.0]
-      },
-      {
-        "resolution": [1536, 8, 1024],
-        "slice_start": [1.5, -0.05, -1],
-        "slice_size": [3.0, 0.1, 2.0]
-      },
-      {
-        "resolution": [1536, 8, 1024],
-        "slice_start": [1.5, -1.05, -1],
-        "slice_size": [3.0, 0.1, 2.0]
-      },
-      {
-        "resolution": [1536, 8, 1024],
-        "slice_start": [1.5, 0.95, -1],
-        "slice_size": [3.0, 0.1, 2.0]
-      }
-    ]
-  }
+  ]
 }

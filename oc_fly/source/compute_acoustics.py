@@ -9,8 +9,8 @@ from libwopwopd import *
 import numpy as np
 
 
-def compute_acoustics(case_list):
-	return wopwop3(case_list, './', 1)
+def compute_acoustics(case_list, rank):
+	exec_wopwop3(case_list, './', 1, f'cases_{rank}')
 
 def l2_norm(_x1, _x2):
 
