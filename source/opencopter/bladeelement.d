@@ -55,7 +55,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		immutable Chunk sweep_corrected_r = blade.chunks[chunk_idx].r[]*cos_sweep[];
 		immutable Chunk u_t = sweep_corrected_r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[];// + std.math.sgn(rotor_input.angular_velocity)*wake_u_t[]*sin_sweep[];
 
-		Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
+		Chunk corrected_u_t = u_t[];//.map!(a => a < 0 ? 0 : a).staticArray!Chunk;
 		immutable Chunk inflow_angle = atan2(u_p, corrected_u_t);
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];

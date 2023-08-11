@@ -382,7 +382,15 @@ unittest {
 
 			immutable Chunk Qmn_delta = Qmn_bar[m][n - 1][] - Qtmp[];
 
-			Qmn_bar[m + 1][n][] = Qmn_delta[]*one_over_sqrt_opxs[];
+			Qmn_bar[m + 1][n][] = Qmn_delta[];
+			//Qmn_bar[m + 1][n][] = Qmn_delta[]*one_over_sqrt_opxs[];
+		}
+	}
+	foreach(m; 0..Qmn_bar.length - 1) {
+		foreach(n; 1..Qmn_bar[m + 1].length) {
+			foreach(_; 1..m) {
+				Qmn_bar[m + 1][n][] *= one_over_sqrt_opxs[];
+			}
 		}
 	}
 }
@@ -686,10 +694,26 @@ private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	immutable double sin_xi_2 = sin_chi*sin_chi;
 
 	immutable Chunk f =
-		zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[], x[], s_0[])
+		/+zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[], x[], s_0[])
 		.map!(
 			(sxgy) {
 				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || /+((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14)) ||+/ (sxgy[5] > -sxgy[6]) /+|| (sxgy[4] > 0.0)+/) {
+					return 0.0;
+				} else {
+					if(abs(sxgy[3]) <= 1.0) {
+						return sxgy[1]/(sxgy[1] + sxgy[0]*sxgy[2]);
+					} else {
+						return sxgy[1]/(sxgy[1] + (sxgy[0] + 1.5*sqrt(sxgy[3]*sxgy[3] - 1.0))*sxgy[2]);
+					}
+				}
+				assert(false);
+			}
+		)
+		.staticArray!Chunk;+/
+		zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[])
+		.map!(
+			(sxgy) {
+				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || ((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14))) {
 					return 0.0;
 				} else {
 					if(abs(sxgy[3]) <= 1.0) {
@@ -716,19 +740,22 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 
 	immutable Chunk rho_axial = 1;
 
-	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
-	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
+	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
 	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
 	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
-	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	Chunk s_0 = 0;
+	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	// Chunk s_0 = 0;
 	
-	if(above_disk) {
-		s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
-	} else {
-		s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
-	}
+	// if(above_disk) {
+	// 	//s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
+	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
+	// } else {
+	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;//[] + z_0[]*infl.tan_chi;
+	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	// }
 
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
@@ -768,9 +795,9 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
 		immutable CartisianCoords[3] ccoords_ds = [
-			CartisianCoords(neg_s_0, ccoords.y, z_0),
-			CartisianCoords(s_0, neg_y, z_0),
-			CartisianCoords(sigma_p_s, neg_y, z_0)
+			CartisianCoords(neg_s_0, ccoords.y, ccoords.z),
+			CartisianCoords(s_0, neg_y, ccoords.z),
+			CartisianCoords(sigma_p_s, neg_y, ccoords.z)
 		];
 
 		immutable ElipticalCoords[3] coords_ds = [
@@ -828,13 +855,23 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 
 	immutable Chunk rho_axial = 1;
 
-	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
-	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
+	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
 	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
-	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	immutable Chunk s_0 = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	//immutable Chunk s_0 = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+
+	/+Chunk s_0;
+	if(above_disk) {
+		s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+		//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
+	} else {
+		s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk + z_0[]*infl.tan_chi;
+		//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	}+/
 
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
@@ -872,9 +909,9 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
 		immutable CartisianCoords[3] ccoords_ds = [
-			CartisianCoords(neg_s_0, ccoords.y, z_0),
-			CartisianCoords(s_0, neg_y, z_0),
-			CartisianCoords(sigma_p_s, neg_y, z_0)
+			CartisianCoords(neg_s_0, ccoords.y, ccoords.z),
+			CartisianCoords(s_0, neg_y, ccoords.z),
+			CartisianCoords(sigma_p_s, neg_y, ccoords.z)
 		];
 
 		immutable ElipticalCoords[3] coords_ds = [
@@ -1158,125 +1195,127 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 	}
 	
 	if(all_below_disk || all_somewhere) {
-
-		// immutable Chunk rho_axial = 1;
-		// //immutable Chunk y2z2 = y[]*y[];
-		// immutable Chunk y2z2 = y[]*y[];// + z[]*z[];
-		// //immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
-		// immutable Chunk rho2 = rho_axial[]*rho_axial[];
-		// //immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-		// immutable Chunk s_0 = zip(y2z2[], rho2[], y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z[]*infl.tan_chi;
+		/+
+		immutable Chunk rho_axial = 1;
+		//immutable Chunk y2z2 = y[]*y[];
+		immutable Chunk y2z2 = y[]*y[];// + z[]*z[];
+		//immutable Chunk y2z2 = y[]*y[] + z[]*z[];
+		//immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+		immutable Chunk rho2 = rho_axial[]*rho_axial[];
+		immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+		//immutable Chunk s_0 = zip(y2z2[], rho2[], y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z[]*infl.tan_chi;
 	
-		// immutable all_downstream = zip(x[], s_0[]).map!(a => a[0] <= -a[1]).fold!((res, a) => a && res)(true);
-		// immutable all_elsewhere = zip(x[], s_0[]).map!(a => a[0] > -a[1]).fold!((res, a) => a && res)(true);
+		immutable all_downstream = zip(x[], s_0[]).map!(a => a[0] <= -a[1]).fold!((res, a) => a && res)(true);
+		immutable all_elsewhere = zip(x[], s_0[]).map!(a => a[0] > -a[1]).fold!((res, a) => a && res)(true);
 
-		// immutable all_somewhere_under = !all_downstream && !all_elsewhere;
+		immutable all_somewhere_under = !all_downstream && !all_elsewhere;
 
-		// //Chunk V_ds_below = 0;
-		// //Chunk V_below = 0;
+		//Chunk V_ds_below = 0;
+		//Chunk V_below = 0;
 
-		// immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
+		immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
 
-		// V_below = under_disk_solution(infl, infl.lambda, infl.delta, infl.lambda_s, infl.delta_s, x, y, z, t);
+		V_below = under_disk_solution(infl, infl.lambda, infl.delta, infl.lambda_s, infl.delta_s, x, y, z, t);
 
 
 
-		// Chunk V_ds = 0;
-		// immutable Chunk neg_s_0 = -s_0[];
-		// immutable Chunk neg_y = -y[];
-		// immutable Chunk sigma = -x[] - s_0[];
-		// immutable Chunk sigma_p_s = sigma[] + s_0[];
+		Chunk V_ds = 0;
+		immutable Chunk neg_s_0 = -s_0[];
+		immutable Chunk neg_y = -y[];
+		immutable Chunk sigma = -x[] - s_0[];
+		immutable Chunk sigma_p_s = sigma[] + s_0[];
 
-		// //immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
+		//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
 		
-		// //Chunk f = 0.0;
-		// Chunk f = final_blend(infl.cos_chi, infl.sin_chi, y, sigma, z, x, s_0);
-		// immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
+		//Chunk f = 0.0;
+		Chunk f = final_blend(infl.cos_chi, infl.sin_chi, y, sigma, z, x, s_0);
+		immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 
-		// if((all_downstream || all_somewhere_under) && (abs(infl.chi) > 1.0e-14)) {
+		if((all_downstream || all_somewhere_under) && (abs(infl.chi) > 1.0e-14)) {
 
-		// 	Chunk t_delay = t[] - sigma[];//*infl.sin_chi;///devisor;
-		// 	//Chunk t_delay_2 = t[] + sigma[]*infl.sin_chi;///devisor;
+			Chunk t_delay = t[] - sigma[];//*infl.sin_chi;///devisor;
+			//Chunk t_delay_2 = t[] + sigma[]*infl.sin_chi;///devisor;
 
-		// 	foreach(c_idx, ref t_d; t_delay) {
-		// 		if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-		// 			while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-		// 				if(abs(f[c_idx]) > 1.0e-14) {
-		// 					//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
-		// 				}
+			foreach(c_idx, ref t_d; t_delay) {
+				if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+					while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+						if(abs(f[c_idx]) > 1.0e-14) {
+							//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
+						}
 						
-		// 				t_d -= 2.0*PI;
-		// 			}
-		// 		}
-		// 	}
+						t_d -= 2.0*PI;
+					}
+				}
+			}
 
-		// 	/+foreach(c_idx, ref t_d; t_delay_2) {
-		// 		if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-		// 			while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-		// 				if(abs(f[c_idx]) > 1.0e-14) {
-		// 					//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
-		// 				}
+			/+foreach(c_idx, ref t_d; t_delay_2) {
+				if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+					while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
+						if(abs(f[c_idx]) > 1.0e-14) {
+							//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
+						}
 						
-		// 				t_d -= 2.0*PI;
-		// 			}
-		// 		}
-		// 	}+/
+						t_d -= 2.0*PI;
+					}
+				}
+			}+/
 
-		// 	//t_delay[] = t_delay[]/devisor;
+			//t_delay[] = t_delay[]/devisor;
 
-		// 	infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
+			infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
-		// 	immutable CartisianCoords[3] ccoords_ds = [
-		// 		CartisianCoords(neg_s_0, y, z),
-		// 		CartisianCoords(s_0, neg_y, z),
-		// 		CartisianCoords(sigma_p_s, neg_y, z)
-		// 	];
+			immutable CartisianCoords[3] ccoords_ds = [
+				CartisianCoords(neg_s_0, y, z),
+				CartisianCoords(s_0, neg_y, z),
+				CartisianCoords(sigma_p_s, neg_y, z)
+			];
 
-		// 	/+immutable ElipticalCoords[3] coords_ds = [
-		// 		to_eliptical(ccoords_ds[0]),
-		// 		to_eliptical(ccoords_ds[1]),
-		// 		to_eliptical(ccoords_ds[2])
-		// 	];+/
-		// 	//private auto under_disk_solution(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, C lambda, C delta, C lambda_s, C delta_s, auto ref C x, auto ref C y, auto ref C z, Chunk t)
-		// 	immutable Chunk v_ds_bl = under_disk_solution(infl,
-		// 		infl.time_delay_a_2[infl.total_states..$],
-		// 		infl.time_delay_alpha_2[infl.total_states..$],
-		// 		infl.time_delay_b_2[infl.total_sin_states..$],
-		// 		infl.time_delay_beta_2[infl.total_sin_states..$],
-		// 		ccoords_ds[0].x,
-		// 		ccoords_ds[0].y,
-		// 		ccoords_ds[0].z,
-		// 		t_delay
-		// 	);
+			/+immutable ElipticalCoords[3] coords_ds = [
+				to_eliptical(ccoords_ds[0]),
+				to_eliptical(ccoords_ds[1]),
+				to_eliptical(ccoords_ds[2])
+			];+/
+			//private auto under_disk_solution(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, C lambda, C delta, C lambda_s, C delta_s, auto ref C x, auto ref C y, auto ref C z, Chunk t)
+			immutable Chunk v_ds_bl = under_disk_solution(infl,
+				infl.time_delay_a_2[infl.total_states..$],
+				infl.time_delay_alpha_2[infl.total_states..$],
+				infl.time_delay_b_2[infl.total_sin_states..$],
+				infl.time_delay_beta_2[infl.total_sin_states..$],
+				ccoords_ds[0].x,
+				ccoords_ds[0].y,
+				ccoords_ds[0].z,
+				t_delay
+			);
 
-		// 	immutable Chunk v_ds_bl_a_1 = under_disk_solution_adjoint(infl,final_blend
-		// 		infl.time_delay_a_2[infl.total_states..$],
-		// 		infl.time_delay_alpha_2[infl.total_states..$],
-		// 		infl.time_delay_b_2[infl.total_sin_states..$],
-		// 		infl.time_delay_beta_2[infl.total_sin_states..$],
-		// 		ccoords_ds[1].x,
-		// 		ccoords_ds[1].y,
-		// 		ccoords_ds[1].z,
-		// 		t_delay
-		// 	);
-		// 	immutable Chunk v_ds_bl_a_2 = under_disk_solution_adjoint(infl,
-		// 		infl.a,
-		// 		infl.alpha,
-		// 		infl.b,
-		// 		infl.beta,
-		// 		ccoords_ds[2].x,
-		// 		ccoords_ds[2].y,
-		// 		ccoords_ds[2].z,
-		// 		t
-		// 	);
+			immutable Chunk v_ds_bl_a_1 = under_disk_solution_adjoint(infl,
+				infl.time_delay_a_2[infl.total_states..$],
+				infl.time_delay_alpha_2[infl.total_states..$],
+				infl.time_delay_b_2[infl.total_sin_states..$],
+				infl.time_delay_beta_2[infl.total_sin_states..$],
+				ccoords_ds[1].x,
+				ccoords_ds[1].y,
+				ccoords_ds[1].z,
+				t_delay
+			);
+			immutable Chunk v_ds_bl_a_2 = under_disk_solution_adjoint(infl,
+				infl.a,
+				infl.alpha,
+				infl.b,
+				infl.beta,
+				ccoords_ds[2].x,
+				ccoords_ds[2].y,
+				ccoords_ds[2].z,
+				t
+			);
 
-		// 	V_ds[] = v_ds_bl[] + v_ds_bl_a_1[] - v_ds_bl_a_2[];
-		// }
+			V_ds[] = v_ds_bl[] + v_ds_bl_a_1[] - v_ds_bl_a_2[];
+		}
 
-		// Chunk one_m_f = 1.0 - f[];
+		Chunk one_m_f = 1.0 - f[];
 
-		// immutable Chunk V_ds_f = V_ds[]*f[];
-		// V_below = V_below[]*one_m_f[] + V_ds_f[];
+		immutable Chunk V_ds_f = V_ds[]*f[];
+		V_below = V_below[]*one_m_f[] + V_ds_f[];
+		+/
 		
 		immutable tan_chi = tan(infl.chi);
 		immutable Chunk x_offset = z[]*tan_chi;
@@ -2990,12 +3029,12 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
 						if(m == 0) {
-							cos_mpsi[] = 1.0/(1.0*PI);
+							cos_mpsi[] = 1.0/(2.0*PI);
 							sin_mpsi[] = 0;
 						} else {
 							immutable Chunk[2] sin_cos = sincos(mpsi)[];
-							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
-							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
+							cos_mpsi[] = 1.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 1.0/(PI)*sin_cos[0][];
 						}
 
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
@@ -3027,12 +3066,12 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
 						if(m == 0) {
-							cos_mpsi[] = 1.0/(1.0*PI);
+							cos_mpsi[] = 1.0/(2.0*PI);
 							sin_mpsi[] = 0;
 						} else {
 							immutable Chunk[2] sin_cos = sincos(mpsi)[];
-							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
-							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
+							cos_mpsi[] = 1.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 1.0/(PI)*sin_cos[0][];
 						}
 						
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
