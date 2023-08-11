@@ -1,0 +1,12 @@
+{
+	"observer": {
+		"cutoff_units": "bpf",
+		"low_pass_cutoff": 25,
+		"high_pass_cutoff": 6,
+		"type": "plane",
+		"radii_relative": true,
+		"nb": [5, 5, 1],
+		"min": [-20, -20, -20],
+		"max": [20, 20, -20]
+	}
+}

@@ -146,13 +146,22 @@ def main():
 		type= str,
 		required=True
 	)
+	parser.add_argument(
+		"-observer_param",
+		type= str,
+		required=False
+	)
+	parser.add_argument(
+		"-acoustics_param",
+		type= str, 
+		required=False
+	)
 
 	comm = MPI.COMM_WORLD
 	rank = comm.Get_rank()
 
 	args = parser.parse_args()
 
-	case_list = CaseList()
 	cases = []
 
 	geom_directory = path.dirname(path.realpath(args.input_geom))
@@ -162,12 +171,24 @@ def main():
 	with open(args.input_param) as param_file:
 		param = json.load(param_file)
 
+	observer = None
+	acoustics = None
+
+	if args.observer_param is not None:
+		with open(args.observer_param) as param_file:
+			obs_param = json.load(param_file)
+			observer = obs_param["observer"]
+
+	if args.acoustics_param is not None:
+		with open(args.acoustics_param) as param_file:
+			acoustic_param = json.load(param_file)
+			acoustics = acoustic_param["acoustic_config"]
 
 	FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake")
 
 	flight_conditions = param["flight_conditions"]
 	computational_parameters = param["computational_parameters"]
-	results = param["results"]
+	results = param["results"] if "results" in param else None
 
 	flat_cases = []
 	for aircraft in geom:
@@ -244,8 +265,11 @@ def main():
 
 	prog_file_name = f"rank_{rank}.prog"
 	start_idx = 0
+	acoustic_start_idx = 0
 
 	prog_file_exists = os.path.exists(prog_file_name)
+
+	do_compute_aero = args.aero
 
 	print(f'Prog file: {prog_file_name}')
 	if prog_file_exists:
@@ -255,7 +279,12 @@ def main():
 
 			print(f"{rank}: number of lines in prog file: {num_lines}")
 			if num_lines > 0:
-				start_idx = int(prog_lines[0]) + 1
+				restart_type = prog_lines[0].split(" ")[0]
+				if restart_type == "acoustics":
+					acoustic_start_idx = int(prog_lines[0].split(" ")[1]) + 1
+					do_compute_aero = False
+				else:
+					start_idx = int(prog_lines[0].split(" ")[1]) + 1
 
 	if (prog_file_exists and lock_exists) or (not prog_file_exists and not lock_exists):
 		with open(prog_file_name, "w+") as prog_file:
@@ -285,37 +314,53 @@ def main():
 					log_file.write(f'Running sim with aoa: {aoa}\n')
 					log_file.write( '----------------------------------------------\n')
 
+					flight_condition["V_inf"] = V_inf if args.v is None else args.v
+
 					log_file.write("simulating aero\n")
-					wopwop_cases = compute_aero.compute_aero(log_file, args, V_inf if args.v is None else args.v, aoa*(math.pi/180.0), f'{root_path}/', args.aero, aircraft, flight_condition, computational_parameters, results, geom_directory)
+					wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, aircraft, flight_condition, computational_parameters, results, geom_directory, observer, acoustics)
 					cases = cases + wopwop_cases
 
 					for case in wopwop_cases:
 						write_namelist(case.namelist, f'{case.globalFolderName}/{case.caseNameFile}')
 
 					prog_file.seek(0)
-					prog_file.write(str(idx + start_idx))
+					prog_file.write(f'aero {idx + start_idx}')
 					prog_file.flush()
 
-		os.remove(prog_file_name)
+			if args.acoustics:
+				print("writing acoutics to prog file")
+				prog_file.seek(0)
+				prog_file.write(f'acoustics -1')
+				prog_file.flush()
+
+		if not args.acoustics:
+			os.remove(prog_file_name)
 
 	else:
 		print(f"{rank}: Waiting on other procs to finish")
+
+	wopwop_results = []
+	if args.acoustics:
+		open_mode = "r+" if prog_file_exists else "w+"
+		with open(prog_file_name, open_mode) as prog_file:
+			for case_idx, case in enumerate(cases[acoustic_start_idx:]):
+				print("calculating acoustics")
+				case_list = CaseList()
+				case_list.cases = [case]
+
+				compute_acoustics.compute_acoustics(case_list, rank)
+
+				prog_file.seek(0, 0)
+				prog_file.write(f'acoustics {case_idx + acoustic_start_idx}')
+				prog_file.flush()
+
+		os.remove(prog_file_name)
 
 	# wait for all other procs to finish.
 	comm.barrier()
 
 	if rank == 0:
 		os.remove(lock_file_name)
-
-	case_list.cases = cases
-
-	print(f'case_list.cases: {case_list.cases}')
-	write_caselist_custom_name(case_list, "./", f'case_{rank}.nam')
-	
-	wopwop_results = []
-	if args.acoustics:
-		print("calculating acoustics")
-		wopwop_results = compute_acoustics.compute_acoustics(case_list)
 
 	print("done")
 

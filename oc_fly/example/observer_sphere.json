@@ -1,0 +1,16 @@
+{
+	"observer": {
+		"cutoff_units": "bpf",
+		"low_pass_cutoff": 25,
+		"high_pass_cutoff": 6,
+		"type": "sphere",
+		"radii_relative": true,
+		"nb_theta": 20,
+		"nb_psi": 20,
+		"theta_min": 0,
+		"theta_max": 360,
+		"psi_min": -90,
+		"psi_max": 0,
+		"radius": 20
+	}
+}

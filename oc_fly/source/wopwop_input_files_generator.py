@@ -146,7 +146,7 @@ RAD_TO_HZ = 0.1591549
 
 # 	return namelist
 
-def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, dt, V_inf, iterations, aoa, data_path, actual_rotor_idx, t_min, t_max, nt, full_system = False):
+def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, dt, V_inf, iterations, aoa, actual_rotor_idx, t_min, t_max, nt, observer_config, acoustics_config, full_system = False):
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
 	aircraft_cob.TranslationType = TranslationType_known_function()
@@ -173,23 +173,39 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	environment_constants.nu = atmo.dynamic_viscosity
 
 	environment_in = EnvironmentIn()
-	environment_in.pressureFolderName = "pressure"
-	environment_in.SPLFolderName = "spl"
-	environment_in.sigmaFolderName = "sigma"
-	environment_in.debugLevel = 12
-	environment_in.ASCIIOutputFlag = False
-	environment_in.OASPLdBFlag = True
-	environment_in.OASPLdBAFlag = False
-	environment_in.spectrumFlag = True
-	environment_in.SPLdBFlag = True
-	environment_in.SPLdBAFlag = False
-	environment_in.pressureGradient1AFlag = False
-	environment_in.acousticPressureFlag = True
-	environment_in.thicknessNoiseFlag = True
-	environment_in.loadingNoiseFlag = True
-	environment_in.totalNoiseFlag = True
-	environment_in.sigmaFlag = False
 
+	environment_in.pressureFolderName = acoustics_config["pressure_folder_name"] if "pressure_folder_name" in acoustics_config else "pressure"
+	environment_in.SPLFolderName = acoustics_config["spl_folder_name"] if "spl_folder_name" in acoustics_config else "spl"
+	environment_in.sigmaFolderName = acoustics_config["sigma_folder_name"] if "sigma_folder_name" in acoustics_config else "sigma"
+	environment_in.debugLevel = acoustics_config["debug_level"] if "debug_level" in acoustics_config else 12
+	environment_in.ASCIIOutputFlag = acoustics_config["ascii_output_flag"] if "ascii_output_flag" in acoustics_config else False
+	environment_in.OASPLdBFlag = acoustics_config["oaspl_db_flag"] if "oaspl_db_flag" in acoustics_config else True
+	environment_in.OASPLdBAFlag = acoustics_config["oaspl_dba_flag"] if "oaspl_dba_flag" in acoustics_config else False
+	environment_in.spectrumFlag = acoustics_config["spectrum_flag"] if "spectrum_flag" in acoustics_config else False
+	environment_in.SPLdBFlag = acoustics_config["spl_db_flag"] if "spl_db_flag" in acoustics_config else True
+	environment_in.SPLdBAFlag = acoustics_config["spl_dba_flag"] if "spl_dba_flag" in acoustics_config else False
+	environment_in.pressureGradient1AFlag = acoustics_config["pressure_gradient_1a_flag"] if "pressure_gradient_1a_flag" in acoustics_config else False
+	environment_in.acousticPressureFlag = acoustics_config["acoustic_pressure_flag"] if "acoustic_pressure_flag" in acoustics_config else True
+	environment_in.thicknessNoiseFlag = acoustics_config["thickness_noise_flag"] if "thickness_noise_flag" in acoustics_config else True
+	environment_in.loadingNoiseFlag = acoustics_config["loading_noise_flag"] if "loading_noise_flag" in acoustics_config else True
+	environment_in.totalNoiseFlag = acoustics_config["total_noise_flag"] if "total_noise_flag" in acoustics_config else True
+	environment_in.sigmaFlag = acoustics_config["sigma_flag"] if "sigma_flag" in acoustics_config else False
+	environment_in.loadingNoiseSigmaFlag = acoustics_config["loading_noise_sigma_flag"] if "loading_noise_sigma_flag" in acoustics_config else False
+	environment_in.thicknessNoiseSigmaFlag = acoustics_config["thickness_noise_sigma_flag"] if "thickness_noise_sigma_flag" in acoustics_config else False
+	environment_in.totalNoiseSigmaFlag = acoustics_config["total_noise_sigma_flag"] if "total_noise_sigma_flag" in acoustics_config else False
+	environment_in.normalSigmaFlag = acoustics_config["normal_sigma_flag"] if "normal_sigma_flag" in acoustics_config else False
+	environment_in.machSigmaFlag = acoustics_config["mach_sigma_flag"] if "mach_sigma_flag" in acoustics_config else False
+	environment_in.observerSigmaFlag = acoustics_config["observer_sigma_flag"] if "observer_sigma_flag" in acoustics_config else False
+	environment_in.velocitySigmaFlag = acoustics_config["velocity_sigma_flag"] if "velocity_sigma_flag" in acoustics_config else False
+	environment_in.accelerationSigmaFlag = acoustics_config["acceleration_sigma_flag"] if "acceleration_sigma_flag" in acoustics_config else False
+	environment_in.densitySigmaFlag = acoustics_config["density_sigma_flag"] if "density_sigma_flag" in acoustics_config else False
+	environment_in.momentumSigmaFlag = acoustics_config["momentum_sigma_flag"] if "momentum_sigma_flag" in acoustics_config else False
+	environment_in.pressureSigmaFlag = acoustics_config["pressure_sigma_flag"] if "pressure_sigma_flag" in acoustics_config else False
+	environment_in.loadingSigmaFlag = acoustics_config["loading_sigma_flag"] if "loading_sigma_flag" in acoustics_config else False
+	environment_in.areaSigmaFlag = acoustics_config["area_sigma_flag"] if "area_sigma_flag" in acoustics_config else False
+	environment_in.MdotrSigmaFlag = acoustics_config["mdotr_sigma_flag"] if "mdotr_sigma_flag" in acoustics_config else False
+	environment_in.iblankSigmaFlag = acoustics_config["iblank_sigma_flag"] if "iblank_sigma_flag" in acoustics_config else False
+	
 	def build_blade_cntr(rotor_idx, blade_idx):
 		blade_cntr = ContainerIn()
 		blade_cntr.Title = "blade "+str(blade_idx)+" containter"
@@ -255,55 +271,76 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		blade_passing_freq = min(num_blades)*abs(omegas[0])*RAD_TO_HZ
 	else:
 		blade_passing_freq = num_blades*abs(omegas[0])*RAD_TO_HZ
-
-	lower_mid_freq = 6*blade_passing_freq
-	upper_mid_freq = 25*blade_passing_freq
-
-	#observer_nt = int(4*(1.0*(2.0*math.pi/abs(omega))/dt))
-	#tMin = 0.372249
+	
 	observer = ObserverIn()
+
 	observer.Title = "Mic array"
-	observer.nt = nt# observer_nt
-	observer.tMin = t_min #tMin
-	observer.tMax = t_max # tMin + 2.0*(2.0*math.pi/abs(omega))
+	observer.nt = nt
+	observer.tMin = t_min
+	observer.tMax = t_max
 
-	#observer.xLoc = 16.577
-	#observer.yLoc = 14.6972
-	#observer.zLoc = -22.9814
+	if observer_config["type"] == "plane":
+		if observer_config["radii_relative"]:
+			observer.nbx = observer_config["nb"][0]*np.max(R)
+			observer.nby = observer_config["nb"][1]*np.max(R)
+			observer.nbz = observer_config["nb"][2]*np.max(R)
+			observer.xMin = observer_config["min"][0]*np.max(R)
+			observer.xMax = observer_config["max"][0]*np.max(R)
+			observer.yMin = observer_config["min"][1]*np.max(R)
+			observer.yMax = observer_config["max"][1]*np.max(R)
+			observer.zMin = observer_config["min"][2]*np.max(R)
+			observer.zMax = observer_config["max"][2]*np.max(R)
+		else:
+			observer.nbx = observer_config["nb"][0]
+			observer.nby = observer_config["nb"][1]
+			observer.nbz = observer_config["nb"][2]
+			observer.xMin = observer_config["min"][0]
+			observer.xMax = observer_config["max"][0]
+			observer.yMin = observer_config["min"][1]
+			observer.yMax = observer_config["max"][1]
+			observer.zMin = observer_config["min"][2]
+			observer.zMax = observer_config["max"][2]
 
-	observer.nbTheta = 20
-	observer.nbPsi = 20
-	observer.thetaMin = 0
-	observer.thetaMax = 2*math.pi
-	observer.psiMin = -math.pi/2.0
-	observer.psiMax = 0
-	if full_system:
-		observer.radius = 20*np.max(R)
-	else:
-		observer.radius = 20*R[actual_rotor_idx]
-	#observer.nbHarmonics = 30
-	#observer.nbx = 17
-	#observer.nby = 17
-	#observer.nbz = 1
-	#observer.xMin = -20.0*R
-	#observer.xMax = 20.0*R
-	#observer.yMin = -20*R
-	#observer.yMax = 20*R
-	#observer.zMin = -20*R
-	#observer.zMax = -20*R
+	elif observer_config["type"] == "sphere":
+		observer.nbTheta = observer_config["nb_theta"]
+		observer.nbPsi = observer_config["nb_psi"]
+		observer.thetaMin = observer_config["theta_min"]*(math.pi/180.0)
+		observer.thetaMax = observer_config["theta_max"]*(math.pi/180.0)
+		observer.psiMin = observer_config["psi_min"]*(math.pi/180.0)
+		observer.psiMax = observer_config["psi_max"]*(math.pi/180.0)
+		if observer["radii_relative"]:
+			observer.radius = observer_config["radius"]*np.max(R)
+		else:
+			observer.radius = observer_config["radius"]
 
-	observer.lowPassFrequency = upper_mid_freq
-	observer.highPassFrequency = lower_mid_freq
+	elif observer_config["type"] == "points":
+		with open("observers.dat", 'r') as observer_file:
+			observer_file.write(''.join([f'{l} ' for l in observer_config["layout"]]))
+			observer_file.write(''.join([f'{l} ' for l in observer_config["x"]]))
+			observer_file.write(''.join([f'{l} ' for l in observer_config["y"]]))
+			observer_file.write(''.join([f'{l} ' for l in observer_config["z"]]))
+
+			observer.fileName = "observers.dat"
+
+	if "low_pass_cutoff" in observer_config:
+		if observer_config["cutoff_units"] == "bpf":
+			observer.lowPassFrequency = observer_config["low_pass_cutoff"]*blade_passing_freq
+		else:
+			observer.lowPassFrequency = observer_config["low_pass_cutoff"]
+
+	if "high_pass_cutoff" in observer_config:
+		if observer_config["cutoff_units"] == "bpf":
+			observer.highPassFrequency = observer_config["high_pass_cutoff"]*blade_passing_freq
+		else:
+			observer.highPassFrequency = observer_config["high_pass_cutoff"]
+
 	observer.cobs = [aircraft_cob]
-	#observer.cobs = [aircraft_aoa_cb]
 
 	namelist = Namelist()
 	namelist.environment_in = environment_in
 	namelist.environment_constants = environment_constants
 	namelist.observers = [observer]
 	namelist.containers = [wopwop_aircraft]
-
-	#write_namelist(namelist, f"{output_path}/case.nam")
 
 	return namelist
 
