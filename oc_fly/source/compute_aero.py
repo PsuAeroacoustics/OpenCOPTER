@@ -355,30 +355,31 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
                 write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
 
     cases = []
-    for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
-        wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
+    if (acoustics is not None) and (observer is not None):
+        for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
+            wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
+
+            if not path.isdir(wopwop_case_path):
+                makedirs(wopwop_case_path, exist_ok=True)
+
+            single_rotor_case = Casename()
+            single_rotor_case.caseNameFile = "case.nam"
+            single_rotor_case.globalFolderName = wopwop_case_path
+            single_rotor_case.namelist = namelist
+
+            cases.append(single_rotor_case)
+
+
+        wopwop_case_path = f'{output_base}/acoustics/full_system/'
 
         if not path.isdir(wopwop_case_path):
             makedirs(wopwop_case_path, exist_ok=True)
 
-        single_rotor_case = Casename()
-        single_rotor_case.caseNameFile = "case.nam"
-        single_rotor_case.globalFolderName = wopwop_case_path
-        single_rotor_case.namelist = namelist
+        full_system_case = Casename()
+        full_system_case.caseNameFile = "case.nam"
+        full_system_case.globalFolderName = wopwop_case_path
+        full_system_case.namelist = rotorcraft_namelists[-1]
 
-        cases.append(single_rotor_case)
-
-
-    wopwop_case_path = f'{output_base}/acoustics/full_system/'
-
-    if not path.isdir(wopwop_case_path):
-        makedirs(wopwop_case_path, exist_ok=True)
-
-    full_system_case = Casename()
-    full_system_case.caseNameFile = "case.nam"
-    full_system_case.globalFolderName = wopwop_case_path
-    full_system_case.namelist = rotorcraft_namelists[-1]
-
-    cases.append(full_system_case)
+        cases.append(full_system_case)
 
     return cases
