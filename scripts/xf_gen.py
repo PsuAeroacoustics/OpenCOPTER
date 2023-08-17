@@ -61,7 +61,7 @@ def run_xfoil(xfoil_path: str | None, xf_input_file: str):
 
 	subprocess.run(run_args)
 
-def check_aerodas(polar_filename: str, tc_ratio: float):
+def check_aerodas(polar_filename: str, tc_ratio: float, NACA: str | None):
 	sys.path.insert(0, f'{os.path.dirname(os.path.realpath(__file__))}/../')
 	import libopencopter as oc
 	import matplotlib.pyplot as plt
@@ -70,7 +70,7 @@ def check_aerodas(polar_filename: str, tc_ratio: float):
 
 	aerodas_model = oc.create_aerodas_from_xfoil_polar(polar_filename, tc_ratio)
 
-	aoa_deg = np.linspace(-20, 110, 130)
+	aoa_deg = np.linspace(-20, 110, 1000)
 	aoa = (math.pi/180.0)*aoa_deg
 	
 	c_l = np.zeros(aoa.shape)
@@ -80,24 +80,26 @@ def check_aerodas(polar_filename: str, tc_ratio: float):
 		c_l[idx] = aerodas_model.get_Cl(aoa, 0)
 		c_d[idx] = aerodas_model.get_Cd(aoa, 0)
 
+	xfoil_label = f'NACA {NACA} XFOIL data' if NACA is not None else "XFOIL data"
+
 	plt.figure()
-	plt.plot(aoa_deg, c_l, label = "$AERODAS MODEL$")
-	plt.plot(aerodas_model.alpha, aerodas_model.CL,label = "XFOIL data")
+	plt.plot(aoa_deg, c_l, label = "AERODAS MODEL", linewidth=2)
+	plt.plot(aerodas_model.alpha, aerodas_model.CL,label = xfoil_label, linewidth=2)
 	plt.xlabel("Angle of attack (degrees)")
 	plt.ylabel("Coefficient of lift")
 	plt.legend()
 	plt.grid()
-	#plt.savefig("Cl.png", ["dpi": 500])
+	plt.savefig("Cl.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
 
 	plt.figure()
-	plt.plot(aoa_deg, c_d, label = "$AERODAS MODEL$")
-	plt.plot(aerodas_model.alpha, aerodas_model.CD, label="XFOIL data")
+	plt.plot(aoa_deg, c_d, label = "AERODAS MODEL", linewidth=2)
+	plt.plot(aerodas_model.alpha, aerodas_model.CD, label=xfoil_label, linewidth=2)
 	plt.xlabel("Angle of attack (degrees)")
 	plt.ylabel("Coefficient of drag")
 	plt.legend()
 	plt.grid()
-	#plt.savefig("Cd.png", ["dpi": 500])
-	plt.show()
+	plt.savefig("Cd.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
+	#plt.show()
 
 def main():
 	parser = argparse.ArgumentParser("xf_gen", description="Xfoil data generator for AERODAS model input")
@@ -182,7 +184,7 @@ def main():
 			quit()
 		
 		print("Checking aerodas model. Stand by for plots")
-		check_aerodas(polar_output_filename, args.tc_ratio)
+		check_aerodas(polar_output_filename, args.tc_ratio, args.N)
 
 
 if __name__ == "__main__":

@@ -352,7 +352,8 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
                 deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
                 start = Vec3(inflow_slice["slice_start"])
 
-                write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, 0, omegas[0])
+                aoa = vehicle.input_state.rotor_inputs[0].angle_of_attack
+                write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, aoa, omegas[0])
 
     cases = []
     for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):

@@ -698,7 +698,7 @@ private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 		/+zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[], x[], s_0[])
 		.map!(
 			(sxgy) {
-				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || /+((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14)) ||+/ (sxgy[5] > -sxgy[6]) /+|| (sxgy[4] > 0.0)+/) {
+				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || ((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14)) || (sxgy[5] > -sxgy[6]) /+|| (sxgy[4] > 0.0)+/) {
 					return 0.0;
 				} else {
 					if(abs(sxgy[3]) <= 1.0) {
@@ -751,10 +751,10 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 	
 	// if(above_disk) {
 	// 	//s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
+	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;//[] - z_0[]*infl.tan_chi;
 	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
 	// } else {
-	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;//[] + z_0[]*infl.tan_chi;
+	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
 	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
 	// }
 
@@ -766,7 +766,8 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 	//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
 	
 	//Chunk f = 0.0;
-	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
+	//Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
+	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z, ccoords.x, s_0);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 	
 	immutable Chunk V_bl = compute_velocities_bl(infl, a, alpha, b, beta, ccoords, coords);
@@ -862,17 +863,20 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
 	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
 	//immutable Chunk s_0 = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
 
-	/+Chunk s_0;
-	if(above_disk) {
-		s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-		//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
-	} else {
-		s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk + z_0[]*infl.tan_chi;
-		//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
-	}+/
+	// Chunk s_0 = 0;
+	
+	// if(above_disk) {
+	// 	//s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
+	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;//[] - z_0[]*infl.tan_chi;
+	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
+	// } else {
+	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
+	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
+	// }
+
 
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
@@ -880,7 +884,8 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 	immutable Chunk sigma_p_s = sigma[] + s_0[];
 
 	//Chunk f = 0.0;
-	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
+	//Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
+	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z, ccoords.x, s_0);
 
 	//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);

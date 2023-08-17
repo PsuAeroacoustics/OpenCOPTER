@@ -1,6 +1,6 @@
 [
 	{
-		"name": "evtol_2b",
+		"name": "single_2b",
 		"rotors": [
 			{
 				"radius": 1.0,
