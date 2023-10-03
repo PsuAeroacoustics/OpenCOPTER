@@ -22,6 +22,8 @@ import std.range;
 import std.stdio;
 import std.typecons;
 
+
+
 class SimpleWingT(ArrayContainer AC = ArrayContainer.none) {
 
 	VortexFilamentT!AC wing_filament;
@@ -30,7 +32,6 @@ class SimpleWingT(ArrayContainer AC = ArrayContainer.none) {
 	private double C_L;
 
 	this(double _C_L, double V_inf, double V_tip, double y_0, double c, Vec3 _origin) {
-
 		
 		C_L = _C_L;
 		wing_origin = _origin;
