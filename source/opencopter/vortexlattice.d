@@ -101,6 +101,16 @@ extern (C++) struct WingVortexFilamentT(ArrayContainer AC) {
 	}
 }
 
+template is_wing_lifting_surface(A) {
+	enum bool is_wing_lifting_surface = {
+		static if(isPointer!(A)) {
+			return isInstanceOf!(WingLiftingSurfT, PointerTarget!A);
+		} else {
+			return isInstanceOf!(WingLiftingSurfT, A);
+		}
+	}();
+}
+
 extern(C++) struct WingLiftingSurfT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, WingVortexFilamentT!(AC), "spanwise_filaments");
 	//mixin ArrayDeclMixin!(AC, WingVortexFilamentT!(AC), "chordwise_filaments");

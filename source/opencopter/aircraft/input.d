@@ -84,8 +84,6 @@ template is_wing_input_state(A) {
 alias WingInputState = WingInputStateT!(ArrayContainer.none);
 extern (C++) struct WingInputStateT(ArrayContainer AC) {
 	double angle_of_attack; // rad
-	double sin_aoa;
-	double cos_aoa;
 	double freestream_velocity; // m/s
 	//double angular_velocity; // rad/s
 	//double angular_accel; // rad/s^2
