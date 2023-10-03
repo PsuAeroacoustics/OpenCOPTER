@@ -427,7 +427,7 @@ extern (C++) struct WingPartCtrlPointChunk {
 	Chunk ctrl_pt_z;
 }
 
-template is_wing_geometry(A) {
+template is_wing_part_geometry(A) {
 	enum bool is_wing_geometry = {
 		static if(isPointer!(A)) {
 			return isInstanceOf!(WingPartGeometryT, PointerTarget!A);
