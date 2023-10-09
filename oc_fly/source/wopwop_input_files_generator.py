@@ -146,7 +146,7 @@ RAD_TO_HZ = 0.1591549
 
 # 	return namelist
 
-def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, dt, V_inf, iterations, aoa, actual_rotor_idx, t_min, t_max, nt, observer_config, acoustics_config, full_system = False):
+def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, dt, V_inf, iterations, aoa, actual_rotor_idx, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, collective, full_system = False):
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
 	aircraft_cob.TranslationType = TranslationType_known_function()
@@ -159,17 +159,17 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	aircraft_aoa_cb.AxisType = AxisType_time_independant()
 	aircraft_aoa_cb.AxisValue = FVec3([0, 1, 0])
 	aircraft_aoa_cb.AngleType = AngleType_time_independant()
-	aircraft_aoa_cb.AngleValue = -aoa
+	aircraft_aoa_cb.AngleValue = aoa
 
 	wopwop_aircraft = ContainerIn()
-	wopwop_aircraft.Title = "HART"
+	wopwop_aircraft.Title = "Aircraft"
 	wopwop_aircraft.dTau = dt
 	wopwop_aircraft.tauMax = dt*iterations
 	wopwop_aircraft.cobs = [aircraft_cob, aircraft_aoa_cb]
 
 	environment_constants = EnvironmentConstants()
 	environment_constants.rho = atmo.density
-	environment_constants.c = 343
+	environment_constants.c = sos
 	environment_constants.nu = atmo.dynamic_viscosity
 
 	environment_in = EnvironmentIn()
@@ -218,6 +218,12 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		blade_cob.AngleType = AngleType_time_independant()
 		blade_cob.AxisValue = FVec3([0, 0, 1])
 
+		blade_collective_cob = CB()
+		blade_collective_cob.Title = "blade "+str(blade_idx)+" pitch offset"
+		blade_collective_cob.AxisType = AxisType_time_independant()
+		blade_collective_cob.AngleType = AngleType_time_independant()
+		blade_collective_cob.AxisValue = FVec3([1, 0, 0])
+
 		if isinstance(num_blades, list):
 			blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades[rotor_idx])
 			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades[rotor_idx])
@@ -225,7 +231,13 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 			blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades)
 			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades)
 
-		blade_cntr.cobs = [blade_cob]
+		if omegas[rotor_idx] < 0:
+			blade_collective_cob.AngleValue = math.pi - collective[rotor_idx]
+		else:
+			blade_collective_cob.AngleValue = collective[rotor_idx]
+
+
+		blade_cntr.cobs = [blade_cob, blade_collective_cob]
 
 		return blade_cntr
 
@@ -308,19 +320,19 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		observer.thetaMax = observer_config["theta_max"]*(math.pi/180.0)
 		observer.psiMin = observer_config["psi_min"]*(math.pi/180.0)
 		observer.psiMax = observer_config["psi_max"]*(math.pi/180.0)
-		if observer["radii_relative"]:
+		if observer_config["radii_relative"]:
 			observer.radius = observer_config["radius"]*np.max(R)
 		else:
 			observer.radius = observer_config["radius"]
 
 	elif observer_config["type"] == "points":
-		with open("observers.dat", 'r') as observer_file:
-			observer_file.write(''.join([f'{l} ' for l in observer_config["layout"]]))
-			observer_file.write(''.join([f'{l} ' for l in observer_config["x"]]))
-			observer_file.write(''.join([f'{l} ' for l in observer_config["y"]]))
-			observer_file.write(''.join([f'{l} ' for l in observer_config["z"]]))
+		with open(f"{wopwop_data_path}/observers.dat", 'w') as observer_file:
+			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['layout']])}\n")
+			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['x']])}\n")
+			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['y']])}\n")
+			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['z']])}\n")
 
-			observer.fileName = "observers.dat"
+			observer.fileName = f"../data/observers.dat"
 
 	if "low_pass_cutoff" in observer_config:
 		if observer_config["cutoff_units"] == "bpf":
@@ -345,11 +357,11 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	return namelist
 
 
-def write_wopwop_geometry(airfoil_xsection, r, twist, R, AR, output_path, rotor_idx, blade_idx):
+def write_wopwop_geometry(airfoil_xsection, r, twist, R, real_chord, output_path, rotor_idx, blade_idx):
 	print("Building wopwop geometry")
 
-	real_chord = (R/AR)*np.ones(len(r))
-	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, 2, real_chord)
+	#real_chord = (R/AR)*np.ones(len(r))
+	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, R, real_chord)
 	lifting_line_geom = GeometryData(num_nodes = len(r))
 
 	lifting_line_geom.set_x_nodes([R*_r for _r in r])
@@ -361,52 +373,54 @@ def write_wopwop_geometry(airfoil_xsection, r, twist, R, AR, output_path, rotor_
 	lifting_line_geom.set_z_normals(np.ones(len(r), dtype=np.single))
 
 	wopwop_geom = GeometryFile(
-		comment = "Tilt rotor blade geometry",
+		comment = "Blade geometry",
 		units = "Pa",
 		data_alignment = DataAlignment_node_centered(), # node centered,
 		zone_headers = [
 			ConstantStructuredGeometryHeader(
-				name = "blade",
-				i_max = len(r),
-				j_max = len(airfoil_xsection)
-			),
-			ConstantStructuredGeometryHeader(
 				name = "lifting line",
 				i_max = len(r),
 				j_max = 1
+			),
+			ConstantStructuredGeometryHeader(
+				name = "blade",
+				i_max = len(r),
+				j_max = len(airfoil_xsection)
 			)
 		]
 	)
 
 	geom_file = create_geometry_file(wopwop_geom, f"{output_path}/blade_geom_{rotor_idx}_{blade_idx}.dat")
-	append_geometry_data(geom_file, blade_geom, 0)
-	append_geometry_data(geom_file, lifting_line_geom, 1)
+	append_geometry_data(geom_file, lifting_line_geom, 0)
+	append_geometry_data(geom_file, blade_geom, 1)
+	#append_geometry_data(geom_file, blade_geom, 0)
+	
 	close_geometry_file(geom_file)
 
 def build_wopwop_loading(rotor_idx, blade_idx, iterations, r, airfoil_xsection, output_path):
     loading = AperiodicStructuredVectorLoadingFile(
-		comment = "HART rotor blade loading",
+		comment = "Blade loading",
 		reference_frame = ReferenceFrame_patch_fixed(),
 		data_alignment = DataAlignment_node_centered(),
 		zone_headers = [
-			AperiodicStructuredHeader(
-				name = "Dummy blade loading",
-				timesteps = iterations,
-				i_max = len(r),
-				j_max = len(airfoil_xsection),
-				zone = 1,
-				compute_thickness = True,
-				has_data = False
-			),
 			AperiodicStructuredHeader(
 				name = "Lift line loading",
 				timesteps = iterations,
 				i_max = len(r),
 				j_max = 1,
-				zone = 2,
+				zone = 1,
 				compute_thickness = False,
 				has_data = True
 			),
+			AperiodicStructuredHeader(
+				name = "Dummy blade loading",
+				timesteps = iterations,
+				i_max = len(r),
+				j_max = len(airfoil_xsection),
+				zone = 2,
+				compute_thickness = True,
+				has_data = False
+			)
 		]
 	)
     
