@@ -355,7 +355,14 @@ def main():
 				prog_file.flush()
 
 		os.remove(prog_file_name)
+	elif (acoustics is not None) and (observer is not None):
+		case_list = CaseList()
+		case_list.cases = cases
 
+		#void write_caselist_custom_name(ref CaseList case_list, string directory, string caselist_filename) {
+		write_caselist_custom_name(case_list, "./", f'cases_{rank}.nam')
+
+		
 	# wait for all other procs to finish.
 	comm.barrier()
 

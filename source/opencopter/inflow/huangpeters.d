@@ -1177,8 +1177,10 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 		return V;
 	}
 
-	immutable all_below_disk = z[].map!(a => a > 0).fold!((res, a) => a && res)(true);
-	immutable all_above_or_on_disk = z[].map!(a => (a <= 0)).fold!((res, a) => a && res)(true);
+	double z_scale = 5;
+
+	immutable all_below_disk = z[].map!(a => a > -1.0/z_scale).fold!((res, a) => a && res)(true);
+	immutable all_above_or_on_disk = z[].map!(a => (a <= -1.0/z_scale)).fold!((res, a) => a && res)(true);
 	immutable all_somewhere = !all_above_or_on_disk && !all_below_disk;// && !all_in_upper_hemi;
 
 	import core.stdc.stdio : printf;
@@ -1426,21 +1428,31 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 		V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
 		
 		if(all_below_disk && !all_somewhere) {
-			return V_below;
+			V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, infl.b, infl.beta, infl.delta_s, infl.lambda_s, coords, t, x, z, true);
+			Chunk z_shift = z_scale*z[];
+			Chunk blend = 0.5*(erf(z_shift)[] + 1.0);
+			Chunk one_m_blend = 1.0 - blend[];
+			Chunk V = V_below[]*blend[] + V_above[]*one_m_blend[];
+			return V;
 		}
 	}
 
 	// Merge results
 	if(all_somewhere) {
+		
+		Chunk z_shift = z_scale*z[];
+		Chunk blend = 0.5*(erf(z_shift)[] + 1.0);
+		Chunk one_m_blend = 1.0 - blend[];
 
 		Chunk V = 0;
-		foreach(c_idx; 0..chunk_size) {
+		V[] = V_below[]*blend[] + V_above[]*one_m_blend[];
+		/+foreach(c_idx; 0..chunk_size) {
 			if(z[c_idx] > 0) {
-				V[c_idx] = V_below[c_idx];
+				V[c_idx] = V_below[c_idx]*blend[] + V_above[c_idx]*one_m_blend[];
 			} else {
 				V[c_idx] = V_above[c_idx];
 			}
-		}
+		}+/
 		return V;
 	}
 
@@ -3035,12 +3047,12 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
 						if(m == 0) {
-							cos_mpsi[] = 1.0/(2.0*PI);
+							cos_mpsi[] = 1.0/(1.0*PI);
 							sin_mpsi[] = 0;
 						} else {
 							immutable Chunk[2] sin_cos = sincos(mpsi)[];
-							cos_mpsi[] = 1.0/(PI)*sin_cos[1][];
-							sin_mpsi[] = 1.0/(PI)*sin_cos[0][];
+							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
 						}
 
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
@@ -3072,12 +3084,12 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
 						if(m == 0) {
-							cos_mpsi[] = 1.0/(2.0*PI);
+							cos_mpsi[] = 1.0/(1.0*PI);
 							sin_mpsi[] = 0;
 						} else {
 							immutable Chunk[2] sin_cos = sincos(mpsi)[];
-							cos_mpsi[] = 1.0/(PI)*sin_cos[1][];
-							sin_mpsi[] = 1.0/(PI)*sin_cos[0][];
+							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
 						}
 						
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];

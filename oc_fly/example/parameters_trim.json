@@ -3,15 +3,16 @@
     "d_psi": 1.0,
     "spanwise_elements": 48,
     "shed_history_angle": 45.0,
-    "convergence_criteria": 1.0e-4
+    "convergence_criteria": 1.0e-4,
+    "trim_algo": "he"
   },
   "flight_conditions": [
     {
-      "aoa": 10.0,
+      "aoa": -5.0,
       "density": 1.125,
       "omegas": [ 109.12, -109.12 ],
       "sos": 343,
-      "c_t": [0.02, 0.02],
+      "c_t": [0.025, 0.025],
       "V_inf": 30.0
     }
   ],
@@ -31,16 +32,6 @@
         "resolution": [1536, 16, 1024],
         "slice_start": [-4.5, -0.1, -1],
         "slice_size": [3.0, 0.2, 2.0]
-      },
-      {
-        "resolution": [1536, 8, 1024],
-        "slice_start": [-1.5, -1.05, -1],
-        "slice_size": [3.0, 0.1, 2.0]
-      },
-      {
-        "resolution": [1536, 8, 1024],
-        "slice_start": [-1.5, 0.95, -1],
-        "slice_size": [3.0, 0.1, 2.0]
       }
     ]
   }

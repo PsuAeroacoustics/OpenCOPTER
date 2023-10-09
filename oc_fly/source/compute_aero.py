@@ -19,7 +19,7 @@ import numpy as np
 
 from os import path, makedirs
 
-def build_blade_from_json(blade_object, requested_elements, geom_directory):
+def build_blade_from_json(blade_object, requested_elements, geom_directory, r_idx, b_idx, R, wopwop_data_path, omega):
     theta_tw_1 = blade_object['theta_tw']
     airfoil_descs = blade_object['airfoils']
     r_c = 0
@@ -107,6 +107,19 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory):
     
     sweep = sweep_from_quarter_chord(r, x)
 
+    naca0012_xsection = naca0012()
+
+    real_chord = R*c
+
+    naca0012_xsection = [[-(xsection[0] - 0.5), -xsection[1]] for xsection in naca0012_xsection]
+
+    if omega < 0:
+        neg_twist = -twist
+        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, neg_twist, R, real_chord, wopwop_data_path, r_idx, b_idx)
+    else:
+        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, R, real_chord, wopwop_data_path, r_idx, b_idx)
+
+
     # Convert from linear array format to OpenCOPTER chunk format
     set_r(blade, r)
     set_xi(blade, x)
@@ -154,14 +167,6 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         for blade_obj in geometry['blades']:
             blade_dict[blade_obj["name"]] = blade_obj
 
-	# Create the spanwise distributions for our blades
-	# We will later apply these to murosims internal
-	# data layout. r and c arrays are normalized by the
-	# rotor radius
-    r = generate_radius_points(requested_elements)
-    elements = len(r)
-    log_file.write(f"requested_elements: {requested_elements}, actual elements:  {elements}\n")
-
     atmo = Atmosphere(density = density, dynamic_viscosity = dynamic_viscosity)
 	
 	# Create our outer rotorcraft_system geometry container
@@ -198,8 +203,6 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
     wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
     wake_history_length = wake_history_length.tolist()
 
-    naca0012_xsection = naca0012()
-
     wopwop_data_path = f'{output_base}/acoustics/data'
 
     if not path.isdir(wopwop_data_path):
@@ -213,14 +216,14 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         r_c = 0
         if "number_of_blades" in geometry['rotors'][r_idx]:
             if isinstance(geometry['rotors'][r_idx]['blade'], str):
-                blade, r_c = build_blade_from_json(blade_dict[geometry['rotors'][r_idx]['blade']], requested_elements, geom_directory)
+                blade, r_c = build_blade_from_json(blade_dict[geometry['rotors'][r_idx]['blade']], requested_elements, geom_directory, r_idx, b_idx, R[r_idx], wopwop_data_path, omegas[r_idx])
             else:
-                blade, r_c = build_blade_from_json(geometry['rotors'][r_idx]['blade'], requested_elements, geom_directory)
+                blade, r_c = build_blade_from_json(geometry['rotors'][r_idx]['blade'], requested_elements, geom_directory, r_idx, b_idx, R[r_idx], wopwop_data_path, omegas[r_idx])
         else:
             if isinstance(geometry['rotors'][r_idx]['blades'], List[str]):
-                blade, r_c = build_blade_from_json(blade_dict[geometry['rotors'][r_idx]['blade'][b_idx]], requested_elements, geom_directory)
+                blade, r_c = build_blade_from_json(blade_dict[geometry['rotors'][r_idx]['blade'][b_idx]], requested_elements, geom_directory, r_idx, b_idx, R[r_idx], wopwop_data_path, omegas[r_idx])
             else:
-                blade, r_c = build_blade_from_json(geometry['rotors'][r_idx]['blades'][b_idx], requested_elements, geom_directory)
+                blade, r_c = build_blade_from_json(geometry['rotors'][r_idx]['blades'][b_idx], requested_elements, geom_directory, r_idx, b_idx, R[r_idx], wopwop_data_path, omegas[r_idx])
 
         d_azimuth = 2.0*math.pi/num_blades
 
@@ -229,8 +232,6 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         c = get_chord(blade)
         blade.average_chord = R[r_idx]*np.sum(c)/len(c)
         blade.blade_length = R[r_idx]*(1.0 - r_c)
-
-        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, get_twist(blade), R[r_idx], 10, wopwop_data_path, r_idx, b_idx)
 
         return blade
 
@@ -257,6 +258,10 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
     rotorcraft_system.rotors = [build_rotor(r_idx) for r_idx in range(num_rotors)]
     
     num_blades = [rotor.blades.length() for rotor in rotorcraft_system.rotors]
+
+    r = generate_radius_points(requested_elements)
+    elements = len(r)
+    log_file.write(f"requested_elements: {requested_elements}, actual elements:  {elements}\n")
 
 	# AircraftState is the top level container for holding the current
 	# aerodynamic state of the tandem_system. It breaks down into rotors
@@ -312,16 +317,16 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         vehicle,
         atmo,
         r,
-        computational_parameters["d_psi"],
         elements,
         args.ws,
         f'{output_base}/vtu',
         f'{output_base}/acoustics',
         do_compute,
         flight_condition,
-        computational_parameters["convergence_criteria"],
+        computational_parameters,
         observer,
-        acoustics
+        acoustics,
+        wake_history_length
     )
 
     if do_compute:

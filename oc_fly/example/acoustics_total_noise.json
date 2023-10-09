@@ -1,8 +1,8 @@
 {
 	"acoustic_config": {
-		"pressure_folder_name": "pressure",
-		"spl_folder_name": "spl",
-		"sigma_folder_name": "sigma",
+		"pressure_folder_name": "pressure/",
+		"spl_folder_name": "spl/",
+		"sigma_folder_name": "sigma/",
 		"debug_level": 12,
 		"ascii_output_flag": false,
 		"oaspl_db_flag": true,
@@ -16,9 +16,9 @@
 		"loading_noise_flag": true,
 		"total_noise_flag": true,
 		"sigma_flag": true,
-		"loading_noise_sigma_flag": true,
+		"loading_noise_sigma_flag": false,
 		"thickness_noise_sigma_flag": true,
-		"total_noise_sigma_flag": true,
+		"total_noise_sigma_flag": false,
 		"normal_sigma_flag": true,
 		"mach_sigma_flag": false,
 		"observer_sigma_flag": false,
@@ -28,7 +28,7 @@
 		"momentum_sigma_flag": false,
 		"pressure_sigma_flag": false,
 		"loading_sigma_flag": true,
-		"area_sigma_flag": false,
+		"area_sigma_flag": true,
 		"mdotr_sigma_flag": false,
 		"iblank_sigma_flag": false
 	}
