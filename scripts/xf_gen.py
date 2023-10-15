@@ -99,6 +99,13 @@ def check_aerodas(polar_filename: str, tc_ratio: float):
 	#plt.savefig("Cd.png", ["dpi": 500])
 	plt.show()
 
+def generate_polar(Re, n, NACA, filename, aoa_min, aoa_max):
+	xfoil_input_file, polar_output_filename = write_xfoil_inputs(Re, n, NACA, filename, aoa_min, aoa_max)
+
+	run_xfoil(args.xf, xfoil_input_file)
+	return polar_output_filename
+
+
 def main():
 	parser = argparse.ArgumentParser("xf_gen", description="Xfoil data generator for AERODAS model input")
 
@@ -153,7 +160,7 @@ def main():
 		default=15,
 		required=False
 	)
-
+	
 	parser.add_argument(
 		"-c",
 		action="store_true",
@@ -171,10 +178,7 @@ def main():
 	
 	args = parser.parse_args()
 
-	xfoil_input_file, polar_output_filename = write_xfoil_inputs(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max)
-
-	print("Running Xfoil")
-	run_xfoil(args.xf, xfoil_input_file)
+	polar_output_filename = generate_polar(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max)
 
 	if args.c:
 		if args.tc_ratio is None:
