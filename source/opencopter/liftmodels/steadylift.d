@@ -10,6 +10,7 @@ import opencopter.trim;
 import std.algorithm;
 import std.array;
 import std.math;
+import std.typecons;
 
 unittest {
 	import std.conv : to;
@@ -116,7 +117,8 @@ unittest {
 
 	version(LDC) pragma(inline, true);
 
-	Chunk lift_coefficient;
+	Chunk dC_L;
+
 
 	import std.math : PI;
 
@@ -124,7 +126,27 @@ unittest {
 
 	immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
 
-	lift_coefficient[] = 0.5*sigma_hat[]*u_squared[]*C_l[];
+	dC_L[] = 0.5*sigma_hat[]*u_squared[]*C_l[];
 
-	return lift_coefficient;
+
+	return dC_L;
+}
+
+@nogc Chunk steady_drag_model(immutable Chunk u_p, immutable Chunk u_t,immutable Chunk C_d, immutable Chunk chord) {
+
+	version(LDC) pragma(inline, true);
+
+	Chunk dC_D;
+
+
+	import std.math : PI;
+
+	immutable Chunk sigma_hat = chord[]/PI;
+
+	immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
+
+	dC_D[] = 0.5*sigma_hat[]*u_squared[]*C_d[];
+
+
+	return dC_D;
 }

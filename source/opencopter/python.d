@@ -218,6 +218,14 @@ void fill_dC_Td(ref PyBladeState blade, double[] data) {
 	return blade.get_state_array!"dC_T"(data);
 }
 
+void fill_dC_Qf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_Q"(data);
+}
+
+void fill_dC_Qd(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_Q"(data);
+}
+
 double[] get_dC_Q(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_Q";
 }
@@ -567,6 +575,20 @@ extern(C) void PydMain() {
 
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
 		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_dC_Qd, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise torque coefficient to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Q` from
+		:param data: numpy slice to fill with :math:`dC_Q` values
+	});
+
+	def!(fill_dC_Qf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise torque coefficient to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Q` from
+		:param data: numpy slice to fill with :math:`dC_Q` values
 	});
 
 	def!(get_dC_Q, double[] function(ref PyBladeState), Docstring!q{
@@ -1026,6 +1048,7 @@ extern(C) void PydMain() {
 		},
 		Member!("blade_states", Docstring!q{An array of :class:`BladeState`, one for each blade of this rotor}),
 		Member!("C_T", Docstring!q{The current thrust coefficient of this rotor}),
+		Member!("C_Q", Docstring!q{The current thrust coefficient of this rotor}),
 		Member!("C_Mx", Docstring!q{The current x moment coefficient of this rotor}),
 		Member!("C_My", Docstring!q{The current y moment coefficient of this rotor}),
 		Member!("advance_ratio", Docstring!q{The current advance ratio of this rotor}),

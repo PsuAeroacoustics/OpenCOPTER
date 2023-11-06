@@ -77,20 +77,27 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, zero);
 
 		immutable Chunk dC_L = steady_lift_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
+		immutable Chunk dC_D = steady_lift_model(u_p, u_t,af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];
+		blade_state.chunks[chunk_idx].dC_D[] = dC_D[];
 
 		immutable Chunk cos_inflow = cos(inflow_angle);
+		immutable Chunk sin_inflow = sin(inflow_angle);
+
 		immutable Chunk cos_collective = std.math.cos(rotor_input.blade_pitches[blade_idx]);
 		immutable Chunk sin_collective = std.math.sin(rotor_input.blade_pitches[blade_idx]);
 		
 		immutable Chunk dC_N = blade_state.chunks[chunk_idx].dC_L[]*cos_collective[];
 		immutable Chunk dC_c = -blade_state.chunks[chunk_idx].dC_L[]*sin_collective[];
 
-		immutable Chunk dC_T = blade_state.chunks[chunk_idx].dC_L[]*cos_inflow[];
+		immutable Chunk dC_T = blade_state.chunks[chunk_idx].dC_L[]*cos_inflow[]-blade_state.chunks[chunk_idx].dC_D[]*sin_inflow[];
+		immutable Chunk dC_Q = (blade_state.chunks[chunk_idx].dC_L[]*sin_inflow[]+blade_state.chunks[chunk_idx].dC_D[]*cos_inflow[])*blade.chunks[chunk_idx].r[];
+
 		blade_state.chunks[chunk_idx].dC_T_dot = (dC_T[] - blade_state.chunks[chunk_idx].dC_T[])/dt;
 		blade_state.chunks[chunk_idx].dC_T[] = dC_T[];
+		blade_state.chunks[chunk_idx].dC_Q[] = dC_Q[];
 		blade_state.chunks[chunk_idx].dC_N[] = dC_N[];
 		blade_state.chunks[chunk_idx].dC_c[] = dC_c[];
 
@@ -99,6 +106,8 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 	}
 
 	blade_state.C_T = integrate_trapaziodal!"dC_T"(blade_state, blade);
+	blade_state.C_Q = integrate_trapaziodal!"dC_Q"(blade_state, blade);
+
 	blade_state.C_Mx = integrate_trapaziodal!"dC_Mx"(blade_state, blade);
 	blade_state.C_My = integrate_trapaziodal!"dC_My"(blade_state, blade);
 }
@@ -107,13 +116,14 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
  +	With a given rotor angual velocity and angular acceleration, compute the lift, torque, power of the rotor.
  +	This is intended to by wrapped in some sort of trim algo.
  +/
-extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state, I inflow, auto ref W wake, double C_Ti, double time, double dt, size_t rotor_idx)
+extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state, I inflow, auto ref W wake, double C_Ti,double C_Qi, double time, double dt, size_t rotor_idx)
 	if(is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
 	
 	rotor_state.C_T = 0.0;
+	rotor_state.C_Q = 0.0;
 	rotor_state.C_Mx = 0.0;
 	rotor_state.C_My = 0.0;
 
@@ -143,6 +153,7 @@ extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG ro
 		);
 
 		rotor_state.C_T += rotor_state.blade_states[blade_idx].C_T;
+		rotor_state.C_Q += rotor_state.blade_states[blade_idx].C_Q;
 		rotor_state.C_Mx += rotor_state.blade_states[blade_idx].C_Mx;
 		rotor_state.C_My += rotor_state.blade_states[blade_idx].C_My;
 	}
@@ -199,6 +210,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 			inflows[rotor_idx],
 			wake_history[0],
 			ac_state.rotor_states[rotor_idx].C_T,
+			ac_state.rotor_states[rotor_idx].C_Q,
 			time,
 			dt,
 			rotor_idx

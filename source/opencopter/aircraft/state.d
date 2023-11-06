@@ -127,6 +127,7 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 
 	mixin ArrayDeclMixin!(AC, BladeStateT!(AC), "blade_states");
 	double C_T;
+	double C_Q;
 	double C_Mx;
 	double C_My;
 	double advance_ratio; // non-dim
@@ -152,6 +153,7 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	ref typeof(this) opAssign(typeof(this) rotor) {
 		this.blade_states = rotor.blade_states;
 		this.C_T = rotor.C_T;
+		this.C_Q = rotor.C_Q;
 		this.advance_ratio = rotor.advance_ratio;
 		this.axial_advance_ratio = rotor.axial_advance_ratio;
 
@@ -161,6 +163,7 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	ref typeof(this) opAssign(ref typeof(this) rotor) {
 		this.blade_states = rotor.blade_states;
 		this.C_T = rotor.C_T;
+		this.C_Q = rotor.C_Q;
 		this.advance_ratio = rotor.advance_ratio;
 		this.axial_advance_ratio = rotor.axial_advance_ratio;
 		return this;
@@ -169,6 +172,7 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	ref typeof(this) opAssign(typeof(this)* rotor) {
 		this.blade_states = rotor.blade_states;
 		this.C_T = rotor.C_T;
+		this.C_Q = rotor.C_Q;
 		this.advance_ratio = rotor.advance_ratio;
 		this.axial_advance_ratio = rotor.axial_advance_ratio;
 		return this;
