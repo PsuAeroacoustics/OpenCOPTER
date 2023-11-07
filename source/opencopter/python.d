@@ -1048,7 +1048,7 @@ extern(C) void PydMain() {
 		},
 		Member!("blade_states", Docstring!q{An array of :class:`BladeState`, one for each blade of this rotor}),
 		Member!("C_T", Docstring!q{The current thrust coefficient of this rotor}),
-		Member!("C_Q", Docstring!q{The current thrust coefficient of this rotor}),
+		Member!("C_Q", Docstring!q{The current power/torque coefficient of this rotor}),
 		Member!("C_Mx", Docstring!q{The current x moment coefficient of this rotor}),
 		Member!("C_My", Docstring!q{The current y moment coefficient of this rotor}),
 		Member!("advance_ratio", Docstring!q{The current advance ratio of this rotor}),

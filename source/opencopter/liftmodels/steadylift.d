@@ -113,12 +113,11 @@ unittest {
 	writeln;
 }
 
-@nogc Chunk steady_lift_model(immutable Chunk u_p, immutable Chunk u_t, immutable Chunk C_l, immutable Chunk chord) {
+@nogc Chunk steady_sectional_model(immutable Chunk u_p, immutable Chunk u_t, immutable Chunk C_l, immutable Chunk chord) {
 
 	version(LDC) pragma(inline, true);
 
 	Chunk dC_L;
-
 
 	import std.math : PI;
 
@@ -132,21 +131,3 @@ unittest {
 	return dC_L;
 }
 
-@nogc Chunk steady_drag_model(immutable Chunk u_p, immutable Chunk u_t,immutable Chunk C_d, immutable Chunk chord) {
-
-	version(LDC) pragma(inline, true);
-
-	Chunk dC_D;
-
-
-	import std.math : PI;
-
-	immutable Chunk sigma_hat = chord[]/PI;
-
-	immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
-
-	dC_D[] = 0.5*sigma_hat[]*u_squared[]*C_d[];
-
-
-	return dC_D;
-}

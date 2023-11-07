@@ -76,8 +76,8 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, zero);
 
-		immutable Chunk dC_L = steady_lift_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
-		immutable Chunk dC_D = steady_lift_model(u_p, u_t,af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
+		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
+		immutable Chunk dC_D = steady_sectional_model(u_p, u_t,af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];
