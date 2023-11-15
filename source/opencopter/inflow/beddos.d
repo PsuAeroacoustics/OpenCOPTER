@@ -82,7 +82,8 @@ class BeddosInflow(ArrayContainer AC = ArrayContainer.none) {
 	@nogc double wake_skew() {
 		return xi;
 	}
-	
+		
+
 	@nogc Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 
 		Chunk inflow = this.inflow_at_impl(x, y)[];

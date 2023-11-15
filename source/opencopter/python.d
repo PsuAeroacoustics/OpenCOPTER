@@ -12,6 +12,7 @@ static import opencopter.vtk;
 static import opencopter.bladeelement;
 static import opencopter.wake;
 static import opencopter.inflow;
+static import opencopter.vortexlattice;
 
 
 import pyd.pyd;
@@ -207,6 +208,16 @@ alias PyRotorWake = opencopter.wake.RotorWakeT!(ArrayContainer.array);
 alias PyVortexFilament = opencopter.wake.VortexFilamentT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
 
+alias PyVortexLattice = opencopter.vortexlattice.VortexLattice!(ArrayContainer.array);
+alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftingSurfT!(ArrayContainer.array);
+alias PyWingVortexFilament = opencopter.vortexlattice.WingVortexFilamentT!(ArrayContainer.array);
+
+
+alias PyVortexLattice = opencopter.vortexlattice.VortexLattice!(ArrayContainer.array);
+alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftingSurfT!(ArrayContainer.array);
+alias PyWingVortexFilament = opencopter.vortexlattice.WingVortexFilamentT!(ArrayContainer.array);
+
+
 alias PyAircraftTimehistory = opencopter.aircraft.AircraftTimehistoryT!(ArrayContainer.array);
 alias PyAircraftState = opencopter.aircraft.AircraftStateT!(ArrayContainer.array);
 alias PyRotorState = opencopter.aircraft.RotorStateT!(ArrayContainer.array);
@@ -224,6 +235,11 @@ alias PyRotorInputState = opencopter.aircraft.RotorInputStateT!(ArrayContainer.a
 alias set_geometry_array = opencopter.aircraft.set_geometry_array;
 alias get_geometry_array = opencopter.aircraft.get_geometry_array;
 alias get_state_array = opencopter.aircraft.get_state_array;
+
+alias PyWingGeometry = WingGeometryT!(ArrayContainer.array);
+alias PyWingPartGeometry = WingPartGeometryT!(ArrayContainer.array);
+alias PyWingState = WingStateT!(ArrayContainer.array);
+alias PyWingPartState = WingPartStateT!(ArrayContainer.array);
 
 void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
@@ -269,6 +285,18 @@ void set_xi_p(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"xi_p"(data);
 }
 
+void set_xi(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi"(data);
+}
+
+void set_xi_p(ref PyBladeGeometry bg, double[] data) {
+	bg.set_geometry_array!"xi_p"(data);
+}
+
+void set_wing_chord(ref PyWingGeometry wg, double[] data) {
+	wg.set_geometry_array!"chord"(data);
+}
+// add pending wing functions
 double[] get_dC_T(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_T";
 }

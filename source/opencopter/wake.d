@@ -761,6 +761,11 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 	
 	wake_history.push_back_wake;
 
+	size_t num_rotors = ac_state.rotor_states.length;
+
+	//double vortex_offset = 35*PI/180.0;
+	double vortex_offset = 0;
+	
 	foreach(rotor_idx, ref rotor; ac_state.rotor_states) {
 
 		immutable double r_c = ac.rotors[rotor_idx].blades[0].r_c;
@@ -1000,7 +1005,7 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					} else {
 						origin = ac.rotors[i_rotor_idx].origin;
 					}
-
+					
 					if((i_rotor_idx == 0) && (rotor_idx == 1) && wake_history.hybrid) {
 					 	auto wake_velocities = wake_history.history[1].compute_wake_induced_velocities(chunk.x, chunk.y, chunk.z, ac_state, i_rotor_idx, blade_idx, true, false, false);
 						global_infow[0][] += wake_velocities.v_x[];

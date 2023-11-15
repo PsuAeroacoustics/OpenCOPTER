@@ -28,7 +28,6 @@ double[] generate_radius_points(size_t n_sections, double root_cutout = 0.0) {
     	auto r = (1.0 - root_cutout)*0.5*(cos(psi) + 1.0).to!double + root_cutout;
     	return r;
     }).retro.array;
-
 }
 
 /*double[] generate_spanwise_vortex_nodes(size_t span_n_sections) {
@@ -60,11 +59,16 @@ double[] generate_spanwise_control_points(size_t span_n_sections) {
 	}).array;
 }
 
-void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_chunks, size_t _chordwise_nodes){
+void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_nodes, size_t _chordwise_nodes){
     
     import std.math : cos,tan, PI;
     import std.math : abs;
-    auto span_ctrl_pt = generate_spanwise_control_points(_spanwise_chunks*chunk_size);
+	double wing_span = wing_geometry.wing_parts[0].wing_span;
+	Chunk span = wing_span;
+	double root_chord = wing_geometry.wing_parts[0].wing_root_chord;
+	size_t acutal_span_nodes = _spanwise_nodes%chunk_size == 0 ? _spanwise_nodes : _spanwise_nodes + (chunk_size - _spanwise_nodes%chunk_size);
+	size_t _spanwise_chunks = acutal_span_nodes/chunk_size;
+    auto span_ctrl_pt = generate_spanwise_control_points(acutal_span_nodes);
 	auto chord_ctrl_pt = generate_chordwise_control_points(_chordwise_nodes);
     //auto span_ctrl_pt_left = generate_spanwise_control_points(_spanwise_chunks*chunk_size);
     //span_vr_nodes_left = span_vr_nodes_left.retro;
@@ -73,13 +77,15 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_c
     foreach(wp_idx, wing_part; wing_geometry.wing_parts){
 		foreach(crd_idx;0.._chordwise_nodes){
 			foreach(sp_idx; 0.._spanwise_chunks){
-				if(mod(w_ch,2)==0){
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size];
+				if(wp_idx%2==0){
+					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
+					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
 				}else{
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size];
+					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
+					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
 				}				
-				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].x[] = chord_ctrl_pt[crd_idx] + abs(wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].y)[]*tan(wing_part.le_sweep_angle*PI/180);
-				wing_part.ctrl.chunks[crd_idx*_spanwise_chunks + sp_idx].z[] = 0.0;
+				
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
 			}
 		}
 	}
@@ -363,6 +369,7 @@ extern(C++) alias Aircraft = AircraftT!(ArrayContainer.none);
 extern(C++) struct AircraftT(ArrayContainer AC) {
 
 	mixin ArrayDeclMixin!(AC, RotorGeometryT!AC, "rotors");
+	mixin ArrayDeclMixin!(AC, WingGeometryT!AC, "wings");
 
 	Frame* root_frame;
 
@@ -635,32 +642,27 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	Vec3 origin;
 	double wing_span;
 
-	this(size_t wing_parts, Vec3 origin, double wing_span) {
-		mixin(array_ctor_mixin!(AC, "WingGeometryT!(AC)", "wing_parts", "num_parts"));
+	this(size_t num_parts, Vec3 origin, double wing_span) {
+		mixin(array_ctor_mixin!(AC, "WingPartGeometryT!(AC)", "wing_parts", "num_parts"));
 
 		this.origin = origin;
-		this.radius = wing_span;
-		this.solidity = solidity;
 	}
 
 	ref typeof(this) opAssign(typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
-		this.wing_span = wing.wing_span;
 		return this;
 	}
 
 	ref typeof(this) opAssign(ref typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
-		this.wing_span = wing.wing_span;
 		return this;
 	}
 
 	ref typeof(this) opAssign(typeof(this)* wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
-		this.wing_span = wing.wing_span;
 		return this;
 	}
 
@@ -680,7 +682,7 @@ extern (C++) struct WingPartGeometryChunk {
 	/++
 	 +   Twist distribution
 	 +/
-	Chunk twist; 
+	//Chunk twist; 
 	/++
 	 +   Chord distribution
 	 +/
@@ -695,15 +697,15 @@ extern (C++) struct WingPartGeometryChunk {
 	/++
 	 +  Radial sectional airfoil lift curve slope
 	 +/
-	Chunk C_l_alpha;
+	//Chunk C_l_alpha;
 	/++
 	 +  Radial sectional 0 lift angle of attack
 	 +/
-	Chunk alpha_0;
+	//Chunk alpha_0;
 	/++
 	 +	Blade quarter chord sweep angle
 	 +/
-	Chunk sweep;
+	//Chunk sweep;
 }
 
 extern (C++) struct WingPartCtrlPointChunk {
@@ -713,6 +715,8 @@ extern (C++) struct WingPartCtrlPointChunk {
 	Chunk ctrl_pt_y;
 
 	Chunk ctrl_pt_z;
+
+	Chunk camber;
 }
 
 template is_wing_part_geometry(A) {
@@ -730,26 +734,26 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, WingPartGeometryChunk, "chunks");
 	mixin ArrayDeclMixin!(AC, WingPartCtrlPointChunk, "ctrl_chunks");
 
-	double wing_root_origin;
+	Vec3 wing_root_origin;
 	double average_chord;
 	double wing_root_chord;
 	double wing_tip_chord;
 	double le_sweep_angle;
 	double te_sweep_angle;
-	//double wing_span;
+	double wing_span;
 
-	WingAirfoil airfoil;
+	//BladeAirfoil airfoil;
 
-	this(size_t span_elements, size_t chordwise_nodes, double wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, WingAirfoil airfoil) {
-		immutable actual_num_span_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
+	this(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span) {
+		immutable actual_num_span_elements = span_elements%chunk_size == 0 ? span_elements : span_elements + (chunk_size - span_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_span_chunks = actual_num_span_elements/chunk_size;
 		//immutable actual_ctrl_pt = ((actual_num_span_elements)*(chord_elements))%chunk_size == 0 ? (span_elements-1)*(chord_elements) : (span_elements-1)*(chord_elements) + (chunk_size - (span_elements-1)*(chord_elements)%chunk_size);
 		immutable ctrl_pt_chunks = num_span_chunks*chordwise_nodes;
-		mixin(array_ctor_mixin!(AC, "WingGeometryChunk", "chunks", "num_span_chunks"));
-		mixin(array_ctor_mixin!(AA, "WingCtrlPointChunk", "ctrl_chunks", "ctrl_pt_chunks"));
+		mixin(array_ctor_mixin!(AC, "WingPartGeometryChunk", "chunks", "num_span_chunks"));
+		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointChunk", "ctrl_chunks", "ctrl_pt_chunks"));
 
-		this.airfoil = airfoil;
+		//this.airfoil = airfoil;
 
 		this.wing_root_origin = wing_root_origin;
 		this.average_chord = average_chord;
@@ -757,11 +761,11 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.wing_tip_chord = wing_tip_chord;
 		this.le_sweep_angle = le_sweep_angle;
 		this.te_sweep_angle = te_sweep_angle;
-		//this.wing_span = wing_span;
+		this.wing_span = wing_span;
 	}
 
 	ref typeof(this) opAssign(typeof(this) wing_part) {
-		this.airfoil = wing_part.airfoil;
+		//this.airfoil = wing_part.airfoil;
 		this.chunks = wing_part.chunks;
 		this.ctrl_chunks = wing_part.ctrl_chunks;
 		this.wing_root_origin = wing_part.wing_root_origin;
@@ -770,12 +774,12 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.wing_tip_chord = wing_part.wing_tip_chord;
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
-		//this.wing_span = wing_part.wing_span;
+		this.wing_span = wing_part.wing_span;
 		return this;
 	}
 
 	ref typeof(this) opAssign(ref typeof(this) wing_part) {
-		this.airfoil = wing_part.airfoil;
+		//this.airfoil = wing_part.airfoil;
 		this.chunks = wing_part.chunks;
 		this.ctrl_chunks = wing_part.ctrl_chunks;
 		this.wing_root_origin = wing_part.wing_root_origin;
@@ -784,12 +788,12 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.wing_tip_chord = wing_part.wing_tip_chord;
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
-		//this.wing_span = wing_part.wing_span;
+		this.wing_span = wing_part.wing_span;
 		return this;
 	}
 
-	ref typeof(this) opAssign(typeof(this)* wing) {
-		this.airfoil = wing_part.airfoil;
+	ref typeof(this) opAssign(typeof(this)* wing_part) {
+		//this.airfoil = wing_part.airfoil;
 		this.chunks = wing_part.chunks;
 		this.ctrl_chunks = wing_part.ctrl_chunks;
 		this.wing_root_origin = wing_part.wing_root_origin;
@@ -798,7 +802,7 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.wing_tip_chord = wing_part.wing_tip_chord;
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
-		//this.wing_span = wing_part.wing_span;
+		this.wing_span = wing_part.wing_span;
 		return this;
 	}
 }
@@ -1085,9 +1089,206 @@ double[] get_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* 
 	return geom_array;
 }
 
-void set_geometry_array(string value, ArrayContainer AC)(ref WingGeometryT!AC wing, double[] data) {
+void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade, Vec4[] data) {
 
-	foreach(c_idx, ref chunk; wing.chunks) {
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade, Mat4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, double[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, Vec4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, Mat4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+double[] get_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade) {
+	immutable elements = blade.chunks.length*chunk_size;
+	double[] geom_array = new double[elements];
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = elements - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("geom_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+	return geom_array;
+}
+
+double[] get_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade) {
+	immutable elements = blade.chunks.length*chunk_size;
+	double[] geom_array = new double[elements];
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = elements - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("geom_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+	return geom_array;
+}
+
+
+void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade, Vec4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade, Mat4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, double[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, Vec4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, Mat4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+double[] get_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade) {
+	immutable elements = blade.chunks.length*chunk_size;
+	double[] geom_array = new double[elements];
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = elements - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("geom_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+	return geom_array;
+}
+
+double[] get_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade) {
+	immutable elements = blade.chunks.length*chunk_size;
+	double[] geom_array = new double[elements];
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = elements - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("geom_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+	return geom_array;
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(ref WingPartGeometryT!AC wing_part, double[] data) {
+
+	foreach(c_idx, ref chunk; wing_part.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
 
 		immutable remaining = data.length - out_start_idx;
