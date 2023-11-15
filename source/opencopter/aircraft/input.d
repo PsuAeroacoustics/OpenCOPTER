@@ -5,6 +5,7 @@ import opencopter.config;
 import opencopter.memory;
 
 import std.traits;
+import core.simd;
 
 template is_aircraft_input_state(A) {
 	enum bool is_aircraft_input_state = {
@@ -20,11 +21,12 @@ alias AircraftInputState = AircraftInputStateT!(ArrayContainer.none);
 
 struct AircraftInputStateT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, RotorInputStateT!(AC), "rotor_inputs");
+	mixin ArrayDeclMixin!(AC, WingInputStateT!(AC), "wing_inputs");
 
-	this(size_t num_rotors, size_t num_blades) {
+	this(size_t num_rotors, size_t num_blades, size_t num_wings) {
 		mixin(array_ctor_mixin!(AC, "RotorInputStateT!(AC)", "rotor_inputs", "num_rotors"));
 		
-		mixin(array_ctor_mixin!(AC, "WingInputStateT!(AC)", "wing_inputs", "num_wings"))
+		mixin(array_ctor_mixin!(AC, "WingInputStateT!(AC)", "wing_inputs", "num_wings"));
 		
 		foreach(ref rotor; rotor_inputs) {
 			mixin(array_ctor_mixin!(AC, "double", "rotor.r_0", "num_blades"));
@@ -34,10 +36,10 @@ struct AircraftInputStateT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades) {
+	this(size_t num_rotors, size_t[] num_blades, size_t num_wings) {
 		mixin(array_ctor_mixin!(AC, "RotorInputStateT!(AC)", "rotor_inputs", "num_rotors"));
 		
-		mixin(array_ctor_mixin!(AC, "WingInputStateT!(AC)", "wing_inputs", "num_wings"))
+		mixin(array_ctor_mixin!(AC, "WingInputStateT!(AC)", "wing_inputs", "num_wings"));
 		
 		foreach(r_idx, ref rotor; rotor_inputs) {
 			mixin(array_ctor_mixin!(AC, "double", "rotor.r_0", "num_blades[r_idx]"));
@@ -88,6 +90,8 @@ template is_wing_input_state(A) {
 alias WingInputState = WingInputStateT!(ArrayContainer.none);
 extern (C++) struct WingInputStateT(ArrayContainer AC) {
 	double angle_of_attack; // rad
+	double cos_aoa;
+	double sin_aoa;
 	double freestream_velocity; // m/s
 	//double angular_velocity; // rad/s
 	//double angular_accel; // rad/s^2

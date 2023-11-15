@@ -1124,9 +1124,11 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 
 alias HuangPetersInflow = HuangPetersInflowT!(ArrayContainer.none);
 
-class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow { 
+class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow { 
 
 	alias RG = RotorGeometryT!AC;
+	alias RS = RotorStateT!AC;
+	alias RIS = RotorInputStateT!AC;
 
 	private immutable long Mo;
 	private immutable long Me;
@@ -1195,6 +1197,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private Chunk[] blade_scratch;
 
 	private RG* rotor;
+	private RS* rotor_state;
+	private RIS* rotor_input;
 
 	private double advance_ratio;
 	private double axial_advance_ratio;
@@ -1204,12 +1208,14 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return ((idx % time_history) + time_history) % time_history;
 	}
 
-	this(long _Mo, long _Me, RG* _rotor, double dt) {
+	this(long _Mo, long _Me, RG* _rotor, RS* _rotor_state,RIS* _rotor_input, double dt) {
 		size_t len = round(2.0*PI/(dt*235.325)).to!size_t;
 		ai_idx = 0;
 		average_inflow_array = new double[len];
 		average_inflow_array[] = 0;
 		rotor = _rotor;
+		rotor_state = _rotor_state;
+		rotor_input = _rotor_input;
 		size_t num_chunks = rotor.blades[0].chunks.length;
 
 		openblas_set_num_threads(1);
@@ -1711,12 +1717,12 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return average_inflow;
 	}
 
-	void update(double C_T, ref RotorInputStateT!AC rotor, ref RotorStateT!AC rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	void update(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	void update(double C_T, RotorInputStateT!AC* rotor, RotorStateT!AC* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	void update(AircraftInputStateT!AC* ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(*ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
 	private void compute_loading(RS)(auto ref RS rotor_state) {
@@ -1804,18 +1810,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	Chunk[] contraction_z_array;
 	double[] contraction_z_array_alias;
 
-	private void update_impl(RIS, RS)(double C_T, auto ref RIS rotor, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	private void update_impl(ArrayContainer AC = ArrayContainer.None)(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
 		advance_ratio = _advance_ratio;
 		axial_advance_ratio = _axial_advance_ratio;
-		omega = rotor.angular_velocity;
+		omega = rotor_input.angular_velocity;
 		auto time = dt*curr_state.to!double*abs(omega);
 
 		times[get_circular_index(curr_state + 1)] = time;
 
 		compute_loading(rotor_state);
 
-		integrator.step!(system_derivative)(state_history[get_circular_index(curr_state + 1)], state_history[get_circular_index(curr_state)], time, dt*abs(rotor.angular_velocity), this, rotor, rotor_state, advance_ratio, axial_advance_ratio);
+		integrator.step!(system_derivative)(state_history[get_circular_index(curr_state + 1)], state_history[get_circular_index(curr_state)], time, dt*abs(rotor_input.angular_velocity), this, rotor_input, rotor_state, advance_ratio, axial_advance_ratio);
 
 		alpha = state_history[get_circular_index(curr_state + 1)][0..total_states];
 
@@ -1856,7 +1862,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		}
 	}
 
-	@nogc double compute_inflow_average_at_disk() {
+	double compute_inflow_average_at_disk() {
 		Chunk v_z = 0;
 
 		double d_psi = 2.0*PI/n_psi.to!double;
@@ -1880,7 +1886,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return v_z.sum*d_r*d_psi*1.0/PI;
 	}
 
-	@nogc Chunk compute_inflow_average_at_z(immutable Chunk z) {
+	Chunk compute_inflow_average_at_z(immutable Chunk z) {
 		Chunk v_z = 0;
 
 		immutable Chunk x_c = -z[]*tan_chi;
@@ -1907,7 +1913,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 	bool contraction_mapping = false;
 
-	@nogc Chunk compute_contraction_multiplier(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
+	Chunk compute_contraction_multiplier(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
 		immutable K = interpolate_contraction_ratio(z);
 
 		immutable Chunk x_0 = z[]*tan_chi;
@@ -1928,7 +1934,45 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		return k_bar;
 	}
 
-	@nogc Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+	/*void get_ind_vel_on_rotor(RS,RG,RIS,WG,WIS,WS,I)(auto ref RS rotor_states,auto ref RG rotors, auto ref RIS rotor_inputs,auto ref WIS wing_inputs, auto ref WS wing_states, auto ref I[] inflows){
+    
+    	size_t num_rotors = rotors.length; 
+    	double[num_rotors] v_z;
+    	double[num_rotors] v_x;
+    	Chunk x_rotor; Chunk y_rotor; Chunk z_rotor;
+    	Chunk psi_i = linspace(0,2*PI,8).to!double;
+
+    	foreach(rotor_idx, rotor; rotors){
+        	double cos_aoa = rotor_input[rotor_idx].cos_aoa;
+       		double sin_aoa = rotor_input[rotor_idx].sin_aoa;
+
+        	double half_rotor_radius = rotor.blades[0].chunks[$].r[$]/2;
+        	// check the relative distance of the x, y, zcoordinates for the rotors
+        	x_rotor[] = half_rotor_radius*cos(psi_i)[]*cos_aoa - rotor.origin[0];
+        	y_rotor[] = -(half_rotor_radius*sin(psi_i)[] + rotor.origin[1]);
+        	z_rotor[] = -half_rotor_radius*cos(psi_i)[]*sin_aoa + rotor.origin[2];
+        	foreach(inflow_idx,inflow; inflows){
+            	if(inflow_idx != rotor_idx){
+                	x_rotor[] = (x_rotor[] - rotor[inflow_idx].origin[0])*rotor_inputs[inflow_idx].cos_aoa;
+                	y_rotor[] = (-y_rotor[] - rotor[inflow_idx].origin[1]);
+                	z_rotor[] = (-z_rotor[] - rotor[inflow_idx].origin[2])*rotor_inputs[inflow_idx].sin_aoa;
+                	auto ind_vel = inflows.inflow_at(x_rotor,y_rotor,z_rotor,0,rotor_inpts[rotor_idx].angle_of_attack);
+                	if(inflow_idx < num_rotors){
+                    	v_z[rotor_idx] += -ind_vel.v_z[].mean*rotor_input[inflow_idx].cos_aoa;
+                    	v_x[rotor_idx] += ind_vel.v_z[].mean*rotor_input[inflow_idx].sin_aoa;
+                	} else {
+                    	v_z[rotor_idx] += ind_vel.v_z[].mean*wing_inputs[inflow_idx-num_rotors].cos_aoa;
+                    	v_x[rotor_idx] += -ind_vel.v_z[].mean*wing_inputs[inflow_idx-num_rotors].sin_aoa;
+                	}
+                
+                	rotor_states[rotor_idx].advance_ratio = rotor_inputs[0].freestream_velocity + v_x[rotor_idx];
+                	rotor_states[rotor_idx].axial_advance_ratio = v_z[rotor_idx];  
+            	}
+       		}
+    	}
+	}*/	
+
+	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		// Rotate into the coord frame the huang model expects.
 		if(!contraction_mapping) {
 			immutable Chunk neg_y = -y[];
@@ -1944,6 +1988,10 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			immutable V = omega > 0 ? inflow_at_impl(this, x_c, neg_y, z) : inflow_at_impl(this, x_c, y_c, z);
 			return V;
 		}
+	}
+
+	void update_wing_circulation(){
+		
 	}
 
 	@nogc Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {

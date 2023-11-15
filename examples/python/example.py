@@ -56,6 +56,7 @@ if __name__ == "__main__":
 	sweep = np.zeros(elements)
 
 	atmo = Atmosphere(1.125, 18.03e-6)
+
 	
 	# Create our outer aircraft geometry container
 	aircraft = Aircraft(num_rotors)

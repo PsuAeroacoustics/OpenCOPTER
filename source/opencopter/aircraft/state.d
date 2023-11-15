@@ -4,6 +4,7 @@ import opencopter.aircraft;
 import opencopter.config;
 import opencopter.memory;
 import opencopter.weissingerl;
+import opencopter.vortexlattice;
 
 import std.algorithm : map;
 import std.array : staticArray;
@@ -19,10 +20,15 @@ extern (C++) struct AircraftTimehistoryT(ArrayContainer AC) {
 		immutable num_blades = ac.rotors[0].blades.length;
 		immutable num_rotors = ac.rotors.length;
 		immutable num_chunks = ac.rotors[0].blades[0].chunks.length;
+		immutable num_wings = ac.wings.length;
+		immutable num_wing_parts = ac.wings[0].wing_parts.length;
+		immutable num_wing_ctrl_chunks = ac.wings[0].wing_parts[0].ctrl_chunks.length;
+		immutable num_span_chunks = ac.wings[0].wing_parts[0].chunks.length;
+		immutable num_chord_nodes = num_wing_ctrl_chunks/num_span_chunks;
 		mixin(array_ctor_mixin!(AC, "AircraftStateT!(AC)", "aircraft_history", "timesteps"));
 
 		foreach(ref ac_hist; aircraft_history) {
-			ac_hist = AircraftStateT!AC(num_rotors, num_blades, num_chunks*chunk_size, ac);
+			ac_hist = AircraftStateT!AC(num_rotors, num_blades, num_chunks*chunk_size, num_wings, num_wing_parts, num_span_chunks, num_chord_nodes, ac);
 		}
 	}
 
@@ -30,10 +36,15 @@ extern (C++) struct AircraftTimehistoryT(ArrayContainer AC) {
 		immutable num_blades = ac.rotors[0].blades.length;
 		immutable num_rotors = ac.rotors.length;
 		immutable num_chunks = ac.rotors[0].blades[0].chunks.length;
+		immutable num_wings = ac.wings.length;
+		immutable num_wing_parts = ac.wings[0].wing_parts.length;
+		immutable num_wing_ctrl_chunks = ac.wings[0].wing_parts[0].ctrl_chunks.length;
+		immutable num_span_chunks = ac.wings[0].wing_parts[0].chunks.length;
+		immutable num_chord_nodes = num_wing_ctrl_chunks/num_span_chunks;
 		mixin(array_ctor_mixin!(AC, "AircraftStateT!(AC)", "aircraft_history", "timesteps"));
 
 		foreach(ref ac_hist; aircraft_history) {
-			ac_hist = AircraftStateT!AC(num_rotors, num_blades, num_chunks*chunk_size, *ac);
+			ac_hist = AircraftStateT!AC(num_rotors, num_blades, num_chunks*chunk_size, num_wings, num_wing_parts, num_span_chunks, num_chord_nodes, *ac);
 		}
 	}
 }
@@ -53,8 +64,9 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
  struct AircraftStateT(ArrayContainer _AC) {
 	alias AC = _AC;
 	mixin ArrayDeclMixin!(AC, RotorStateT!(AC), "rotor_states");
+	mixin ArrayDeclMixin!(AC, WingStateT!(AC), "wing_states");
 
-	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_chunks, size_t num_chord_nodes, ref AircraftT!AC ac) {
+	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, ref AircraftT!AC ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -64,11 +76,11 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 			rotor_state = RotorStateT!AC(num_blades, num_chunks, ac.rotors[i]);
 		}
 		foreach(j, ref wing_state; wing_states) {
-			wing_state = WingStateT!(AC)(num_wing_parts, num_span_chunks, num_chord_nodes, ac.wings[j]);
+			wing_state = WingStateT!(AC)(num_wing_parts, num_span_nodes, num_chord_nodes, ac.wings[j]);
 		}
 	}
 
-	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_chunks, size_t num_chord_nodes, AircraftT!AC* ac) {
+	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, AircraftT!AC* ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -78,11 +90,11 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 			rotor_state = RotorStateT!AC(num_blades, num_chunks, ac.rotors[i]);
 		}
 		foreach(j, ref wing_state; wing_states) {
-			wing_state = WingStateT!(AC)(num_wing_parts, num_span_chunks, num_chord_nodes, ac.wings[j]);
+			wing_state = WingStateT!(AC)(num_wing_parts, num_span_nodes, num_chord_nodes, ac.wings[j]);
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings,size_t[] num_wing_parts,  size_t num_span_chunks, size_t num_chord_nodes, ref AircraftT!AC ac) {
+	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings,size_t[] num_wing_parts,  size_t num_span_nodes, size_t num_chord_nodes, ref AircraftT!AC ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -92,11 +104,11 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i]);
 		}
 		foreach(j, ref wing_state; wing_states) {
-			wing_state = WingStateT!(AC)(num_wing_parts[j], num_span_chunks, num_chord_nodes, ac.wings[j]);
+			wing_state = WingStateT!(AC)(num_wing_parts[j], num_span_nodes, num_chord_nodes, ac.wings[j]);
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings,size_t[] num_wing_parts,  size_t num_span_chunks, size_t num_chord_nodes, AircraftT!AC* ac) {
+	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings,size_t[] num_wing_parts,  size_t num_span_nodes, size_t num_chord_nodes, AircraftT!AC* ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -106,7 +118,7 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i]);
 		}
 		foreach(j, ref wing_state; wing_states) {
-			wing_state = WingStateT!(AC)(num_wing_parts[j], num_span_chunks, num_chord_nodes, ac.wings[j]);
+			wing_state = WingStateT!(AC)(num_wing_parts[j], num_span_nodes, num_chord_nodes, ac.wings[j]);
 		}
 	}
 
@@ -393,24 +405,24 @@ alias WingState = WingStateT!(ArrayContainer.none);
 
 extern (C++) struct WingStateT(ArrayContainer AC) {
 
-	mixin ArrayDeclMixin!(AC, WingStateT!(AC), "wing_states");
+	mixin ArrayDeclMixin!(AC, WingPartStateT!(AC), "wing_part_states");
 	double C_T;
 	//double C_Mx;
 	//double C_My;
 	//double advance_ratio; // non-dim
 	//double axial_advance_ratio; // non-dim
 
-	this(size_t num_wing_parts, size_t num_span_chunks, size_t chordwise_nodes, ref WingGeometryT!AC wing) {
-		mixin(array_ctor_mixin!(AC, "WingPartStateT!(AC)", "wing_part_states", "num_parts"));
+	this(size_t num_wing_parts, size_t span_elements, size_t chordwise_nodes, ref WingGeometryT!AC wing) {
+		mixin(array_ctor_mixin!(AC, "WingPartStateT!(AC)", "wing_part_states", "num_wing_parts"));
 		foreach(i, ref part_state; wing_part_states) {
-			wing_state = WingPartStateT!AC(num_span_chunks, chordwise_nodes, wing.wing_parts[i]);
+			part_state = WingPartStateT!AC(span_elements, chordwise_nodes, wing.wing_parts[i]);
 		}
 	}
 
-	this(size_t num_wing_parts, size_t num_span_chunks, size_t chordwise_nodes, ref WingGeometryT!AC* wing) {
-		mixin(array_ctor_mixin!(AC, "WingPartStateT!(AC)", "wing_part_states", "num_parts"));
+	this(size_t num_wing_parts, size_t span_elements, size_t chordwise_nodes, ref WingGeometryT!AC* wing) {
+		mixin(array_ctor_mixin!(AC, "WingPartStateT!(AC)", "wing_part_states", "num_wing_parts"));
 		foreach(i, ref part_state; wing_part_states) {
-			wing_part_state = WingPartStateT!AC(num_span_chunks, chordwise_nodes, wing.wing_parts[i]);
+			part_state = WingPartStateT!AC(span_elements, chordwise_nodes, wing.wing_parts[i]);
 		}
 	}
 
@@ -486,6 +498,10 @@ template is_wing_part_ctrl_pt_state_chunk(A) {
 extern (C++) struct WingPartCtrlPointStateChunk{
 	// Distribution of angle of attack at each control point
 	Chunk ctrl_pt_aoa;
+	
+	Chunk ctrl_pt_up;
+
+	Chunk ctrl_pt_ut;
 }
 
 /*extern (C++) struct WingCirculationChunk{
@@ -515,14 +531,18 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 	 +	Span wise blade data. Chunked together for cache locality and vectorization.
 	 +/
 	mixin ArrayDeclMixin!(AC,WingPartStateChunk, "chunks");
+	mixin ArrayDeclMixin!(AC,WingPartCtrlPointStateChunk, "ctrl_chunks");
 
-	VortexLattice!AC* circulation_model;
+	VortexLatticeT!AC* circulation_model;
 
-	this(size_t span_chunks,size_t chord_ctrl_pt, ref WingPartGeometryT!AC wing_part) {
+	this(size_t span_elements,size_t chord_ctrl_pt, ref WingPartGeometryT!AC wing_part) {
+		immutable actual_num_span_elements = span_elements%chunk_size == 0 ? span_elements : span_elements + (chunk_size - span_elements%chunk_size);
+		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+		immutable span_chunks = actual_num_span_elements/chunk_size;
 		size_t ctrl_pt_chunks = span_chunks*chord_ctrl_pt;
 		mixin(array_ctor_mixin!(AC, "WingPartStateChunk", "chunks", "span_chunks"));
-		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"))
-		circulation_model = new VortexLattice!AC(span_chunks*chunk_size, chord_ctrl_pt, wing_part);
+		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"));
+		circulation_model = new VortexLatticeT!AC(span_chunks*chunk_size, chord_ctrl_pt, wing_part);
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			//chunk.dC_T[] = 0;
@@ -539,12 +559,15 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t span_chunks,size_t chord_ctrl_pt, ref WingPartGeometryT!AC* wing_part) {
-		assert(wing !is null);
+	this(size_t span_elements,size_t chord_ctrl_pt, ref WingPartGeometryT!AC* wing_part) {
+		assert(wing_part !is null);
+		immutable actual_num_span_elements = span_elements%chunk_size == 0 ? span_elements : span_elements + (chunk_size - span_elements%chunk_size);
+		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+		immutable span_chunks = actual_num_span_elements/chunk_size;
 		size_t ctrl_pt_chunks = span_chunks*chord_ctrl_pt;
 		mixin(array_ctor_mixin!(AC, "WingPartStateChunk", "chunks", "span_chunks"));
-		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"))
-		circulation_model = new VortexLattice!AC(span_chunks*chunk_size, chord_ctrl_pt, *wing_part);
+		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"));
+		circulation_model = new VortexLatticeT!AC(span_chunks*chunk_size, chord_ctrl_pt, *wing_part);
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			//chunk.dC_T[] = 0;
@@ -575,7 +598,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		return this;
 	}
 
-	ref typeof(this) opAssign(ref typeof(this) wing) {
+	ref typeof(this) opAssign(ref typeof(this) wing_part) {
 		this.chunks = wing_part.chunks;
 		this.ctrl_chunks = wing_part.ctrl_chunks;
 		//this.azimuth = blade.azimuth;
@@ -589,7 +612,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		return this;
 	}
 
-	ref typeof(this) opAssign(typeof(this)* wing) {
+	ref typeof(this) opAssign(typeof(this)* wing_part) {
 		this.chunks = wing_part.chunks;
 		this.ctrl_chunks = wing_part.ctrl_chunks;
 		//this.azimuth = blade.azimuth;

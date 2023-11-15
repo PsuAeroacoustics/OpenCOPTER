@@ -85,10 +85,84 @@ import core.simd;
 }
 
 @nogc T sin(T)(auto ref T vector) if(isStaticArray!T) {
-	import std.math : sin;
+	// import std.math : sin;
+	// Unqual!T result;
+	// foreach(idx, ref v; vector) {
+	// result[idx] = sin(v);
+	// }
+	// return result;
+		static import std.math;
 	Unqual!T result;
-	foreach(idx, ref v; vector) {
-		result[idx] = sin(v);
+
+	import std.stdio : writeln;
+
+	//version(LDC) {
+	static if(use_sleef) {
+		version(D_AVX2) {
+			pragma(msg, "avx2 sin");
+			static if(T.length == 16) {
+				result[0..4] = cast(double[4])Sleef_finz_sind4_u10avx2(cast(double4)vector[0..4]);
+				result[4..8] = cast(double[4])Sleef_finz_sind4_u10avx2(cast(double4)vector[4..8]);
+				result[8..12] = cast(double[4])Sleef_finz_sind4_u10avx2(cast(double4)vector[8..12]);
+				result[12..$] = cast(double[4])Sleef_finz_sind4_u10avx2(cast(double4)vector[12..$]);
+			} else static if(T.length == 8) {
+				result[0..4] = cast(double[4])Sleef_finz_sind4_u10avx2(cast(double4)vector[0..4]);
+				result[4..$] = cast(double[4])Sleef_finz_sind4_u10avx2(cast(double4)vector[4..$]);
+			} else static if(T.length == 4) {
+				result[] = cast(T)Sleef_finz_sind4_u10avx2(cast(double4)vector);
+			}
+		} else {
+			version(D_AVX) {
+				pragma(msg, "avx sin");
+				static if(T.length == 16) {
+					result[0..2] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[0..2]);
+					result[2..4] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[2..4]);
+					result[4..6] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[4..6]);
+					result[6..8] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[6..8]);
+					result[8..10] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[8..10]);
+					result[10..12] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[10..12]);
+					result[12..14] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[12..14]);
+					result[14..$] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[14..$]);
+				} else static if(T.length == 8) {
+					result[0..2] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[0..2]);
+					result[2..4] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[2..4]);
+					result[4..6] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[4..6]);
+					result[6..$] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[6..$]);
+
+				} else static if(T.length == 4) {
+					result[0..2] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[0..2]);
+					result[2..$] = cast(double[2])Sleef_cinz_sind2_u10sse4(cast(double2)vector[2..$]);
+				} else static if(T.length == 2) {
+					result[] = cast(T)Sleef_cinz_sind2_u10sse4(cast(double2)vector);
+				}
+
+			} else {
+				version(X86_64) {
+					pragma(msg, "sse sin");
+					static if(T.length == 8) {
+						result[0..2] = cast(double[2])Sleef_cinz_sind2_u10sse2(cast(double2)vector[0..2]);
+						result[2..4] = cast(double[2])Sleef_cinz_sind2_u10sse2(cast(double2)vector[2..4]);
+						result[4..6] = cast(double[2])Sleef_cinz_sind2_u10sse2(cast(double2)vector[4..6]);
+						result[6..$] = cast(double[2])Sleef_cinz_sind2_u10sse2(cast(double2)vector[6..$]);
+
+					} else static if(T.length == 4) {
+						result[0..2] = cast(double[2])Sleef_cinz_sind2_u10sse2(cast(double2)vector[0..2]);
+						result[2..$] = cast(double[2])Sleef_cinz_sind2_u10sse2(cast(double2)vector[2..$]);
+					} else static if(T.length == 2) {
+						result[] = cast(T)Sleef_cinz_sind2_u10sse2(cast(double2)vector);
+					}
+				} else {
+					foreach(idx; 0..T.length) {
+						result[idx] = std.math.sin(vector[idx]);
+					}
+				}
+				
+			}
+		}
+	} else {
+		foreach(idx; 0..T.length) {
+			result[idx] = std.math.sin(vector[idx]);
+		}
 	}
 	return result;
 }
