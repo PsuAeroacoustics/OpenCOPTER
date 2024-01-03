@@ -783,12 +783,12 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 							z_rel = chunk.z[];
 
 							x_tppv = -x_rel[]*i_cos_aoa +z_rel[]*i_sin_aoa + origin[0];
-							z_tppv = z_rel[]*i_cos_aoa -x_rel[]*i_sin_aoa - origin[3];
+							z_tppv = z_rel[]*i_cos_aoa -x_rel[]*i_sin_aoa - origin[2];
 
 							lambda_i = inflow.inflow_at(x_tppv, y_rel, z_tppv, chunk_of_zeros, ac_input_state.rotor_inputs[i_rotor_idx- num_rotors].angle_of_attack)[];
 
-							lambda_i_z[] += lambda_i[]*i_cos_aoa;
-							lambda_i_x[] += -lambda_i[]*i_sin_aoa;
+							lambda_i_z[] += lambda_i[]*i_cos_aoa/abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity * ac.rotors[rotor_idx].radius);
+							lambda_i_x[] += -lambda_i[]*i_sin_aoa/abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity * ac.rotors[rotor_idx].radius);
 						}
 
 					}
@@ -849,7 +849,8 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 					double i_sin_aoa; double i_cos_aoa;
 
-					if(rotor_idx < num_rotors){
+					if(i_rotor_idx < num_rotors){
+						
 						i_sin_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].sin_aoa;
 						i_cos_aoa =  ac_input_state.rotor_inputs[i_rotor_idx].cos_aoa;
 
@@ -882,12 +883,12 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 						z_rel_tv = chunk.z[];
 
 						x_tppc = -x_rel_tv[]*i_cos_aoa +z_rel_tv[]*i_sin_aoa + origin[0];
-						z_tppc = z_rel_tv[]*i_cos_aoa -x_rel_tv[]*i_sin_aoa - origin[3];
+						z_tppc = z_rel_tv[]*i_cos_aoa -x_rel_tv[]*i_sin_aoa - origin[2];
 
 						lambda_i_tv = inflow.inflow_at(x_tppc, y_rel_tv, z_tppc, chunk_of_zeros, ac_input_state.wing_inputs[i_rotor_idx- num_rotors].angle_of_attack)[];
 
-						lambda_i_z[] += lambda_i_tv[]*i_cos_aoa;
-						lambda_i_x[] += -lambda_i_tv[]*i_sin_aoa;
+						lambda_i_z[] += lambda_i_tv[]*i_cos_aoa/abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity * ac.rotors[rotor_idx].radius);
+						lambda_i_x[] += -lambda_i_tv[]*i_sin_aoa/abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity * ac.rotors[rotor_idx].radius);
 					}
 					
 				}

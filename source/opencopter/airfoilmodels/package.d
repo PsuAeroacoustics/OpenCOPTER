@@ -89,6 +89,8 @@ class BladeAirfoil {
         import std.stdio : writeln;
         enforce(af_models.length == extents.length, "The supplied number of airfoil models should be the same number of supplied extents.");
 
+       /// writeln("extents[$-1][1]: ",extents[$-1][1]);
+        //writeln("extents[0][0] + 1: ", extents[0][0] + 1);
         immutable size_t num_chunks = (extents[$-1][1] - extents[0][0] + 1)/chunk_size;
 
         airfoil_models = new AirfoilModels[num_chunks];
@@ -98,10 +100,10 @@ class BladeAirfoil {
         foreach(e_idx, extent; extents) {
             debug writeln("extent: ", extent);
             foreach(c_idx; (e_idx != 0 ? extent[0] - 1 : extent[0])..(e_idx != extents.length - 1 ? extent[1] : extent[1] + 1)) {
-                debug writeln("c_idx: ", c_idx);
+                //debug writeln("c_idx: ", c_idx);
                 immutable chunk_idx = c_idx/chunk_size;
 
-                debug writeln("chunk_idx: ", chunk_idx);
+                //debug writeln("chunk_idx: ", chunk_idx);
 
                 airfoil_models[chunk_idx] ~= af_models[e_idx];
 

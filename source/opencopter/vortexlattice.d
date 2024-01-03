@@ -189,17 +189,30 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
             foreach(c_idx;0.._spanwise_chunks){
                 if(wp_idx%2 == 0){
                     spanwise_filament.chunks[c_idx].y[]= random_mult_by_minus_one[]*span_vr_nodes[c_idx*chunk_size..c_idx*chunk_size + chunk_size]*span[];
-                    writeln("sf_idx = ", sf_idx, "y = ", spanwise_filament.chunks[c_idx].y[]);
+                    //writeln("sf_idx = ", sf_idx, "y = ", spanwise_filament.chunks[c_idx].y[]);
                     spanwise_filament.chunks[c_idx].x[]= 0.5*wing_geometry.wing_parts[0].chunks[c_idx].chord[]*(1-cos((2*(sf_idx+1) - 1)*PI/(2.0*_chordwise_nodes))) - spanwise_filament.chunks[c_idx].y[]*tan(wing_geometry.wing_parts[0].le_sweep_angle*PI/180.0);
-                    writeln("sf_idx = ", sf_idx, "x = ", spanwise_filament.chunks[c_idx].x[]);
+                    //writeln("sf_idx = ", sf_idx, "x = ", spanwise_filament.chunks[c_idx].x[]);
                     spanwise_filament.chunks[c_idx].trail_end[]= spanwise_filament.chunks[c_idx].x[] + span[] + span[];
                 } else {
                     spanwise_filament.chunks[c_idx].y[]= span_vr_nodes[c_idx*chunk_size..c_idx*chunk_size + chunk_size]*span[];
                     spanwise_filament.chunks[c_idx].x[]= 0.5*wing_geometry.wing_parts[1].chunks[c_idx].chord[]*(1-cos((2*(sf_idx+1) - 1)*PI/(2.0*_chordwise_nodes))) + spanwise_filament.chunks[c_idx].y[]*tan(wing_geometry.wing_parts[1].le_sweep_angle*PI/180.0);
                     spanwise_filament.chunks[c_idx].trail_end[]= spanwise_filament.chunks[c_idx].x[] + span[] + span[];
                 }            
-                spanwise_filament.chunks[c_idx].z[]=0.0;
+                spanwise_filament.chunks[c_idx].z[]= 0.0;
             }        
+        }
+    }
+}
+
+void set_circulation_to_zero(WLS)(auto ref WLS wing_lifting_surf){
+
+    immutable Chunk chunk_of_zeros = 0.0;
+
+    foreach(wp_idx, ref wp_lift_surf; wing_lifting_surf.wing_part_lift_surf){
+        foreach(sf_idx, ref spanwise_filament; wp_lift_surf.spanwise_filaments){
+            foreach(ch, chunk; spanwise_filament.chunks){
+                chunk.gamma[] = chunk_of_zeros; 
+            }
         }
     }
 }
@@ -392,6 +405,8 @@ InducedVelocities compute_wing_induced_vel(WLS)(auto ref WLS wing_lift_surface, 
     ret.v_y[] = 0.0;
     ret.v_z[] = 0.0;
 
+    size_t num_wing_part = wing_lift_surface.wing_part_lift_surf.length;
+
     foreach(wp_idx, ref wp_lift_surf; wing_lift_surface.wing_part_lift_surf){
         foreach(fil_idx, ref horseshoe_vortex; wp_lift_surf.spanwise_filaments) {
 
@@ -568,6 +583,8 @@ struct VortexLatticeT(ArrayContainer AC) {
                 Chunk tmp = -inf[]*sin(wing_part_state.ctrl_chunks[ch].ctrl_pt_aoa)[];
                 //writeln("Chunk_tmp = ", tmp);
                 A_kl += tmp.sum;
+                //writeln("inv_influence_matrix= ", inf[]);
+                //writeln("ctrl_pt_aoa = ", wing_part_state.ctrl_chunks[ch].ctrl_pt_aoa[]);
             }
             //writeln("span_idx= ", span_chunk_idx*chunk_size + c1, "\tChord_node_idx = ", chord_node_idx, "\tA_kl = ", A_kl);
             A_kl *= u[c1];
@@ -583,7 +600,7 @@ struct VortexLatticeT(ArrayContainer AC) {
         foreach(c1; 0..chunk_size){
             double tmp_gamma = wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx+1..$]
                 .map!(c => c.A_kl.sum).sum;
-            writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_node_idx, "\tspan_chunk =", span_chunk_idx ,"temp_gamma = ", tmp_gamma);    
+            //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_node_idx, "\tspan_chunk =", span_chunk_idx ,"temp_gamma = ", tmp_gamma);    
             gamma = tmp_gamma + wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].A_kl[c1..$].sum;
             //writeln("span_idx= ", span_chunk_idx*chunk_size + c1, "\tChord_node_idx = ", chord_node_idx, "\tgamma = ", gamma);
             wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].gamma[c1] = -PI*gamma/(num_span_chunks*chunk_size*wing_part.chunks[span_chunk_idx].chord[c1]);  
@@ -591,7 +608,7 @@ struct VortexLatticeT(ArrayContainer AC) {
         }         
     }
 
-    void compute_dCl(WLS,WPS)(auto ref WLS wing_lift_surface, auto ref WPS wing_part_state, size_t wp_idx, size_t span_chunk_idx, Chunk u1){
+    void compute_dCl(WLS,WPS)(auto ref WLS wing_lift_surface, auto ref WPS wing_part_state, size_t wp_idx, size_t span_chunk_idx){
         double dCl = 0;
         size_t num_span_chunks = wing_part_state.chunks.length;
         //size_t num_half_filaments = wing_part_state.ctrl_chunks.length/num_span_chunks;
@@ -603,7 +620,7 @@ struct VortexLatticeT(ArrayContainer AC) {
                 immutable dCl_inter = PI*(wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[n_idx].chunks[span_chunk_idx].gamma[c1])*sin(theta_n)/num_chord_pt;
                 dCl += dCl_inter;
             }
-            wing_part_state.chunks[span_chunk_idx].dC_L[c1]= dCl/u1[c1];
+            wing_part_state.chunks[span_chunk_idx].dC_L[c1]= dCl;
             dCl = 0.0;            
         }
     }

@@ -22,11 +22,11 @@ import std.range;
 import std.stdio;
 import std.typecons;
 
-@nogc private double H(long m, long n) {
+private double H(long m, long n) {
 	return double_factorial(n + m - 1)*double_factorial(n - m - 1)/(double_factorial(n + m)*double_factorial(n - m));
 }
 
-@nogc private double K(long m, long n) {
+private double K(long m, long n) {
 	return ((PI/2.0)^^((-1.0)^^(n.to!double + m.to!double)))*H(m, n);
 }
 
@@ -300,7 +300,7 @@ unittest {
 	//plt.show;
 }
 
-@nogc private Chunk pow(immutable Chunk x, long power) {
+private Chunk pow(immutable Chunk x, long power) {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
 
@@ -315,7 +315,7 @@ unittest {
 	return res;
 }
 
-@nogc private Chunk associated_legendre_polynomial(bool reduce_order = false)(long m, long n, Chunk x, double[] c) {
+private Chunk associated_legendre_polynomial(bool reduce_order = false)(long m, long n, Chunk x, double[] c) {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
 
@@ -335,7 +335,7 @@ unittest {
 	return p;
 }
 
-@nogc private Chunk associated_legendre_polynomial_nh(bool reduce_order = false)(long r, long j, immutable Chunk x, double[] c) {
+private Chunk associated_legendre_polynomial_nh(bool reduce_order = false)(long r, long j, immutable Chunk x, double[] c) {
 
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
@@ -350,7 +350,7 @@ unittest {
 	return p;
 }
 
-@nogc private void associated_legendre_function(Chunk x, ref Chunk[][] Qmn_bar, double[][] K_table) {
+private void associated_legendre_function(Chunk x, ref Chunk[][] Qmn_bar, double[][] K_table) {
 
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
@@ -384,7 +384,7 @@ unittest {
 	}
 }
 
-@nogc Chunk sign(Chunk x) {
+Chunk sign(Chunk x) {
 	Chunk res;
 	foreach(idx, ref _x; x) {
 		if(_x > 0.0) {
@@ -408,7 +408,7 @@ private struct CartisianCoords {
 	Chunk z;
 }
 
-@nogc private auto to_eliptical(immutable CartisianCoords coords) {
+private auto to_eliptical(immutable CartisianCoords coords) {
 	immutable Chunk S = coords.x[]*coords.x[] + coords.y[]*coords.y[] + coords.z[]*coords.z[];
 	immutable Chunk one_m_s = (1.0 - S[]);
 	immutable Chunk tmp1 = one_m_s[]*one_m_s[] + 4.0*coords.z[]*coords.z[];
@@ -426,7 +426,7 @@ private struct CartisianCoords {
 	return ElipticalCoords(nu, eta, psi);
 }
 
-@nogc private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, immutable ElipticalCoords coords) {
+private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, immutable ElipticalCoords coords) {
 
 	Chunk V = 0;
 
@@ -455,7 +455,7 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, immutable ElipticalCoords coords) {
+private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, immutable ElipticalCoords coords) {
 
 	Chunk V = 0;
 
@@ -485,7 +485,7 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
+private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
 
 	// Recomended buffer zone in Huang's dissertation
 	immutable double eps = 0.01;
@@ -557,10 +557,14 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto final_blend(double cos_chi, double sin_chi, immutable Chunk y, immutable Chunk sigma, immutable Chunk z) {
+private auto final_blend(double cos_chi, double sin_chi, immutable Chunk y, immutable Chunk sigma, immutable Chunk z) {
 
 	immutable g = 1.84*sqrt(cos_chi) - 4.06*cos_chi + 11.84*cos_chi^^(1.5);
 	immutable double sin_xi_2 = sin_chi*sin_chi;
+	//writeln("cos_chi = ", cos_chi);
+	//writeln("sin_chi = ", sin_chi);
+	//writeln("g= ", g);
+	assert(isNaN(g) == false, "g is NaN in function final_blend");
 
 	immutable Chunk f =
 		zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[])
@@ -570,8 +574,10 @@ private struct CartisianCoords {
 					return 0.0;
 				} else {
 					if(abs(sxgy[3]) <= 1.0) {
+						//writeln("sxgy[3] <= 1;  sxgy = ", sxgy);
 						return sxgy[1]/(sxgy[1] + sxgy[0]*sxgy[2]);
 					} else {
+						//writeln("sxgy[3] > 1;  sxgy = ", sxgy);
 						return sxgy[1]/(sxgy[1] + (sxgy[0] + 1.5*sqrt(sxgy[3]*sxgy[3] - 1.0))*sxgy[2]);
 					}
 				}
@@ -579,10 +585,12 @@ private struct CartisianCoords {
 			}
 		)
 		.staticArray!Chunk;
+	bool all_nan_f = f[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+	assert(all_nan_f == false, " f in function final_blend in HP is NaN ");
 	return f;
 }
 
-@nogc private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, immutable CartisianCoords ccoords, Chunk t) {
+private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, immutable CartisianCoords ccoords, Chunk t) {
 
 	immutable auto coords = to_eliptical(ccoords);
 
@@ -598,7 +606,10 @@ private struct CartisianCoords {
 	immutable Chunk sigma_p_s = sigma[] + s_0[];
 
 	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
-
+	bool _a = true;
+	bool all_nan_f = f[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+	assert(all_nan_f == false, " f in function compute_velocities_final in HP is NaN ");
+	
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 
 	immutable Chunk V_bl = compute_velocities_bl(infl, a, alpha, ccoords, coords);
@@ -633,16 +644,24 @@ private struct CartisianCoords {
 		immutable Chunk v_ds_bl_a_2 = compute_velocities_bl(infl, delta, lambda, ccoords_ds[2], coords_ds[2]);
 
 		V_ds[] = v_ds_bl[] + v_ds_bl_a_1[] - v_ds_bl_a_2[];
+		bool all_nan_V_ds = v_ds_bl[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		bool all_nan_V_ds_a_1 = v_ds_bl_a_1[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		bool all_nan_V_ds_a_2 = v_ds_bl_a_2[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		assert(all_nan_V_ds == false, " v_ds_bl in function compute_velocities_final in HP is NaN ");
+		assert(all_nan_V_ds_a_1 == false, " v_ds_bl_a_1 in function compute_velocities_final in HP is NaN ");
+		assert(all_nan_V_ds_a_2 == false, " v_ds_bl_a_2 in function compute_velocities_final in HP is NaN ");
+		//writeln("v_ds_bl", v_ds_bl, "v_ds_bl_a_1", v_ds_bl_a_1, "v_ds_bl_a_2", v_ds_bl_a_2);
 	}
 	Chunk one_m_f = 1.0 - f[];
 
 	immutable Chunk V_ds_f = V_ds[]*f[];
 	immutable Chunk V = V_bl[]*one_m_f[] + V_ds_f[];
-
+	bool all_nan_V = V[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+	assert(all_nan_V == false, " V in function compute_velocities_final in HP is NaN ");
 	return V;
 }
 
-@nogc private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, immutable CartisianCoords ccoords, Chunk t) {
+private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] a, T[] alpha, T[] delta, T[] lambda, immutable CartisianCoords ccoords, Chunk t) {
 
 	immutable auto coords = to_eliptical(ccoords);
 
@@ -659,7 +678,6 @@ private struct CartisianCoords {
 
 	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
-
 	immutable Chunk V_bl = compute_velocities_bl(infl, delta, lambda, ccoords, coords);
 	Chunk V_ds = 0.0;
 
@@ -703,7 +721,7 @@ private struct CartisianCoords {
 	return V;
 }
 
-@nogc private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, auto ref C x, auto ref C y, auto ref C z) {
+private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, auto ref C x, auto ref C y, auto ref C z) {
 	
 	static import opencopter.math;
 
@@ -725,14 +743,20 @@ private struct CartisianCoords {
 	Chunk V_below = 0;
 
 	if(all_above_or_on_disk || all_somewhere) {
+		//writeln("all above or on disk or all somewhere");
 		Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
 		V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, coords, t);
+		bool _a = true;
+		bool all_nan_vel = V_above[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		//writeln("V_above = ", V_above, "all_nan_vel= ", all_nan_vel);
+		assert(all_nan_vel == false, " compute_velocities_final in inflow_at_impl in HP is NaN (for all_above_or_on_disk or all_somewhere)");
 		if(all_above_or_on_disk && !all_somewhere) {
 			return V_above;
 		}
 	}
 	
 	if(all_below_disk || all_somewhere) {
+		//writeln("all below the disk or all somewhere");
 		immutable tan_chi = tan(infl.chi);
 		immutable Chunk x_offset = z[]*tan_chi;
 		immutable Chunk x0_1 = x[] + x_offset[];
@@ -770,7 +794,12 @@ private struct CartisianCoords {
 
 		immutable Chunk v_f = compute_velocities_final(infl, infl.time_delay_a[0..infl.total_states], infl.time_delay_alpha[0..infl.total_states], infl.time_delay_a[infl.total_states..$], infl.time_delay_alpha[infl.total_states..$], coords1, t_delay);
 		immutable Chunk v_f_a_1 = compute_velocities_final_adjoint(infl, infl.time_delay_a[0..infl.total_states], infl.time_delay_alpha[0..infl.total_states], infl.time_delay_a[infl.total_states..$], infl.time_delay_alpha[infl.total_states..$], coords2, t_delay);
-
+		bool _a = true;
+		bool all_nan_v_f = v_f[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		bool all_nan_v_f_a_1 = v_f_a_1[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		assert(all_nan_v_f == false, " compute_velocities_final (v_f) in inflow_at_impl in HP is NaN (for all_below_disk or all_somewhere)");		
+		assert(all_nan_v_f_a_1 == false, " compute_velocities_final (v_f_a_1) in inflow_at_impl in HP is NaN (for all_below_disk or all_somewhere)");
+		
 		immutable Chunk neg_z = -z[];
 		
 		immutable Chunk x3 = -x[];
@@ -778,9 +807,13 @@ private struct CartisianCoords {
 		CartisianCoords coords3 = CartisianCoords(x3, y0_2, neg_z);
 
 		immutable Chunk v_f_a_2 = compute_velocities_final_adjoint(infl, infl.a, infl.alpha, infl.delta, infl.lambda, coords3, t);
+		bool all_nan_v_f_a_2 = v_f_a_2[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+		assert(all_nan_v_f_a_2 == false, " compute_velocities_final (v_f_a_2) in inflow_at_impl in HP is NaN (for all_below_disk or all_somewhere)");
 
 		V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
-		
+		//writeln("v_f = ", v_f, "v_f_a_1= ", v_f_a_1, "v_f_a_2", v_f_a_2);
+
+
 		if(all_below_disk && !all_somewhere) {
 			return V_below;
 		}
@@ -938,12 +971,14 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 	})(Me, _row_idx);
 }
 
-@nogc void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
+void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
 
 	double[] alpha = infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states];
 	
 	if(infl.average_inflow != 0) {
 		infl.chi = atan2(advance_ratio, (infl.average_inflow + axial_advance_ratio));
+		//writeln("chi= ", infl.chi);
+		//assert((infl.average_inflow + axial_advance_ratio)/advance_ratio > 0, "chi is negative");
 		//infl.chi = atan2(advance_ratio, (infl.average_inflow));
 	}
 
@@ -1060,7 +1095,7 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 
 }
 
-@nogc void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
+void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
 
 	infl.build_vlm_matrix(advance_ratio, axial_advance_ratio);
 
@@ -1094,7 +1129,7 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 
 }
 
-@nogc void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] state, double t, double dt, HuangPetersInflowT!AC infl, auto ref RIS rotor, auto ref RS rotor_state, double advance_ratio, double axial_advance_ratio) {
+void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] state, double t, double dt, HuangPetersInflowT!AC infl, auto ref RIS rotor, auto ref RS rotor_state, double advance_ratio, double axial_advance_ratio) {
 	
 	double[] alpha = state[0..infl.total_states];
 	double[] lambda = state[infl.total_states..$];
@@ -1124,7 +1159,7 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 
 alias HuangPetersInflow = HuangPetersInflowT!(ArrayContainer.none);
 
-class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow { 
+class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC { 
 
 	alias RG = RotorGeometryT!AC;
 	alias RS = RotorStateT!AC;
@@ -1204,7 +1239,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 	private double axial_advance_ratio;
 	private double omega;
 
-	@nogc private ptrdiff_t get_circular_index(ptrdiff_t idx) {
+	private ptrdiff_t get_circular_index(ptrdiff_t idx) {
 		return ((idx % time_history) + time_history) % time_history;
 	}
 
@@ -1546,7 +1581,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 
 	}
 
-	@nogc auto find_bracket(double t) {
+	auto find_bracket(double t) {
 		
 		auto ordered_times = times[get_circular_index(curr_state) + 1..$].chain(times[0..get_circular_index(curr_state) + 1]);
 		auto delta_b = time_history - get_circular_index(curr_state);
@@ -1574,7 +1609,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 		return -1;
 	}
 
-	@nogc auto find_z_bracket(double z) {
+	auto find_z_bracket(double z) {
 		ptrdiff_t l = 0;
 		ptrdiff_t R = z_length - 1;
 
@@ -1595,7 +1630,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 		return 0;
 	}
 
-	@nogc void interpolate_to_time(immutable Chunk t, ref Chunk[] time_delay_alpha_buffer, ref Chunk[] time_delay_a_buffer) {
+	void interpolate_to_time(immutable Chunk t, ref Chunk[] time_delay_alpha_buffer, ref Chunk[] time_delay_a_buffer) {
 
 		ptrdiff_t[chunk_size] upper_bounds;
 		ptrdiff_t[chunk_size] lower_bounds;
@@ -1670,7 +1705,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 		}
 	}
 
-	@nogc Chunk interpolate_contraction_ratio(immutable Chunk z) {
+	Chunk interpolate_contraction_ratio(immutable Chunk z) {
 		Chunk K;
 
 		size_t[chunk_size] lower_bounds;
@@ -1709,20 +1744,20 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 	private double cos_chi;
 	private double tan_chi;
 
-	@nogc double wake_skew() {
+	double wake_skew() {
 		return chi;
 	}
 
-	@nogc double get_average_inflow() {
+	double get_average_inflow() {
 		return average_inflow;
 	}
 
-	void update(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	void update(AircraftInputStateT!AC* ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(*ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
 	private void compute_loading(RS)(auto ref RS rotor_state) {
@@ -1810,7 +1845,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 	Chunk[] contraction_z_array;
 	double[] contraction_z_array_alias;
 
-	private void update_impl(ArrayContainer AC = ArrayContainer.None)(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	private void update_impl(AIS, AG)(auto ref AIS ac_input ,auto ref AG aircraft, Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
 		advance_ratio = _advance_ratio;
 		axial_advance_ratio = _axial_advance_ratio;
@@ -1977,11 +2012,13 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 		if(!contraction_mapping) {
 			immutable Chunk neg_y = -y[];
 			immutable V = omega > 0 ? inflow_at_impl(this, x, neg_y, z) : inflow_at_impl(this, x, y, z);
+			bool _a = true;
+			bool all_nan = V[].map!(a => a.isNaN).fold!((_a, a) => _a && a)(true);
+			assert(all_nan == false, " inflow_at in Huang-Peters is NaN");
 			return V;
 		} else {
 
-			immutable k_bar = compute_contraction_multiplier(x, y, z);			
-
+			immutable k_bar = compute_contraction_multiplier(x, y, z);
 			immutable Chunk x_c = x[]/k_bar[];
 			immutable Chunk y_c = y[]/k_bar[];
 			immutable Chunk neg_y = -y_c[];
@@ -1994,7 +2031,22 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 		
 	}
 
-	@nogc Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
+	void update_wing_dC_L(){
+		
+	}
+
+	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+		InducedVelocities ret;
+		Chunk zeros = 0.0;
+
+		ret.v_x[] = zeros;
+		ret.v_y[] = zeros;
+		ret.v_z[] = zeros;
+
+		return ret;
+	}
+
+	Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
 		Chunk i;
 		//immutable V = inflow_at_impl(this, x, y, z);
 		return i;
