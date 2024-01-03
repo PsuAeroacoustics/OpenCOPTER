@@ -749,3 +749,5 @@ void set_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, do
 		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
 	}
 }
+
+

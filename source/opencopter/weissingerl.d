@@ -61,8 +61,9 @@ struct WeissingerL(ArrayContainer AC) {
 		import std.stdio : writeln;
 		
 		elements = _elements;
+		writeln("elements going in WL model: ", elements);
 		immutable chunks = elements/chunk_size;
-
+		writeln("num_chunks going in WL model: ", chunks);
 		immutable integration_elements = elements;
 
 		auto influence = allocate_dense(elements, elements);

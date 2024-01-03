@@ -317,7 +317,7 @@ void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] 
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.M_s_inv_D[0].ptr, infl.total_sin_states, infl.beta_scratch.ptr, 1, 0.0, state_dot[2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
 }
 
-class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
+class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 	alias RG = RotorGeometryT!AC;
 	alias RS = RotorStateT!AC;
@@ -1216,12 +1216,20 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 	// 	update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, ac_state, dt);
 	// }
 
-	void update(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	// void update(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+	// 	update_impl(ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	// }
+
+	// void update(AircraftInputStateT!AC* ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+	// 	update_impl(*ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	// }
+
+	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	void update(AircraftInputStateT!AC* ac_input , Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(*ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
 	package void compute_loading(RS)(auto ref RS rotor_state) {
@@ -1328,7 +1336,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 	}
 
 	//package void update_impl(RIS, RS, AS)(double C_T, auto ref RIS rotor_input, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, auto ref AS ac_state, double dt) {
-	package void update_impl(ArrayContainer AC = ArrayContainer.None)(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	//package void update_impl(ArrayContainer AC = ArrayContainer.None)(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	package void update_impl(AIS, AG)(auto ref AIS ac_input ,auto ref AG aircraft, Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
 		omega = rotor_input.angular_velocity;
 		
 		immutable t_scale = abs(omega);
@@ -1487,7 +1496,22 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : Inflow {
 	void update_wing_circulation(){
 		
 	}
-	
+
+	void update_wing_dC_L(){
+		
+	}
+
+	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+		InducedVelocities ret;
+		Chunk zeros = 0.0;
+
+		ret.v_x[] = zeros;
+		ret.v_y[] = zeros;
+		ret.v_z[] = zeros;
+
+		return ret;
+	}
+
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		if(!contraction_mapping) {
 			immutable V = inflow_at_impl(this, x, y, z);

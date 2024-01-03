@@ -26,3 +26,5 @@ fort.*
 __pycache__
 DebugInfoForProc_0.dat
 cases_*.nam
+oc_fly/example/hart_ii/*.pdf
+oc_fly/example/helinovi/*.pdf
