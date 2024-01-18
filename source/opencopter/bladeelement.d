@@ -16,7 +16,7 @@ import std.array;
 import std.conv;
 import std.math;
 
-void compute_blade_properties(BG, BS, RG, RIS, RS, AS, WIS, WG, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, Inflow[] wing_inflows, auto ref WIS[] wing_input_states, auto ref WG[] wings, auto ref W wake, double time, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo)
+void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, I[] wing_inflows, auto ref WIS wing_input_states, auto ref WG wings, auto ref W wake, double time, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo)
 	if(is_blade_geometry!BG && is_blade_state!BS && is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
@@ -186,7 +186,7 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, WIS, WG, W)(auto ref BG b
  +	With a given rotor angual velocity and angular acceleration, compute the lift, torque, power of the rotor.
  +	This is intended to by wrapped in some sort of trim algo.
  +/
-void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state,  auto ref WIS[] wing_input_states, auto ref WG[] wings, auto ref W wake, Inflow[] wing_inflows, double C_Ti,double C_Qi, double time, double dt, size_t rotor_idx, immutable Atmosphere atmo)
+void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W, I)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state,  auto ref WIS wing_input_states, auto ref WG wings, auto ref W wake, auto ref I[] wing_inflows, double C_Ti,double C_Qi, double time, double dt, size_t rotor_idx, immutable Atmosphere atmo)
 	if(is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
@@ -249,7 +249,7 @@ void print_frame(F)(F frame, int depth = 0) {
 	}
 }
 
-void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, Inflow[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt) {
+void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt) {
 	
 	import opencopter.config : chunk_size;
 

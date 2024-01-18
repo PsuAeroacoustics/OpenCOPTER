@@ -197,9 +197,9 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
                     spanwise_filament.chunks[c_idx].y[]= span_vr_nodes[c_idx*chunk_size..c_idx*chunk_size + chunk_size]*span[];
                     spanwise_filament.chunks[c_idx].x[]= 0.5*wing_geometry.wing_parts[1].chunks[c_idx].chord[]*(1-cos((2*(sf_idx+1) - 1)*PI/(2.0*_chordwise_nodes))) + spanwise_filament.chunks[c_idx].y[]*tan(wing_geometry.wing_parts[1].le_sweep_angle*PI/180.0);
                     spanwise_filament.chunks[c_idx].trail_end[]= spanwise_filament.chunks[c_idx].x[] + span[] + span[];
-                }            
+                }
                 spanwise_filament.chunks[c_idx].z[]= 0.0;
-            }        
+            }    
         }
     }
 }
@@ -624,6 +624,29 @@ struct VortexLatticeT(ArrayContainer AC) {
             dCl = 0.0;            
         }
     }
+}
+
+double[][] get_wls_state_matrix(string value, ArrayContainer AC)(ref WingPartLiftingSurfT!AC wing_part){
+	
+	size_t spanwise_chunks = wing_part.spanwise_filaments[0].chunks.length;
+	size_t chordwise_nodes = wing_part.spanwise_filaments.length;
+	double[][] state_matrix = allocate_dense(chordwise_nodes, spanwise_chunks*chunk_size);
+
+	foreach(fl_idx, ref filament; wing_part.spanwise_filaments){
+        foreach(c_idx, ref chunk; filament.chunks){
+            immutable out_start_idx = c_idx*chunk_size;
+
+            immutable remaining = spanwise_chunks*chunk_size;
+
+            immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+            immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+            mixin("state_matrix[fl_idx][out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+        }
+
+		
+	}
+	return state_matrix;
 }
 
 

@@ -685,7 +685,7 @@ extern (C++) struct WingPartGeometryChunk {
 	/++
 	 +   Twist distribution
 	 +/
-	//Chunk twist; 
+	Chunk twist; 
 	/++
 	 +   Chord distribution
 	 +/
@@ -708,7 +708,7 @@ extern (C++) struct WingPartGeometryChunk {
 	/++
 	 +	Blade quarter chord sweep angle
 	 +/
-	//Chunk sweep;
+	Chunk sweep;
 }
 
 extern (C++) struct WingPartCtrlPointChunk {
