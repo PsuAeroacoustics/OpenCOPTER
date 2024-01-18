@@ -38,7 +38,7 @@ if __name__ == "__main__":
 	dt = d_psi*(math.pi/180.0)/math.fabs(omega)
 
 	shed_history_angle = 45.0
-	shed_history = round(shed_history_angle/d_psi);
+	shed_history = round(shed_history_angle/d_psi)
 
 	d_azimuth = 2.0*math.pi/num_blades
 

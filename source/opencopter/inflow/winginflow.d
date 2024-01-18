@@ -53,15 +53,15 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         wing_lift_surf = _wing_lift_surf;
     }
 
-    void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt){
+    void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt){
         update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio,dt);
     }
 
-    void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt){
+    void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt){
         update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio,dt);
     }
 
-    void update_impl(AIS, AG)(auto ref AIS ac_input , auto ref AG aircraft, Inflow[] inflows, double _freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt){
+    void update_impl(AIS, AG)(auto ref AIS ac_input , auto ref AG aircraft, InflowT!AC[] inflows, double _freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt){
         
         immutable num_span_chunks = wing_state.wing_part_states[0].chunks.length;
         immutable num_chord_pt =  wing_state.wing_part_states[0].ctrl_chunks.length/num_span_chunks;

@@ -5,17 +5,19 @@ import opencopter.airfoilmodels;
 import opencopter.atmosphere;
 import opencopter.math;
 import opencopter.memory;
+import opencopter.vortexlattice;
 
 static import opencopter.vtk;
 
 static import opencopter.bladeelement;
 static import opencopter.wake;
 static import opencopter.inflow;
-static import opencopter.vortexlattice;
+
 
 
 import pyd.pyd;
-
+import std.algorithm;
+import std.array;
 import std.conv : to;
 import std.exception : enforce;
 import std.math : abs, fmod, PI;
@@ -24,6 +26,11 @@ import std.traits : isBasicType;
 alias BI = opencopter.inflow.BeddosInflow!(ArrayContainer.array);
 alias HP = opencopter.inflow.HuangPetersInflowT!(ArrayContainer.array);
 alias SW = opencopter.inflow.SimpleWingT!(ArrayContainer.array);
+alias WI = opencopter.inflow.WingInflowT!(ArrayContainer.array);
+
+alias IV = opencopter.wake.InducedVelocities;
+
+alias Inflow_D = opencopter.inflow.InflowT!(ArrayContainer.array);
 
 size_t chunk_size() {
 	static import opencopter.config;
@@ -79,10 +86,14 @@ void basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
  +	having an implementation it can link to. So here we are.
  +/
 class Inflow {
-	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) { assert(0); }
-	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) { assert(0); }
+	Inflow_D get_wrapped_inflow(){ assert (0);}
+	void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) { assert(0); }
+	void update(PyAircraftInputState ac_input, PyAircraft aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) { assert(0); }
 	//Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) { assert(0); }
+	void update_wing_circulation() { assert(0); }
+	void update_wing_dC_L() { assert(0); }
+	IV compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z) { assert(0); }
 	double wake_skew() { assert(0); }
 	Vec3 origin() { assert(0); }
 }
@@ -91,20 +102,20 @@ class Inflow {
 class HuangPeters : Inflow {
 	private HP huang_peters;
 
-	this(long Mo, long Me, PyRotorGeometry* rotor, double dt) {
-		huang_peters = new HP(Mo, Me, rotor, dt);
+	this(long Mo, long Me, PyRotorGeometry* rotor, PyRotorState* rotor_state, PyRotorInputState* rotor_input, double dt) {
+		huang_peters = new HP(Mo, Me, rotor, rotor_state, rotor_input, dt);
 	}
 
-	this(PyRotorGeometry* rotor, double dt) {
-		huang_peters = new HP(4, 2, rotor, dt);
+	this(PyRotorGeometry* rotor, PyRotorState* rotor_state, PyRotorInputState* rotor_input,  double dt) {
+		huang_peters = new HP(4, 2, rotor, rotor_state, rotor_input, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		huang_peters.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	override void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		huang_peters.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		huang_peters.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	override void update(PyAircraftInputState ac_input, PyAircraft aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		huang_peters.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
@@ -115,11 +126,19 @@ class HuangPeters : Inflow {
 		return huang_peters.wake_skew();
 	}
 
+	override IV compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+		return huang_peters.compute_wing_induced_vel_on_blade(x, y, z);
+	}
+
 	override Vec3 origin() { return Vec3(0, 0, 0); }
+
+	override Inflow_D get_wrapped_inflow(){
+		return huang_peters;
+	}
 
 }
 
-class Beddoes : Inflow {
+class Beddoes{
 	private BI beddoes;
 
 	this() {
@@ -130,50 +149,88 @@ class Beddoes : Inflow {
 		beddoes = new BI();
 	}
 
-	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
 		beddoes.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
 		beddoes.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		return beddoes.inflow_at(x, y, z, x_e, angle_of_attack);
 	}
 
-	override double wake_skew() {
+	double wake_skew() {
 		return beddoes.wake_skew();
 	}
 
-	override Vec3 origin() { return Vec3(0, 0, 0); }
+	Vec3 origin() { return Vec3(0, 0, 0); }
 }
 
-class SimpleWing : Inflow {
+class SimpleWing{
 	private SW simple_wing;
 
 	this(double _C_L, double V_inf, double V_tip, double y_0, double c, Vec3 origin) {
 		simple_wing = new SW(_C_L, V_inf, V_tip, y_0, c, origin);
 	}
 
-	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
 		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
 		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		return simple_wing.inflow_at(x, y, z, x_e, angle_of_attack);
 	}
 
-	override double wake_skew() {
+	double wake_skew() {
 		return simple_wing.wake_skew();
 	}
 
-	override Vec3 origin() { return simple_wing.origin; }
+	Vec3 origin() { return simple_wing.origin; }
 }
+
+class WingInflow: Inflow{
+	private WI wing_inflow;
+
+	this(PyWingGeometry* _wing, PyWingState* _wing_state, PyWingInputState* _wing_inputs, PyWingLiftSurf* _wing_lift_surf) {
+		wing_inflow = new WI(_wing, _wing_state, _wing_inputs, _wing_lift_surf);
+	}
+
+	override void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		wing_inflow.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override void update(PyAircraftInputState ac_input, PyAircraft aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+		wing_inflow.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	}
+
+	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+		return wing_inflow.inflow_at(x, y, z, x_e, angle_of_attack);
+	}
+
+	override IV compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+		return wing_inflow.compute_wing_induced_vel_on_blade(x, y, z);
+	}
+
+	override void update_wing_circulation(){
+		wing_inflow.update_wing_circulation();
+	}
+
+	override void update_wing_dC_L(){
+		wing_inflow.update_wing_dC_L();
+	}
+
+	override Inflow_D get_wrapped_inflow(){
+		return wing_inflow;
+	}
+}
+
+
 
 alias PyWakeHistory = opencopter.wake.WakeHistoryT!(ArrayContainer.array);
 alias PyWake = opencopter.wake.WakeT!(ArrayContainer.array);
@@ -181,10 +238,10 @@ alias PyRotorWake = opencopter.wake.RotorWakeT!(ArrayContainer.array);
 alias PyVortexFilament = opencopter.wake.VortexFilamentT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
 
-alias PyVortexLattice = opencopter.vortexlattice.VortexLattice!(ArrayContainer.array);
-alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftingSurfT!(ArrayContainer.array);
+alias PyVortexLattice = opencopter.vortexlattice.VortexLatticeT!(ArrayContainer.array);
+alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftSurfT!(ArrayContainer.array);
 alias PyWingVortexFilament = opencopter.vortexlattice.WingVortexFilamentT!(ArrayContainer.array);
-
+alias PyWingPartLiftingSurf = opencopter.vortexlattice.WingPartLiftingSurfT!(ArrayContainer.array);
 
 alias PyAircraftTimehistory = AircraftTimehistoryT!(ArrayContainer.array);
 alias PyAircraftState = AircraftStateT!(ArrayContainer.array);
@@ -201,6 +258,7 @@ alias PyWingGeometry = WingGeometryT!(ArrayContainer.array);
 alias PyWingPartGeometry = WingPartGeometryT!(ArrayContainer.array);
 alias PyWingState = WingStateT!(ArrayContainer.array);
 alias PyWingPartState = WingPartStateT!(ArrayContainer.array);
+alias PyWingInputState = WingInputStateT!(ArrayContainer.array);
 
 void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
@@ -226,10 +284,50 @@ void set_sweep(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"sweep"(data);
 }
 
-void set_wing_chord(ref PyWingGeometry wg, double[] data) {
+void set_wing_chord(ref PyWingPartGeometry wg, double[] data) {
 	wg.set_geometry_array!"chord"(data);
 }
-// add pending wing functions
+
+void set_wing_twist(ref PyWingPartGeometry wg, double[] data) {
+	wg.set_geometry_array!"twist"(data);
+}
+
+void set_wing_sweep(ref PyWingPartGeometry wg, double[] data) {
+	wg.set_geometry_array!"sweep"(data);
+}
+
+double[] get_wing_aoa(ref PyWingState wing){
+	return wing.get_wing_state_array!"aoa";
+}
+
+double[] get_wing_dC_L(ref PyWingState wing){
+	return wing.get_wing_state_array!"dC_L";
+}
+
+double[] get_wing_dC_M(ref PyWingState wing){
+	return wing.get_wing_state_array!"dC_M";
+}
+
+double[][] get_wing_u_p(ref PyWingPartState wing){
+	return wing.get_wing_state_matrix!"ctrl_pt_up";
+}
+
+double[][] get_wing_u_t(ref PyWingPartState wing){
+	return wing.get_wing_state_matrix!"ctrl_pt_ut";
+}
+
+double[][] get_wing_ctrl_pt_aoa(ref PyWingPartState wing){
+	return wing.get_wing_state_matrix!"ctrl_pt_aoa";
+}
+
+double[][] get_wing_A_kl(ref PyWingPartLiftingSurf wing_part){
+	return wing_part.get_wls_state_matrix!"A_kl";	
+}
+
+double[][] get_wing_circulation(ref PyWingPartLiftingSurf wing_part){
+	return wing_part.get_wls_state_matrix!"gamma";
+}
+
 double[] get_dC_T(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_T";
 }
@@ -315,7 +413,16 @@ double[] get_wake_v_z_component(ref PyVortexFilament filament) {
 }
 
 void step(PyAircraftState* ac_state, PyAircraft* aircraft, PyAircraftInputState* ac_input_state, Inflow[] inflows, PyWakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt) {
-	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, inflows, *wake_history, *atmo, iteration, dt);
+	auto oc_inflows = inflows.map!(a => a.get_wrapped_inflow()).array;
+	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, oc_inflows, *wake_history, *atmo, iteration, dt);
+}
+
+void set_wing_vortex_geometry(PyWingLiftSurf* wing_lift_surf, PyWingGeometry* wing, size_t spanwise_chunks, size_t chordwise_nodes){
+	opencopter.vortexlattice.set_wing_vortex_geometry(wing_lift_surf, wing, spanwise_chunks, chordwise_nodes);
+}
+
+void set_wing_ctrl_pt_geometry(PyWingGeometry* wing, size_t spanwise_nodes, size_t chordwise_nodes, double camber){
+	opencopter.aircraft.geometry.set_wing_ctrl_pt_geometry(wing, spanwise_nodes, chordwise_nodes, camber);
 }
 
 opencopter.vtk.VtkRotor build_base_vtu_rotor(PyRotorGeometry* rotor) {
@@ -383,9 +490,11 @@ void wrap_array(T)() {
 	}
 }
 
-opencopter.wake.InducedVelocities compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref PyAircraftState ac_state, double angular_velocity, size_t rotor_idx, bool single_rotor = false) {
+IV compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref PyAircraftState ac_state, double angular_velocity, size_t rotor_idx, bool single_rotor = false) {
 	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, angular_velocity, rotor_idx, 0, single_rotor);
 }
+
+//add wing_induced velocities
 
 extern(C) void PydMain() {
 
@@ -484,6 +593,54 @@ extern(C) void PydMain() {
 		:return: The list of radial stations. The length of this list may be different than n_sections
 	});
 
+	def!(generate_spanwise_control_points, Docstring!q{
+		Generate list of spanwise control points with the appropriate spacing
+
+		.. attention::
+
+		As we use different internal representation the size of the returned array
+		may be different than the requested size so that it is a multipe of :func:`chunk_size`.
+
+		:param n_sections: The desired number of spanwise control points.
+		:return: The list of radial stations. The length of this list may be different than n_sections
+	});
+
+	def!(generate_spanwise_vortex_nodes, Docstring!q{
+		Generate matrix of wing vortex nodes with the appropriate spacing
+
+		.. attention::
+
+		As we use different internal representation the size of the returned array
+		may be different than the requested size so that it is a multipe of :func:`chunk_size`.
+
+		:param n_sections: The desired number of spanwise vortex nodes.
+		:return: The list of radial stations. The length of this list may be different than n_sections
+	});
+
+	def!(set_wing_vortex_geometry, Docstring!q{
+		Generate list of spanwise vortex nodes with the appropriate spacing
+
+		.. attention::
+
+		As we use different internal representation the size of the returned array
+		may be different than the requested size so that it is a multipe of :func:`chunk_size`.
+
+		:param n_sections: The desired number of spanwise vortex nodes.
+		:return: The list of radial stations. The length of this list may be different than (span_elements x chord_elements)
+	});
+
+	def!(set_wing_ctrl_pt_geometry, Docstring!q{
+		Generate matrix of wing control points with the appropriate spacing
+
+		.. attention::
+
+		As we use different internal representation the size of the returned array
+		may be different than the requested size so that it is a multipe of :func:`chunk_size`.
+
+		:param n_sections: The desired number of spanwise vortex nodes.
+		:return: The list of radial stations. The length of this list may be different than (span_elements x chord_elements)
+	});
+
 	def!(set_twist, Docstring!q{
 		Set the spanwise twist distribution of a :class:`BladeGeometry` from a linear array.
 
@@ -526,6 +683,28 @@ extern(C) void PydMain() {
 
 		:param bg: :class:`BladeGeometry` object to apply twist to.
 		:param data: List of sweep angles (in radians) for each radial station
+	});
+
+	// functions for setting wing (lifting surface) properties
+	def!(set_wing_chord, Docstring!q{
+		Set the spanwise chord_distribution (non dimentional) of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply chord to.
+		:param data: List of chord length (non-dimentional) for each radial station
+	});
+
+	def!(set_wing_twist, Docstring!q{
+		Set the spanwise twist angle (in radians) distribution of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply twist to.
+		:param data: List of twist angle (in radians) for each radial station
+	});
+
+	def!(set_wing_sweep, Docstring!q{
+		Set the spanwise sweep angle (in radians) distribution of a :class:`BladeGeometry` from a linear array.
+
+		:param bg: :class:`BladeGeometry` object to apply sweep to.
+		:param data: List of sweep (in radians) for each radial station
 	});
 
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
@@ -631,7 +810,64 @@ extern(C) void PydMain() {
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`C_D` from
 		:return: List of spanwise :math:`dC_D` values
 	});
+
+	// function for getting wing state properties 
+	def!(get_wing_aoa, double[] function(ref PyWingState), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`aoa`) (radians) to a liner array.
+
+		:param wing_state: the :class:`WingState` to extract the spanwise :math:`aoa` from
+		:return: List of spanwise :math:`aoa` values
+	});
 	
+	def!(get_wing_dC_L, double[] function(ref PyWingState), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`dC_L`) to a liner array.
+
+		:param wing_state: the :class:`WingState` to extract the spanwise :math:`dC_L` from
+		:return: List of spanwise :math:`dC_L` values
+	});
+
+	def!(get_wing_dC_M, double[] function(ref PyWingState), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`dC_M`) to a liner array.
+
+		:param wing_state: the :class:`WingState` to extract the spanwise :math:`dC_M` from
+		:return: List of spanwise :math:`dC_M` values
+	});
+
+	def!(get_wing_u_p, double[][] function(ref PyWingPartState), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`ctrl_pt_up`) (non-dimentionalized) to a liner array.
+
+		:param wing_state: the :class:`WingPartState` to extract the spanwise :math:`ctrl_pt_up` from
+		:return: List of spanwise :math:`ctrl_pt_up` values
+	});
+
+	def!(get_wing_u_t, double[][] function(ref PyWingPartState), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`ctrl_pt_ut`) (non-dimentionalized) to a liner array.
+
+		:param wing_state: the :class:`WingPartState` to extract the spanwise :math:`ctrl_pt_ut` from
+		:return: List of spanwise :math:`ctrl_pt_ut` values
+	});
+
+	def!(get_wing_ctrl_pt_aoa, double[][] function(ref PyWingPartState), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`ctrl_pt_aoa`) (radians) to a liner array.
+
+		:param wing_state: the :class:`WingPartState` to extract the spanwise :math:`ctrl_pt_aoa` from
+		:return: List of spanwise :math:`ctrl_pt_aoa` values
+	});
+
+	def!(get_wing_A_kl, double[][] function(ref PyWingPartLiftingSurf), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`A_kl`) (non-dimentionalized) to a liner array.
+
+		:param wing_state: the :class:`WingPartLiftingSurf` to extract the spanwise :math:`A_kl` from
+		:return: List of spanwise :math:`A_kl` values
+	});
+
+	def!(get_wing_circulation, double[][] function(ref PyWingPartLiftingSurf), Docstring!q{
+		Extract wing spanwise angle of attack (:math:`gamma`) (non-dimentionalized) to a liner array.
+
+		:param wing_state: the :class:`WingPartLiftingSurf` to extract the spanwise :math:`gamma` from
+		:return: List of spanwise :math:`gamma` values
+	});
+
 	def!(get_wake_x_component, double[] function(ref PyVortexFilament), Docstring!q{
 		Extract filament x position component to a linear array.
 
@@ -832,6 +1068,42 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		opencopter.vortexlattice.WingFilamentChunk,
+		Member!("x",Docstring!q{Chunk of x positions along the wing vortex filaments}),
+		Member!("y",Docstring!q{Chunk of y positions along the wing vortex filaments}),
+		Member!("z",Docstring!q{Chunk of z positions along the wing vortex filaments}),
+		Member!("x_e", Docstring!q{Not relevent in the case of lifting surface at the moment}),
+		Member!("gamma", Docstring!q{Chunk of circulation strength of filament}),
+		Member!("A_kl", Docstring!q{Chunk of coefficient representing change of circulation along the spanwise direction for filament}),
+		Member!("dx", Docstring!q{Chunk of length of filament along x direction}),
+		Member!("dy", Docstring!q{Chunk of length of filament along y direction}),
+		Member!("dz", Docstring!q{Chunk of length of filament along z direction}),
+		Member!("trail_end", Docstring!q{Chunk of x component of the trailing end of the filament}),
+		
+	);
+
+	wrap_struct!(
+		PyWingVortexFilament,
+		PyName!"WingVortexFilament",
+		Init!(WingFilamentChunk*, size_t),
+		Member!("chunks", Docstring!q{An array of :class:WingFilamentChunk}),
+	);
+
+	wrap_struct!(
+		PyWingPartLiftingSurf,
+		PyName!"WingPartLiftingSurf",
+		Init!(size_t, size_t),
+		Member!("spanwise_filaments", Docstring!q{An array of :class:WingVortexFilament}),
+	);
+
+	wrap_struct!(
+		PyWingLiftSurf,
+		PyName!"WingLiftSurf",
+		Init!size_t,
+		Member!("wing_part_lift_surf", Docstring!q{An array of :class:WingPartLiftingSurf}),
+	);
+
+	wrap_struct!(
 		Atmosphere, 
 		Docstring!q{
 			Object describing basic atmosphere attributes.
@@ -865,9 +1137,18 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyWingInputState,
+		PyName!("WingInputState"),
+		Member!("angle_of_attack", Docstring!q{Angle of attack of wing in radians}),
+		Member!("cos_aoa", Docstring!q{cosine of angle of attack of the wing}),
+		Member!("sin_aoa", Docstring!q{sin of angle of attack of the wing}),
+		Member!("freestream_velocity", Docstring!q{The dimentional freestram velocity}),
+	);
+
+	wrap_struct!(
 		PyAircraftInputState,
 		PyName!"AircraftInputState",
-		Init!(size_t, size_t[]),
+		Init!(size_t, size_t[], size_t),
 		Docstring!q{
 			This class represents the input parameters for the entire aircraft.
 			
@@ -876,7 +1157,8 @@ extern(C) void PydMain() {
 			:param num_rotors: Number of rotors the aircraft has.
 			:param num_blades: The number of blades each rotor has.
 		},
-		Member!("rotor_inputs", Docstring!q{An array of :class:`RotorInputState`, one for each rotor})
+		Member!("rotor_inputs", Docstring!q{An array of :class:`RotorInputState`, one for each rotor}),
+		Member!("wing_inputs", Docstring!q{An array of :class:`WingInputState`, one for each wing}),
 	);
 
 	wrap_struct!(
@@ -886,6 +1168,21 @@ extern(C) void PydMain() {
 		Member!"r",
 		Member!"C_l_alpha",
 		Member!"alpha_0"
+	);
+
+	wrap_struct!(
+		WingPartGeometryChunk,
+		Member!"twist",
+		Member!"chord",
+		Member!"sweep"
+	);
+
+	wrap_struct!(
+		WingPartCtrlPointChunk,
+		Member!"ctrl_pt_x",
+		Member!"ctrl_pt_y",
+		Member!"ctrl_pt_z",
+		Member!"camber",
 	);
 
 	wrap_struct!(
@@ -910,6 +1207,36 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyWingPartGeometry,
+		PyName!"WingPartGeometry",
+		Init!(size_t, size_t, Vec3, double, double, double, double, double, double),
+		Docstring!q{
+			This class allocates and holds the blade geomteric parameters.
+
+			Constructor:
+
+			:param span_elements: The number of spanwise wing nodes.
+			:param chordwise_nodes: The number of spanwise wing nodes.
+			:param wing_root_origin: Location of the leading edge of the root of the wing.
+			:param average_chord: The average chord (in meter) of the wing.
+			:param wing_root_chord: The root chord (in meter) of the wing.
+			:param wing_tip_chord: The tip chord (in meter) of the wing.
+			:param le_sweep_angle: The leading edge sweep angle (in radians) of the wing.
+			:param te_sweep_angle: The trailing edge sweep angle(in radians) of the wing.
+			:param wing_span: The span (in meter) of the wing.
+		},
+		Member!"chunks",
+		Member!"ctrl_chunks",
+		Member!"wing_root_origin",
+		Member!"average_chord",
+		Member!"wing_root_chord",
+		Member!"wing_tip_chord",
+		Member!"le_sweep_angle",
+		Member!"te_sweep_angle",
+		Member!"wing_span",
+	);
+
+	wrap_struct!(
 		PyRotorGeometry,
 		PyName!"RotorGeometry",
 		Init!(size_t, Vec3, double, double),
@@ -930,17 +1257,38 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyWingGeometry,
+		PyName!"WingGeometry",
+		Init!(size_t, Vec3, double),
+		Docstring!q{
+			This class allocates and holds all the wing_part and other geometric data of the wing.
+
+			Constructor:
+
+			:param num_part: Number of parts the wing has.
+			:param origin: The global origin of the wing. This is where root leading edge of the wing is located.
+			:param wing_span: wing span of the wing.
+		},
+
+		Member!("wing_parts", Docstring!q{An array of :class:`WingPartGeometry`, one for each part of the wing}),
+		Member!("origin", Docstring!q{The global origin of the wing. This is where root leading edge of the wing is located.}),
+
+	);
+
+	wrap_struct!(
 		PyAircraft,
 		PyName!"Aircraft",
-		Init!size_t,
+		Init!(size_t,size_t),
 		Docstring!q{
-			This class allocates and holds an array of rotors for the aircraft.
+			This class allocates and holds an array of rotors and wings for the aircraft.
 
 			Constructor:
 
 			:param num_rotors: The number of rotors the aircraft has.
+			:param num_wings: The number of wings the aircraft has.
 		},
 		Member!("rotors", Docstring!q{An array of :class:`RotorGeometry`, one for each rotor on the aircraft}),
+		Member!("wings", Docstring!q{An array of :class:`WingGeometry`, one for each wing on the aircraft}),
 	);
 
 	wrap_struct!(
@@ -952,6 +1300,20 @@ extern(C) void PydMain() {
 		Member!("aoa", Docstring!q{A chunk of spanwise sectional angle of attack}),
 		Member!("gamma", Docstring!q{A chunk of spanwise sectional circulation}),
 		Member!("d_gamma", Docstring!q{A chunk of spanwise sectional change in circulation})
+	);
+
+	wrap_struct!(
+		WingPartStateChunk,
+		Member!("aoa", Docstring!q{A chunk of spanwise sectional angle of attack (in radians)}),
+		Member!("dC_L", Docstring!q{A chunk of spanwise sectional lift coefficent}),
+		Member!("dC_M", Docstring!q{A chunk of spanwise sectional moment coefficient}),
+	);
+
+	wrap_struct!(
+		WingPartCtrlPointStateChunk,
+		Member!("ctrl_pt_aoa", Docstring!q{A chunk of angle of attacks (in radians) at control point of the lifting surface}),
+		Member!("ctrl_pt_up", Docstring!q{A chunk of velocity perpendicular to the wing section}),
+		Member!("ctrl_pt_ut", Docstring!q{A chunk of velcoity tangential to the wing section}),
 	);
 
 	wrap_struct!(
@@ -976,6 +1338,23 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyWingPartState,
+		PyName!"WingPartState",
+		Docstring!q{
+			This class holds the current aerodynamic state of the wing part.
+
+			.. attention::
+
+				This never needs to be explicitly constructed as it will be constructed by :class:`AircraftState`
+		},
+		Member!"chunks",
+		Member!"ctrl_chunks",
+		Member!("C_L", Docstring!q{The current lift coefficient contribution from this wing part}),
+		Member!("C_M", Docstring!q{The current moment coefficient contribution from this wing part}),
+
+	);
+
+	wrap_struct!(
 		PyRotorState,
 		PyName!"RotorState",
 		//Init!(size_t, size_t, PyRotorGeometry*),
@@ -995,9 +1374,23 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyWingState,
+		PyName!"WingState",
+		Docstring!q{
+			This class holds the current aerodynamic state of the wing.
+
+			.. attention::
+
+				This never needs to be explicitly constructed as it will be constructed by :class:`AircraftState`
+		},
+		Member!("wing_part_states", Docstring!q{An array of :classL`WingPartState`, one for each wing part}),
+		Member!("C_L", Docstring!q{The current lift coefficent of the wing})
+	);
+
+	wrap_struct!(
 		PyAircraftState,
 		PyName!"AircraftState",
-		Init!(size_t, size_t[], size_t, PyAircraft*),
+		Init!(size_t, size_t[], size_t, size_t, size_t[], size_t, size_t, PyAircraft*),
 		Docstring!q{
 			This is the top level class that holds the current aerodynamic state of an aircraft.
 
@@ -1006,9 +1399,14 @@ extern(C) void PydMain() {
 			:param num_rotors: The number of rotors on this aircraft
 			:param num_blades: The number of blades on each rotor
 			:param num_elements: The requested number of spanwise elements. This will be rounded up to the nearest :func:`chunk_size`.
+			:param num_wings: The number of wings on this aircraft
+			:param num_wing_parts: The number of wing parts on each wing
+			:param num_span_nodes: number of requested spanwise elements. This will be rounded up to the nearest :func:`chunk_size`.
+			:param num_chord_nodes: number of requested chord nodes.
 			:param ac: The :class:`Aircraft` object associated with this state
 		},
-		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft})
+		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft}),
+		Member!("wing_states", Docstring!q{An arrat of :class:`WingState`, one for each wing})
 	);
 
 	wrap_class!(
@@ -1016,12 +1414,15 @@ extern(C) void PydMain() {
 		Def!(Inflow.update),
 		Def!(Inflow.inflow_at, Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double), PyName!"inflow_at_xyz"),
 		//Def!(Inflow.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
+		Def!(Inflow.update_wing_circulation),
+		Def!(Inflow.update_wing_dC_L),
+		Def!(Inflow.compute_wing_induced_vel_on_blade, IV function(immutable Chunk, immutable Chunk, immutable Chunk), PyName!"wing_inflow_at_blade"),
 		Def!(Inflow.wake_skew)
 	)();
 
 	wrap_class!(
 		HuangPeters,
-		Init!(long, long, PyRotorGeometry*, double),
+		Init!(long, long, PyRotorGeometry*, PyRotorState*, PyRotorInputState*, double),
 		Docstring!q{
 			This class instantiates a dynamic inflow model for a single rotor.
 			One of these will be needed for each rotor in the aircraft.
@@ -1174,6 +1575,84 @@ extern(C) void PydMain() {
 		})
 	)();
 
+	wrap_class!(
+		WingInflow,
+		Init!(PyWingGeometry*, PyWingState*, PyWingInputState*, PyWingLiftSurf*),
+		Docstring!q{
+			This class instantiates a wing inflow model for a single wing.
+			One of these will be needed for each wing in the aircraft.
+
+			Constructor:
+
+			:param wing: The geometry of the wing this inflow model is modeling.
+			:param wing_state: The current state of the wing this inflow model is modeling.
+			:param wing_input_state: The input state of the wing this inflow model is modeling.
+			:param wing_lift_surf: wing lifting surface i.e vortex filaments modelling the wing this inflow model is modeling.
+		},
+
+		Def!(WingInflow.update, Docstring!q{
+			Updates the inflow model by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+
+			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+			:param rotor: The current input state for the rotor.
+			:param rotor_state: The current rotor state.
+			:param advance_ratio: The current advance ratio for the rotor.
+			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param dt: The current timestep size.
+		}),
+
+		Def!(WingInflow.update_wing_circulation, Docstring!q{
+			Update the circulation of lifting surface by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+		}),
+
+		Def!(WingInflow.update_wing_dC_L, Docstring!q{
+			Update the lift coefficient of the wing by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+		}),
+
+		Def!(WingInflow.inflow_at,
+		Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
+		PyName!"inflow_at", 
+		Docstring!q{
+			Computes the wing induced flow at the requested location (z-component only).
+
+				:param x: A chunk of x positions to compute the induced velocity at.
+				:param y: A chunk of y positions to compute the induced velocity at.
+				:param z: A chunk of z positions to compute the induced velocity at.
+				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+				:return: A chunk of z induced velocities.
+		}),
+
+		Def!(WingInflow.compute_wing_induced_vel_on_blade,
+		IV function(immutable Chunk, immutable Chunk, immutable Chunk),
+		PyName!"wing_inflow_at_blade",
+		Docstring!q{
+			Computes the wing induced flow at the requested location.
+
+				:param x: A chunk of x positions to compute the induced velocity at.
+				:param y: A chunk of y positions to compute the induced velocity at.
+				:param z: A chunk of z positions to compute the induced velocity at.
+				:return: A chunks of x, y, and z induced velocities.
+		}),
+
+	);
+
+
 	import std.meta : AliasSeq, staticMap;
 	import std.traits : FunctionTypeOf;
 
@@ -1189,16 +1668,29 @@ extern(C) void PydMain() {
 	wrap_array!PyRotorGeometry;
 	wrap_array!PyBladeGeometry;
 	wrap_array!BladeGeometryChunk;
+	wrap_array!PyWingGeometry;
+	wrap_array!PyWingPartGeometry;
+	wrap_array!WingPartGeometryChunk;
+	wrap_array!WingPartCtrlPointChunk;
 	wrap_array!PyRotorInputState;
+	wrap_array!PyWingInputState;
 	wrap_array!PyAircraftState;
 	wrap_array!PyRotorState;
 	wrap_array!PyBladeState;
+	wrap_array!PyWingState;
+	wrap_array!PyWingPartState;
 	wrap_array!BladeStateChunk;
+	wrap_array!WingPartStateChunk;
+	wrap_array!WingPartCtrlPointStateChunk;
 	wrap_array!PyWake;
 	wrap_array!PyRotorWake;
 	wrap_array!PyShedVortex;
 	wrap_array!PyVortexFilament;
+	wrap_array!PyWingLiftSurf;
+	wrap_array!PyWingPartLiftingSurf;
 	wrap_array!(opencopter.wake.FilamentChunk);
+	wrap_array!(opencopter.vortexlattice.WingFilamentChunk);
+	wrap_array!PyWingVortexFilament;
 	wrap_array!PyShedVortex;
 }
 

@@ -24,8 +24,8 @@ alias Inflow = InflowT!(ArrayContainer.none);
 
 
 interface InflowT(ArrayContainer AC = ArrayContainer.none) {
-	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft,  Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt);
-	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt);
+	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft,  InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt);
+	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt);
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack);
 	void update_wing_circulation();
 	void update_wing_dC_L();
@@ -34,7 +34,7 @@ interface InflowT(ArrayContainer AC = ArrayContainer.none) {
 	//@nogc double wake_skew();
 }
 
-void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS)(auto ref RS[] rotor_states, auto ref RG[] rotors, auto ref RIS[] rotor_inputs, auto ref WG[] wings, auto ref WIS[] wing_inputs, auto ref WS[] wing_states, Inflow[] inflows){
+void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS, I)(auto ref RS rotor_states, auto ref RG rotors, auto ref RIS rotor_inputs, auto ref WG wings, auto ref WIS wing_inputs, auto ref WS wing_states, I inflows){
 	
    	size_t num_rotors = rotors.length; 
    	double[] v_z = new double[num_rotors];

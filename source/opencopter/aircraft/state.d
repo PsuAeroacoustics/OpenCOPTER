@@ -406,7 +406,7 @@ alias WingState = WingStateT!(ArrayContainer.none);
 extern (C++) struct WingStateT(ArrayContainer AC) {
 
 	mixin ArrayDeclMixin!(AC, WingPartStateT!(AC), "wing_part_states");
-	double C_T;
+	double C_L;
 	//double C_Mx;
 	//double C_My;
 	//double advance_ratio; // non-dim
@@ -419,7 +419,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_wing_parts, size_t span_elements, size_t chordwise_nodes, ref WingGeometryT!AC* wing) {
+	this(size_t num_wing_parts, size_t span_elements, size_t chordwise_nodes, WingGeometryT!AC* wing) {
 		mixin(array_ctor_mixin!(AC, "WingPartStateT!(AC)", "wing_part_states", "num_wing_parts"));
 		foreach(i, ref part_state; wing_part_states) {
 			part_state = WingPartStateT!AC(span_elements, chordwise_nodes, wing.wing_parts[i]);
@@ -435,7 +435,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		import std.stdio : writeln;
 		//debug writeln("BladeGeometryT opAssign");
 		this.wing_part_states = wing.wing_part_states;
-		this.C_T = wing.C_T;
+		this.C_L = wing.C_L;
 		return this;
 	}
 
@@ -443,7 +443,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		import std.stdio : writeln;
 		//debug writeln("BladeGeometryT opAssign");
 		this.wing_part_states = wing.wing_part_states;
-		this.C_T = wing.C_T;
+		this.C_L = wing.C_L;
 		return this;
 	}
 
@@ -451,7 +451,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		import std.stdio : writeln;
 		//debug writeln("BladeGeometryT opAssign");
 		this.wing_part_states = wing.wing_part_states;
-		this.C_T = wing.C_T;
+		this.C_L = wing.C_L;
 		return this;
 	}
 }
@@ -559,7 +559,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t span_elements,size_t chord_ctrl_pt, ref WingPartGeometryT!AC* wing_part) {
+	this(size_t span_elements,size_t chord_ctrl_pt, WingPartGeometryT!AC* wing_part) {
 		assert(wing_part !is null);
 		immutable actual_num_span_elements = span_elements%chunk_size == 0 ? span_elements : span_elements + (chunk_size - span_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
@@ -648,10 +648,10 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 	double C_M;
 }
 
-double[] get_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing) {
-	immutable elements = wing.chunks.length*chunk_size;
+double[] get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade) {
+	immutable elements = blade.chunks.length*chunk_size;
 	double[] state_array = new double[elements];
-	foreach(c_idx, ref chunk; wing.chunks) {
+	foreach(c_idx, ref chunk; blade.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
 
 		immutable remaining = elements - out_start_idx;
@@ -664,8 +664,8 @@ double[] get_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing
 	return state_array;
 }
 
-void get_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, auto ref double[] state_array) {
-	foreach(c_idx, ref chunk; wing.chunks) {
+void get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, auto ref double[] state_array) {
+	foreach(c_idx, ref chunk; blade.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
 
 		immutable remaining = state_array.length - out_start_idx;
@@ -677,8 +677,8 @@ void get_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, au
 	}
 }
 
-void get_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, auto ref float[] state_array) {
-	foreach(c_idx, ref chunk; wing.chunks) {
+void get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, auto ref float[] state_array) {
+	foreach(c_idx, ref chunk; blade.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
 
 		immutable remaining = state_array.length - out_start_idx;
@@ -690,9 +690,9 @@ void get_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, au
 	}
 }
 
-void set_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, double[] data) {
+void set_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, double[] data) {
 
-	foreach(c_idx, ref chunk; wing.chunks) {
+	foreach(c_idx, ref chunk; blade.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
 
 		immutable remaining = data.length - out_start_idx;
@@ -704,4 +704,46 @@ void set_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing, do
 	}
 }
 
+double[][] get_wing_state_matrix(string value, ArrayContainer AC)(ref WingPartStateT!AC wing_part){
+	
+	size_t spanwise_chunks = wing_part.chunks.length;
+	size_t chordwise_nodes = wing_part.ctrl_chunks.length/spanwise_chunks;
+	double[][] state_matrix = allocate_dense(chordwise_nodes, spanwise_chunks*chunk_size);
 
+	foreach(c_idx, ref ctrl_chunk; wing_part.ctrl_chunks){
+		immutable sp_idx = c_idx < spanwise_chunks ? c_idx : c_idx%spanwise_chunks;
+		immutable chrd_idx = (c_idx - c_idx%spanwise_chunks)/spanwise_chunks;
+
+		immutable out_start_idx = sp_idx*chunk_size;
+		
+		immutable remaining = spanwise_chunks*chunk_size - out_start_idx;
+
+		immutable out_end_idx = remaining > chunk_size ? (sp_idx +1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("state_matrix[chrd_idx][out_start_idx..out_end_idx] = ctrl_chunk."~value~"[0..in_end_idx];");
+	}
+	return state_matrix;
+}
+
+
+double[] get_wing_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing){
+	
+	size_t elements = wing.wing_part_states[0].chunks.length*chunk_size;
+	double[] state_array = new double[2*elements];
+
+	foreach(wp_idx, wing_part; wing.wing_part_states){
+		foreach(c_idx, chunk; wing_part.chunks){
+			
+			immutable out_start_idx = wp_idx*elements + c_idx*chunk_size;
+			
+			immutable remaining = elements- out_start_idx;
+
+			immutable out_end_idx = remaining > chunk_size ? wp_idx*elements + (c_idx + 1)*chunk_size : wp_idx*elements + out_start_idx + remaining;
+			immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+			mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+		}
+	}
+	return state_array;
+}

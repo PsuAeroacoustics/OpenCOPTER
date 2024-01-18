@@ -1752,11 +1752,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return average_inflow;
 	}
 
-	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
 		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, Inflow[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
+	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
 		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	}
 
@@ -1845,7 +1845,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	Chunk[] contraction_z_array;
 	double[] contraction_z_array_alias;
 
-	private void update_impl(AIS, AG)(auto ref AIS ac_input ,auto ref AG aircraft, Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	private void update_impl(AIS, AG)(auto ref AIS ac_input ,auto ref AG aircraft, InflowT!AC[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
 		advance_ratio = _advance_ratio;
 		axial_advance_ratio = _axial_advance_ratio;
