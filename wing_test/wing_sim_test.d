@@ -23,19 +23,19 @@ import plt = matplotlibd.pyplot;
 
 void main(){
     //wing properties
-    double wing_span = 0.3048;  //half wing span
-    double le_sweep = 0.0; //degrees
+    double wing_span = 7.5;  //half wing span
+    double le_sweep = 45.0; //degrees
     double te_sweep = 0.0; //degrees
-    double wing_avg_chord = 0.3048;
-    double root_chord = 0.3048;
-    double tip_chord = 0.3048;
+    double wing_avg_chord = 1.5;
+    double root_chord = 2;
+    double tip_chord = 1;
     size_t chord_vortex_nodes = 4;
     size_t span_vortex_nodes = 8;
     //size_t num_rotors = 2;
     size_t num_wings = 1;
     size_t num_wing_parts = 2;
-    double wing_alpha = 0.0;
-    Vec3 wing_origin = Vec3((0.102)*0.8255,(-0.215)*0.8255 - 0.3048,-0.285*0.8255);
+    double wing_alpha = 7.0;
+    Vec3 wing_origin = Vec3(0.0,0.0,0.0);//Vec3((0.102)*0.8255,(-0.215)*0.8255 - 0.3048,-0.285*0.8255);
     //Vec3 rotor_origin_0 = [1,0,0];
     //Vec3 rotor_origin_1 = [-5,0,0];
     auto rotor_origin = [Vec3(0.0,0.0,0.0)];
@@ -48,8 +48,8 @@ void main(){
     size_t wake_history_length = 1*1024;
     size_t num_blade_elements = 48;
 
-    size_t num_rotors = 1;
-    size_t num_blades = 4;
+    size_t num_rotors = 0;
+    size_t num_blades = 0;
     double R = 0.8255;
 
     double theta_75 = 9.0*(PI/180);
@@ -126,7 +126,7 @@ void main(){
 
     auto aircraft = Aircraft(num_rotors,num_wings);
 
-    foreach(i;0..num_rotors){
+    /*foreach(i;0..num_rotors){
         auto rotor = RotorGeometry(num_blades, rotor_origin[i], R, 0);
         foreach(j;0..num_blades){
             auto blade = BladeGeometry(num_blade_elements,j*azimuth_offset,rotor_avg_chord,blade_airfoil);
@@ -141,9 +141,9 @@ void main(){
         }
         rotor.solidity = num_blades*rotor.blades[0].average_chord/(PI*rotor.radius);
         aircraft.rotors[i] = rotor;
-    }
+    }*/
 
-    writeln("blade in each rotor = ", aircraft.rotors[0].blades.length);
+    //writeln("blade in each rotor = ", aircraft.rotors[0].blades.length);
     auto wing = WingGeometry(num_wing_parts, wing_origin, wing_span);
 
     aircraft.wings[0]=wing;
@@ -195,7 +195,7 @@ void main(){
     auto ac_input_state  = AircraftInputState(num_rotors,num_blades,num_wings);
     ac_input_state.wing_inputs[0].freestream_velocity = freestream_velocity;
 
-    foreach(r_idx;0..num_rotors){
+    /*foreach(r_idx;0..num_rotors){
         ac_input_state.rotor_inputs[r_idx].angle_of_attack = rotor_aoa;
         ac_input_state.rotor_inputs[r_idx].cos_aoa = cos(ac_input_state.rotor_inputs[r_idx].angle_of_attack);
 		ac_input_state.rotor_inputs[r_idx].sin_aoa = sin(ac_input_state.rotor_inputs[r_idx].angle_of_attack);
@@ -212,16 +212,16 @@ void main(){
             ac_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0.0;
             ac_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = theta_75;
         }
-    }
+    }*/
 
     ac_input_state.wing_inputs[0].angle_of_attack = wing_alpha;
-    ac_input_state.wing_inputs[0].freestream_velocity = freestream_velocity;
+    //ac_input_state.wing_inputs[0].freestream_velocity = freestream_velocity;
 
 
     
     //inflows;
 
-    long Mo = 4;
+    /*long Mo = 4;
     long Me = 2;
 
     auto wake_history = WakeHistory(num_rotors,num_blades, wake_history_length, 2 , num_blade_elements, shed_history);
@@ -310,18 +310,19 @@ void main(){
     plt.ylabel("C_l");
     plt.grid();
     plt.savefig("Cl_wing_tip.png");
-
-
-    
+    */
 
     
 
+    
 
-    /*Wing alone simulation (tested already)
+
+    //Wing alone simulation (tested already)
     foreach(wp_idx, wing_part_state; ac_state.wing_states[0].wing_part_states){
         foreach(sp_chunk; 0..chord_vortex_nodes*span_chunks){
             foreach(c1;0..chunk_size){
-                wing_part_state.ctrl_chunks[sp_chunk].ctrl_pt_aoa[c1] = alpha*PI/180;
+                wing_part_state.ctrl_chunks[sp_chunk].ctrl_pt_aoa[c1] = wing_alpha*PI/180;
+                wing_part_state.ctrl_chunks[sp_chunk].ctrl_pt_ut[c1] = freestream_velocity;
             }
         }
     }
@@ -331,7 +332,7 @@ void main(){
         foreach(chord_idx; 0..chord_vortex_nodes){
             foreach(ch_idx;0..span_chunks){
                 wing_part_state.circulation_model.compute_d_gamma_coefficients(wing_lift_surface, wing_part_state, wp_idx, ch_idx, chord_idx, V_inf[]);
-                writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk = ch_idx ", ch_idx,"\tA_lk = ",wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].A_kl);
+                //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk = ch_idx ", ch_idx,"\tA_lk = ",wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].A_kl);
                 //wing_part_state.circulation_model.compute_bound_circulation(wing_lift_surface, aircraft.wings[0].wing_parts[wp_idx], wp_idx, ch_idx, chord_idx);
                 //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk = ch_idx ", ch_idx,"\tA_lk = ",wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].gamma);
             //double[] A_kl_print = wing_lift_surface.spanwise_filaments[chord_idx].chunks[ch_idx].A_kl[].array;
@@ -347,7 +348,7 @@ void main(){
                 //wing_part_state.circulation_model.compute_d_gamma_coefficients(wing_lift_surface, wing_part_state, wp_idx, ch_idx, chord_idx, V_inf[]);
                 //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk = ch_idx ", ch_idx,"\tA_lk = ",wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].A_kl);
                 wing_part_state.circulation_model.compute_bound_circulation(wing_lift_surface, aircraft.wings[0].wing_parts[wp_idx], wp_idx, ch_idx, chord_idx);
-                //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk = ch_idx ", ch_idx,"\tgamma = ",wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].gamma);
+                writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk = ch_idx ", ch_idx,"\tgamma = ",wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].gamma);
             //double[] A_kl_print = wing_lift_surface.spanwise_filaments[chord_idx].chunks[ch_idx].A_kl[].array;
             //writeln(A_kl_print);
                 }
@@ -357,7 +358,7 @@ void main(){
 
     foreach(wp_idx, wing_part_state; ac_state.wing_states[0].wing_part_states){
         foreach(ch_idx;0..span_chunks){
-            wing_part_state.circulation_model.compute_dCl(wing_lift_surface, wing_part_state, wp_idx, ch_idx, V_inf[]);
+            wing_part_state.circulation_model.compute_dCl(wing_lift_surface, wing_part_state, wp_idx, ch_idx);
         }
     }
 
@@ -393,12 +394,12 @@ void main(){
     writeln("v_z = ", v_z);
 
 
-    plt.figure();
+    /*plt.figure();
     plt.plot(y.map!(x => x*2),sectional_Cl[]);
     plt.xlabel("2y/b");
     plt.ylabel("sectional Cl");
     plt.grid();
-    plt.savefig("Cl_left_wing.png");
+    plt.savefig("Cl_left_wing.png");*/
 
     /*plt.figure();
     plt.plot(y[],sectional_Cl[][1]);

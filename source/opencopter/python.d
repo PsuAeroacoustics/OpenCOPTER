@@ -729,6 +729,42 @@ Mat3 Mat3_identity() {
 	return Mat3.identity();
 }
 
+alias PyWingLoc = opencopter.aircraft.geometry.Location;
+
+struct Location{
+	private PyWingLoc loc;
+
+	string toString(){
+		return loc;
+	}
+}
+
+Location location_right_wing(){
+	return Location(opencopter.aircraft.geometry.Location.right);
+}
+
+Location location_left_wing(){
+	return Location(opencopter.aircraft.geometry.Location.right);
+}
+
+alias PyWingLoc = opencopter.aircraft.geometry.Location;
+
+struct Location{
+	private PyWingLoc loc;
+
+	string toString(){
+		return loc;
+	}
+}
+
+Location location_right_wing(){
+	return Location(opencopter.aircraft.geometry.Location.right);
+}
+
+Location location_left_wing(){
+	return Location(opencopter.aircraft.geometry.Location.right);
+}
+
 //add wing_induced velocities
 
 extern(C) void PydMain() {
@@ -1426,6 +1462,10 @@ extern(C) void PydMain() {
 
 	def!(write_inflow_vtu);
 
+	def!(location_right_wing);
+
+	def!(location_left_wing);
+
 	module_init;
 
 	wrap_class!(
@@ -1624,6 +1664,10 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorInputState,
 		PyName!("RotorInputState"),
+		Member!("angle_of_attack", Docstring!q{Angle of attack of the rotor in radians}),
+		Member!("sin_aoa", Docstring!q{Cosine of rotor angle of attack}),
+		Member!("cos_aoa", Docstring!q{Sine of rotor angle of attack}),
+		Member!("freestream_velocity", Docstring!q{The dimensional freestream velocity}),
 		Member!("angular_velocity", Docstring!q{The angular velocity of the rotor in :math:`mathrm{rad}/s`}),
 		Member!("angular_accel", Docstring!q{The angular acceleration of the rotor in :math:`mathrm{rad}/s^2`}),
 		Member!("azimuth", Docstring!q{The current azimuthal position of the rotor in radians}),
@@ -1710,7 +1754,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWingPartGeometry,
 		PyName!"WingPartGeometry",
-		Init!(size_t, size_t, Vec3, double, double, double, double, double, double),
+		Init!(size_t, size_t, Vec3, double, double, double, double, double, double, PyWingLoc),
 		Docstring!q{
 			This class allocates and holds the blade geomteric parameters.
 
@@ -1725,6 +1769,7 @@ extern(C) void PydMain() {
 			:param le_sweep_angle: The leading edge sweep angle (in radians) of the wing.
 			:param te_sweep_angle: The trailing edge sweep angle(in radians) of the wing.
 			:param wing_span: The span (in meter) of the wing.
+			:param loc: The location of wing w.r.t the fuselage
 		},
 		Member!"chunks",
 		Member!"ctrl_chunks",
@@ -1735,36 +1780,7 @@ extern(C) void PydMain() {
 		Member!"le_sweep_angle",
 		Member!"te_sweep_angle",
 		Member!"wing_span",
-	);
-
-	wrap_struct!(
-		PyWingPartGeometry,
-		PyName!"WingPartGeometry",
-		Init!(size_t, size_t, Vec3, double, double, double, double, double, double),
-		Docstring!q{
-			This class allocates and holds the blade geomteric parameters.
-
-			Constructor:
-
-			:param span_elements: The number of spanwise wing nodes.
-			:param chordwise_nodes: The number of spanwise wing nodes.
-			:param wing_root_origin: Location of the leading edge of the root of the wing.
-			:param average_chord: The average chord (in meter) of the wing.
-			:param wing_root_chord: The root chord (in meter) of the wing.
-			:param wing_tip_chord: The tip chord (in meter) of the wing.
-			:param le_sweep_angle: The leading edge sweep angle (in radians) of the wing.
-			:param te_sweep_angle: The trailing edge sweep angle(in radians) of the wing.
-			:param wing_span: The span (in meter) of the wing.
-		},
-		Member!"chunks",
-		Member!"ctrl_chunks",
-		Member!"wing_root_origin",
-		Member!"average_chord",
-		Member!"wing_root_chord",
-		Member!"wing_tip_chord",
-		Member!"le_sweep_angle",
-		Member!"te_sweep_angle",
-		Member!"wing_span",
+		Member!("loc", Docstring!q{The location of wing w.r.t the fuselage. This is only used when there is wing only on one side of the fuselage.})
 	);
 
 	wrap_struct!(
@@ -1804,26 +1820,7 @@ extern(C) void PydMain() {
 
 		Member!("wing_parts", Docstring!q{An array of :class:`WingPartGeometry`, one for each part of the wing}),
 		Member!("origin", Docstring!q{The global origin of the wing. This is where root leading edge of the wing is located.}),
-
-	);
-
-	wrap_struct!(
-		PyWingGeometry,
-		PyName!"WingGeometry",
-		Init!(size_t, Vec3, double),
-		Docstring!q{
-			This class allocates and holds all the wing_part and other geometric data of the wing.
-
-			Constructor:
-
-			:param num_part: Number of parts the wing has.
-			:param origin: The global origin of the wing. This is where root leading edge of the wing is located.
-			:param wing_span: wing span of the wing.
-		},
-
-		Member!("wing_parts", Docstring!q{An array of :class:`WingPartGeometry`, one for each part of the wing}),
-		Member!("origin", Docstring!q{The global origin of the wing. This is where root leading edge of the wing is located.}),
-
+		Member!("wing_span", Docstring!q{Span of the wing})
 	);
 
 	wrap_struct!(
@@ -1839,7 +1836,7 @@ extern(C) void PydMain() {
 			:param num_wings: The number of wings the aircraft has.
 		},
 		Member!("rotors", Docstring!q{An array of :class:`RotorGeometry`, one for each rotor on the aircraft}),
-		Member!"root_frame"
+		Member!"root_frame",
 		Member!("wings", Docstring!q{An array of :class:`WingGeometry`, one for each wing on the aircraft}),
 	);
 
@@ -1868,20 +1865,6 @@ extern(C) void PydMain() {
 		Member!("theta", Docstring!q{The currect pitch of the spanwise element}),
 		Member!("d_gamma", Docstring!q{Spanwise change in circulation}),
 		Member!("gamma", Docstring!q{Spanwise circulation}),
-	);
-
-	wrap_struct!(
-		WingPartStateChunk,
-		Member!("aoa", Docstring!q{A chunk of spanwise sectional angle of attack (in radians)}),
-		Member!("dC_L", Docstring!q{A chunk of spanwise sectional lift coefficent}),
-		Member!("dC_M", Docstring!q{A chunk of spanwise sectional moment coefficient}),
-	);
-
-	wrap_struct!(
-		WingPartCtrlPointStateChunk,
-		Member!("ctrl_pt_aoa", Docstring!q{A chunk of angle of attacks (in radians) at control point of the lifting surface}),
-		Member!("ctrl_pt_up", Docstring!q{A chunk of velocity perpendicular to the wing section}),
-		Member!("ctrl_pt_ut", Docstring!q{A chunk of velcoity tangential to the wing section}),
 	);
 
 	wrap_struct!(
@@ -1933,24 +1916,6 @@ extern(C) void PydMain() {
 		Member!"ctrl_chunks",
 		Member!("C_L", Docstring!q{The current lift coefficient contribution from this wing part}),
 		Member!("C_M", Docstring!q{The current moment coefficient contribution from this wing part}),
-
-	);
-
-	wrap_struct!(
-		PyWingPartState,
-		PyName!"WingPartState",
-		Docstring!q{
-			This class holds the current aerodynamic state of the wing part.
-
-			.. attention::
-
-				This never needs to be explicitly constructed as it will be constructed by :class:`AircraftState`
-		},
-		Member!"chunks",
-		Member!"ctrl_chunks",
-		Member!("C_L", Docstring!q{The current lift coefficient contribution from this wing part}),
-		Member!("C_M", Docstring!q{The current moment coefficient contribution from this wing part}),
-
 	);
 
 	wrap_struct!(
@@ -2008,6 +1973,11 @@ extern(C) void PydMain() {
 		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft}),
 		Member!"freestream",
 		Member!("wing_states", Docstring!q{An arrat of :class:`WingState`, one for each wing})
+	);
+
+	wrap_struct!(
+		Location,
+		Repr!(Location.toString)
 	);
 
 	wrap_class!(
