@@ -12,6 +12,7 @@ import std.conv : to;
 import std.exception : enforce;
 import std.traits;
 import std.typecons;
+import std.stdio;
 
 /+extern(C++) struct RadiusPoints {
 	double[] r;
@@ -65,8 +66,8 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_n
     
     import std.math : cos,tan, PI;
     import std.math : abs;
-	double wing_span = wing_geometry.wing_parts[0].wing_span;
-	Chunk span = wing_span;
+	double wing_span = wing_geometry.wing_parts[0].wing_span; // half wing span
+	Chunk span = 2*wing_span; // full wing span
 	double root_chord = wing_geometry.wing_parts[0].wing_root_chord;
 	size_t acutal_span_nodes = _spanwise_nodes%chunk_size == 0 ? _spanwise_nodes : _spanwise_nodes + (chunk_size - _spanwise_nodes%chunk_size);
 	size_t _spanwise_chunks = acutal_span_nodes/chunk_size;
@@ -76,23 +77,58 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_n
     //span_vr_nodes_left = span_vr_nodes_left.retro;
     //auto chord_vr_nodes = generate_chordwise_votex_nodes(_chordwise_nodes);
 
-    foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-		foreach(crd_idx;0.._chordwise_nodes){
-			foreach(sp_idx; 0.._spanwise_chunks){
-				if(wp_idx%2==0){
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-				}else{
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-				}				
-				
-				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
+	if(wing_geometry.wing_parts.length == 1){
+		string side = wing_geometry.wing_parts[0].loc;
+		writeln("location == ", side);
+		if(side == Location.left){
+			writeln("population left wing part ctrl point geometry");
+			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
+				foreach(crd_idx;0.._chordwise_nodes){
+					foreach(sp_idx; 0.._spanwise_chunks){
+					//writeln("going_left_wing_part");
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
+					}
+				}
 			}
 		}
-	}
+		else if(side == Location.right){
+			writeln("population left wing part ctrl point geometry");
+			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
+				foreach(crd_idx;0.._chordwise_nodes){
+					foreach(sp_idx; 0.._spanwise_chunks){
+						//writeln("going_left_wing_part");
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
+					}
+				}
+			}
+		}
+	}else{
+		foreach(wp_idx, wing_part; wing_geometry.wing_parts){
+			foreach(crd_idx;0.._chordwise_nodes){
+				foreach(sp_idx; 0.._spanwise_chunks){
+					if(wp_idx%2==0){
+					//writeln("going_left_wing_part");
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
+					}else{
+					//writeln("going_right_wing_part");
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
+						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
+					}				
+				
+					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
+				}
+			}
+		}
+	}    
 }
 
 
@@ -360,7 +396,6 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 
 	this(size_t num_parts, Vec3 origin, double wing_span) {
 		mixin(array_ctor_mixin!(AC, "WingPartGeometryT!(AC)", "wing_parts", "num_parts"));
-
 		this.origin = origin;
 	}
 
@@ -445,8 +480,14 @@ template is_wing_part_geometry(A) {
 	}();
 }
 
+enum Location : string{
+		right = "right",
+		left = "left",
+		mid = "mid"
+	}
+
 alias WingPartGeometry = WingPartGeometryT!(ArrayContainer.none);
-extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
+struct WingPartGeometryT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, WingPartGeometryChunk, "chunks");
 	mixin ArrayDeclMixin!(AC, WingPartCtrlPointChunk, "ctrl_chunks");
 
@@ -457,10 +498,11 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 	double le_sweep_angle;
 	double te_sweep_angle;
 	double wing_span;
+	Location loc;
 
 	//BladeAirfoil airfoil;
 
-	this(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span) {
+	this(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, Location loc) {
 		immutable actual_num_span_elements = span_elements%chunk_size == 0 ? span_elements : span_elements + (chunk_size - span_elements%chunk_size);
 		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
 		immutable num_span_chunks = actual_num_span_elements/chunk_size;
@@ -478,6 +520,7 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = le_sweep_angle;
 		this.te_sweep_angle = te_sweep_angle;
 		this.wing_span = wing_span;
+		this.loc = loc;
 	}
 
 	ref typeof(this) opAssign(typeof(this) wing_part) {
@@ -491,6 +534,7 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
+		this.loc = loc;
 		return this;
 	}
 
@@ -505,6 +549,7 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
+		this.loc = loc;
 		return this;
 	}
 
@@ -519,6 +564,7 @@ extern (C++) struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
+		this.loc = loc;
 		return this;
 	}
 }

@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
 	V_inf = 32.9
 	aoa = -5.3*(math.pi/180.0)
-	theta_tw_1 = -8.0*(math.pi/180.0);
+	theta_tw_1 = -8.0*(math.pi/180.0)
 
 	d_psi = 1.0
 	dt = d_psi*(math.pi/180.0)/math.fabs(omega)

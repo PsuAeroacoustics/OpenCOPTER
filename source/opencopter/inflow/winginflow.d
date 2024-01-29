@@ -74,10 +74,12 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         Chunk x_inflow; Chunk y_inflow; Chunk z_inflow;
         Vec3 freestream_velocity = [_freestream_velocity,0.0,0.0];
 
-        Chunk wing_aoa = wing_input.angle_of_attack;        
+        Chunk wing_aoa = wing_input.angle_of_attack;     
+        //writeln("wing_state_aoa = ", wing_input.angle_of_attack);   
 
         immutable num_rotors = ac_input.rotor_inputs.length;        
         foreach(wp_idx, wing_part; wing.wing_parts){
+            //writeln("updating wing state properties");
             foreach(ch_idx,ctrl_chunk; wing_part.ctrl_chunks){
                 //immutable span_idx = ch_idx%num_span_chunks;
                 //immutable chord_idx = (ch_idx - ch_idx%num_span_chunks)/num_span_chunks;
@@ -139,10 +141,16 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_up = rotor_inflow_z;
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_ut = v_x;
                 immutable wing_inflow_angle = atan2(v_z,v_x);
+                //writeln("v_x = ", v_x);
+                //writeln("v_z = ", v_z);
+                //writeln("freestream velocity = ", freestream_velocity[0]);
+                //writeln("wing_aoa = ", wing_inflow_angle);
                 immutable Chunk effective_aoa = wing_aoa[] + wing_inflow_angle[];
+                //writeln("effective wing aoa = ", effective_aoa);
                 //writeln("inflow angle: ", wing_inflow_angle[]);
                 
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_aoa[] = ctrl_chunk.camber[] - effective_aoa[];
+                //writeln("updating wing aoas");
                 //writeln(" camber: ", ctrl_chunk.camber[], " effective aoa: ", effective_aoa[]);
                 
             }
@@ -157,6 +165,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
             foreach(chord_idx;0..num_chord_pt){
                 foreach(ch_idx; 0..num_span_chunks){
                     immutable ctrl_ch_idx = chord_idx*num_span_chunks + ch_idx;
+                    //writeln("wing_ut = ",  wing_state.wing_part_states[wp_idx].ctrl_chunks[ctrl_ch_idx].ctrl_pt_ut);
                     wing_state.wing_part_states[wp_idx].circulation_model.compute_d_gamma_coefficients(wing_lift_surf, wing_state.wing_part_states[wp_idx], wp_idx, ch_idx, chord_idx, wing_state.wing_part_states[wp_idx].ctrl_chunks[ctrl_ch_idx].ctrl_pt_ut);
                     //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_idx, "\tspan_chunk =", ch_idx ,"A_kl= ", wing_lift_surf.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[ch_idx].A_kl[]);
                 }
@@ -174,10 +183,11 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
     void update_wing_dC_L(){
         immutable num_span_chunks = wing_state.wing_part_states[0].chunks.length;
         immutable num_chord_pt =  wing_state.wing_part_states[0].ctrl_chunks.length/num_span_chunks;
-
+        double root_chord = wing.wing_parts[0].wing_root_chord; 
         foreach(wp_idx, wing_part_state; wing_state.wing_part_states){
             foreach (span_idx; 0..num_span_chunks){
                 wing_part_state.circulation_model.compute_dCl(wing_lift_surf,wing_part_state,wp_idx,span_idx);
+                wing_part_state.chunks[span_idx].dC_L[] /= root_chord; //circulation is multiplied by root chord in compute_d_gamma_circulation, so Cl need to be devided by it
             }
         }
     }

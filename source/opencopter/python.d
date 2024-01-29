@@ -494,6 +494,24 @@ IV compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable
 	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, angular_velocity, rotor_idx, 0, single_rotor);
 }
 
+alias PyWingLoc = opencopter.aircraft.geometry.Location;
+
+struct Location{
+	private PyWingLoc loc;
+
+	string toString(){
+		return loc;
+	}
+}
+
+Location location_right_wing(){
+	return Location(opencopter.aircraft.geometry.Location.right);
+}
+
+Location location_left_wing(){
+	return Location(opencopter.aircraft.geometry.Location.right);
+}
+
 //add wing_induced velocities
 
 extern(C) void PydMain() {
@@ -928,6 +946,10 @@ extern(C) void PydMain() {
 
 	def!(load_c81_file);
 
+	def!(location_right_wing);
+
+	def!(location_left_wing);
+
 	module_init;
 
 	wrap_class!(
@@ -1124,8 +1146,8 @@ extern(C) void PydMain() {
 		PyRotorInputState,
 		PyName!("RotorInputState"),
 		Member!("angle_of_attack", Docstring!q{Angle of attack of the rotor in radians}),
-		//Member!("sin_aoa", Docstring!q{}),
-		//Member!("cos_aoa", Docstring!q{}),
+		Member!("sin_aoa", Docstring!q{Cosine of rotor angle of attack}),
+		Member!("cos_aoa", Docstring!q{Sine of rotor angle of attack}),
 		Member!("freestream_velocity", Docstring!q{The dimensional freestream velocity}),
 		Member!("angular_velocity", Docstring!q{The angular velocity of the rotor in :math:`mathrm{rad}/s`}),
 		Member!("angular_accel", Docstring!q{The angular acceleration of the rotor in :math:`mathrm{rad}/s^2`}),
@@ -1209,7 +1231,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWingPartGeometry,
 		PyName!"WingPartGeometry",
-		Init!(size_t, size_t, Vec3, double, double, double, double, double, double),
+		Init!(size_t, size_t, Vec3, double, double, double, double, double, double, PyWingLoc),
 		Docstring!q{
 			This class allocates and holds the blade geomteric parameters.
 
@@ -1224,6 +1246,7 @@ extern(C) void PydMain() {
 			:param le_sweep_angle: The leading edge sweep angle (in radians) of the wing.
 			:param te_sweep_angle: The trailing edge sweep angle(in radians) of the wing.
 			:param wing_span: The span (in meter) of the wing.
+			:param loc: The location of wing w.r.t the fuselage
 		},
 		Member!"chunks",
 		Member!"ctrl_chunks",
@@ -1234,6 +1257,7 @@ extern(C) void PydMain() {
 		Member!"le_sweep_angle",
 		Member!"te_sweep_angle",
 		Member!"wing_span",
+		Member!("loc", Docstring!q{The location of wing w.r.t the fuselage. This is only used when there is wing only on one side of the fuselage.})
 	);
 
 	wrap_struct!(
@@ -1272,7 +1296,7 @@ extern(C) void PydMain() {
 
 		Member!("wing_parts", Docstring!q{An array of :class:`WingPartGeometry`, one for each part of the wing}),
 		Member!("origin", Docstring!q{The global origin of the wing. This is where root leading edge of the wing is located.}),
-
+		Member!("wing_span", Docstring!q{Span of the wing})
 	);
 
 	wrap_struct!(
@@ -1407,6 +1431,11 @@ extern(C) void PydMain() {
 		},
 		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft}),
 		Member!("wing_states", Docstring!q{An arrat of :class:`WingState`, one for each wing})
+	);
+
+	wrap_struct!(
+		Location,
+		Repr!(Location.toString)
 	);
 
 	wrap_class!(
