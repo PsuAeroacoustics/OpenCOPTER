@@ -127,7 +127,6 @@ unittest {
 
 	dC_L[] = 0.5*sigma_hat[]*u_squared[]*C_l[];
 
-
 	return dC_L;
 }
 

@@ -210,6 +210,38 @@ double[] get_dC_T(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_T";
 }
 
+double[] get_dC_N(ref PyBladeState blade) {
+	return blade.get_state_array!"dC_N";
+}
+
+double[] get_dC_c(ref PyBladeState blade) {
+	return blade.get_state_array!"dC_c";
+}
+
+void fill_dC_N(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_N"(data);
+}
+
+void fill_dC_c(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_c"(data);
+}
+
+void fill_dC_D(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_D"(data);
+}
+
+void fill_dC_Nf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_N"(data);
+}
+
+void fill_dC_cf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_c"(data);
+}
+
+void fill_dC_Df(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_D"(data);
+}
+
 void fill_dC_Tf(ref PyBladeState blade, float[] data) {
 	return blade.get_state_array!"dC_T"(data);
 }
@@ -324,6 +356,10 @@ opencopter.vtk.VtkWake build_base_vtu_wake(PyWake* wake) {
 
 void write_wake_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkWake vtk_wake, PyWake* wake) {
 	opencopter.vtk.write_wake_vtu(base_filename, iteration, vtk_wake, wake);
+}
+
+void write_wake_field_vtu(string filename, PyAircraftState ac_state, PyWake wake, Vec3 delta, Vec3 starts, size_t num_x, size_t num_y, size_t num_z) {
+	opencopter.vtk.write_wake_field_vtu(filename, ac_state, wake, delta, starts, num_x, num_y, num_z);
 }
 
 alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!Inflow;
@@ -445,6 +481,18 @@ extern(C) void PydMain() {
 		:param wake: The :class:`Wake` object containing the wake data
 	});
 
+	def!(write_wake_field_vtu, Docstring!q{
+		Takes the :class:`Wake` data and writes the induced velocity field to a vtu file.
+
+		.. caution::
+			
+			This function has a very high runtime cost, use sparingly
+
+		:param filename: The filename to save the data to
+		:param ac_state: The aircraft state object to save
+		:param wake: The :class:`Wake` object containing the wake data
+	});
+
 	def!(basic_aircraft_rotor_dynamics, Docstring!q{
 		Update all rotor azimuthal positions using a basic dynamics equation with simple
 		forward Euler integration:
@@ -554,6 +602,62 @@ extern(C) void PydMain() {
 
 		:param r: spanwise radial station
 		:param x: x location of the quarter chord
+	});
+
+	def!(get_dC_N, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise normal force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_N` from
+		:return: List of spanwise :math:`dC_N` values
+	});
+
+	def!(fill_dC_N, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise normal force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_N` from
+		:return: List of spanwise :math:`dC_N` values
+	});
+
+	def!(fill_dC_Nf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise normal force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_N` from
+		:return: List of spanwise :math:`dC_N` values
+	});
+
+	def!(get_dC_c, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_c` from
+		:return: List of spanwise :math:`dC_c` values
+	});
+
+	def!(fill_dC_c, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_c` from
+		:return: List of spanwise :math:`dC_c` values
+	});
+
+	def!(fill_dC_D, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_D` from
+		:return: List of spanwise :math:`dC_D` values
+	});
+
+	def!(fill_dC_cf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_c` from
+		:return: List of spanwise :math:`dC_c` values
+	});
+
+	def!(fill_dC_Df, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_D` from
+		:return: List of spanwise :math:`dC_D` values
 	});
 
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
@@ -874,7 +978,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t),
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t, double),
 		Docstring!q{
 			Top level structure for holding the wake and its history.
 			
@@ -886,6 +990,7 @@ extern(C) void PydMain() {
 			:param time_history: The number of timesteps to store. 2 is the minimum number.
 			:param radial_elements: The number of radial elements down the blade span.
 			:param shed_history: The number of timesteps to store the shed wake for.
+			:param a1: Wake core growth constant.
 		},
 		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep})
 	);

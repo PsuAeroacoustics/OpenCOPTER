@@ -252,6 +252,8 @@ extern (C++) struct BladeStateChunk {
 	Chunk z;
 
 	Chunk r_c;
+
+	Chunk theta;
 }
 
 template is_blade_state(A) {

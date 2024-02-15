@@ -23,13 +23,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 	static import std.math;
 
 	import std.stdio : writeln;
-
-	//immutable cos_azimuth = std.math.cos(blade_state.azimuth);
-	//immutable sin_azimuth = std.math.sin(blade_state.azimuth);
-
-	immutable cos_beta = std.math.cos(rotor_input.blade_flapping[blade_idx]);
-	immutable sin_beta = std.math.sin(rotor_input.blade_flapping[blade_idx]);
-
+	
 	immutable cos_alpha = rotor_input.cos_aoa;
 	immutable sin_alpha = rotor_input.sin_aoa;
 
@@ -42,25 +36,26 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		auto wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, std.math.abs(rotor_input.angular_velocity), rotor_idx, blade_idx);
 
-		immutable Chunk wake_z = (wake_velocities.v_x[])*sin_alpha + wake_velocities.v_z[]*cos_alpha;
-		immutable Chunk wake_y = wake_velocities.v_y[];
-		immutable Chunk wake_x = wake_velocities.v_x[]*cos_alpha - wake_velocities.v_z[]*sin_alpha;
+		immutable Chunk wake_z = rotor.radius/blade.average_chord*(wake_velocities.v_x[]*sin_alpha + wake_velocities.v_z[]*cos_alpha);
+		immutable Chunk wake_y = rotor.radius/blade.average_chord*(wake_velocities.v_y[]);
+		immutable Chunk wake_x = rotor.radius/blade.average_chord*(wake_velocities.v_x[]*cos_alpha - wake_velocities.v_z[]*sin_alpha);
 
 		Chunk u_p = -wake_z[] + rotor_state.axial_advance_ratio;
 		blade_state.chunks[chunk_idx].u_p[] = u_p[];
 
 		immutable Chunk mu_sin_azimuth = -rotor_state.advance_ratio*sin_azimuth[];
-		//immutable Chunk wake_u_t = sin_azimuth[]*wake_x[] + cos_azimuth[]*wake_y[];
+		//immutable Chunk mu_sin_azimuth = rotor_state.advance_ratio*sin_azimuth[];
 		immutable Chunk wake_u_t = cos_azimuth[]*wake_x[] + sin_azimuth[]*wake_y[];
 		immutable Chunk sweep_corrected_r = blade.chunks[chunk_idx].r[]*cos_sweep[];
-		immutable Chunk u_t = sweep_corrected_r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[];// + std.math.sgn(rotor_input.angular_velocity)*wake_u_t[]*sin_sweep[];
+		immutable Chunk u_t = sweep_corrected_r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[];
 
-		Chunk corrected_u_t = u_t[].map!(a => a < 0 ? 0 : a).staticArray!Chunk;
+		Chunk corrected_u_t = u_t[];
 		immutable Chunk inflow_angle = atan2(u_p, corrected_u_t);
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
 		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/rotor_input.angular_velocity)*blade.chunks[chunk_idx].r[])/u_t[];
 		immutable Chunk theta = (rotor_input.blade_pitches[blade_idx] + blade.chunks[chunk_idx].twist[])[]*cos_sweep[];
+		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] + plunging_correction[];
 
@@ -69,15 +64,17 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		immutable Chunk rescaled_u_t = u_inf[]*blade.blade_length/rotor.radius;
 
-		blade_state.circulation_model.compute_bound_circulation_band(blade_state, rescaled_u_t, chunk_idx, std.math.sgn(rotor_input.angular_velocity));
+		blade_state.circulation_model.compute_bound_circulation_band(blade_state, rescaled_u_t, chunk_idx, rotor_input.angular_velocity);
 
 		blade_state.chunks[chunk_idx].aoa_eff[] = -std.math.sgn(rotor_input.angular_velocity)*blade_state.chunks[chunk_idx].gamma[];
-		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.chunks[chunk_idx].chord[]*PI*2.0*PI);
+		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.chunks[chunk_idx].chord[]*PI*PI*std.math.abs(rotor_input.angular_velocity));
+		//blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.chunks[chunk_idx].chord[]*PI*std.math.abs(rotor_input.angular_velocity));
+
 
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, zero);
 
 		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
-		immutable Chunk dC_D = steady_sectional_model(u_p, u_t,af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
+		immutable Chunk dC_D = steady_sectional_model(u_p, u_t, af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];
@@ -88,11 +85,11 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		immutable Chunk cos_collective = std.math.cos(rotor_input.blade_pitches[blade_idx]);
 		immutable Chunk sin_collective = std.math.sin(rotor_input.blade_pitches[blade_idx]);
-		
+
 		immutable Chunk dC_N = blade_state.chunks[chunk_idx].dC_L[]*cos_collective[];
 		immutable Chunk dC_c = -blade_state.chunks[chunk_idx].dC_L[]*sin_collective[];
 
-		immutable Chunk dC_T = blade_state.chunks[chunk_idx].dC_L[]*cos_inflow[]-blade_state.chunks[chunk_idx].dC_D[]*sin_inflow[];
+		immutable Chunk dC_T = (blade_state.chunks[chunk_idx].dC_L[]*cos_inflow[]-blade_state.chunks[chunk_idx].dC_D[]*sin_inflow[]);
 		immutable Chunk dC_Q = (blade_state.chunks[chunk_idx].dC_L[]*sin_inflow[]+blade_state.chunks[chunk_idx].dC_D[]*cos_inflow[])*blade.chunks[chunk_idx].r[];
 
 		blade_state.chunks[chunk_idx].dC_T_dot = (dC_T[] - blade_state.chunks[chunk_idx].dC_T[])/dt;
@@ -101,7 +98,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		blade_state.chunks[chunk_idx].dC_N[] = dC_N[];
 		blade_state.chunks[chunk_idx].dC_c[] = dC_c[];
 
-		blade_state.chunks[chunk_idx].dC_Mx[] = dC_T[]*blade.chunks[chunk_idx].r[]*sin_azimuth[];
+		blade_state.chunks[chunk_idx].dC_Mx[] = -dC_T[]*blade.chunks[chunk_idx].r[]*sin_azimuth[];
 		blade_state.chunks[chunk_idx].dC_My[] = dC_T[]*blade.chunks[chunk_idx].r[]*cos_azimuth[];
 	}
 

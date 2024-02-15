@@ -95,7 +95,7 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory, r_id
 
     xp = f_x_over_c_p(r)
 
-    twist = np.asarray([(_r - 0.75)*theta_tw_1*(math.pi/180.0) for _r in generate_radius_points(requested_elements, 0.0)])
+    twist = np.asarray([(_r - 0.75)*theta_tw_1*(1/(1 - r_c))*(math.pi/180.0) for _r in generate_radius_points(requested_elements, r_c)])
 
     # Build the geom of the blades
     blade = BladeGeometry(
@@ -111,12 +111,12 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory, r_id
 
     real_chord = R*c
 
-    naca0012_xsection = [[-(xsection[0] - 0.5), -xsection[1]] for xsection in naca0012_xsection]
-
     if omega < 0:
-        neg_twist = -twist
-        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, neg_twist, R, real_chord, wopwop_data_path, r_idx, b_idx)
+        # neg_twist = -twist
+        naca0012_xsection = [[(xsection[0] - 0.5), -xsection[1]] for xsection in naca0012_xsection]
+        wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, R, real_chord, wopwop_data_path, r_idx, b_idx)
     else:
+        naca0012_xsection = [[-(xsection[0] - 0.5), -xsection[1]] for xsection in naca0012_xsection]
         wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, r, twist, R, real_chord, wopwop_data_path, r_idx, b_idx)
 
 
@@ -130,7 +130,7 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory, r_id
 
     return blade, r_c
 
-def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condition, computational_parameters, results, geom_directory, observer, acoustics):
+def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condition, computational_parameters, results, geom_directory, observer, acoustics, wake_history_length):
 
     num_rotors = len(geometry["rotors"])
 
@@ -152,7 +152,7 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
     if "collective" in flight_condition:
         collectives = np.asarray(flight_condition["collective"])*np.pi/180
     else:
-        collectives = 2.0*np.ones(num_rotors)*np.pi/180
+        collectives = 3.0*np.ones(num_rotors)*np.pi/180
 
     density = flight_condition["density"]
     dynamic_viscosity = 18.03e-6
@@ -175,34 +175,37 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
 	# The origins of our rotor
     origins = [Vec3(geometry['rotors'][r_idx]["origin"]) for r_idx in range(len(geometry['rotors']))]
 
-    wake_dists = np.zeros(num_rotors)
+    # wake_dists = np.zeros(num_rotors)
 
-    for o_idx, origin in enumerate(origins):
-        for other_origin in origins:
-            delta_x = origin[0] - other_origin[0]
+    # for o_idx, origin in enumerate(origins):
+    #     for other_origin in origins:
+    #         delta_x = origin[0] - other_origin[0]
 
-            # plus 1R to finish going past the other rotor, and then 6 more radii after that
-            wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + 6)
+    #         # plus 1R to finish going past the other rotor, and then 6 more radii after that
+    #         wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + 6)
 
-        if wake_dists[o_idx] <= 0:
-            # if all others are upstream, just trail 6 radii behind
-            wake_dists[o_idx] = 6
+    #     if wake_dists[o_idx] <= 0:
+    #         # if all others are upstream, just trail 6 radii behind
+    #         wake_dists[o_idx] = 6
 
-    log_file.write(f'wake_dists: {wake_dists}\n')
+    # log_file.write(f'wake_dists: {wake_dists}\n')
 
-    wake_history_revs = np.zeros(wake_dists.size)
+    # wake_history_revs = np.zeros(wake_dists.size)
 
-    for idx, mu in enumerate(mus):
-        if mu != 0:
-            wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
-        else:
-            wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
+    # for idx, mu in enumerate(mus):
+    #     if mu != 0:
+    #         wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
+    #     else:
+    #         wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
 
+    # log_file.write(f'wake_history_revs: {wake_history_revs}\n')
+
+    # wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
+    # wake_history_length = wake_history_length.tolist()
+
+    wake_history_revs = np.ceil(np.asarray(wake_history_length)*d_psi/(2.0*math.pi)).astype(int)
     log_file.write(f'wake_history_revs: {wake_history_revs}\n')
-
-    wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
-    wake_history_length = wake_history_length.tolist()
-
+    
     wopwop_data_path = f'{output_base}/acoustics/data'
 
     if not path.isdir(wopwop_data_path):
@@ -289,20 +292,21 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         rotorcraft_input_state.rotor_inputs[r_idx].azimuth = azimuths[r_idx]
         rotorcraft_input_state.rotor_inputs[r_idx].freestream_velocity = flight_condition["V_inf"]
         for b_idx in range(num_blades[r_idx]):
-            rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = 0.1*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/R[r_idx]
+            rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = computational_parameters['r_0']*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/R[r_idx]
             rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
             rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0
             rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 
     rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 
+    a1 = 6.5e-5
+    if "a1" in computational_parameters:
+        a1 = computational_parameters['a1']
+
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
     log_file.write(f'wake_history_length: {wake_history_length}\n')
-    rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history)
-
-    sim_revs = wake_history_revs.max() + args.r
-    log_file.write(f"sim_revs = {sim_revs}\n")
+    rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, a1)
     
     vehicle = SimulatedVehicle(
         rotorcraft_system,
@@ -334,6 +338,7 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         for r_idx in range(num_rotors):
             actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
             wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
+            wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
 
             for b_idx in range(num_blades[r_idx]):
                 wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
@@ -348,32 +353,46 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
 
         scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
 
-        if results is not None:
-            for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
-                res_x = inflow_slice["resolution"][0]
-                res_y = inflow_slice["resolution"][1]
-                res_z = inflow_slice["resolution"][2]
+        if args.vtu_results:
+            if results is not None:
+                if 'inflow_slices' in results:
+                    for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
+                        res_x = inflow_slice["resolution"][0]
+                        res_y = inflow_slice["resolution"][1]
+                        res_z = inflow_slice["resolution"][2]
 
-                deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-                start = Vec3(inflow_slice["slice_start"])
+                        deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+                        start = Vec3(inflow_slice["slice_start"])
 
-                aoa = vehicle.input_state.rotor_inputs[0].angle_of_attack
-                write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, aoa, omegas[0])
+                        aoa = vehicle.input_state.rotor_inputs[0].angle_of_attack
+                        write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, origins, aoa, omegas[0])
+
+                if 'wake_slices' in results:
+                    for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
+                        res_x = inflow_slice["resolution"][0]
+                        res_y = inflow_slice["resolution"][1]
+                        res_z = inflow_slice["resolution"][2]
+
+                        deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+                        start = Vec3(inflow_slice["slice_start"])
+
+                        write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
 
     cases = []
     if (acoustics is not None) and (observer is not None):
-        for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
-            wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
+        if (num_rotors > 1) and (args.fs is False):
+            for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
+                wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
 
-            if not path.isdir(wopwop_case_path):
-                makedirs(wopwop_case_path, exist_ok=True)
+                if not path.isdir(wopwop_case_path):
+                    makedirs(wopwop_case_path, exist_ok=True)
 
-            single_rotor_case = Casename()
-            single_rotor_case.caseNameFile = "case.nam"
-            single_rotor_case.globalFolderName = wopwop_case_path
-            single_rotor_case.namelist = namelist
+                single_rotor_case = Casename()
+                single_rotor_case.caseNameFile = "case.nam"
+                single_rotor_case.globalFolderName = wopwop_case_path
+                single_rotor_case.namelist = namelist
 
-            cases.append(single_rotor_case)
+                cases.append(single_rotor_case)
 
 
         wopwop_case_path = f'{output_base}/acoustics/full_system/'

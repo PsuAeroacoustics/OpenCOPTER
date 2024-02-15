@@ -1782,7 +1782,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						
 						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
 						
-						immutable Chunk dP = blade_state.chunks[c_idx].dC_T[];//*PI*radius*radius*radius*radius*abs(omega)*abs(omega)/(rotor.blades[b_idx].chunks[c_idx].chord[]*(V_inf*V_inf));
+						immutable Chunk dP = blade_state.chunks[c_idx].dC_T[];//*radius;//*PI*radius*radius*radius*radius*abs(omega)*abs(omega)/(rotor.blades[b_idx].chunks[c_idx].chord[]*(V_inf*V_inf));
 
 						blade_scratch[c_idx][] = dP[]*Pmn[]*cos_mpsi[];//*rotor.blades[b_idx].chunks[c_idx].chord[];
 					}
@@ -1829,7 +1829,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
 
 						//blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];//*rotor.blades[b_idx].chunks[c_idx].chord[];
-						immutable Chunk dP = blade_state.chunks[c_idx].dC_T[];//*PI*radius*radius*radius*radius*abs(omega)*abs(omega)/(rotor.blades[b_idx].chunks[c_idx].chord[]*(V_inf*V_inf));
+						immutable Chunk dP = blade_state.chunks[c_idx].dC_T[];//*radius;//*PI*radius*radius*radius*radius*abs(omega)*abs(omega)/(rotor.blades[b_idx].chunks[c_idx].chord[]*(V_inf*V_inf));
 
 						//writeln(dP);
 						blade_scratch[c_idx][] = dP[]*Pmn[]*cos_mpsi[];//*rotor.blades[b_idx].chunks[c_idx].chord[];

@@ -209,8 +209,12 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	def build_blade_cntr(rotor_idx, blade_idx):
 		blade_cntr = ContainerIn()
 		blade_cntr.Title = "blade "+str(blade_idx)+" containter"
-		blade_cntr.patchGeometryFile = f"../data/blade_geom_{rotor_idx}_{blade_idx}.dat"
-		blade_cntr.patchLoadingFile = f"../data/blade_{rotor_idx if full_system else actual_rotor_idx}_{blade_idx}_loading.dat"
+
+		if environment_in.thicknessNoiseFlag:
+			blade_cntr.patchGeometryFile = f"../data/blade_geom_{rotor_idx}_{blade_idx}.dat"
+		
+		if environment_in.loadingNoiseFlag:
+			blade_cntr.patchLoadingFile = f"../data/blade_{rotor_idx if full_system else actual_rotor_idx}_{blade_idx}_loading.dat"
 
 		blade_cob = CB()
 		blade_cob.Title = "blade "+str(blade_idx)+" azimuth offset"
@@ -232,12 +236,14 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades)
 
 		if omegas[rotor_idx] < 0:
-			blade_collective_cob.AngleValue = math.pi - collective[rotor_idx]
+			#blade_collective_cob.AngleValue = math.pi - collective[rotor_idx]
+			blade_collective_cob.AngleValue = -collective[rotor_idx]
 		else:
 			blade_collective_cob.AngleValue = collective[rotor_idx]
 
 
-		blade_cntr.cobs = [blade_cob, blade_collective_cob]
+		blade_cntr.cobs = [blade_cob]
+		#blade_cntr.cobs = [blade_cob, blade_collective_cob]
 
 		return blade_cntr
 
@@ -251,7 +257,7 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		if full_system:
 			rotor_offset_cb.TranslationValue = FVec3([R[rotor_idx]*origins[rotor_idx][0], R[rotor_idx]*origins[rotor_idx][1], R[rotor_idx]*origins[rotor_idx][2]])
 		else:
-			rotor_offset_cb.TranslationValue = FVec3([R[actual_rotor_idx]*origins[rotor_idx][0], R[actual_rotor_idx]*origins[rotor_idx][1], R[actual_rotor_idx]*origins[rotor_idx][2]])
+			rotor_offset_cb.TranslationValue = FVec3([R[actual_rotor_idx]*origins[actual_rotor_idx][0], R[actual_rotor_idx]*origins[actual_rotor_idx][1], R[actual_rotor_idx]*origins[actual_rotor_idx][2]])
 
 		#rotor_aoa_cb = CB()
 		#rotor_aoa_cb.Title = "Rotor aoa"
@@ -292,10 +298,10 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	observer.tMax = t_max
 
 	if observer_config["type"] == "plane":
+		observer.nbx = observer_config["nb"][0]
+		observer.nby = observer_config["nb"][1]
+		observer.nbz = observer_config["nb"][2]
 		if observer_config["radii_relative"]:
-			observer.nbx = observer_config["nb"][0]*np.max(R)
-			observer.nby = observer_config["nb"][1]*np.max(R)
-			observer.nbz = observer_config["nb"][2]*np.max(R)
 			observer.xMin = observer_config["min"][0]*np.max(R)
 			observer.xMax = observer_config["max"][0]*np.max(R)
 			observer.yMin = observer_config["min"][1]*np.max(R)
@@ -303,9 +309,6 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 			observer.zMin = observer_config["min"][2]*np.max(R)
 			observer.zMax = observer_config["max"][2]*np.max(R)
 		else:
-			observer.nbx = observer_config["nb"][0]
-			observer.nby = observer_config["nb"][1]
-			observer.nbz = observer_config["nb"][2]
 			observer.xMin = observer_config["min"][0]
 			observer.xMax = observer_config["max"][0]
 			observer.yMin = observer_config["min"][1]

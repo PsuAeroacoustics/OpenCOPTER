@@ -87,7 +87,7 @@ def check_aerodas(polar_filename: str, tc_ratio: float):
 	plt.ylabel("Coefficient of lift")
 	plt.legend()
 	plt.grid()
-	#plt.savefig("Cl.png", ["dpi": 500])
+	plt.savefig("Cl.png", dpi=500)
 
 	plt.figure()
 	plt.plot(aoa_deg, c_d, label = "$AERODAS MODEL$")
@@ -96,8 +96,8 @@ def check_aerodas(polar_filename: str, tc_ratio: float):
 	plt.ylabel("Coefficient of drag")
 	plt.legend()
 	plt.grid()
-	#plt.savefig("Cd.png", ["dpi": 500])
-	plt.show()
+	plt.savefig("Cd.png", dpi=500)
+	#plt.show()
 
 def generate_polar(Re, n, NACA, filename, aoa_min, aoa_max):
 	xfoil_input_file, polar_output_filename = write_xfoil_inputs(Re, n, NACA, filename, aoa_min, aoa_max)
@@ -175,10 +175,26 @@ def main():
 		help="Thickness to chord ratio of the current airfoil",
 		required=False
 	)
+
+	parser.add_argument(
+		"-d",
+		action="store_true",
+		help="dry run, don't actually generate polar. Use in conjunction with -c to check previously generated polar",
+		default=False,
+		required=False
+	)
 	
 	args = parser.parse_args()
 
-	polar_output_filename = generate_polar(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max)
+	polar_output_filename = ""
+	if args.N is not None:
+		polar_output_filename = f"NACA{args.N}_{int(round(args.re))}_polar.dat"
+	else:
+		af_name = args.f.split("/")[-1].split(".")[0]
+		polar_output_filename = f"{af_name}_{int(round(args.re))}_polar.dat"
+
+	if not args.d:
+		polar_output_filename = generate_polar(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max)
 
 	if args.c:
 		if args.tc_ratio is None:
