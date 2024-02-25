@@ -54,37 +54,38 @@ void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS, I)(auto ref RS rotor_states, aut
 
        	double half_rotor_radius = rotor.blades[0].chunks[$-1].r[$-1]/2;
        	// check the relative distance of the x, y, zcoordinates for the rotors
-       	x_rotor[] = -half_rotor_radius*cos(psi_i)[];
-       	y_rotor[] = half_rotor_radius*sin(psi_i)[];
-       	z_rotor[] = chunk_of_zeros;
+		// For the coordinate transformation Do rotation and then translation
+       	x_rotor[] = -half_rotor_radius*cos(psi_i)[] ;
+       	y_rotor[] = half_rotor_radius*sin(psi_i)[] ;
+       	z_rotor[] = 0.0;
 		
        	foreach(inflow_idx,inflow; inflows){
            	if(inflow_idx != rotor_idx){
                	if(inflow_idx < num_rotors){
-					x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0] - rotors[inflow_idx].origin[0];
-					y_rotor_op[] = -y_rotor[] + rotors[rotor_idx].origin[1] - rotors[inflow_idx].origin[1];
-					z_rotor_op[] = -z_rotor[]*cos_aoa + x_rotor[]*sin_aoa + rotors[rotor_idx].origin[2] - rotors[inflow_idx].origin[2];
+					x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0];
+					y_rotor_op[] = -y_rotor[] + rotors[rotor_idx].origin[1];
+					z_rotor_op[] = -z_rotor[]*cos_aoa + x_rotor[]*sin_aoa + rotors[rotor_idx].origin[2];
 
-					x_inflow[] = x_rotor_op[]*rotor_inputs[inflow_idx].cos_aoa + z_rotor_op[]*rotor_inputs[inflow_idx].sin_aoa;
-					y_inflow[] = -y_rotor_op[];
-					z_inflow[] = x_rotor_op[]*rotor_inputs[inflow_idx].sin_aoa - z_rotor_op[]*rotor_inputs[inflow_idx].cos_aoa;
+					x_inflow[] = x_rotor_op[]*rotor_inputs[inflow_idx].cos_aoa + z_rotor_op[]*rotor_inputs[inflow_idx].sin_aoa - rotors[inflow_idx].origin[0];
+					y_inflow[] = -y_rotor_op[]  - rotors[inflow_idx].origin[1];
+					z_inflow[] = x_rotor_op[]*rotor_inputs[inflow_idx].sin_aoa - z_rotor_op[]*rotor_inputs[inflow_idx].cos_aoa - rotors[inflow_idx].origin[2];
 
 					immutable Chunk ind_vel = inflow.inflow_at(x_inflow,y_inflow,z_inflow,chunk_of_zeros,rotor_inputs[inflow_idx].angle_of_attack);
 					//writeln("ind_vel_rotor: ", ind_vel);
 
-                   	v_z[rotor_idx] += -ind_vel[].mean*rotor_inputs[inflow_idx].cos_aoa*abs(rotor_inputs[rotor_idx].angular_velocity*rotors[rotor_idx].radius);
-                   	v_x[rotor_idx] += -ind_vel[].mean*rotor_inputs[inflow_idx].sin_aoa*abs(rotor_inputs[rotor_idx].angular_velocity*rotors[rotor_idx].radius);
+                   	v_z[rotor_idx] += -ind_vel[].mean*rotor_inputs[inflow_idx].cos_aoa*abs(rotor_inputs[inflow_idx].angular_velocity*rotors[inflow_idx].radius);
+                   	v_x[rotor_idx] += -ind_vel[].mean*rotor_inputs[inflow_idx].sin_aoa*abs(rotor_inputs[inflow_idx].angular_velocity*rotors[inflow_idx].radius);
 					//debug writeln("v_x:", v_x);
 					//debug writeln("v_z:", v_z);
                	} else {
 
-					x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0] - wings[inflow_idx-num_rotors].origin[0];
-					y_rotor_op[] = -y_rotor[] + rotors[rotor_idx].origin[1] - wings[inflow_idx-num_rotors].origin[1];
-					z_rotor_op[] = -z_rotor[]*cos_aoa + x_rotor[]*sin_aoa + rotors[rotor_idx].origin[2] - wings[inflow_idx- num_rotors].origin[2];
+					x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0];
+					y_rotor_op[] = -y_rotor[] + rotors[rotor_idx].origin[1];
+					z_rotor_op[] = -z_rotor[]*cos_aoa + x_rotor[]*sin_aoa + rotors[rotor_idx].origin[2];
 
-					x_inflow[] = -x_rotor_op[]*wing_inputs[inflow_idx-num_rotors].cos_aoa - z_rotor_op[]*wing_inputs[inflow_idx-num_rotors].sin_aoa;
-					y_inflow[] = -y_rotor_op[];
-					z_inflow[] = -x_rotor_op[]*wing_inputs[inflow_idx-num_rotors].sin_aoa + z_rotor_op[]*wing_inputs[inflow_idx-num_rotors].cos_aoa;
+					x_inflow[] = -x_rotor_op[]*wing_inputs[inflow_idx-num_rotors].cos_aoa - z_rotor_op[]*wing_inputs[inflow_idx-num_rotors].sin_aoa - wings[inflow_idx-num_rotors].origin[0];
+					y_inflow[] = -y_rotor_op[] - wings[inflow_idx-num_rotors].origin[1];
+					z_inflow[] = -x_rotor_op[]*wing_inputs[inflow_idx-num_rotors].sin_aoa + z_rotor_op[]*wing_inputs[inflow_idx-num_rotors].cos_aoa - wings[inflow_idx- num_rotors].origin[2];
 					
 					//writeln("x: ", wing_inputs[inflow_idx-num_rotors].cos_aoa);
 					//writeln("y: ", wing_inputs[inflow_idx-num_rotors].sin_aoa);

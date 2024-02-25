@@ -196,6 +196,7 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
                         spanwise_filament.chunks[c_idx].x[]= chord_vr_nodes[sf_idx]*wing_geometry.wing_parts[0].chunks[c_idx].chord[] - spanwise_filament.chunks[c_idx].y[]*tan(wing_geometry.wing_parts[0].le_sweep_angle*PI/180.0);
                         //writeln("sf_idx = ", sf_idx, "x = ", spanwise_filament.chunks[c_idx].x[]);
                         spanwise_filament.chunks[c_idx].trail_end[]= spanwise_filament.chunks[c_idx].x[] + span[] + span[];
+                        spanwise_filament.chunks[c_idx].z[]= 0.0;
                     }
                 }
             }
@@ -210,6 +211,7 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
                         spanwise_filament.chunks[c_idx].x[]= chord_vr_nodes[sf_idx]*wing_geometry.wing_parts[0].chunks[c_idx].chord[] - spanwise_filament.chunks[c_idx].y[]*tan(wing_geometry.wing_parts[0].le_sweep_angle*PI/180.0);
                         //writeln("sf_idx = ", sf_idx, "x = ", spanwise_filament.chunks[c_idx].x[]);
                         spanwise_filament.chunks[c_idx].trail_end[]= spanwise_filament.chunks[c_idx].x[] + span[] + span[];
+                        spanwise_filament.chunks[c_idx].z[]= 0.0;
                     }
                 }
             }
