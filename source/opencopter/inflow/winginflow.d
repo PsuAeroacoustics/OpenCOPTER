@@ -88,18 +88,18 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                 foreach(if_idx, inflow; inflows){
                     x_wing_op[] = -ctrl_chunk.ctrl_pt_x[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_z[]*wing_input.sin_aoa + wing.origin[0];
                     y_wing_op[] = -ctrl_chunk.ctrl_pt_y[] + wing.origin[1];
-                    z_wing_op[] = ctrl_chunk.ctrl_pt_z[]*wing_input.cos_aoa * ctrl_chunk.ctrl_pt_x[]*wing_input.sin_aoa + wing.origin[2];
+                    z_wing_op[] = ctrl_chunk.ctrl_pt_z[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_x[]*wing_input.sin_aoa + wing.origin[2];
 
                     //auto inflow_ind_vel = inflow.inflow_at(minus_ctrl_x[],minus_ctrl_y[],ctrl_chunk.ctrl_pt_z[],chunk_of_zeros,0);
                     //how to get rotor angle of attack for each rotor
                     if(if_idx < num_rotors){
-                        x_wing_op[] = -ctrl_chunk.ctrl_pt_x[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_z[]*wing_input.sin_aoa - aircraft.rotors[if_idx].origin[0];
-                        y_wing_op[] = -ctrl_chunk.ctrl_pt_y[] - aircraft.rotors[if_idx].origin[1];
-                        z_wing_op[] = ctrl_chunk.ctrl_pt_z[]*wing_input.cos_aoa * ctrl_chunk.ctrl_pt_x[]*wing_input.sin_aoa - aircraft.rotors[if_idx].origin[2];
+                        x_wing_op[] = -ctrl_chunk.ctrl_pt_x[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_z[]*wing_input.sin_aoa  + wing.origin[0] ;
+                        y_wing_op[] = -ctrl_chunk.ctrl_pt_y[] + wing.origin[1];
+                        z_wing_op[] = ctrl_chunk.ctrl_pt_z[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_x[]*wing_input.sin_aoa + wing.origin[2];
 
-                        x_inflow[] = x_wing_op[]*ac_input.rotor_inputs[if_idx].cos_aoa + z_wing_op[]*ac_input.rotor_inputs[if_idx].sin_aoa;
-                        y_inflow[] = -y_wing_op[];
-                        z_inflow[] = x_wing_op[]*ac_input.rotor_inputs[if_idx].sin_aoa + x_wing_op[]*ac_input.rotor_inputs[if_idx].cos_aoa;
+                        x_inflow[] = x_wing_op[]*ac_input.rotor_inputs[if_idx].cos_aoa + z_wing_op[]*ac_input.rotor_inputs[if_idx].sin_aoa -  aircraft.rotors[if_idx].origin[0];
+                        y_inflow[] = -y_wing_op[] - aircraft.rotors[if_idx].origin[1];
+                        z_inflow[] = x_wing_op[]*ac_input.rotor_inputs[if_idx].sin_aoa + z_wing_op[]*ac_input.rotor_inputs[if_idx].cos_aoa - aircraft.rotors[if_idx].origin[2];
 
                         //writeln("x_inflow_pt= ", x_inflow,"\ny_inflow_pt= ", y_inflow,"\nz_inflow_pt= ", z_inflow);
 
@@ -107,17 +107,20 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                         //writeln("inflow_ind_vel_rotor: ", inflow_ind_vel);
                         //immutable cos_alpha = ac_input.rotor_inputs[if_idx].cos_aoa;
 	                    //immutable sin_alpha = ac_input.rotor_inputs[if_idx].sin_aoa;
-                        rotor_inflow_z[] += -inflow_ind_vel[] * ac_input.rotor_inputs[if_idx].cos_aoa * abs(ac_input.rotor_inputs[if_idx].angular_velocity * aircraft.rotors[if_idx].radius);
+
+                        Chunk inflow_z_op = -inflow_ind_vel[] * ac_input.rotor_inputs[if_idx].cos_aoa * abs(ac_input.rotor_inputs[if_idx].angular_velocity * aircraft.rotors[if_idx].radius);
+                        Chunk inflow_x_op = -inflow_ind_vel[] * ac_input.rotor_inputs[if_idx].sin_aoa * abs(ac_input.rotor_inputs[if_idx].angular_velocity * aircraft.rotors[if_idx].radius);
+                        rotor_inflow_z[] += inflow_z_op[]*wing_input.cos_aoa - inflow_x_op[]*wing_input.sin_aoa;
                         //rotor_inflow_y[] += -inflow_ind_vel.v_y[]*ac_input.rotor_inputs[if_idx].angular_velocity**ac_input.rotor_inputs.r_0[$];
-                        rotor_inflow_x[] += -inflow_ind_vel[] * ac_input.rotor_inputs[if_idx].sin_aoa * abs(ac_input.rotor_inputs[if_idx].angular_velocity * aircraft.rotors[if_idx].radius);
+                        rotor_inflow_x[] += -inflow_x_op[]*wing_input.cos_aoa - inflow_z_op[]*wing_input.sin_aoa;
                         //writeln(" rotor_inflow_x: ", rotor_inflow_x[], " rotor_inflow_z: ", rotor_inflow_z[]);
                     } else {
                         if( aircraft.wings[if_idx-num_rotors].origin != wing.origin){
-
+                            // FOR MULTIPLE WINGS THE COORDINATE TRANSFROMATION IS FIRST TRANSLATION FOLLOWED BY ROTATION. THIS IS DIFFERENT FROM THE CASE ABOVE. MAY NEED TO CHANGE IT ONCE THE CODE IS VALIDATED FOR SINGLE ROTOR AND SINGLE WING.
                             //writeln("calculating influence due to wing");
                             x_wing_op[] = -ctrl_chunk.ctrl_pt_x[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_z[]*wing_input.sin_aoa - aircraft.wings[if_idx - num_rotors].origin[0];
                             y_wing_op[] = -ctrl_chunk.ctrl_pt_y[] - aircraft.wings[if_idx - num_rotors].origin[1];
-                            z_wing_op[] = ctrl_chunk.ctrl_pt_z[]*wing_input.cos_aoa * ctrl_chunk.ctrl_pt_x[]*wing_input.sin_aoa - aircraft.wings[if_idx - num_rotors].origin[2];
+                            z_wing_op[] = ctrl_chunk.ctrl_pt_z[]*wing_input.cos_aoa - ctrl_chunk.ctrl_pt_x[]*wing_input.sin_aoa - aircraft.wings[if_idx - num_rotors].origin[2];
 
                             x_inflow[] = -x_wing_op[]*ac_input.wing_inputs[if_idx-num_rotors].cos_aoa - z_wing_op[]*ac_input.wing_inputs[if_idx - num_rotors].sin_aoa;
                             y_inflow[] = -y_wing_op[];
@@ -135,7 +138,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                 }
                 
                 //writeln("rotor_inflow_x = ", rotor_inflow_x, "\trotor_inflow_z = ", rotor_inflow_z);
-                immutable Chunk v_x = -(rotor_inflow_x[] - freestream_velocity[0]);
+                immutable Chunk v_x = rotor_inflow_x[] + freestream_velocity[0];
                 immutable Chunk v_z = rotor_inflow_z[] + freestream_velocity[2];
                 //writeln(" v_x: ", v_x[], " v_z: ", v_z[]);
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_up = rotor_inflow_z;

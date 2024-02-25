@@ -260,6 +260,8 @@ alias PyWingState = WingStateT!(ArrayContainer.array);
 alias PyWingPartState = WingPartStateT!(ArrayContainer.array);
 alias PyWingInputState = WingInputStateT!(ArrayContainer.array);
 
+alias DWingPartGeometry = WingPartGeometryT!(ArrayContainer.none);
+
 void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
 }
@@ -433,6 +435,14 @@ void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, o
 	opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_input);
 }
 
+opencopter.vtk.VtkWing build_base_vtu_wing(PyWingGeometry* wing){
+	return opencopter.vtk.build_base_vtu_wing(wing);
+}
+
+void write_wing_vtu(string base_filename, size_t iteration, size_t wing_idx, opencopter.vtk.VtkWing wing, PyWingState* wing_state, PyWingInputState wing_input){
+	opencopter.vtk.write_wing_vtu(base_filename, iteration, wing_idx, wing, wing_state, wing_input);
+}
+
 opencopter.vtk.VtkWake build_base_vtu_wake(PyWake* wake) {
 	return opencopter.vtk.build_base_vtu_wake(wake);
 }
@@ -441,6 +451,13 @@ void write_wake_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkWa
 	opencopter.vtk.write_wake_vtu(base_filename, iteration, vtk_wake, wake);
 }
 
+opencopter.vtk.VtkWingWake build_base_vtu_wing_wake(PyWingGeometry* wing, PyWingLiftSurf* wing_lift_surf){
+	return opencopter.vtk.build_base_vtu_wing_wake(wing, wing_lift_surf);
+}
+
+void write_wing_wake_vtu(string base_filename, size_t iteration, size_t wing_idx,  opencopter.vtk.VtkWingWake wing_wake, PyWingGeometry* wing_geom, PyWingLiftSurf* wing_lift_surf, PyWingInputState wing_input){
+	opencopter.vtk.write_wing_wake_vtu(base_filename, iteration, wing_idx, wing_wake, wing_geom, wing_lift_surf, wing_input);
+}
 
 void wrap_array(T)() {
 	static if(isBasicType!T) {
@@ -509,9 +526,15 @@ Location location_right_wing(){
 }
 
 Location location_left_wing(){
-	return Location(opencopter.aircraft.geometry.Location.right);
+	return Location(opencopter.aircraft.geometry.Location.left);
 }
 
+PyWingPartGeometry build_wing_part_geometry(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, Location Pyloc){
+	auto loc = Pyloc.loc;
+	auto wing_part = PyWingPartGeometry(span_elements, chordwise_nodes, wing_root_origin, average_chord, wing_root_chord, wing_tip_chord, le_sweep_angle, te_sweep_angle, wing_span, loc);
+
+	return wing_part;
+}
 //add wing_induced velocities
 
 extern(C) void PydMain() {
@@ -548,6 +571,67 @@ extern(C) void PydMain() {
 		:param vtk_rotor: The :class:`VtkRotor` object to save out
 		:param rotor_state: The :class:`RotorState` object containing the rotor state data to save
 		:param rotor_input: the :class:`RotorInput` object containing the rotor position data
+	});
+
+	def!(build_base_vtu_wing_wake, Docstring!q{
+		Construct and allocate all required data for a :class:`VtkWingWake`.
+
+		:param wing;: An instance of a :class:`WingGeometry` object
+		:param wing_lift_surf: An istance of a : class: `WingLiftSurf` object
+
+		:return: An initialized :class:`VtkWing` object
+	});
+
+	def!(write_wing_wake_vtu, Docstring!q{
+		Takes the :class:`WingGeometry` and :class:`WingLiftSurf` data, converts it a :class:`VtkWingWake`,
+		and saves it to a vtu file.
+
+		The filaname that the data is saved to is constructed by the function such that::
+
+			filename = base_filename + "_" + rotor_idx + "_" + iteration + ".vtu"
+
+		This ensures that timeseries files can be iterpreted by paraview correctly
+
+		.. caution::
+			
+			This function has a relatively high runtime cost, use sparingly
+
+		:param base_filename: The filename to save the data to
+		:param iteration: The iteration of the saved data
+		:param wing_idx: The index of the wing being saved
+		:param vtk_wing_wake: The :class:`VtkWingWake` object to save out
+		:param wing_geom: The :class:`WingGeometry` object containing the wing geometric data to save
+		:param wing_lift_surf: the :class:`WingLiftSurf` object containing vortex structure representing wing
+		:param wing_input: The :class`WingInputState` object containgin the wing input data
+	});
+
+	def!(build_base_vtu_wing, Docstring!q{
+		Construct and allocate all required data for a :class:`VtkWing`.
+
+		:param rotor: An instance of a :class:`WingGeometry` object
+		:return: An initialized :class:`VtkWing` object
+	});
+
+	def!(write_wing_vtu, Docstring!q{
+		Takes the :class:`WingState` and :class:`WingInput` data, converts it a :class:`WingRotor`,
+		and saves it to a vtu file.
+
+		The filaname that the data is saved to is constructed by the function such that::
+
+			filename = base_filename + "_" + rotor_idx + "_" + iteration + ".vtu"
+
+		This ensures that timeseries files can be iterpreted by paraview correctly
+
+		.. caution::
+			
+			This function has a relatively high runtime cost, use sparingly
+
+		:param base_filename: The filename to save the data to
+		:param iteration: The iteration of the saved data
+		:param rotor_idx: The index of the rotor being saved
+		:param vtk_rotor: The :class:`VtkWing` object to save out
+		:param rotor_state: The :class:`WingState` object containing the rotor state data to save
+		:param rotor_input: the :class:`WingInput` object containing the rotor position data
 	});
 
 	def!(build_base_vtu_wake, Docstring!q{
@@ -950,6 +1034,8 @@ extern(C) void PydMain() {
 
 	def!(location_left_wing);
 
+	def!(build_wing_part_geometry);
+
 	module_init;
 
 	wrap_class!(
@@ -1000,6 +1086,34 @@ extern(C) void PydMain() {
 				Do not instantiate one of these yourself. Instead use :func:`build_base_vtu_rotor`
 		}
 	);
+
+	wrap_class!(
+		opencopter.vtk.VtkWing,
+		Docstring!q{
+			This is an opaque type that holds all the relevant data
+			for writing out a vtu file that holds the wing geometric data
+			as well as various spanwise and chordwise data.
+
+			.. attention::
+				
+				Do not instantiate one of these yourself. Instead use :func:`build_base_vtu_wing`
+		}
+	);
+
+	wrap_class!(
+		opencopter.vtk.VtkWingWake,
+		Docstring!q{
+			This is an opaque type that holds all the relevant data
+			for writing out a vtu file that holds the wing geometric data
+			as well as various spanwise and chordwise data.
+
+			.. attention::
+				
+				Do not instantiate one of these yourself. Instead use :func:`build_base_vtu_wing_wake`
+		}
+	);
+
+	
 
 	wrap_class!(
 		opencopter.vtk.VtkWake,

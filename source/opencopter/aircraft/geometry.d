@@ -95,7 +95,7 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_n
 			}
 		}
 		else if(side == Location.right){
-			writeln("population left wing part ctrl point geometry");
+			writeln("populating right wing part ctrl point geometry");
 			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
 				foreach(crd_idx;0.._chordwise_nodes){
 					foreach(sp_idx; 0.._spanwise_chunks){
