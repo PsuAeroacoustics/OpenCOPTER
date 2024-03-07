@@ -650,8 +650,6 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 }
 
 immutable double alpha_l = 1.25643;
-//immutable double a1 =  5.0e-5;
-//immutable double a1 = 4.0e-4;
 
 import core.thread;
 import core.sync.barrier;
@@ -671,7 +669,8 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 		immutable omega_sgn = std.math.sgn(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
 
-		immutable double inboard_factor = 1.0 - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/2.0;//ac.rotors[rotor_idx].blades[0].chunks[$-1].r[$-2];
+		//immutable double inboard_factor = 0.95;//1.0 - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/2.0;//ac.rotors[rotor_idx].blades[0].chunks[$-1].r[$-2];
+		immutable double inboard_factor = 1.0 - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/2.0;//ac.rotors[rotor_idx].blades[0].chunks[$-1].r[$-2]
 
 		immutable Chunk free_stream_x = -ac_input_state.rotor_inputs[rotor_idx].freestream_velocity/(ac.rotors[rotor_idx].radius);
 		
@@ -853,7 +852,7 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 				current_tip_filament.chunks[c_idx].v_z[1..$] = v_z[0..$-1];
 				current_tip_filament.chunks[c_idx].x_e[1..$] = chunk.x_e[0..$-1];
 				current_tip_filament.chunks[c_idx].gamma[1..$] = chunk.gamma[0..$-1];
-				//current_tip_filament.chunks[c_idx].l_0[1..$] = chunk.l_0[0..$-1];
+				current_tip_filament.chunks[c_idx].l_0[1..$] = chunk.l_0[0..$-1];
 
 				current_tip_filament.chunks[c_idx].dx[0..$-1] = current_tip_filament.chunks[c_idx].x[0..$-1] - current_tip_filament.chunks[c_idx].x[1..$];
 				current_tip_filament.chunks[c_idx].dy[0..$-1] = current_tip_filament.chunks[c_idx].y[0..$-1] - current_tip_filament.chunks[c_idx].y[1..$];
@@ -869,9 +868,9 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 				//immutable Chunk Rev = current_tip_filament.chunks[c_idx].gamma[]*omega*ac.rotors[rotor_idx].radius*ac.rotors[rotor_idx].radius/atmo.kinematic_viscosity;
 				immutable Chunk Rev = current_tip_filament.chunks[c_idx].gamma[]*ac.rotors[rotor_idx].radius*ac.rotors[rotor_idx].radius/atmo.kinematic_viscosity;
 
-				immutable Chunk tmp_phi = chunk.phi[] + dt*(current_tip_filament.chunks[c_idx].l_0[]/l[])*abs(omega);
+				immutable Chunk tmp_phi = chunk.phi[] + dt*1.0/(abs(omega)*(2 - current_tip_filament.chunks[c_idx].l_0[]/l[])[])[];//*abs(omega);
 
-				current_tip_filament.chunks[c_idx].l_0[1..$] = l[0..$-1];
+				//current_tip_filament.chunks[c_idx].l_0[1..$] = l[0..$-1];
 
 				immutable Chunk r_0 = current_tip_filament.chunks[c_idx].r_0;
 				immutable Chunk delta = 1 + wake_history.a1*abs(Rev)[];
@@ -897,8 +896,8 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					current_tip_filament.chunks[c_idx + 1].v_z[0] = v_z[$-1];
 					current_tip_filament.chunks[c_idx + 1].x_e[0] = chunk.x_e[$-1];
 					current_tip_filament.chunks[c_idx + 1].gamma[0] = chunk.gamma[$-1];
-					//current_tip_filament.chunks[c_idx + 1].l_0[0] = chunk.l_0[$-1];
-					current_tip_filament.chunks[c_idx + 1].l_0[0] = l[$-1];
+					current_tip_filament.chunks[c_idx + 1].l_0[0] = chunk.l_0[$-1];
+					//current_tip_filament.chunks[c_idx + 1].l_0[0] = l[$-1];
 					current_tip_filament.chunks[c_idx + 1].r_0[0] = chunk.r_0[$-1];
 					current_tip_filament.chunks[c_idx + 1].phi[0] = tmp_phi[$-1];
 				} else {

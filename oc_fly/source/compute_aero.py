@@ -27,6 +27,8 @@ def build_blade_from_json(blade_object, requested_elements, geom_directory, r_id
         r_c = blade_object["r_c"]
 
     r = generate_radius_points(requested_elements, r_c)
+
+    #print(f'r = {r}')
     elements = len(r)
 
     non_dim_length = 1.0 - r_c
@@ -203,6 +205,9 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
     # wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
     # wake_history_length = wake_history_length.tolist()
 
+    # wake_history_length[0] = 1800
+    # wake_history_length[1] = 2880
+    
     wake_history_revs = np.ceil(np.asarray(wake_history_length)*d_psi/(2.0*math.pi)).astype(int)
     log_file.write(f'wake_history_revs: {wake_history_revs}\n')
     
@@ -298,6 +303,7 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
             rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 
     rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+    #rotorcraft_inflows = [HuangPeters(6, 4, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 
     a1 = 6.5e-5
     if "a1" in computational_parameters:
@@ -316,7 +322,7 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         rotor_wake_history
     )
 
-    rotorcraft_thrusts, rotorcraft_namelists = simulate_aircraft.simulate_aircraft(
+    rotorcraft_thrusts, rotorcraft_namelists, results_dictionary = simulate_aircraft.simulate_aircraft(
         log_file,
         vehicle,
         atmo,
@@ -330,11 +336,12 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
         computational_parameters,
         observer,
         acoustics,
-        wake_history_length
+        wake_history_length,
+        results
     )
 
     if do_compute:
-        results_dictionary = {}
+        # results_dictionary = {}
         for r_idx in range(num_rotors):
             actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
             wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
@@ -344,9 +351,11 @@ def compute_aero(log_file, args, output_base, do_compute, geometry, flight_condi
                 wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
                 wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
                 wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+                wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 
             results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
-
+            results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
+            
         results_dictionary["rotor_c_t"] = rotorcraft_thrusts
         results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
         results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]

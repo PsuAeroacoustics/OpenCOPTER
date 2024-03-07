@@ -338,6 +338,32 @@ double[] get_wake_v_z_component(ref PyVortexFilament filament) {
 	return opencopter.wake.get_wake_component!"v_z"(filament);
 }
 
+
+void fill_wake_x_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"x"(filament, data);
+}
+
+void fill_wake_y_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"y"(filament, data);
+}
+
+void fill_wake_z_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"z"(filament, data);
+}
+
+void fill_wake_gamma_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"gamma"(filament, data);
+}
+
+void fill_wake_r_c_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"r_c"(filament, data);
+}
+
+void fill_wake_v_z_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"v_z"(filament, data);
+}
+
+
 void step(PyAircraftState* ac_state, PyAircraft* aircraft, PyAircraftInputState* ac_input_state, Inflow[] inflows, PyWakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt) {
 	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, inflows, *wake_history, *atmo, iteration, dt);
 }
@@ -372,6 +398,8 @@ void wrap_array(T)() {
 			OpIndexAssign!(T, size_t),
 			Def!(Array!(T).next),
 			Def!(Array!(T).__iter__),
+			Def!(Array!(T).__len__),
+			Def!(Array!(T).len),
 			Def!(Array!(T).length),
 			Repr!(Array!(T).toString)
 		);
@@ -394,6 +422,8 @@ void wrap_array(T)() {
 			OpIndexAssign!(T*, size_t),
 			Def!(Array!(T).next),
 			Def!(Array!(T).__iter__),
+			Def!(Array!(T).__len__),
+			Def!(Array!(T).len),
 			Def!(Array!(T).length),
 			Repr!(Array!(T).toString)
 		);
@@ -836,6 +866,50 @@ extern(C) void PydMain() {
 	});
 	
 
+
+	def!(fill_wake_x_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament x position component to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract the x position component from
+		:return: List of filament x positions
+	});
+	
+	def!(fill_wake_y_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament y position component to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract the y position component from
+		:return: List of filament y positions
+	});
+	
+	def!(fill_wake_z_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament z position component to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract the z position component from
+		:return: List of filament z positions
+	});
+	
+	def!(fill_wake_gamma_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament cirulation strength (:math:`\Gamma`) to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`\Gamma` from
+		:return: List of filament :math:`\Gamma`
+	});
+
+	def!(fill_wake_r_c_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament vortex core size (:math:`r_c`) to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`r_c` from
+		:return: List of filament core sizes
+	});
+
+	def!(fill_wake_v_z_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract induced velocity (:math:`v_z`) acting upon the filament to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`v_z` from
+		:return: List of induced velocities
+	});
+
+
 	def!(step, Docstring!(q{
 		Step the simulation by one timestep
 
@@ -1111,12 +1185,27 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		BladeStateChunk,
 		Member!("dC_T", Docstring!q{A chunk of spanwise sectional thrust coefficient}),
+		Member!("dC_T_dot", Docstring!q{A chunk of spanwise sectional thrust coefficient time derivative}),
 		Member!("dC_Q", Docstring!q{A chunk of spanwise sectional power/torque coefficient}),
 		Member!("dC_L", Docstring!q{A chunk of spanwise sectional lift coefficient}),
-		Member!("dC_D", Docstring!q{A chunk of spanwise sectional drag coefficient}),
+		Member!("dC_L_dot", Docstring!q{A chunk of spanwise sectional lift coefficient time derivative}),
+		Member!("dC_N", Docstring!q{A chunk of spanwise sectional normal force coefficient}),
+		Member!("dC_c", Docstring!q{A chunk of spanwise sectional chordwise force coefficient}),
+		Member!("dC_Mx", Docstring!q{A chunk of spanwise sectional x moment coefficient}),
+		Member!("dC_My", Docstring!q{A chunk of spanwise sectional y moment coefficient}),
+		Member!("u_p", Docstring!q{A chunk of spanwise sectional perpendicular inflow}),
+		Member!("u_t", Docstring!q{A chunk of spanwise sectional tangential inflow}),
 		Member!("aoa", Docstring!q{A chunk of spanwise sectional angle of attack}),
+		Member!("aoa_eff", Docstring!q{A chunk of spanwise sectional effective angle of attack}),
+		Member!("inflow_angle", Docstring!q{A chunk of spanwise sectional inflow angle}),
 		Member!("gamma", Docstring!q{A chunk of spanwise sectional circulation}),
-		Member!("d_gamma", Docstring!q{A chunk of spanwise sectional change in circulation})
+		Member!("d_gamma", Docstring!q{A chunk of spanwise sectional change in circulation}),
+		Member!("x", Docstring!q{The current x position of the blade in world space}),
+		Member!("y", Docstring!q{The current y position of the blade in world space}),
+		Member!("z", Docstring!q{The current z position of the blade in world space}),
+		Member!("theta", Docstring!q{The currect pitch of the spanwise element}),
+		Member!("d_gamma", Docstring!q{Spanwise change in circulation}),
+		Member!("gamma", Docstring!q{Spanwise circulation}),
 	);
 
 	wrap_struct!(

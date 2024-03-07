@@ -313,27 +313,8 @@ def main():
 			if 'results' in ac_param:
 				results = ac_param['results']
 
-		if args.ci is None:
-			for flight_condition in flight_conditions:
-				if input_observer is not None:
-					observer = input_observer
-				elif 'observer_file' in flight_condition:
-					ac_observers = None
-					with open(flight_condition['observer_file']) as param_file:
-						ac_observers = json.load(param_file)
-						observer = ac_observers["observer"]
-
-				if input_acoustics is not None:
-					acoustics = input_acoustics
-				elif 'acoustics_file' in flight_condition:
-					ac_acoustics = None
-					with open(flight_condition['acoustics_file']) as param_file:
-						ac_acoustics = json.load(param_file)
-						acoustics = ac_acoustics["acoustic_config"]
-
-				flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))
-		else:
-			flight_condition = flight_conditions[args.ci]
+		#if args.ci is None:
+		for flight_condition in flight_conditions:
 			if input_observer is not None:
 				observer = input_observer
 			elif 'observer_file' in flight_condition:
@@ -351,7 +332,29 @@ def main():
 					acoustics = ac_acoustics["acoustic_config"]
 
 			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))
+		# else:
+		# 	print(f'Only running case {args.ci}')
+		# 	flight_condition = flight_conditions[args.ci]
+		# 	if input_observer is not None:
+		# 		observer = input_observer
+		# 	elif 'observer_file' in flight_condition:
+		# 		ac_observers = None
+		# 		with open(flight_condition['observer_file']) as param_file:
+		# 			ac_observers = json.load(param_file)
+		# 			observer = ac_observers["observer"]
 
+		# 	if input_acoustics is not None:
+		# 		acoustics = input_acoustics
+		# 	elif 'acoustics_file' in flight_condition:
+		# 		ac_acoustics = None
+		# 		with open(flight_condition['acoustics_file']) as param_file:
+		# 			ac_acoustics = json.load(param_file)
+		# 			acoustics = ac_acoustics["acoustic_config"]
+
+		# 	flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))
+
+	if args.ci is not None:
+		flat_cases = [flat_cases[args.ci]]
 	# sort cases by total number of wake points. This will helps with load balancing
 	# across many cores
 	flat_cases = sorted(flat_cases, key=lambda tup: tup[3])
