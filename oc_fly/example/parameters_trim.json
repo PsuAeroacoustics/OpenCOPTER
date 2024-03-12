@@ -4,16 +4,20 @@
     "spanwise_elements": 48,
     "shed_history_angle": 45.0,
     "convergence_criteria": 1.0e-4,
-    "trim_algo": "he"
+    "trim_algo": "he",
+    "convergence_type": "wake",
+		"r_0": 1.0,
+		"a1": 1.0e-4,
+    "post_conv_revolutions": 2
   },
   "flight_conditions": [
     {
-      "aoa": -5.0,
-      "density": 1.125,
-      "omegas": [ 109.12, -109.12 ],
+      "aoa": -3.0,
+      "density": 1.225,
+      "omegas": [ 159.12, -109.12 ],
       "sos": 343,
-      "c_t": [0.025, 0.025],
-      "V_inf": 30.0
+      "c_t": [0.008, 0.025],
+      "V_inf": 15.0
     }
   ],
   "results": {

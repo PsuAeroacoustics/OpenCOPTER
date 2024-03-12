@@ -8,8 +8,8 @@
 				"number_of_blades": 2,
 				"blade": {
 					"r_c": 0.2,
-					"AR": 4,
-					"theta_tw": -5.0,
+					"AR": 10,
+					"theta_tw": -12.0,
 					"airfoils": [
 						{
 							"type": "aerodas",

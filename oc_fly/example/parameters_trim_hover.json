@@ -3,15 +3,19 @@
     "d_psi": 1.0,
     "spanwise_elements": 48,
     "shed_history_angle": 45.0,
-    "convergence_criteria": 1.0e-4
+    "convergence_criteria": 1.0e-4,
+    "convergence_type": "wake",
+		"r_0": 1.0,
+		"a1": 1.0e-4,
+    "post_conv_revolutions": 2
   },
   "flight_conditions": [
     {
       "aoa": 0.0,
-      "density": 1.125,
-      "omegas": [ 109.12, -109.12 ],
+      "density": 1.225,
+      "omegas": [ 159.12, -109.12 ],
       "sos": 343,
-      "c_t": [0.02, 0.02],
+      "c_t": [0.008, 0.008],
       "V_inf": 0.0
     }
   ],

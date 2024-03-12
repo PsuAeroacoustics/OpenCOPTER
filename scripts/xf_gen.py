@@ -101,6 +101,13 @@ def check_aerodas(polar_filename: str, tc_ratio: float, NACA: str | None):
 	plt.savefig("Cd.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
 	#plt.show()
 
+def generate_polar(Re, n, NACA, filename, aoa_min, aoa_max, xf):
+	xfoil_input_file, polar_output_filename = write_xfoil_inputs(Re, n, NACA, filename, aoa_min, aoa_max)
+
+	run_xfoil(xf, xfoil_input_file)
+	return polar_output_filename
+
+
 def main():
 	parser = argparse.ArgumentParser("xf_gen", description="Xfoil data generator for AERODAS model input")
 
@@ -155,7 +162,7 @@ def main():
 		default=15,
 		required=False
 	)
-
+	
 	parser.add_argument(
 		"-c",
 		action="store_true",
@@ -170,13 +177,26 @@ def main():
 		help="Thickness to chord ratio of the current airfoil",
 		required=False
 	)
+
+	parser.add_argument(
+		"-d",
+		action="store_true",
+		help="dry run, don't actually generate polar. Use in conjunction with -c to check previously generated polar",
+		default=False,
+		required=False
+	)
 	
 	args = parser.parse_args()
 
-	xfoil_input_file, polar_output_filename = write_xfoil_inputs(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max)
+	polar_output_filename = ""
+	if args.N is not None:
+		polar_output_filename = f"NACA{args.N}_{int(round(args.re))}_polar.dat"
+	else:
+		af_name = args.f.split("/")[-1].split(".")[0]
+		polar_output_filename = f"{af_name}_{int(round(args.re))}_polar.dat"
 
-	print("Running Xfoil")
-	run_xfoil(args.xf, xfoil_input_file)
+	if not args.d:
+		polar_output_filename = generate_polar(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max, args.xf)
 
 	if args.c:
 		if args.tc_ratio is None:

@@ -342,7 +342,6 @@ unittest {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
 
-	//immutable Chunk x = 2.0*_x[] - 1.0;
 	Chunk p = 0;
 	Chunk r_bar = 1.0 - x[]*x[];
 	r_bar = sqrt(r_bar);
@@ -435,11 +434,9 @@ private struct CartisianCoords {
 	immutable Chunk tmp2 = opencopter.math.sqrt(tmp1);
 	immutable Chunk nu_tmp = one_m_s[] + tmp2[];
 	immutable Chunk eta_tmp = -one_m_s[] + tmp2[];
-	//immutable Chunk nu_tmp = 1.0 - S[] + tmp2[];
-	//immutable Chunk eta_tmp = S[] - 1.0 + tmp2[];
 
 	Chunk nu = (-sign(coords.z)[]/sqrt(2.0))*sqrt(nu_tmp)[];
-	//Chunk nu = (-sgn(coords.z)[]/sqrt(2.0))*sqrt(nu_tmp)[];
+
 	nu = nu[].map!(a => a > 1.0 ? 1.0 : a).map!(a => a < -1.0 ? -1.0 : a).staticArray!Chunk[];
 	immutable Chunk eta = (1.0/sqrt(2.0))*sqrt(eta_tmp)[];
 
@@ -479,7 +476,6 @@ private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	iterate_evens!(
 		(m, n, idx) {
 			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			//immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
 			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
 
 			immutable Chunk alpha = coefficients[idx];
@@ -495,9 +491,7 @@ private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 				immutable Chunk b_sin = beta[]*sin_mpsi[];
 
 				V[] += Pmn[]*Qmn_bar[]*(a_cos[] + b_sin[]);
-				//V[] += Pmn[]*Qmn_bar[]*(alpha[]*cos_mpsi[] + beta[]*sin_mpsi[]);
 			}
-			//V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
 		}
 	)(infl.Me, _idx);
 
@@ -512,18 +506,16 @@ private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	auto _idx = iterate_odds!(
 		(m, n, idx) {
 			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			//immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
 			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
-
 			immutable Chunk alpha = coefficients[idx];
-			//V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+
 			if(m == 0) {
-				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
 				V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
 			} else {
 				immutable Chunk sin_mpsi = infl.sin_mpsi_buff[m];
 				immutable Chunk beta = coeffiecients_sin[sin_idx];
-				immutable Chunk Qmn_bar = infl.Qmn_bar[m][m+1][];
+				immutable Chunk Qmn_bar = infl.Qmn_bar[m][n][];
 				sin_idx++;
 				V[] += Pmn[]*Qmn_bar[]*(alpha[]*cos_mpsi[] + beta[]*sin_mpsi[]);
 			}
@@ -534,18 +526,16 @@ private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	iterate_evens!(
 		(m, n, idx) {
 			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			//immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
 			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
-
 			immutable Chunk alpha = coefficients[idx];
-			//V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
+
 			if(m == 0) {
-				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
+				immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
 				V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
 			} else {
 				immutable Chunk sin_mpsi = infl.sin_mpsi_buff[m];
 				immutable Chunk beta = coeffiecients_sin[sin_idx];
-				immutable Chunk Qmn_bar = infl.Qmn_bar[m][m+1][];
+				immutable Chunk Qmn_bar = infl.Qmn_bar[m][n][];
 				sin_idx++;
 				V[] += Pmn[]*Qmn_bar[]*(alpha[]*cos_mpsi[] + beta[]*sin_mpsi[]);
 			}
@@ -554,66 +544,7 @@ private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 
 	return V;
 }
-/+
-@nogc private auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
 
-	Chunk V = 0;
-
-	auto _idx = iterate_odds!(
-		(m, n, idx) {
-			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
-			immutable Chunk Pmn = infl.P_nh_mn_bar[m][n];
-
-			immutable Chunk alpha = coefficients[idx];
-			V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
-		}
-	)(infl.Mo, 0);
-
-	iterate_evens!(
-		(m, n, idx) {
-			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][m+1][]*cos_mpsi[];
-			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
-
-			immutable Chunk alpha = coefficients[idx];
-			V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
-		}
-	)(infl.Me, _idx);
-
-	return V;
-}
-
-@nogc private auto compute_velocities_md(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
-
-	Chunk V = 0;
-
-	auto _idx = iterate_odds!(
-		(m, n, idx) {
-			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
-			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
-
-			immutable Chunk alpha = coefficients[idx];
-			V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
-
-		}
-	)(infl.Mo, 0);
-
-	iterate_evens!(
-		(m, n, idx) {
-			immutable Chunk cos_mpsi = infl.mpsi_buff[m];
-			immutable Chunk Qmn_cos_mpsi = infl.Qmn_bar[m][n][]*cos_mpsi[];
-			immutable Chunk Pmn = infl.P_md_mn_bar[m][n];
-
-			immutable Chunk alpha = coefficients[idx];
-			V[] += alpha[]*Pmn[]*Qmn_cos_mpsi[];
-		}
-	)(infl.Me, _idx);
-
-	return V;
-}
-+/
 private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, T[] coefficients_md_sin, T[] coefficients_nh_sin, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
 
 	// Recomended buffer zone in Huang's dissertation
@@ -676,6 +607,7 @@ private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 		} else {
 			immutable Chunk mpsi = m.to!double*coords.psi[];
 			immutable Chunk[2] sin_cos = sincos(mpsi);
+
 			infl.mpsi_buff[m] = sin_cos[1];
 			infl.sin_mpsi_buff[m] = sin_cos[0];
 		}
@@ -695,22 +627,6 @@ private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 	immutable double sin_xi_2 = sin_chi*sin_chi;
 
 	immutable Chunk f =
-		/+zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[], x[], s_0[])
-		.map!(
-			(sxgy) {
-				if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || ((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14)) || (sxgy[5] > -sxgy[6]) /+|| (sxgy[4] > 0.0)+/) {
-					return 0.0;
-				} else {
-					if(abs(sxgy[3]) <= 1.0) {
-						return sxgy[1]/(sxgy[1] + sxgy[0]*sxgy[2]);
-					} else {
-						return sxgy[1]/(sxgy[1] + (sxgy[0] + 1.5*sqrt(sxgy[3]*sxgy[3] - 1.0))*sxgy[2]);
-					}
-				}
-				assert(false);
-			}
-		)
-		.staticArray!Chunk;+/
 		zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[])
 		.map!(
 			(sxgy) {
@@ -734,39 +650,17 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 
 	immutable auto coords = to_eliptical(ccoords);
 
-	// if(infl.debug_coords) {
-	// 	writeln("cart coords: ", ccoords);
-	// 	writeln("elip coords: ", coords);
-	// }
-
 	immutable Chunk rho_axial = 1;
 
 	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
-	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
-	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
-	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
 	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	// Chunk s_0 = 0;
 	
-	// if(above_disk) {
-	// 	//s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;//[] - z_0[]*infl.tan_chi;
-	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
-	// } else {
-	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
-	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
-	// }
-
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
 	immutable Chunk sigma = -ccoords.x[] - s_0[];
 	immutable Chunk sigma_p_s = sigma[] + s_0[];
 
-	//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
-	
-	//Chunk f = 0.0;
-	//Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
 	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z, ccoords.x, s_0);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 	
@@ -774,11 +668,10 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 	Chunk V_ds = 0.0;
 	if(compute_ds) {
 
-		//f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
 		double devisor;
 		devisor = infl.advance_ratio;
 
-		Chunk t_delay = t[] - sigma[]*infl.sin_chi;///devisor;
+		Chunk t_delay = t[] - sigma[]*infl.sin_chi;
 
 		foreach(c_idx, ref t_d; t_delay) {
 			if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
@@ -811,9 +704,7 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 		immutable Chunk v_ds_bl = compute_velocities_bl(infl,
 			infl.time_delay_a_2[0..infl.total_states],
 			infl.time_delay_alpha_2[0..infl.total_states],
-			
-			//infl.c_zero,
-			//infl.c_zero,
+
 			infl.time_delay_b_2[0..infl.total_sin_states],
 			infl.time_delay_beta_2[0..infl.total_sin_states],
 			
@@ -823,9 +714,7 @@ private auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 		immutable Chunk v_ds_bl_a_1 = compute_velocities_bl(infl,
 			infl.time_delay_a_2[infl.total_states..$],
 			infl.time_delay_alpha_2[infl.total_states..$],
-			
-			//infl.c_zero,
-			//infl.c_zero,
+
 			infl.time_delay_b_2[infl.total_sin_states..$],
 			infl.time_delay_beta_2[infl.total_sin_states..$],
 			
@@ -858,49 +747,26 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 	immutable Chunk rho_axial = 1;
 
 	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
-	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + z_0[]*z_0[];
-	//immutable Chunk y2z2 = ccoords.y[]*ccoords.y[];
-	immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
 	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	//immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
-	//immutable Chunk s_0 = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
-
-	// Chunk s_0 = 0;
-	
-	// if(above_disk) {
-	// 	//s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;//[] - z_0[]*infl.tan_chi;
-	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[];
-	// } else {
-	// 	s_0[] = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] - z_0[]*infl.tan_chi;
-	// 	//s_0[] = zip(y2z2[], rho2[], ccoords.y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z_0[]*infl.tan_chi;
-	// }
-
 
 	immutable Chunk neg_s_0 = -s_0[];
 	immutable Chunk neg_y = -ccoords.y[];
 	immutable Chunk sigma = -ccoords.x[] - s_0[];
 	immutable Chunk sigma_p_s = sigma[] + s_0[];
 
-	//Chunk f = 0.0;
-	//Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, z_0, x_0, s_0);
 	Chunk f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z, ccoords.x, s_0);
 
-	//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
 	immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
 
 	immutable Chunk V_bl = compute_velocities_bl(infl, delta, lambda, delta_s, lambda_s, ccoords, coords);
 	Chunk V_ds = 0.0;
 
 	if(compute_ds) {
-
-		//f = final_blend(infl.cos_chi, infl.sin_chi, ccoords.y, sigma, ccoords.z);
-
 		double devisor;
 		devisor = infl.advance_ratio;
 
-		Chunk t_delay = t[] + sigma[]*infl.sin_chi;///devisor;
+		Chunk t_delay = t[] + sigma[]*infl.sin_chi;
 
 		foreach(c_idx, ref t_d; t_delay) {
 			if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
@@ -909,8 +775,6 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 				}
 			}
 		}
-
-		//t_delay[] = t_delay[]/devisor;
 
 		infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
 
@@ -930,8 +794,6 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 			infl.time_delay_a_2[infl.total_states..$],
 			infl.time_delay_alpha_2[infl.total_states..$],
 			
-			//infl.c_zero,
-			//infl.c_zero,
 			infl.time_delay_b_2[infl.total_sin_states..$],
 			infl.time_delay_beta_2[infl.total_sin_states..$],
 
@@ -943,8 +805,6 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 			infl.time_delay_a_2[0..infl.total_states],
 			infl.time_delay_alpha_2[0..infl.total_states],
 			
-			//infl.c_zero,
-			//infl.c_zero,
 			infl.time_delay_b_2[0..infl.total_sin_states],
 			infl.time_delay_beta_2[0..infl.total_sin_states],
 
@@ -971,202 +831,6 @@ private auto compute_velocities_final_adjoint(ArrayContainer AC, T)(HuangPetersI
 	return V;
 }
 
-private auto under_disk_solution(ArrayContainer AC, T, C)(HuangPetersInflowT!AC infl, T[] lambda, T[] delta, T[] lambda_s, T[] delta_s, auto ref C x, auto ref C y, auto ref C z, Chunk t) {
-	immutable tan_chi = tan(infl.chi);
-	immutable Chunk x_offset = z[]*tan_chi;
-	immutable Chunk x0_1 = x[] + x_offset[];
-	immutable Chunk y0_1 = y[];
-	immutable Chunk x0_2 = -x0_1[];
-	immutable Chunk y0_2 = -y[];
-	immutable Chunk zero = 0;
-
-	Chunk s = z[]*z[] + x_offset[]*x_offset[];
-	s = sqrt(s);
-	//immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
-
-	double devisor;
-	if(abs(infl.chi) < 1.0e-12) {
-		devisor = ((infl.v_0 + infl.axial_advance_ratio*infl.cos_chi));
-	} else {
-		devisor = ((infl.v_0 + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
-	}
-	Chunk t_minus = s[];
-	Chunk t_delay = t[] - t_minus[];///devisor;
-
-	foreach(c_idx, ref t_d; t_delay) {
-		if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-
-			while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-				t_d -= 2.0*PI;
-			}
-		}
-	}
-
-	//t_delay[] = t_delay[]/devisor;
-	infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a, infl.time_delay_beta, infl.time_delay_b);
-
-	CartisianCoords ccoords1 = CartisianCoords(x0_1, y0_1, zero);
-	CartisianCoords ccoords2 = CartisianCoords(x0_2, y0_2, zero);
-	
-	immutable Chunk neg_z = -z[];
-	immutable Chunk x3 = -x[];
-	CartisianCoords ccoords3 = CartisianCoords(x3, y0_2, neg_z);
-
-	ElipticalCoords coords1 = to_eliptical(ccoords1);
-	ElipticalCoords coords2 = to_eliptical(ccoords2);
-	ElipticalCoords coords3 = to_eliptical(ccoords3);
-
-	//private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, T[] coefficients_md_sin, T[] coefficients_nh_sin, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
-	immutable Chunk v_f = compute_velocities_bl(infl,
-		infl.time_delay_a[0..infl.total_states],
-		infl.time_delay_alpha[0..infl.total_states],
-		//infl.time_delay_a[infl.total_states..$],
-		//infl.time_delay_alpha[infl.total_states..$],
-		infl.time_delay_b[0..infl.total_sin_states],
-		infl.time_delay_beta[0..infl.total_sin_states],
-		
-		//infl.c_zero,
-		//infl.c_zero,
-		//infl.time_delay_b[infl.total_sin_states..$],
-		//infl.time_delay_beta[infl.total_sin_states..$],
-
-		ccoords1,
-		coords1
-		//t_delay,
-		//x,
-		//z,
-		//false
-	);
-
-	immutable Chunk v_f_a_1 = compute_velocities_bl(infl,
-		//infl.time_delay_a[0..infl.total_states],
-		//infl.time_delay_alpha[0..infl.total_states],
-		infl.time_delay_a[infl.total_states..$],
-		infl.time_delay_alpha[infl.total_states..$],
-		
-		//infl.c_zero,
-		//infl.c_zero,
-		//infl.time_delay_b[0..infl.total_sin_states],
-		//infl.time_delay_beta[0..infl.total_sin_states],
-
-		infl.time_delay_b[infl.total_sin_states..$],
-		infl.time_delay_beta[infl.total_sin_states..$],
-		ccoords2,
-		coords2
-		//coords2,
-		//t_delay,
-		//x,
-		//z
-	);
-
-	
-
-	immutable Chunk v_f_a_2 = compute_velocities_bl(infl,
-		//infl.a,
-		//infl.alpha,
-		delta,
-		lambda,
-		
-		//infl.zero,
-		//infl.zero,
-		//infl.b,
-		//infl.beta,
-
-		delta_s,
-		lambda_s,
-
-		ccoords3,
-		coords3
-
-		//coords3,
-		//t,
-		//x,
-		//z
-	);
-
-	immutable Chunk V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
-	return V_below;
-}
-
-private auto under_disk_solution_adjoint(ArrayContainer AC, T, C)(HuangPetersInflowT!AC infl, T[] alpha, T[] a, T[] beta, T[] b, auto ref C x, auto ref C y, auto ref C z, Chunk t) {
-	immutable tan_chi = tan(infl.chi);
-	immutable Chunk x_offset = z[]*tan_chi;
-	immutable Chunk x0_1 = x[] + x_offset[];
-	immutable Chunk y0_1 = y[];
-	immutable Chunk x0_2 = -x0_1[];
-	immutable Chunk y0_2 = -y[];
-	immutable Chunk zero = 0;
-
-	Chunk s = z[]*z[] + x_offset[]*x_offset[];
-	s = sqrt(s);
-
-	/+double devisor;
-	if(abs(infl.chi) < 1.0e-12) {
-		devisor = ((infl.v_0 + infl.axial_advance_ratio*infl.cos_chi));
-	} else {
-		devisor = ((infl.v_0 + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
-	}+/
-	Chunk t_minus = s[];
-	Chunk t_delay = t[] + t_minus[];///devisor;
-
-	foreach(c_idx, ref t_d; t_delay) {
-		if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-
-			while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-				//t_d -= 2.0*PI;
-				t_d -= 1.0;
-			}
-		}
-	}
-
-	//t_delay[] = t_delay[]/devisor;
-	infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a, infl.time_delay_beta, infl.time_delay_b);
-
-	CartisianCoords ccoords1 = CartisianCoords(x0_1, y0_1, zero);
-	CartisianCoords ccoords2 = CartisianCoords(x0_2, y0_2, zero);
-	
-	immutable Chunk neg_z = -z[];
-	immutable Chunk x3 = -x[];
-	CartisianCoords ccoords3 = CartisianCoords(x3, y0_2, neg_z);
-
-	ElipticalCoords coords1 = to_eliptical(ccoords1);
-	ElipticalCoords coords2 = to_eliptical(ccoords2);
-	ElipticalCoords coords3 = to_eliptical(ccoords3);
-
-	//private auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients_md, T[] coefficients_nh, T[] coefficients_md_sin, T[] coefficients_nh_sin, immutable CartisianCoords ccoords, immutable ElipticalCoords coords) {
-
-	// a + r - r
-	immutable Chunk v_f_a = compute_velocities_bl(infl,
-		infl.time_delay_a[infl.total_states..$],
-		infl.time_delay_alpha[infl.total_states..$],
-		infl.time_delay_b[infl.total_sin_states..$],
-		infl.time_delay_beta[infl.total_sin_states..$],
-		ccoords1,
-		coords1
-	);
-
-	immutable Chunk v_f_1 = compute_velocities_bl(infl,
-		infl.time_delay_a[0..infl.total_states],
-		infl.time_delay_alpha[0..infl.total_states],
-		infl.time_delay_b[0..infl.total_sin_states],
-		infl.time_delay_beta[0..infl.total_sin_states],
-		ccoords2,
-		coords2
-	);
-
-	immutable Chunk v_f_2 = compute_velocities_bl(infl,
-		a,
-		alpha,
-		b,
-		beta,
-		ccoords3,
-		coords3
-	);
-
-	immutable Chunk V_below = v_f_a[] + v_f_1[] - v_f_2[];
-	return V_below;
-}
-
 private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, auto ref C x, auto ref C y, auto ref C z) {
 	
 	static import opencopter.math;
@@ -1177,11 +841,10 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 		return V;
 	}
 
-	double z_scale = 5;
+	immutable all_below_disk = z[].map!(a => a > 0).fold!((res, a) => a && res)(true);
+	immutable all_above_or_on_disk = z[].map!(a => (a <= 0)).fold!((res, a) => a && res)(true);
 
-	immutable all_below_disk = z[].map!(a => a > -1.0/z_scale).fold!((res, a) => a && res)(true);
-	immutable all_above_or_on_disk = z[].map!(a => (a <= -1.0/z_scale)).fold!((res, a) => a && res)(true);
-	immutable all_somewhere = !all_above_or_on_disk && !all_below_disk;// && !all_in_upper_hemi;
+	immutable all_somewhere = !all_above_or_on_disk && !all_below_disk;
 
 	import core.stdc.stdio : printf;
 
@@ -1192,139 +855,14 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 
 	if(all_above_or_on_disk || all_somewhere) {
 		Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
-		// if(infl.debug_coords) {
-		// 	writeln("infl.b: ", infl.b);
-		// 	writeln("infl.beta: ", infl.beta);
-		// }
+
 		V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, infl.b, infl.beta, infl.delta_s, infl.lambda_s, coords, t, x, z, true);
 		if(all_above_or_on_disk && !all_somewhere) {
 			return V_above;
 		}
 	}
 	
-	if(all_below_disk || all_somewhere) {
-		/+
-		immutable Chunk rho_axial = 1;
-		//immutable Chunk y2z2 = y[]*y[];
-		immutable Chunk y2z2 = y[]*y[];// + z[]*z[];
-		//immutable Chunk y2z2 = y[]*y[] + z[]*z[];
-		//immutable Chunk x2y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
-		immutable Chunk rho2 = rho_axial[]*rho_axial[];
-		immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
-		//immutable Chunk s_0 = zip(y2z2[], rho2[], y[]).map!(a => ((a[0] < a[1]) && (abs(a[2]) <= a[1])) ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk[] + z[]*infl.tan_chi;
-	
-		immutable all_downstream = zip(x[], s_0[]).map!(a => a[0] <= -a[1]).fold!((res, a) => a && res)(true);
-		immutable all_elsewhere = zip(x[], s_0[]).map!(a => a[0] > -a[1]).fold!((res, a) => a && res)(true);
-
-		immutable all_somewhere_under = !all_downstream && !all_elsewhere;
-
-		//Chunk V_ds_below = 0;
-		//Chunk V_below = 0;
-
-		immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
-
-		V_below = under_disk_solution(infl, infl.lambda, infl.delta, infl.lambda_s, infl.delta_s, x, y, z, t);
-
-
-
-		Chunk V_ds = 0;
-		immutable Chunk neg_s_0 = -s_0[];
-		immutable Chunk neg_y = -y[];
-		immutable Chunk sigma = -x[] - s_0[];
-		immutable Chunk sigma_p_s = sigma[] + s_0[];
-
-		//immutable bool compute_ds = zip(x2y2z2[], ccoords.x[]).map!(a => (a[1] <= 0.0) && (a[0] >= rho2[0])).fold!((res, a) => res |= a)(false);
-		
-		//Chunk f = 0.0;
-		Chunk f = final_blend(infl.cos_chi, infl.sin_chi, y, sigma, z, x, s_0);
-		immutable bool compute_ds = f[].map!(a => !a.isClose(0.0)).fold!((res, a) => res |= a)(false);
-
-		if((all_downstream || all_somewhere_under) && (abs(infl.chi) > 1.0e-14)) {
-
-			Chunk t_delay = t[] - sigma[];//*infl.sin_chi;///devisor;
-			//Chunk t_delay_2 = t[] + sigma[]*infl.sin_chi;///devisor;
-
-			foreach(c_idx, ref t_d; t_delay) {
-				if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-					while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-						if(abs(f[c_idx]) > 1.0e-14) {
-							//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
-						}
-						
-						t_d -= 2.0*PI;
-					}
-				}
-			}
-
-			/+foreach(c_idx, ref t_d; t_delay_2) {
-				if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-					while(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
-						if(abs(f[c_idx]) > 1.0e-14) {
-							//writeln("Dealing with the future: ", ccoords.x[c_idx], ", ", ccoords.y[c_idx], ", ", ccoords.z[c_idx], ", ", ccoords.x[c_idx]^^2.0+ccoords.y[c_idx]^^2.0 + ccoords.z[c_idx]^^2.0, ", f: ", f[c_idx]);
-						}
-						
-						t_d -= 2.0*PI;
-					}
-				}
-			}+/
-
-			//t_delay[] = t_delay[]/devisor;
-
-			infl.interpolate_to_time(t_delay, infl.time_delay_alpha_2, infl.time_delay_a_2, infl.time_delay_beta_2, infl.time_delay_b_2);
-
-			immutable CartisianCoords[3] ccoords_ds = [
-				CartisianCoords(neg_s_0, y, z),
-				CartisianCoords(s_0, neg_y, z),
-				CartisianCoords(sigma_p_s, neg_y, z)
-			];
-
-			/+immutable ElipticalCoords[3] coords_ds = [
-				to_eliptical(ccoords_ds[0]),
-				to_eliptical(ccoords_ds[1]),
-				to_eliptical(ccoords_ds[2])
-			];+/
-			//private auto under_disk_solution(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, C lambda, C delta, C lambda_s, C delta_s, auto ref C x, auto ref C y, auto ref C z, Chunk t)
-			immutable Chunk v_ds_bl = under_disk_solution(infl,
-				infl.time_delay_a_2[infl.total_states..$],
-				infl.time_delay_alpha_2[infl.total_states..$],
-				infl.time_delay_b_2[infl.total_sin_states..$],
-				infl.time_delay_beta_2[infl.total_sin_states..$],
-				ccoords_ds[0].x,
-				ccoords_ds[0].y,
-				ccoords_ds[0].z,
-				t_delay
-			);
-
-			immutable Chunk v_ds_bl_a_1 = under_disk_solution_adjoint(infl,
-				infl.time_delay_a_2[infl.total_states..$],
-				infl.time_delay_alpha_2[infl.total_states..$],
-				infl.time_delay_b_2[infl.total_sin_states..$],
-				infl.time_delay_beta_2[infl.total_sin_states..$],
-				ccoords_ds[1].x,
-				ccoords_ds[1].y,
-				ccoords_ds[1].z,
-				t_delay
-			);
-			immutable Chunk v_ds_bl_a_2 = under_disk_solution_adjoint(infl,
-				infl.a,
-				infl.alpha,
-				infl.b,
-				infl.beta,
-				ccoords_ds[2].x,
-				ccoords_ds[2].y,
-				ccoords_ds[2].z,
-				t
-			);
-
-			V_ds[] = v_ds_bl[] + v_ds_bl_a_1[] - v_ds_bl_a_2[];
-		}
-
-		Chunk one_m_f = 1.0 - f[];
-
-		immutable Chunk V_ds_f = V_ds[]*f[];
-		V_below = V_below[]*one_m_f[] + V_ds_f[];
-		+/
-		
+	if(all_below_disk || all_somewhere) {	
 		immutable tan_chi = tan(infl.chi);
 		immutable Chunk x_offset = z[]*tan_chi;
 		immutable Chunk x0_1 = x[] + x_offset[];
@@ -1337,14 +875,8 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 		s = sqrt(s);
 		immutable Chunk t = infl.times[infl.get_circular_index(infl.curr_state)];
 
-		double devisor;
-		if(abs(infl.chi) < 1.0e-12) {
-			devisor = ((infl.v_0 + infl.axial_advance_ratio*infl.cos_chi));
-		} else {
-			devisor = ((infl.v_0 + infl.advance_ratio/infl.sin_chi + infl.axial_advance_ratio*infl.cos_chi));
-		}
 		Chunk t_minus = s[];
-		Chunk t_delay = t[] - t_minus[];///devisor;
+		Chunk t_delay = t[] - t_minus[];
 
 		foreach(c_idx, ref t_d; t_delay) {
 			if(t_d > infl.times[infl.get_circular_index(infl.curr_state)]) {
@@ -1355,7 +887,6 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			}
 		}
 
-		//t_delay[] = t_delay[]/devisor;
 		infl.interpolate_to_time(t_delay, infl.time_delay_alpha, infl.time_delay_a, infl.time_delay_beta, infl.time_delay_b);
 
 		CartisianCoords coords1 = CartisianCoords(x0_1, y0_1, zero);
@@ -1366,11 +897,9 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			infl.time_delay_alpha[0..infl.total_states],
 			infl.time_delay_a[infl.total_states..$],
 			infl.time_delay_alpha[infl.total_states..$],
+
 			infl.time_delay_b[0..infl.total_sin_states],
 			infl.time_delay_beta[0..infl.total_sin_states],
-			
-			//infl.c_zero,
-			//infl.c_zero,
 			infl.time_delay_b[infl.total_sin_states..$],
 			infl.time_delay_beta[infl.total_sin_states..$],
 
@@ -1387,13 +916,11 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			infl.time_delay_a[infl.total_states..$],
 			infl.time_delay_alpha[infl.total_states..$],
 			
-			//infl.c_zero,
-			//infl.c_zero,
 			infl.time_delay_b[0..infl.total_sin_states],
 			infl.time_delay_beta[0..infl.total_sin_states],
-
 			infl.time_delay_b[infl.total_sin_states..$],
 			infl.time_delay_beta[infl.total_sin_states..$],
+
 			coords2,
 			t_delay,
 			x,
@@ -1411,14 +938,12 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 			infl.alpha,
 			infl.delta,
 			infl.lambda,
-			
-			//infl.zero,
-			//infl.zero,
+
 			infl.b,
 			infl.beta,
-
 			infl.delta_s,
 			infl.lambda_s,
+
 			coords3,
 			t,
 			x,
@@ -1428,31 +953,20 @@ private auto inflow_at_impl(ArrayContainer AC, C)(HuangPetersInflowT!AC infl, au
 		V_below = v_f[] + v_f_a_1[] - v_f_a_2[];
 		
 		if(all_below_disk && !all_somewhere) {
-			V_above = compute_velocities_final(infl, infl.a, infl.alpha, infl.delta, infl.lambda, infl.b, infl.beta, infl.delta_s, infl.lambda_s, coords, t, x, z, true);
-			Chunk z_shift = z_scale*z[];
-			Chunk blend = 0.5*(erf(z_shift)[] + 1.0);
-			Chunk one_m_blend = 1.0 - blend[];
-			Chunk V = V_below[]*blend[] + V_above[]*one_m_blend[];
-			return V;
+			return V_below;
 		}
 	}
 
 	// Merge results
 	if(all_somewhere) {
-		
-		Chunk z_shift = z_scale*z[];
-		Chunk blend = 0.5*(erf(z_shift)[] + 1.0);
-		Chunk one_m_blend = 1.0 - blend[];
-
 		Chunk V = 0;
-		V[] = V_below[]*blend[] + V_above[]*one_m_blend[];
-		/+foreach(c_idx; 0..chunk_size) {
+		foreach(c_idx; 0..chunk_size) {
 			if(z[c_idx] > 0) {
-				V[c_idx] = V_below[c_idx]*blend[] + V_above[c_idx]*one_m_blend[];
+				V[c_idx] = V_below[c_idx];
 			} else {
 				V[c_idx] = V_above[c_idx];
 			}
-		}+/
+		}
 		return V;
 	}
 
@@ -1672,22 +1186,16 @@ void iterate_whole_matrix(alias f_oo, alias f_oe, alias f_eo, alias f_ee, Args..
 }
 
 void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double advance_ratio, double axial_advance_ratio) {
-
-	double[] alpha = infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states];
 	
 	if(infl.average_inflow != 0) {
 		infl.chi = atan2(advance_ratio, (infl.average_inflow + axial_advance_ratio));
-		//infl.chi = atan2(advance_ratio, (infl.average_inflow));
 	}
 
 	infl.sin_chi = sin(infl.chi);
 	infl.cos_chi = cos(infl.chi);
 	infl.tan_chi = tan(infl.chi);
-	//infl.cot_chi = cot(infl.chi);
 
 	immutable X = tan(-infl.chi/2.0);
-
-	//writeln("X: ", X);
 
 	iterate_whole_matrix!(
 		// odd-odd
@@ -1696,20 +1204,10 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 			immutable exp1 = abs(r - m);
 			immutable exp2 = abs(r + m);
 
-			immutable l_s = min(r + 1, m + 1);
-			immutable exp1_s = abs((r + 1) - (m + 1));
-			immutable exp2_s = abs((r + 1) + (m + 1));
 			if(r == 0) {
 				infl.L_c[row_idx][col_idx] = X^^(m.to!double)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = 0;
 			} else {
-				//immutable double l = min(r, m);
-				//immutable double exp1 = abs(r - m);
-				//immutable double exp2 = abs(r + m);
-
 				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			}
 		},
 		// odd-even
@@ -1718,20 +1216,10 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 			immutable exp1 = abs(r - m);
 			immutable exp2 = abs(r + m);
 
-			immutable l_s = min(r + 1, m + 1);
-			immutable exp1_s = abs((r + 1) - (m + 1));
-			immutable exp2_s = abs((r + 1) + (m + 1));
 			if(r == 0) {
 				infl.L_c[row_idx][col_idx] = X^^(m.to!double)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = 0;
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			} else {
-				//immutable double l = min(r, m);
-				//immutable double exp1 = abs(r - m);
-				//immutable double exp2 = abs(r + m);
-
 				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			}
 		},
 		// even-odd
@@ -1740,20 +1228,10 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 			immutable exp1 = abs(r - m);
 			immutable exp2 = abs(r + m);
 
-			immutable l_s = min(r + 1, m + 1);
-			immutable exp1_s = abs((r + 1) - (m + 1));
-			immutable exp2_s = abs((r + 1) + (m + 1));
 			if(r == 0) {
 				infl.L_c[row_idx][col_idx] = X^^m*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = 0;
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			} else {
-				//immutable l = min(r, m);
-				//immutable exp1 = abs(r - m);
-				//immutable exp2 = abs(r + m);
-
 				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			}
 		},
 		// even-even
@@ -1762,18 +1240,10 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 			immutable exp1 = abs(r - m);
 			immutable exp2 = abs(r + m);
 
-			immutable l_s = min(r + 1, m + 1);
-			immutable exp1_s = abs((r + 1) - (m + 1));
-			immutable exp2_s = abs((r + 1) + (m + 1));
 			if(r == 0) {
 				infl.L_c[row_idx][col_idx] = X^^m*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = 0;
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			} else {
-				
-
 				infl.L_c[row_idx][col_idx] = (X^^exp1 + ((-1.0)^^l)*X^^exp2)*infl.Gamma[row_idx][col_idx];
-				//infl.L_s[row_idx][col_idx] = (X^^exp1_s - ((-1.0)^^l_s)*X^^exp2_s)*infl.Gamma[row_idx][col_idx];
 			}
 		}
 	)(infl.Mo, infl.Me);
@@ -1782,23 +1252,6 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 	iterate_whole_matrix_sin!(
 		// odd-odd
 		(r, j, m, n, row_idx, col_idx) {
-
-			//writeln("oo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
-			//if(row_idx == col_idx) {
-			//	infl.L_s[row_idx][col_idx] = 1;
-			//} else {
-			//	infl.L_s[row_idx][col_idx] = 0;
-			//}
-			
-			// if(r == 0) {
-			// 	M_s[row_idx][col_idx] = 0;
-			// } else {
-			// 	immutable double l = min(r, m);
-			// 	immutable double exp1 = abs(r - m);
-			// 	immutable double exp2 = abs(r + m);
-
-			// 	M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx][col_idx];
-			// }
 
 			immutable double l = min(r, m);
 			immutable double exp1 = abs(r - m);
@@ -1811,7 +1264,6 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 		},
 		// odd-even
 		(r, j, m, n, row_idx, col_idx) {
-			//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 			if(r == 0) {
 				infl.L_s[row_idx][col_idx] = 0;
 			} else {
@@ -1819,21 +1271,17 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 				immutable double exp1 = abs(r - m);
 				immutable double exp2 = abs(r + m);
 
-				//M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx + odd_states[Mo][0].length][col_idx + total_odd_states + odd_states[Mo][0].length];
-
 				immutable gamma_col_idx = col_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
 				immutable gamma_row_idx = row_idx + odd_states[infl.Mo][0].length;
 
-				
-				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
 				infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
 			}
 		},
 		// even-odd
 		(r, j, m, n, row_idx, col_idx) {
-			//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
+
 			if(r == 0) {
-				//Meo_s[row_idx][col_idx] = 0;
+
 			} else {
 				immutable l = min(r, m);
 				immutable exp1 = abs(r - m);
@@ -1842,14 +1290,11 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 				immutable gamma_col_idx = col_idx + odd_states[infl.Mo][0].length;
 				immutable gamma_row_idx = row_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
 
-				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
-
 				infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
 			}
 		},
 		// even-even
 		(r, j, m, n, row_idx, col_idx) {
-			//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 			if(r == 0) {
 				infl.L_s[row_idx][col_idx] = 0;
 			} else {
@@ -1860,13 +1305,11 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 				immutable gamma_col_idx = col_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
 				immutable gamma_row_idx = row_idx + infl.total_odd_states + even_states[infl.Me][0].length - infl.total_odd_sin_states;
 
-				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
 				infl.L_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*infl.Gamma[gamma_row_idx][gamma_col_idx];
 			}
 		}
 	)(infl.Mo, infl.Me);
 
-	//foreach(r_idx; 0..infl.total_states) {
 	foreach(r_idx, ref L_c_row; infl.L_c) {
 		infl.L_c_inv[r_idx][] = L_c_row[];
 	}
@@ -1875,10 +1318,6 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 		infl.L_s_inv[r_idx][] = L_s_row[];
 	}
 
-	//writeln("infl.L_s: ", infl.L_s);
-	//write("L_s: ");
-	//infl.L_s.print_matlab;
-	//writeln("infl.M_s: ", infl.M_s);
 	// Invert L_c matrix
 	int info = 0;
 	info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, infl.total_states, infl.total_states, infl.L_c_inv[0].ptr, infl.total_states, infl.ipiv.ptr);
@@ -1890,9 +1329,6 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 	assert(info == 0, "Failed to invert L_s matrix");
 	info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, infl.total_sin_states, infl.L_s_inv[0].ptr, infl.total_sin_states, infl.ipiv.ptr);
 	assert(info == 0, "Failed to invert L_s matrix");
-
-	//write("L_s^-1: ");
-	//infl.L_s_inv.print_matlab;
 
 	// Multiply L_c_inv*M_c
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.L_c_inv[0].ptr, infl.total_states, infl.M_c[0].ptr, infl.total_states, 0.0, infl.VLM_c[0].ptr, infl.total_states);
@@ -1907,27 +1343,17 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 	immutable double Vt = sqrt(v_inf_sin_squared + (v_inf_cos + infl.average_inflow)^^2.0);
 	immutable double V = (v_inf_sin_squared + (v_inf_cos + infl.average_inflow)*(v_inf_cos + 2.0*infl.average_inflow))/Vt;
 
-	//immutable double Vt = sqrt(advance_ratio^^2.0 + (axial_advance_ratio + infl.average_inflow)^^2.0);
-	//immutable double V = (advance_ratio^^2.0 + (axial_advance_ratio + infl.average_inflow)*(axial_advance_ratio + 2.0*infl.average_inflow))/Vt;
-
-	//debug writeln("Vt: ", Vt);
-	//debug writeln("V: ", V);
-
 	infl.LM_c_scratch[] = infl.VLM_c[0][];// * alpha[];
-	//immutable alpha_0_1 = infl.alpha_scratch.sum;
-	//infl.average_inflow = sqrt(3.0)*alpha_0_1;
 
 	// Build the non linearity matrix
 	infl.VLM_c[0][] *= Vt;
-	//infl.VLM_s[0][] *= Vt;
+
 	foreach(idx, ref vlm; infl.VLM_c[1..$]) {
 		vlm[] *= V;
-		//infl.VLM_s[idx + 1][] *= V;
 	}
 
 	foreach(idx, ref vlm; infl.VLM_s[0..$]) {
 		vlm[] *= V;
-		//infl.VLM_s[idx + 1][] *= V;
 	}
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.M_c_inv[0].ptr, infl.total_states, infl.L_c[0].ptr, infl.total_states, 0.0, infl.VLM_c_inv[0].ptr, infl.total_states);
@@ -1936,32 +1362,19 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 	foreach(idx, ref vlM_c_inv; infl.VLM_c_inv) {
 		vlM_c_inv[0] *= 1.0/Vt;
 		vlM_c_inv[1..$] *= 1.0/V;
-
-		//infl.VLM_s_inv[idx][0] *= 1.0/Vt;
-		//infl.VLM_s_inv[idx][1..$] *= 1.0/V;
 	}
 
 	foreach(idx, ref vlM_s_inv; infl.VLM_s_inv) {
-		//vlM_s_inv[0] *= 1.0/Vt;
 		vlM_s_inv[0..$] *= 1.0/V;
-
-		//infl.VLM_s_inv[idx][0] *= 1.0/Vt;
-		//infl.VLM_s_inv[idx][1..$] *= 1.0/V;
 	}
 
-	//debug infl.VLM_c_inv.print_matlab;
-	//debug writeln(infl.adjoint_mat);
 	foreach(idx, ref vlM_c_inv; infl.VLM_c_inv) {
 		vlM_c_inv[] *= infl.adjoint_mat[];
-		//infl.VLM_s_inv[idx][] *= infl.adjoint_mat[];
 	}
 
 	foreach(idx, ref vlM_s_inv; infl.VLM_s_inv) {
 		vlM_s_inv[] *= infl.adjoint_mat_sin[];
-		//infl.VLM_s_inv[idx][] *= infl.adjoint_mat[];
 	}
-
-	//debug infl.VLM_c_inv.print_matlab;
 
 	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, infl.total_states, infl.total_states, infl.total_states, 1.0, infl.VLM_c_inv[0].ptr, infl.total_states, infl.VLM_c[0].ptr, infl.total_states, 0.0, infl.QS_c_mat[0].ptr, infl.total_states);
 
@@ -2051,28 +1464,19 @@ void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] 
 
 	// scratch * delta_s = V*L_s_inv*M_s*delta_s
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_s[0].ptr, infl.total_sin_states, lambda_s.ptr, 1, 0.0, infl.delta_s_scratch.ptr, 1);
-	
-	// ADJ*tau_c
-	//infl.tau_c_scratch[] = infl.tau_c[]*infl.adjoint_mat[];
-	//infl.tau_c_scratch[] = infl.tau_c[]*infl.adjoint_mat[] - infl.delta_scratch[];
-	//infl.tau_c_scratch[] = infl.delta_scratch[] - infl.tau_c[]*infl.adjoint_mat[];
 
 	infl.alpha_scratch[] = infl.tau_c[] - infl.alpha_scratch[];
 	infl.beta_scratch[] = infl.tau_s[] - infl.beta_scratch[];
-	//infl.alpha_scratch[] = infl.alpha_scratch[] - infl.tau_c[];
 
 	// M_c_inv*D*alpha_scratch = M_c_inv*D*(tau_c - V*L_c_inv*M_c*alpha)
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.M_c_inv_D[0].ptr, infl.total_states, infl.alpha_scratch.ptr, 1, 0.0, state_dot[0..infl.total_states].ptr, 1);
 
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.M_s_inv_D[0].ptr, infl.total_sin_states, infl.beta_scratch.ptr, 1, 0.0, state_dot[2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
-
-	// M_c_inv*D*tau_c_scratch = M_c_inv*D*(V*L_c_inv*M_c*delta - ADJ*tau_c)
-	//cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.M_c_inv_D[0].ptr, infl.total_states, infl.tau_c_scratch.ptr, 1, 0.0, state_dot[infl.total_states..$].ptr, 1);
 }
 
 alias HuangPetersInflow = HuangPetersInflowT!(ArrayContainer.none);
 
-class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow { 
+class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 
 	alias RG = RotorGeometryT!AC;
 
@@ -2106,8 +1510,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private double[][] M_s_inv;
 	private double[][] D;
 	private double[][] D_s;
-
-	//Chunk[] V_buffer;
 
 	private int[] ipiv; // Used by lapack for matrix inversion. Keep it around instead of re-allocing each update
 
@@ -2143,10 +1545,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private double[] adjoint_mat;
 	private double[] adjoint_mat_sin;
 	private double[] LM_c_scratch;
-	//private double[] LM_s_scratch;
 	private double[][] K_table;
 	private double[] average_inflow_array;
-	//private size_t ai_idx;
 
 	int total_states;
 	int total_odd_states;
@@ -2165,8 +1565,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	private Chunk[][] P_nh_mn_bar;
 	
 	alias Integrator = ForwardEuler!double;
-	//alias Integrator = RK4!double;
-
 	Integrator integrator;
 
 	private Chunk[] blade_scratch;
@@ -2266,7 +1664,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			immutable rho = sqrt(1.0/(2.0*n.to!double + 1.0)*(n + m).factorial/(n - m).factorial);
 			P_coefficients[$-1][0] /= rho;
 
-			//writeln("idx: ", idx, "; m: ", m, ", n: ", n);
 			total_states++;
 			total_even_states++;
 		})(Me, total_odd_states);
@@ -2309,8 +1706,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		
 		integrator = new Integrator(2*total_states + 2*total_sin_states);
 
-		//V_buffer = new Chunk[total_states];
-
 		double[][] Meo = allocate_dense(total_even_states, total_odd_states);
 		double[][] Meo_new = allocate_dense(total_even_states, total_odd_states);
 		double[][] Meo_s = allocate_dense(total_even_sin_states, total_odd_sin_states);
@@ -2343,7 +1738,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		time_history = 1_000_000;
 		state_history = allocate_dense(time_history, 2*total_states + 2*total_sin_states);
 		
-		//Qmn_bar = new Chunk[][](max(Me, Mo) + 1, N);
 		Qmn_bar = allocate_dense_chunk(max(Me, Mo) + 1, N);
 		P_nh_mn_bar = allocate_dense_chunk(max(Me, Mo) + 1, N);
 		P_md_mn_bar = allocate_dense_chunk(max(Me, Mo) + 1, N);
@@ -2377,7 +1771,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		adjoint_mat = new double[total_states];
 		adjoint_mat_sin = new double[total_sin_states];
 		LM_c_scratch = new double[total_states];
-		//LM_s_scratch = new double[total_sin_states];
 
 		zero[] = 0;
 		foreach(ref ch; c_zero) {
@@ -2473,14 +1866,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_odd_sin_states, A_s_inv[0].ptr, total_odd_sin_states, ipiv.ptr);
 		assert(info == 0, "Failed to invert A_s matrix");
 
-		//A_s_inv.print_matlab;
-
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_even_states, total_odd_states, total_odd_states, 1.0, Meo[0].ptr, total_odd_states, A_inv[0].ptr, total_odd_states, 0.0, Meo_new[0].ptr, total_odd_states);
 
 		iterate_whole_matrix!(
 			// odd-odd
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("oo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(row_idx == col_idx) {
 					M_c[row_idx][col_idx] = 1;
 				}
@@ -2502,7 +1892,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// odd-even
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == m) {
 					if((j == n - 1) || (j == n + 1)) {
 						M_c[row_idx][col_idx] = 1;
@@ -2527,7 +1916,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// even-odd
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == m) {
 					D[row_idx][col_idx] = 2.0*sqrt((2.0*j.to!double + 1)*(2.0*n.to!double + 1));
 					D[row_idx][col_idx] *= (-1.0)^^(0.5*(j + 3*n - 1).to!double);
@@ -2549,7 +1937,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// even-even
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == m) {
 					M_c[row_idx][col_idx] = 8.0*(-1.0)^^(0.5*(n + j - 2*m + 2).to!double);
 					M_c[row_idx][col_idx] *= sqrt((2.0*n.to!double + 1.0)*(2.0*j.to!double + 1.0));
@@ -2576,7 +1963,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		double X = 0;
 		iterate_even_odd_sin!(
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == 0) {
 					Meo_s[row_idx][col_idx] = 0;
 				} else {
@@ -2587,8 +1973,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
 					immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length;
 
-					//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
-
 					Meo_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[gamma_row_idx][gamma_col_idx];
 				}
 			}
@@ -2596,39 +1980,21 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_even_sin_states, total_odd_sin_states, total_odd_sin_states, 1.0, Meo_s[0].ptr, total_odd_sin_states, A_s_inv[0].ptr, total_odd_sin_states, 0.0, Meo_s_new[0].ptr, total_odd_sin_states);
 
-		//writeln;
-		//writeln;
-
 		iterate_whole_matrix_sin!(
 			// odd-odd
 			(r, j, m, n, row_idx, col_idx) {
 
-				//writeln("oo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
-
 				immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
 				immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
-
-				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
 
 				if(row_idx == col_idx) {
 					M_s[row_idx][col_idx] = 1;
 				} else {
 					M_s[row_idx][col_idx] = 0;
 				}
-				
-				// if(r == 0) {
-				// 	M_s[row_idx][col_idx] = 0;
-				// } else {
-				// 	immutable double l = min(r, m);
-				// 	immutable double exp1 = abs(r - m);
-				// 	immutable double exp2 = abs(r + m);
-
-				// 	M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx][col_idx];
-				// }
 			},
 			// odd-even
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == 0) {
 					M_s[row_idx][col_idx] = 0;
 				} else {
@@ -2636,34 +2002,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					immutable double exp1 = abs(r - m);
 					immutable double exp2 = abs(r + m);
 
-					//M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx + odd_states[Mo][0].length][col_idx + total_odd_states + odd_states[Mo][0].length];
-
 					immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 					immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
 
-					
-					//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
 					M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[gamma_row_idx][gamma_col_idx];
 				}
 			},
 			// even-odd
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				M_s[row_idx][col_idx] = Meo_s_new[row_idx - total_odd_sin_states][col_idx];
-				//M_s[row_idx][col_idx] = 0;
-				// if(r == 0) {
-				// 	Meo_s[row_idx][col_idx] = 0;
-				// } else {
-				// 	immutable l = min(r, m);
-				// 	immutable exp1 = abs(r - m);
-				// 	immutable exp2 = abs(r + m);
-
-				// 	Meo_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[row_idx][col_idx];
-				// }
 			},
 			// even-even
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				if(r == 0) {
 					M_s[row_idx][col_idx] = 0;
 				} else {
@@ -2674,7 +2024,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 					immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 					immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 
-					//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
 					M_s[row_idx][col_idx] = (X^^exp1 - ((-1.0)^^l)*X^^exp2)*Gamma[gamma_row_idx][gamma_col_idx];
 				}
 			}
@@ -2693,9 +2042,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			M_s_inv[r_idx][] = M_s[r_idx][];
 		}
 
-		//write("M_s: ");
-		//M_s.print_matlab;
-		
 		iterate_whole_matrix_sin!(
 			// odd-odd
 			(r, j, m, n, row_idx, col_idx) {
@@ -2706,7 +2052,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// odd-even
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("oe r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 				immutable gamma_row_idx = row_idx + odd_states[Mo][0].length;
 
@@ -2714,7 +2059,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// even-odd
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("eo r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				immutable gamma_col_idx = col_idx + odd_states[Mo][0].length;
 				immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 
@@ -2722,11 +2066,9 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			},
 			// even-even
 			(r, j, m, n, row_idx, col_idx) {
-				//writeln("ee r: ", r, " m: ", m, " j: ", j, " n: ", n, " row: ", row_idx, " col: ", col_idx);
 				immutable gamma_col_idx = col_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 				immutable gamma_row_idx = row_idx + total_odd_states + even_states[Me][0].length - total_odd_sin_states;
 
-				//writeln("gamma_row: ", gamma_row_idx, " gamma_col: ", gamma_col_idx);
 				D_s[row_idx][col_idx] = D[gamma_row_idx][gamma_col_idx];
 			}
 		)(Mo, Me);
@@ -2741,9 +2083,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		assert(info == 0, "Failed to invert M_s matrix");
 		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, total_sin_states, M_s_inv[0].ptr, total_sin_states, ipiv.ptr);
 		assert(info == 0, "Failed to invert M_s matrix");
-
-		//write("\nM_c_inv: ");
-		//M_c_inv.print_matlab;
 
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_states, total_states, total_states, 1.0, M_c_inv[0].ptr, total_states, D[0].ptr, total_states, 0.0, M_c_inv_D[0].ptr, total_states);
 
@@ -2786,12 +2125,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		tau_c[0] = 0.001;
 		tau_s[0] = 0.001;
 		tau_s[] = [-0.00155803, 0.000844799, -0.00282596, 0.000751855, -0.00304, -0.00204455, -0.000332659, -0.000887072];
-		//tau_s[0] = 0.001;
 
 		simple_harmonic_solution(this, 0.0, 0.0);
-
-		//A_s_inv.print_matlab;
-
 	}
 
 	@nogc auto find_bracket(double t) {
@@ -3039,20 +2374,19 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			auto _idx = iterate_odds!(
 				(m, n, idx) {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
-
-						//Chunk atan_num = -omega_sgn*chunk.xi[];
-						//immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ /++ PI/12.0+/);
+						Chunk atan_num = -omega_sgn*chunk.xi[];
+						immutable Chunk psi_r = atan2(atan_num, chunk.r);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
 						if(m == 0) {
-							cos_mpsi[] = 1.0/(1.0*PI);
+							cos_mpsi[] = 1.0/(2.0*PI);
 							sin_mpsi[] = 0;
 						} else {
 							immutable Chunk[2] sin_cos = sincos(mpsi)[];
-							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
-							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
+							cos_mpsi[] = 1.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 1.0/(PI)*sin_cos[0][];
 						}
 
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
@@ -3077,19 +2411,19 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 			iterate_evens!(
 				(m, n, idx) {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
-						//Chunk atan_num = -omega_sgn*chunk.xi[];
-						//immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth /++ psi_r[]+/ /++ PI/12.0+/);
+						Chunk atan_num = -omega_sgn*chunk.xi[];
+						immutable Chunk psi_r = atan2(atan_num, chunk.r);
+						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
 						if(m == 0) {
-							cos_mpsi[] = 1.0/(1.0*PI);
+							cos_mpsi[] = 1.0/(2.0*PI);
 							sin_mpsi[] = 0;
 						} else {
 							immutable Chunk[2] sin_cos = sincos(mpsi)[];
-							cos_mpsi[] = 2.0/(PI)*sin_cos[1][];
-							sin_mpsi[] = 2.0/(PI)*sin_cos[0][];
+							cos_mpsi[] = 1.0/(PI)*sin_cos[1][];
+							sin_mpsi[] = 1.0/(PI)*sin_cos[0][];
 						}
 						
 						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
@@ -3112,142 +2446,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 				}
 			)(Me, _idx);
 		}
-		/+
-		tau_c[] = 0;
-		tau_s[] = 0;
-
-		foreach(b_idx, ref blade_state; rotor_state.blade_states) {
-
-			/+foreach(m; 0..max(Mo, Me) + 1) {
-				//immutable Chunk mpsi = m.to!double*coords.psi[];
-				immutable mpsi = m.to!double*blade_state.azimuth;
-				mpsi_buff[m] = cos(mpsi);
-			}+/
-			size_t sin_idx = 0;
-			auto _idx = iterate_odds!(
-				(m, n, idx) {
-					//immutable mpsi = m.to!double*(blade_state.azimuth + PI/4.0);
-					
-					//immutable mpsi = m.to!double*(blade_state.azimuth + PI);
-					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*mpsi_buff[m][0];
-					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*cos(mpsi);
-					//immutable Chunk cos_mpsi = m == 0 ? 0.5 : cos(mpsi);
-					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0) : 1.0/(2.0)*cos(mpsi);
-					Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
-					Chunk sin_mpsi = m == 0 ? 0.0 : 2.0/(PI)*sin(mpsi);
-					//Chunk cos_mpsi = m == 0 ? 1.0/(2.0*PI) : 1.0/(PI)*cos(mpsi);
-
-					/+if((m != 0) && (m != 4)) {
-						cos_mpsi[] = -cos_mpsi[];
-					}+/
-					
-					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
-					//foreach(c_idx; 0..rotor.blades[b_idx].chunks.length) {
-						//BladeGeometryChunk* chunk = rotor.blades[b_idx].chunks[c_idx];
-						//immutable Chunk atan_arg = -omega_sgn*chunk.xi[]/chunk.r[];
-						Chunk atan_num = -omega_sgn*chunk.xi[];
-						immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
-
-						Chunk cos_mpsi;// = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi)[];
-						if(m == 0) {
-							cos_mpsi[] = 1.0/(2.0*PI);
-						} else {
-							cos_mpsi[] = 1.0/(PI)*cos(mpsi)[];
-						}
-
-						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
-						nu = sqrt(nu);
-						
-						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
-						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
-						if(m != 0) {
-							blade_scratch_s[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*sin_mpsi[];
-						}
-					}
-
-					tau_c[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
-					if(m != 0) {
-						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
-						sin_idx++;
-					}
-
-				}
-			)(Mo, 0);
-
-			iterate_evens!(
-				(m, n, idx) {
-					//immutable mpsi = m.to!double*(blade_state.azimuth);
-					//immutable mpsi = m.to!double*(blade_state.azimuth + PI/4.0);
-					//immutable mpsi = m.to!double*(blade_state.azimuth + PI);
-					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*mpsi_buff[m][0];
-					//immutable Chunk cos_mpsi = m == 0 ? 0.5 : cos(mpsi);
-					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0) : 1.0/(2.0)*cos(mpsi);
-					//immutable Chunk cos_mpsi = m == 0 ? 1.0/(4.0*PI) : 1.0/(2.0*PI)*cos(mpsi);
-					//Chunk cos_mpsi = m == 0 ? 1.0/(2.0*PI) : 1.0/(PI)*cos(mpsi);
-					Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
-					Chunk sin_mpsi = m == 0 ? 0.0 : 2.0/(PI)*sin(mpsi);
-					//Chunk cos_mpsi = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi);
-
-					/+if((m != 0) && (m != 4)) {
-						cos_mpsi[] = -cos_mpsi[];
-					}+/
-					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
-					//foreach(c_idx; 0..rotor.blades[b_idx].chunks.length) {
-						//BladeGeometryChunk* chunk = rotor.blades[b_idx].chunks[c_idx];
-						//immutable Chunk atan_arg = -omega_sgn*chunk.xi[]/chunk.r[];
-						//immutable Chunk psi_r = atan(atan_arg);
-						Chunk atan_num = -omega_sgn*chunk.xi[];
-						immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
-
-						Chunk cos_mpsi;// = m == 0 ? 1.0/(1.0*PI) : 2.0/(PI)*cos(mpsi)[];
-						if(m == 0) {
-							cos_mpsi[] = 1.0/(2.0*PI);
-						} else {
-							cos_mpsi[] = 1.0/(PI)*cos(mpsi)[];
-						}
-						
-						Chunk nu = 1.0 - chunk.r[]*chunk.r[];
-						nu = sqrt(nu);
-						
-						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
-
-						blade_scratch[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*cos_mpsi[];
-						if(m != 0) {
-							blade_scratch_s[c_idx][] = blade_state.chunks[c_idx].dC_T[]*Pmn[]*sin_mpsi[];
-						}
-					}
-					tau_c[idx] += integrate_trapaziodal(blade_scratch, rotor.blades[b_idx]);
-					if(m != 0) {
-						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
-						sin_idx++;
-					}
-				}
-			)(Me, _idx);
-		}
-		+/
 	}
-
-	// size_t n_r = 16;
-	// size_t n_psi = 6;
-	// double v_0;
-
-	// Chunk[] contraction_array;
-	// double[] contraction_array_alias;
-	// Chunk[] contraction_z_array;
-	// double[] contraction_z_array_alias;
 
 	private void update_impl(RIS, RS)(double C_T, auto ref RIS rotor_input, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
 		omega = rotor_input.angular_velocity;
 		immutable V_inf = rotor_input.freestream_velocity;
-		immutable t_scale = abs(omega);//V_inf/rotor.radius;
+		immutable t_scale = abs(omega);
 
-		advance_ratio = _advance_ratio;//*abs(omega)*rotor.radius/V_inf;
-		axial_advance_ratio = _axial_advance_ratio;//*abs(omega)*rotor.radius/V_inf;
+		advance_ratio = _advance_ratio;
+		axial_advance_ratio = _axial_advance_ratio;
 		
-		auto time = dt*curr_state.to!double*t_scale;//abs(omega);
+		auto time = dt*curr_state.to!double*t_scale;
 
 		times[get_circular_index(curr_state + 1)] = time;
 
@@ -3258,8 +2468,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		alpha = state_history[get_circular_index(curr_state + 1)][0..total_states];
 		beta = state_history[get_circular_index(curr_state + 1)][2*total_states..2*total_states + total_sin_states];
 
-		//b[] = 0;
-		//beta[] = 0;
 		// Get MD state variables
 		cblas_dgemv(CblasRowMajor, CblasNoTrans, total_odd_states, total_odd_states, 1.0, A_inv[0].ptr, total_odd_states, alpha.ptr, 1, 0.0, a.ptr, 1);
 
@@ -3280,47 +2488,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 				state_history[get_circular_index(curr_state + 1)][total_states + i] += QS_c_mat[i][k]*alpha[k];
 			}
 		}
-/+
-		size_t sin_idx = 0;
-		auto _idx = iterate_odds!(
-			(m, n, idx) {
-				if(m != 0) {
-					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = (1.0)^^(n.to!double + 0.0)*state_history[get_circular_index(curr_state + 1)][total_states + idx];
-					//delta_s[sin_idx] = (1.0)^^(n.to!double + 0.0)*delta[idx];
-					sin_idx++;
-				}
-			}
-		)(Mo, 0);
-
-		iterate_evens!(
-			(m, n, idx) {
-				if(m != 0) {
-					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = (1.0)^^(n.to!double + 0.0)*state_history[get_circular_index(curr_state + 1)][total_states + idx];
-					//lambda_s[sin_idx] = (1.0)^^(n.to!double + 0.0)*lambda[idx];
-					//delta_s[sin_idx] = (1.0)^^(n.to!double + 0.0)*delta[idx];
-					sin_idx++;
-				}
-			}
-		)(Me, _idx);
-+/
-		/+size_t sin_idx = 0;
-		auto _idx = iterate_odds!(
-			(m, n, idx) {
-				if(m != 0) {
-					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = state_history[get_circular_index(curr_state + 1)][total_states + idx];
-					sin_idx++;
-				}
-			}
-		)(Mo, 0);
-
-		iterate_evens!(
-			(m, n, idx) {
-				if(m != 0) {
-					state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + sin_idx] = state_history[get_circular_index(curr_state + 1)][total_states + idx];
-					sin_idx++;
-				}
-			}
-		)(Me, _idx);+/
 
 		foreach(i; 0..total_sin_states) {
 			state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states + i] = 0;
@@ -3339,36 +2506,9 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 		
 		delta[total_odd_states..$] = lambda[total_odd_states..$];
 		delta_s[total_odd_sin_states..$] = lambda_s[total_odd_sin_states..$];
-		//delta_s[] = 0;
-		//lambda_s[] = 0;
-		/+size_t sin_idx = 0;
-		auto _idx = iterate_odds!(
-			(m, n, idx) {
-				if(m != 0) {
-					lambda_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*lambda[idx];
-					delta_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*delta[idx];
-					sin_idx++;
-				}
-			}
-		)(Mo, 0);
-
-		iterate_evens!(
-			(m, n, idx) {
-				if(m != 0) {
-					lambda_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*lambda[idx];
-					delta_s[sin_idx] = (1.0)^^(n.to!double + 1.0)*delta[idx];
-					sin_idx++;
-				}
-			}
-		)(Me, _idx);+/
 
 		curr_state++;
 
-		//delta_s[] = 0;
-		//lambda_s[] = 0;
-		//b[] = 0;
-		//beta[] = 0;
-		//state_history[get_circular_index(curr_state + 1)][2*total_states + total_sin_states..$] = 0;
 		v_0 = compute_inflow_average_at_disk;
 
 		auto v_inf = sqrt(advance_ratio*advance_ratio + axial_advance_ratio*axial_advance_ratio);
@@ -3451,10 +2591,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 	}
 
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
-		// Rotate into the coord frame the huang model expects.
 		if(!contraction_mapping) {
-			//immutable Chunk neg_y = -y[];
-			//immutable V = omega > 0 ? inflow_at_impl(this, x, neg_y, z) : inflow_at_impl(this, x, y, z);
 			immutable V = inflow_at_impl(this, x, y, z);
 			return V;
 		} else {
@@ -3463,8 +2600,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 			immutable Chunk x_c = x[]/k_bar[];
 			immutable Chunk y_c = y[]/k_bar[];
-			immutable Chunk neg_y = -y_c[];
-			//immutable V = omega > 0 ? inflow_at_impl(this, x_c, neg_y, z) : inflow_at_impl(this, x_c, y_c, z);
 			immutable V = inflow_at_impl(this, x_c, y_c, z);
 			return V;
 		}
@@ -3472,7 +2607,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {// : Inflow {
 
 	@nogc Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
 		Chunk i;
-		//immutable V = inflow_at_impl(this, x, y, z);
 		return i;
 	}
 }

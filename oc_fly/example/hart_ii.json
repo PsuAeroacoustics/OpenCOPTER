@@ -1,0 +1,28 @@
+[
+	{
+		"name": "hart_ii",
+		"rotors": [
+			{
+				"radius": 2,
+				"origin": [0, 0, 0],
+				"number_of_blades": 4,
+				"blade": {
+					"AR": 16.5,
+					"theta_tw": -8.0,
+                    "r_c": 0.22,
+                    "airfoils": [
+                        {
+                            "type": "aerodas",
+                            "extent": [
+                                0.22,
+                                1.0
+                            ],
+                            "xfoil_polar": "polars/NACA23012mod_1000000_polar.dat",
+                            "thickness": 0.12
+                        }
+                    ]
+				}
+			}
+		]
+	}
+]

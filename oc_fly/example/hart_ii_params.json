@@ -1,0 +1,235 @@
+{
+	"computational_parameters": {
+		"d_psi": 1.0,
+		"spanwise_elements": 48,
+		"shed_history_angle": 45.0,
+		"convergence_criteria": 0.000001,
+		"convergence_type": "trim",
+		"r_0": 1.0,
+		"a1": 1.0e-4,
+        "post_conv_revolutions": 2
+	},
+	"flight_conditions": [
+		{
+			"name": "BL",
+			"aoa": -4.5,
+			"density": 1.2055,
+			"omegas": [
+				109.12
+			],
+			"sos": 341.7,
+			"T": [
+				3300
+			],
+            "Mx": [
+                20
+            ],
+            "My": [
+                20
+            ],
+			"psi_3": 300,
+			"theta_3": 0.0,
+			"V_inf": 32.9,
+			"observer_file": "hart_ii_observers.json",
+			"acoustics_file": "acoustics_total_noise.json",
+			"flapping_coefficients": {
+                "coning": 2.5,
+				"cos": [
+					-0.006045,
+					 0.001823,
+					-0.0006507,
+					-0.001048,
+					-0.0001358
+            	],
+				"sin": [
+                    -0.007737,
+					-0.000473,
+					0.0008844,
+					5.391e-06
+                ],
+				"w": 1.00
+			},
+			"elastic_twist": {
+				"cos": [
+					-0.009037,
+					0.002961,
+				   -0.009796,
+				   0.0005252,
+					0.001129,
+				  -0.0006439,
+				  -0.0001786,
+				  -0.0004622
+				],
+				"sin": [
+					-0.003797,
+					5.21e-06,
+				   -0.000541,
+					0.001793,
+				   0.0003353,
+				  -2.835e-05,
+					-0.00036
+				]
+			},
+            "moment_trim_const": 3
+		},
+		{
+			"name": "MN",
+			"aoa": -4.5,
+			"density": 1.1931,
+			"omegas": [
+				109.01
+			],
+			"sos": 342.2,
+			"T": [
+				3300
+			],
+            "Mx": [
+                30
+            ],
+            "My": [
+                30
+            ],
+			"psi_3": 300,
+			"theta_3": 0.8,
+			"V_inf": 32.9,
+			"observer_file": "hart_ii_observers.json",
+			"acoustics_file": "acoustics_total_noise.json",
+			"flapping_coefficients": {
+                "coning": 2.5,
+				"cos": [
+					-0.006225,
+					0.003451,
+					-0.002218,
+					-0.004673,
+					-4.758e-05
+            	],
+				"sin": [
+					-0.009049,
+					0.001918,
+					0.002614,
+					-7.714e-05
+                ],
+				"w": 1.00
+			},
+			"elastic_twist": {
+				"cos": [
+					-0.009094,
+					0.003301,
+				   -0.007287,
+					 0.02032,
+					0.001536,
+				   0.0007229,
+				   -0.001406
+				],
+				"sin": [
+					-0.00368,
+					-0.001816,
+					 0.009208,
+					-0.001166,
+					0.0009517,
+					0.0008305
+				]
+			},
+            "moment_trim_const": 3
+		},
+		{
+			"name": "MV",
+			"aoa": -4.5,
+			"density": 1.1868,
+			"omegas": [
+				109.01
+			],
+			"sos": 343.0,
+			"T": [
+				3290
+			],
+            "Mx": [
+                20
+            ],
+            "My": [
+                30
+            ],
+			"psi_3": 180,
+			"theta_3": 0.8,
+			"V_inf": 32.9,
+			"observer_file": "hart_ii_observers.json",
+			"acoustics_file": "acoustics_total_noise.json",
+			"flapping_coefficients": {
+                "coning": 2.5,
+				"cos": [
+					-0.005427,
+					0.00125,
+					0.002281,
+					0.00313,
+					-0.0001839,
+					-0.0001863,
+					-5.047e-05,
+					-6.264e-05,
+					8.483e-06
+            	],
+				"sin": [
+					-0.008116,
+					-0.0008061,
+					  0.002982,
+					  2.82e-05,
+					 2.413e-05,
+					 7.308e-06,
+					-0.0001206,
+					 2.687e-05
+                ],
+				"w": 1.0
+			},
+			"elastic_twist": {
+				"cos": [
+					-0.008342,
+					0.00214,
+				   -0.01411,
+				  -0.002624,
+				 -0.0006886,
+				 -0.0007247,
+				 -3.277e-05
+				],
+				"sin": [
+					-0.001991,
+					0.0008361,
+					 -0.02615,
+					 0.001571,
+					 0.001287,
+				   -6.494e-05
+				]
+			},
+            "moment_trim_const": 3
+		}
+	],
+	"results": {
+		"inflow_slices": [
+			{
+				"resolution": [5, 152, 50],
+				"slice_start": [-1.1, -1.5, -0.3],
+				"slice_size": [0.1, 3.0, 1.0]
+			}
+		],
+		"wake_slices": [
+			{
+				"resolution": [456, 152, 80],
+				"slice_start": [-6.5, -1.5, -1],
+				"slice_size": [9, 3.0, 1.5]
+			}
+		],
+		"element_trajectories": [
+			-0.4,
+			-0.55,
+			-0.70,
+			-0.85,
+			-0.97,
+			0.4,
+			0.55,
+			0.70,
+			0.85,
+			0.97
+		],
+		"spanwise_time_series": [
+			0.87
+		]
+	}
+}

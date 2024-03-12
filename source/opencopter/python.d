@@ -210,12 +210,52 @@ double[] get_dC_T(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_T";
 }
 
+double[] get_dC_N(ref PyBladeState blade) {
+	return blade.get_state_array!"dC_N";
+}
+
+double[] get_dC_c(ref PyBladeState blade) {
+	return blade.get_state_array!"dC_c";
+}
+
+void fill_dC_N(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_N"(data);
+}
+
+void fill_dC_c(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_c"(data);
+}
+
+void fill_dC_D(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_D"(data);
+}
+
+void fill_dC_Nf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_N"(data);
+}
+
+void fill_dC_cf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_c"(data);
+}
+
+void fill_dC_Df(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_D"(data);
+}
+
 void fill_dC_Tf(ref PyBladeState blade, float[] data) {
 	return blade.get_state_array!"dC_T"(data);
 }
 
 void fill_dC_Td(ref PyBladeState blade, double[] data) {
 	return blade.get_state_array!"dC_T"(data);
+}
+
+void fill_dC_Qf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_Q"(data);
+}
+
+void fill_dC_Qd(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_Q"(data);
 }
 
 double[] get_dC_Q(ref PyBladeState blade) {
@@ -298,6 +338,32 @@ double[] get_wake_v_z_component(ref PyVortexFilament filament) {
 	return opencopter.wake.get_wake_component!"v_z"(filament);
 }
 
+
+void fill_wake_x_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"x"(filament, data);
+}
+
+void fill_wake_y_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"y"(filament, data);
+}
+
+void fill_wake_z_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"z"(filament, data);
+}
+
+void fill_wake_gamma_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"gamma"(filament, data);
+}
+
+void fill_wake_r_c_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"r_c"(filament, data);
+}
+
+void fill_wake_v_z_component(ref PyVortexFilament filament, double[] data) {
+	return opencopter.wake.get_wake_component!"v_z"(filament, data);
+}
+
+
 void step(PyAircraftState* ac_state, PyAircraft* aircraft, PyAircraftInputState* ac_input_state, Inflow[] inflows, PyWakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt) {
 	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, inflows, *wake_history, *atmo, iteration, dt);
 }
@@ -318,6 +384,10 @@ void write_wake_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkWa
 	opencopter.vtk.write_wake_vtu(base_filename, iteration, vtk_wake, wake);
 }
 
+void write_wake_field_vtu(string filename, PyAircraftState ac_state, PyWake wake, Vec3 delta, Vec3 starts, size_t num_x, size_t num_y, size_t num_z) {
+	opencopter.vtk.write_wake_field_vtu(filename, ac_state, wake, delta, starts, num_x, num_y, num_z);
+}
+
 alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!Inflow;
 
 void wrap_array(T)() {
@@ -328,6 +398,8 @@ void wrap_array(T)() {
 			OpIndexAssign!(T, size_t),
 			Def!(Array!(T).next),
 			Def!(Array!(T).__iter__),
+			Def!(Array!(T).__len__),
+			Def!(Array!(T).len),
 			Def!(Array!(T).length),
 			Repr!(Array!(T).toString)
 		);
@@ -350,6 +422,8 @@ void wrap_array(T)() {
 			OpIndexAssign!(T*, size_t),
 			Def!(Array!(T).next),
 			Def!(Array!(T).__iter__),
+			Def!(Array!(T).__len__),
+			Def!(Array!(T).len),
 			Def!(Array!(T).length),
 			Repr!(Array!(T).toString)
 		);
@@ -434,6 +508,18 @@ extern(C) void PydMain() {
 		:param base_filename: The filename to save the data to
 		:param iteration: The iteration of the saved data
 		:param vtk_wake: The :class:`VtkWake` object to save out
+		:param wake: The :class:`Wake` object containing the wake data
+	});
+
+	def!(write_wake_field_vtu, Docstring!q{
+		Takes the :class:`Wake` data and writes the induced velocity field to a vtu file.
+
+		.. caution::
+			
+			This function has a very high runtime cost, use sparingly
+
+		:param filename: The filename to save the data to
+		:param ac_state: The aircraft state object to save
 		:param wake: The :class:`Wake` object containing the wake data
 	});
 
@@ -548,6 +634,62 @@ extern(C) void PydMain() {
 		:param x: x location of the quarter chord
 	});
 
+	def!(get_dC_N, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise normal force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_N` from
+		:return: List of spanwise :math:`dC_N` values
+	});
+
+	def!(fill_dC_N, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise normal force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_N` from
+		:return: List of spanwise :math:`dC_N` values
+	});
+
+	def!(fill_dC_Nf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise normal force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_N` from
+		:return: List of spanwise :math:`dC_N` values
+	});
+
+	def!(get_dC_c, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_c` from
+		:return: List of spanwise :math:`dC_c` values
+	});
+
+	def!(fill_dC_c, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_c` from
+		:return: List of spanwise :math:`dC_c` values
+	});
+
+	def!(fill_dC_D, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_D` from
+		:return: List of spanwise :math:`dC_D` values
+	});
+
+	def!(fill_dC_cf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_c` from
+		:return: List of spanwise :math:`dC_c` values
+	});
+
+	def!(fill_dC_Df, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_D` from
+		:return: List of spanwise :math:`dC_D` values
+	});
+
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
 		Extract blade spanwise thrust coefficient to a linear array.
 
@@ -567,6 +709,20 @@ extern(C) void PydMain() {
 
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
 		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_dC_Qd, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise torque coefficient to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Q` from
+		:param data: numpy slice to fill with :math:`dC_Q` values
+	});
+
+	def!(fill_dC_Qf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise torque coefficient to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Q` from
+		:param data: numpy slice to fill with :math:`dC_Q` values
 	});
 
 	def!(get_dC_Q, double[] function(ref PyBladeState), Docstring!q{
@@ -710,6 +866,50 @@ extern(C) void PydMain() {
 	});
 	
 
+
+	def!(fill_wake_x_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament x position component to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract the x position component from
+		:return: List of filament x positions
+	});
+	
+	def!(fill_wake_y_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament y position component to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract the y position component from
+		:return: List of filament y positions
+	});
+	
+	def!(fill_wake_z_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament z position component to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract the z position component from
+		:return: List of filament z positions
+	});
+	
+	def!(fill_wake_gamma_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament cirulation strength (:math:`\Gamma`) to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`\Gamma` from
+		:return: List of filament :math:`\Gamma`
+	});
+
+	def!(fill_wake_r_c_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract filament vortex core size (:math:`r_c`) to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`r_c` from
+		:return: List of filament core sizes
+	});
+
+	def!(fill_wake_v_z_component, void function(ref PyVortexFilament, double[]), Docstring!q{
+		Extract induced velocity (:math:`v_z`) acting upon the filament to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`v_z` from
+		:return: List of induced velocities
+	});
+
+
 	def!(step, Docstring!(q{
 		Step the simulation by one timestep
 
@@ -852,7 +1052,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t),
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t, double),
 		Docstring!q{
 			Top level structure for holding the wake and its history.
 			
@@ -864,6 +1064,7 @@ extern(C) void PydMain() {
 			:param time_history: The number of timesteps to store. 2 is the minimum number.
 			:param radial_elements: The number of radial elements down the blade span.
 			:param shed_history: The number of timesteps to store the shed wake for.
+			:param a1: Wake core growth constant.
 		},
 		Member!("history", Docstring!q{An array of :class:`Wake` s, one for each timestep})
 	);
@@ -984,12 +1185,27 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		BladeStateChunk,
 		Member!("dC_T", Docstring!q{A chunk of spanwise sectional thrust coefficient}),
+		Member!("dC_T_dot", Docstring!q{A chunk of spanwise sectional thrust coefficient time derivative}),
 		Member!("dC_Q", Docstring!q{A chunk of spanwise sectional power/torque coefficient}),
 		Member!("dC_L", Docstring!q{A chunk of spanwise sectional lift coefficient}),
-		Member!("dC_D", Docstring!q{A chunk of spanwise sectional drag coefficient}),
+		Member!("dC_L_dot", Docstring!q{A chunk of spanwise sectional lift coefficient time derivative}),
+		Member!("dC_N", Docstring!q{A chunk of spanwise sectional normal force coefficient}),
+		Member!("dC_c", Docstring!q{A chunk of spanwise sectional chordwise force coefficient}),
+		Member!("dC_Mx", Docstring!q{A chunk of spanwise sectional x moment coefficient}),
+		Member!("dC_My", Docstring!q{A chunk of spanwise sectional y moment coefficient}),
+		Member!("u_p", Docstring!q{A chunk of spanwise sectional perpendicular inflow}),
+		Member!("u_t", Docstring!q{A chunk of spanwise sectional tangential inflow}),
 		Member!("aoa", Docstring!q{A chunk of spanwise sectional angle of attack}),
+		Member!("aoa_eff", Docstring!q{A chunk of spanwise sectional effective angle of attack}),
+		Member!("inflow_angle", Docstring!q{A chunk of spanwise sectional inflow angle}),
 		Member!("gamma", Docstring!q{A chunk of spanwise sectional circulation}),
-		Member!("d_gamma", Docstring!q{A chunk of spanwise sectional change in circulation})
+		Member!("d_gamma", Docstring!q{A chunk of spanwise sectional change in circulation}),
+		Member!("x", Docstring!q{The current x position of the blade in world space}),
+		Member!("y", Docstring!q{The current y position of the blade in world space}),
+		Member!("z", Docstring!q{The current z position of the blade in world space}),
+		Member!("theta", Docstring!q{The currect pitch of the spanwise element}),
+		Member!("d_gamma", Docstring!q{Spanwise change in circulation}),
+		Member!("gamma", Docstring!q{Spanwise circulation}),
 	);
 
 	wrap_struct!(
@@ -1026,6 +1242,7 @@ extern(C) void PydMain() {
 		},
 		Member!("blade_states", Docstring!q{An array of :class:`BladeState`, one for each blade of this rotor}),
 		Member!("C_T", Docstring!q{The current thrust coefficient of this rotor}),
+		Member!("C_Q", Docstring!q{The current power/torque coefficient of this rotor}),
 		Member!("C_Mx", Docstring!q{The current x moment coefficient of this rotor}),
 		Member!("C_My", Docstring!q{The current y moment coefficient of this rotor}),
 		Member!("advance_ratio", Docstring!q{The current advance ratio of this rotor}),

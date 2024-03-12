@@ -8,7 +8,7 @@
 				"number_of_blades": 4,
 				"blade": {
 					"r_c": 0.2,
-					"AR": 5,
+					"AR": 10,
 					"theta_tw": -12.0,
 					"airfoils": [
 						{

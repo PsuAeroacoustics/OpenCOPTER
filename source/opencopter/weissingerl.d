@@ -174,6 +174,7 @@ struct WeissingerL(ArrayContainer AC) {
 			}
 
 			gamma *= u[c1];
+			//gamma *= -direction_multiplier;
 			gamma *= -direction_multiplier;
 			//blade_state.chunks[chunk_idx].d_gamma[c1] = gamma - blade_state.chunks[chunk_idx].gamma[c1];
 			blade_state.chunks[chunk_idx].d_gamma[c1] = blade_state.chunks[chunk_idx].gamma[c1] - gamma;
