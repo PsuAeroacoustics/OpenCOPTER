@@ -3,13 +3,13 @@
 from collections import namedtuple
 import sys
 import os
-import json
+import pyjson5
 
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/../')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/source')
-#sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/wopwop2aam')
 
+from copy import deepcopy
 from libopencopter import *
 from libwopwopd import *
 from source import compute_aero
@@ -35,11 +35,17 @@ def calculate_sound_power_level(oaspl_db,area):
 
 	return sound_power_level
 
-FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics")
+FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict")
 
-def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics):
-	origins = [Vec3(aircraft['rotors'][r_idx]["origin"]) for r_idx in range(len(aircraft['rotors']))]
-	radii = np.asarray([aircraft["rotors"][r_idx]["radius"] for r_idx in range(len(aircraft["rotors"]))])
+def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory):
+
+	motion = flight_condition["motion"] if "motion" in flight_condition else None
+	rotorcraft_system, motion_vec_dict, trim_vec_dict, component_dict = compute_aero.build_aircraft(aircraft, computational_parameters['spanwise_elements'], geom_directory, motion, flight_condition["trim_frame"] if "trim_frame" in flight_condition else None)
+
+	#origins = [Vec3(aircraft['rotors'][r_idx]["origin"]) for r_idx in range(len(aircraft['rotors']))]
+	origins = [rotor.frame.global_position() for rotor in rotorcraft_system.rotors]
+	radii = np.asarray([rotor.radius for rotor in rotorcraft_system.rotors])
+	#radii = np.asarray([aircraft["rotors"][r_idx]["radius"] for r_idx in range(len(aircraft["rotors"]))])
 	num_rotors = radii.size # aircraft["number_of_rotors"]
 	V_inf = flight_condition["V_inf"]
 	wake_dists = np.zeros(num_rotors)
@@ -78,7 +84,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 	total_wake_history = wake_history_length.sum()
 	
-	return FlightCase(aircraft, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics)
+	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict)
 
 def main():
 	# push check
@@ -245,22 +251,22 @@ def main():
 		geom_directory = path.dirname(path.realpath(args.input_geom))
 
 		with open(args.input_geom) as geom_file:
-			geom = json.load(geom_file)
+			geom = pyjson5.load(geom_file)
 	elif args.case_file is not None:
 		
 		with open(args.case_file) as case_file:
-			ac_list = json.load(case_file)
+			ac_list = pyjson5.load(case_file)
 
 		for ac in ac_list:
 			geom_directory = path.dirname(path.realpath(args.case_file))
 
 			with open(ac) as geom_file:
-				geom = geom + json.load(geom_file)
+				geom = geom + pyjson5.load(geom_file)
 
 	param = None
 	if args.input_param is not None:
 		with open(args.input_param) as param_file:
-			param = json.load(param_file)
+			param = pyjson5.load(param_file)
 
 	input_observer = None
 	input_acoustics = None
@@ -270,12 +276,12 @@ def main():
 
 	if args.observer_param is not None:
 		with open(args.observer_param) as param_file:
-			obs_param = json.load(param_file)
+			obs_param = pyjson5.load(param_file)
 			input_observer = obs_param["observer"]
 
 	if args.acoustics_param is not None:
 		with open(args.acoustics_param) as param_file:
-			acoustic_param = json.load(param_file)
+			acoustic_param = pyjson5.load(param_file)
 			input_acoustics = acoustic_param["acoustic_config"]
 
 	if param is not None:
@@ -288,7 +294,7 @@ def main():
 		if 'parameter_file' in aircraft:
 			ac_param = None
 			with open(aircraft['parameter_file']) as param_file:
-				ac_param = json.load(param_file)
+				ac_param = pyjson5.load(param_file)
 
 		if input_flight_conditions is not None:
 			flight_conditions = input_flight_conditions
@@ -322,7 +328,7 @@ def main():
 			elif 'observer_file' in flight_condition:
 				ac_observers = None
 				with open(flight_condition['observer_file']) as param_file:
-					ac_observers = json.load(param_file)
+					ac_observers = pyjson5.load(param_file)
 					observer = ac_observers["observer"]
 
 			if input_acoustics is not None:
@@ -330,10 +336,10 @@ def main():
 			elif 'acoustics_file' in flight_condition:
 				ac_acoustics = None
 				with open(flight_condition['acoustics_file']) as param_file:
-					ac_acoustics = json.load(param_file)
+					ac_acoustics = pyjson5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
-			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))
+			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory))
 		# else:
 		# 	print(f'Only running case {args.ci}')
 		# 	flight_condition = flight_conditions[args.ci]
@@ -342,7 +348,7 @@ def main():
 		# 	elif 'observer_file' in flight_condition:
 		# 		ac_observers = None
 		# 		with open(flight_condition['observer_file']) as param_file:
-		# 			ac_observers = json.load(param_file)
+		# 			ac_observers = pyjson5.load(param_file)
 		# 			observer = ac_observers["observer"]
 
 		# 	if input_acoustics is not None:
@@ -350,7 +356,7 @@ def main():
 		# 	elif 'acoustics_file' in flight_condition:
 		# 		ac_acoustics = None
 		# 		with open(flight_condition['acoustics_file']) as param_file:
-		# 			ac_acoustics = json.load(param_file)
+		# 			ac_acoustics = pyjson5.load(param_file)
 		# 			acoustics = ac_acoustics["acoustic_config"]
 
 		# 	flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))
@@ -432,9 +438,9 @@ def main():
 					state_dir = f'theta{"_".join([f"{theta:.2f}" for theta in flight_condition["collective"]])}'
 
 				if "name" in flight_condition:
-					root_path = f'./{case.aircraft["name"]}/{flight_condition["name"]}'
+					root_path = f'./{case.aircraft.root_frame.name}/{flight_condition["name"]}'
 				else:
-					root_path = f'./{case.aircraft["name"]}/{aoa_dir}/{V_inf_dir}/{state_dir}'
+					root_path = f'./{case.aircraft.root_frame.name}/{aoa_dir}/{V_inf_dir}/{state_dir}'
 
 				if not path.isdir(root_path):
 					makedirs(root_path, exist_ok=True)
@@ -453,7 +459,9 @@ def main():
 						computational_parameters['post_conv_revolutions'] = args.r
 
 					log_file.write("simulating aero\n")
-					wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, aircraft, flight_condition, computational_parameters, results, geom_directory, observer, acoustics, case.wake_lengths)
+					# wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, flight_condition, computational_parameters, results, observer, acoustics, case.wake_lengths, aircraft, case.motion_vec_dict, case.trim_vec_dict)
+					wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, case)
+
 					cases = cases + wopwop_cases
 
 					for case in wopwop_cases:

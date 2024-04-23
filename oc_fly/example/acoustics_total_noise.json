@@ -21,7 +21,7 @@
 		"total_noise_sigma_flag": false,
 		"normal_sigma_flag": true,
 		"mach_sigma_flag": false,
-		"observer_sigma_flag": false,
+		"observer_sigma_flag": true,
 		"velocity_sigma_flag": false,
 		"acceleration_sigma_flag": false,
 		"density_sigma_flag": false,

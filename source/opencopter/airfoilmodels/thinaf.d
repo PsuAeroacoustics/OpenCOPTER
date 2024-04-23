@@ -14,8 +14,17 @@ class ThinAirfoil: AirfoilModel {
 		C_l_alpha_0 = _C_l_alpha_0;
 	}
 
+    override double lift_curve_slope() {
+        return 2.0*PI;
+    }
+
+    override double zero_lift_aoa() {
+        return C_l_alpha_0;
+    }
+
     override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
-		Chunk C_l = 2.0*PI*alpha_query[] + C_l_alpha_0;
+		immutable Chunk aoa_eff = alpha_query[] - C_l_alpha_0;
+		Chunk C_l = 2.0*PI*aoa_eff[];
 		return C_l;
 	}
 

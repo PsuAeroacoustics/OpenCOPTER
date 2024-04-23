@@ -17,4 +17,5 @@ interface Inflow {
 	@nogc Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack);
 	@nogc Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth);
 	@nogc double wake_skew();
+	//@nogc Frame* frame();
 }

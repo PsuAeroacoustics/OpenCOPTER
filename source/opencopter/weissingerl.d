@@ -162,23 +162,26 @@ struct WeissingerL(ArrayContainer AC) {
 		}
 	}
 
-	void compute_bound_circulation_band(BS)(auto ref BS blade_state, immutable Chunk u, size_t chunk_idx, double direction_multiplier) {
+	Chunk compute_bound_circulation_band(BS)(auto ref BS blade_state, size_t chunk_idx, double direction_multiplier, Chunk Cl_alpha, Chunk alpha_zero) {
+		Chunk gamma = 0;
+		import std.stdio : writeln;
+
+		//writeln("Cl_alpha: ", Cl_alpha, ", alpha_zero: ", alpha_zero);
+		
 		foreach(c1; 0..chunk_size) {
-			//immutable r = ((elements/chunk_size - 1) - chunk_idx)*chunk_size + c1;
 			immutable r = chunk_idx*chunk_size + c1;
-			double gamma = 0;
 			foreach(ch, ref inf; influence_inv[r]) {
+				//Chunk aoa_eff = Cl_alpha[]/(2.0*PI)*(blade_state.chunks[ch].aoa[] - alpha_zero[]);
+				//Chunk tmp = inf[]*sin(aoa_eff)[];
+
+				//writeln("aoa_eff: ", aoa_eff, ", blade_state.chunks[ch].aoa: ", blade_state.chunks[ch].aoa);
 				Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
-				//Chunk tmp = inf[]*blade_state.chunks[ch].aoa[];
-				gamma += tmp.sum;
+				
+				gamma[c1] += tmp.sum;
 			}
 
-			gamma *= u[c1];
-			//gamma *= -direction_multiplier;
-			gamma *= -direction_multiplier;
-			//blade_state.chunks[chunk_idx].d_gamma[c1] = gamma - blade_state.chunks[chunk_idx].gamma[c1];
-			blade_state.chunks[chunk_idx].d_gamma[c1] = blade_state.chunks[chunk_idx].gamma[c1] - gamma;
-			blade_state.chunks[chunk_idx].gamma[c1] = gamma;
+			gamma[c1] *= -sgn(direction_multiplier);
 		}
+		return gamma;
 	}
 }

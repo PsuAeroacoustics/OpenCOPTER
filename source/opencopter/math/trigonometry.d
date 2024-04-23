@@ -537,3 +537,69 @@ import core.simd;
 	}
 	return result;
 }
+
+@nogc T atan2(T)(immutable T vector1, immutable T vector2) if(isStaticArray!T) {
+	static import std.math;
+	Unqual!T result;
+
+	import std.stdio : writeln;
+
+	//version(LDC) {
+	static if(use_sleef) {
+		version(D_AVX2) {
+			pragma(msg, "avx2 atan2");
+			static if(T.length == 16) {
+				result[0..4] = cast(double[4])Sleef_atan2d4_u10avx2(cast(double4)vector1[0..4], cast(double4)vector2[0..4]);
+				result[4..8] = cast(double[4])Sleef_atan2d4_u10avx2(cast(double4)vector1[4..8], cast(double4)vector2[4..8]);
+				result[8..12] = cast(double[4])Sleef_atan2d4_u10avx2(cast(double4)vector1[8..12], cast(double4)vector2[8..12]);
+				result[12..$] = cast(double[4])Sleef_atan2d4_u10avx2(cast(double4)vector1[12..$], cast(double4)vector2[12..$]);
+			} else static if(T.length == 8) {
+				result[0..4] = cast(double[4])Sleef_atan2d4_u10avx2(cast(double4)vector1[0..4], cast(double4)vector2[0..4]);
+				result[4..$] = cast(double[4])Sleef_atan2d4_u10avx2(cast(double4)vector1[4..$], cast(double4)vector2[4..$]);
+			} else static if(T.length == 4) {
+				result[] = cast(T)Sleef_atan2d4_u10avx2(cast(double4)vector1, cast(double4)vector2);
+			}
+		} else {
+			version(D_AVX) {
+				static if(T.length == 8) {
+					result[0..2] = cast(double[2])Sleef_atan2d2_u10sse4(cast(double2)vector1[0..2], cast(double2)vector2[0..2]);
+					result[2..4] = cast(double[2])Sleef_atan2d2_u10sse4(cast(double2)vector1[2..4], cast(double2)vector2[2..4]);
+					result[4..6] = cast(double[2])Sleef_atan2d2_u10sse4(cast(double2)vector1[4..6], cast(double2)vector2[4..6]);
+					result[6..$] = cast(double[2])Sleef_atan2d2_u10sse4(cast(double2)vector1[6..$], cast(double2)vector2[6..$]);
+
+				} else static if(T.length == 4) {
+					result[0..2] = cast(double[2])Sleef_atan2d2_u10sse4(cast(double2)vector1[0..2], cast(double2)vector2[0..2]);
+					result[2..$] = cast(double[2])Sleef_atan2d2_u10sse4(cast(double2)vector1[2..$], cast(double2)vector2[2..$]);
+				} else static if(T.length == 2) {
+					result[] = cast(T)Sleef_atan2d2_u10sse4(cast(double2)vector1, cast(double2)vector2);
+				}
+
+			} else {
+				version(X86_64) {
+					static if(T.length == 8) {
+						result[0..2] = cast(double[2])Sleef_atan2d2_u10sse2(cast(double2)vector1[0..2], cast(double2)vector2[0..2]);
+						result[2..4] = cast(double[2])Sleef_atan2d2_u10sse2(cast(double2)vector1[2..4], cast(double2)vector2[2..4]);
+						result[4..6] = cast(double[2])Sleef_atan2d2_u10sse2(cast(double2)vector1[4..6], cast(double2)vector2[4..6]);
+						result[6..$] = cast(double[2])Sleef_atan2d2_u10sse2(cast(double2)vector1[6..$], cast(double2)vector2[6..$]);
+
+					} else static if(T.length == 4) {
+						result[0..2] = cast(double[2])Sleef_atan2d2_u10sse2(cast(double2)vector1[0..2], cast(double2)vector2[0..2]);
+						result[2..$] = cast(double[2])Sleef_atan2d2_u10sse2(cast(double2)vector1[2..$], cast(double2)vector2[2..$]);
+					} else static if(T.length == 2) {
+						result[] = cast(T)Sleef_atan2d2_u10sse2(cast(double2)vector1, cast(double2)vector2);
+					}
+				} else {
+					foreach(idx; 0..T.length) {
+						result[idx] = std.math.atan2(vector1[idx], vector2[idx]);
+					}
+				}
+				
+			}
+		}
+	} else {
+		foreach(idx; 0..T.length) {
+			result[idx] = std.math.atan2(vector1[idx], vector2[idx]);
+		}
+	}
+	return result;
+}

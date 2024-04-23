@@ -18,6 +18,12 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 
 	alias ThisType = typeof(this);
 
+	this(double init_data) {
+		data[0][] = init_data;
+		data[1][] = init_data;
+		data[2][] = init_data;
+	}
+
 	/++
 	+/
 	this(Vector!(dim, T) init_data) {
@@ -32,15 +38,15 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 		data[2][] = init_data.data[2][];
 	}
 
-	@trusted @nogc auto get_sum() immutable {
-		T[dim] d = data[].map!(a => a[].sum).staticArray!(T[dim]);
-		return Vec(d);
-	}
+	// @trusted @nogc auto get_sum() immutable {
+	// 	T[dim] d = data[].map!(a => a[].sum).staticArray!(T[dim]);
+	// 	return Vec(d);
+	// }
 
-	@trusted @nogc ref auto get_vector(size_t i) immutable pure nothrow {
-		T[dim] d = data[].map!(a => a[i]).staticArray!(T[dim]);
-		return Vec(d);
-	}
+	// @trusted @nogc ref auto get_vector(size_t i) immutable pure nothrow {
+	// 	T[dim] d = data[].map!(a => a[i]).staticArray!(T[dim]);
+	// 	return Vec(d);
+	// }
 
 	@trusted @nogc auto opUnary(string op)() immutable pure nothrow
 		if(op == "-")
@@ -84,7 +90,7 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 		return ret;
 	}
 
-	@trusted @nogc immutable(ThisType) opBinary(string op)(immutable T[size] rhs) immutable pure nothrow {
+	@trusted @nogc immutable(ThisType) opBinary(string op)(immutable T rhs) immutable pure nothrow {
 		auto ret = ThisType();
 
 		static foreach(i; 0..dim) {
@@ -104,7 +110,7 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 		return ret;
 	}
 
-	@trusted @nogc auto opBinary(string op)(T[size] rhs) pure nothrow {
+	@trusted @nogc auto opBinary(string op)(T rhs) pure nothrow {
 		auto ret = ThisType();
 
 		static foreach(i; 0..dim) {
@@ -184,6 +190,16 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 		return ret;
 	}+/
 
+	@trusted @nogc ref auto opBinaryRight(string op)(auto ref Matrix!(dim, dim, double) lhs) pure nothrow if(op == "*") {
+		auto ret = ThisType();
+
+		// static foreach(i; 0..dim) {
+		// 	mixin("ret[i][] = lhs" ~ op ~ "data[i][];");
+		// }
+		
+		return ret;
+	}
+
 	@trusted @nogc immutable(ThisType) opBinaryRight(string op, size_t size)(immutable T lhs) immutable pure nothrow {
 		auto ret = ThisType();
 
@@ -224,12 +240,22 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 		return ret;
 	}
 
-	@trusted @nogc auto opAssign(VecArrayT!(dim, T) rhs)
+	@trusted @nogc auto opAssign(VecChunkT!(dim, T) rhs)
 	{
 		static foreach(i; 0..dim) {
 			data[i][] = rhs[i][];
 		}
 
+		return this;
+	}
+
+	@trusted @nogc auto opAssign(Vector!(dim, double)[] rhs)
+	{
+		static foreach(i; 0..dim) {
+			foreach(idx, ref vec; rhs) {
+				data[i][idx] = rhs[idx][i];
+			}
+		}
 		return this;
 	}
 
@@ -261,25 +287,49 @@ struct VecChunkT(size_t dim, T) if(isStaticArray!T) {
 
 	@trusted @nogc auto dot(immutable Vec rhs) immutable pure nothrow {
 		T ret;
-		ret[] = data[0][]*rhs[0] + data[1][]*rhs[1] + data[2][]*rhs[2];
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
 		return ret;
 	}
 
 	@trusted @nogc auto dot(ref Vec rhs) immutable pure nothrow {
 		T ret;
-		ret[] = data[0][]*rhs[0] + data[1][]*rhs[1] + data[2][]*rhs[2];
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
 		return ret;
 	}
 
 	@trusted @nogc auto dot(ref Vec rhs) pure nothrow {
 		T ret;
-		ret[] = data[0][]*rhs[0] + data[1][]*rhs[1] + data[2][]*rhs[2];
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
 		return ret;
 	}
 
 	@trusted @nogc auto dot(immutable Vec rhs) pure nothrow {
 		T ret;
-		ret[] = data[0][]*rhs[0] + data[1][]*rhs[1] + data[2][]*rhs[2];
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
+		return ret;
+	}
+
+	@trusted @nogc auto dot(immutable ThisType rhs) immutable pure nothrow {
+		T ret;
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
+		return ret;
+	}
+
+	@trusted @nogc auto dot(ref ThisType rhs) immutable pure nothrow {
+		T ret;
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
+		return ret;
+	}
+
+	@trusted @nogc auto dot(ref ThisType rhs) pure nothrow {
+		T ret;
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
+		return ret;
+	}
+
+	@trusted @nogc auto dot(immutable ThisType rhs) pure nothrow {
+		T ret;
+		ret[] = data[0][]*rhs[0][] + data[1][]*rhs[1][] + data[2][]*rhs[2][];
 		return ret;
 	}
 

@@ -55,10 +55,6 @@ template is_rotor_input_state(A) {
 
 alias RotorInputState = RotorInputStateT!(ArrayContainer.none);
 extern (C++) struct RotorInputStateT(ArrayContainer AC) {
-	double angle_of_attack; // rad
-	double sin_aoa;
-	double cos_aoa;
-	double freestream_velocity; // m/s
 	double angular_velocity; // rad/s
 	double angular_accel; // rad/s^2
 	double azimuth; // radians

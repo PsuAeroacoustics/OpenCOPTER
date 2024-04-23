@@ -156,6 +156,7 @@ OC Fly has the following dependencies:
 - Numpy
 - Scipy
 - mpi4py
+- pyjson5
 
 These can be installed through your package manager, pip, or an anaconda distribution.
 

@@ -44,7 +44,7 @@ Chunk[][] allocate_dense_chunk_aliased(size_t r, size_t c) {
  +	calls this it will remove pure and @system that is auto
  +	applied to functions.
  +/
-private @system extern (C) void nop() {
+@system extern (C) void nop() {
 
 }
 
@@ -120,12 +120,28 @@ struct Array(__T) {
 		return &data[curr_idx];
 	}
 
+	auto opOpAssign(string op, T)(T value)
+	{
+		static if(op == "~") {
+			data ~= value;
+		}
+		return this;
+	}
+
+	auto opOpAssign(string op, T)(T* value)
+	{
+		static if(op == "~") {
+			data ~= *value;
+		}
+		return this;
+	}
+
 	auto opAssign(T[] slice) {
 		data = slice;
 		return this;
 	}
 
-	/+auto opAssign(ref Array!T arr) {
+	auto opAssign(ref Array!T arr) {
 		data = arr.data;
 		return this;
 	}
@@ -133,16 +149,18 @@ struct Array(__T) {
 	auto opAssign(Array!T arr) {
 		data = arr.data;
 		return this;
-	}+/
+	}
 
 	import std.traits : isBasicType;
 	static if(isBasicType!T) {
+		pragma(msg, "is basic: ", T.stringof);
 		T opIndex(size_t i) {
 			nop;
 			assert(i < data.length);
 			return data[i];
 		}
 	} else {
+		pragma(msg, "is not basic: ", T.stringof);
 		T* opIndex(size_t i) {
 			nop;
 			assert(i < data.length);
@@ -155,11 +173,6 @@ struct Array(__T) {
 		assert(i < data.length);
 		data[i] = *t;
 	}
-
-	/+void opIndexAssign(ref T t, size_t i) {
-		assert(i < data.length);
-		data[i] = t;
-	}+/
 
 	void opIndexAssign(T t, size_t i) {
 		assert(i < data.length);

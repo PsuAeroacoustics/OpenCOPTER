@@ -22,8 +22,8 @@ def flapping_at_azimuth(a: list[float], b: list[float], w: float, azimuth: float
 	h_star = 0
 
 	for idx in range(len(a)):
-		cos = math.cos(w*float(idx)*azimuth)#*(math.pi/180.0))
-		sin = math.sin(w*float(idx)*azimuth)#*(math.pi/180.0))
+		cos = math.cos(w*float(idx)*azimuth)
+		sin = math.sin(w*float(idx)*azimuth)
 
 		h = h + a[idx]*cos + b[idx - 1]*sin
 
@@ -37,14 +37,14 @@ def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 	#h_star = 0
 
 	for idx in range(len(a)):
-		cos = math.cos(float(idx)*azimuth)#*(math.pi/180.0))
-		sin = math.sin(float(idx)*azimuth)#*(math.pi/180.0))
+		cos = math.cos(float(idx)*azimuth)
+		sin = math.sin(float(idx)*azimuth)
 
 		h = h + a[idx]*cos + b[idx - 1]*sin
 
 	return h
 
-def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, write_wake, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results):
+def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
 
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
@@ -100,7 +100,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 	log_file.write(f"post_conv_revolutions: {post_conv_revolutions}\n")
 	if do_compute:
-		loading_files = [[wopwop_input_files_generator.build_wopwop_loading(r_idx, blade_idx, int(round(post_conv_revolutions*iter_per_rev)), r, naca0012_xsection, wopwop_data_path) for blade_idx in range(num_blades[r_idx])] for r_idx in range(num_rotors)]
+		loading_files = [[wopwop_input_files_generator.build_wopwop_loading(rotor, blade, int(round(post_conv_revolutions*iter_per_rev)), naca0012_xsection, wopwop_data_path) for blade in rotor.blades] for rotor in vehicle.aircraft.rotors]
+	
+	for rotor in vehicle.aircraft.rotors:
+		for blade in rotor.blades:
+			wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, wopwop_data_path, rotor, blade)
 
 	log_file.write("Performing acoustic resolution simulation\n")
 
@@ -123,12 +127,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 	if "c_mx" in flight_condition and "c_my" in flight_condition:
 		moment_trim = True
 		c_mx_bars = flight_condition["c_mx"]
-		c_my_bars = -flight_condition["c_my"]
+		c_my_bars = flight_condition["c_my"]
 
 	elif "Mx" in flight_condition and "My" in flight_condition:
 		moment_trim = True
-		c_mx_bars =  [flight_condition["Mx"][r_idx] for r_idx in range(num_rotors)]
-		c_my_bars =  [-flight_condition["My"][r_idx] for r_idx in range(num_rotors)]
+		c_mx_bars = [flight_condition["Mx"][r_idx] for r_idx in range(num_rotors)]
+		c_my_bars = [flight_condition["My"][r_idx] for r_idx in range(num_rotors)]
 
 		log_file.write(f'c_mx_bars: {c_mx_bars}, c_my_bars: {c_my_bars}\n')
 
@@ -167,7 +171,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 	sim_done = False
 	converged = False
 	converged_revolutions = 0
-	converged_iteration = 0
 	iteration = 0
 	acoustic_iteration = 0
 	spanwise_element_iteration = 0
@@ -206,7 +209,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 					for sub_idx in range(chunk_size()):
 						element_dist = abs(target_span_element - vehicle.aircraft.rotors[r_idx].blades[0].chunks[chunk_idx].r[sub_idx])
 						if element_dist < closest_element_dist:
-							#log_file.write(f'Found close blade element to requested span poition ({target_span_element}) at {vehicle.aircraft.rotors[r_idx].blades[0].chunks[chunk_idx].r[sub_idx]}\n')
 							target_span_chunk_index[r_idx][t_idx] = chunk_idx
 							target_span_element_index[r_idx][t_idx] = sub_idx
 							closest_element_dist = element_dist
@@ -250,11 +252,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 	if 'theta_3' in flight_condition:
 		theta_3 = flight_condition['theta_3']*(math.pi/180.0)
 
+	blade_flapping = None
+	elastic_twist = None
 	if do_compute:
 
-		blade_flapping = None
-		elastic_twist = None
-		
 		if "flapping_coefficients" in flight_condition:
 			blade_flapping = lambda az: flapping_at_azimuth(flight_condition["flapping_coefficients"]["cos"], flight_condition["flapping_coefficients"]["sin"], flight_condition["flapping_coefficients"]["w"], az)
 
@@ -264,9 +265,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 		z_loading = np.zeros(elements, dtype=np.single)
 		x_loading = np.zeros(elements, dtype=np.single)
 		y_loading = np.zeros(elements, dtype=np.single)
-
-		rotor_aoas = [vehicle.input_state.rotor_inputs[r_idx].angle_of_attack for r_idx in range(num_rotors)]
-		rotor_aoa = rotor_aoas[0]
 
 		while not sim_done:
 
@@ -322,9 +320,17 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 					+''.join([f' χ{r_idx}: {average_chis[r_idx]:.2f},' for r_idx in range(num_rotors)])
 					+f' combined_C_T: {average_C_Ts.sum():.5f}, max L_2: {max_l2}\n'
 				)
+				# log_file.write(f'theta: {[theta*(180.0/math.pi) for theta in get_theta(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'aoa: {[aoa*(180.0/math.pi) for aoa in get_aoa(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'aoa_eff: {[aoa*(180.0/math.pi) for aoa in get_aoa_eff(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'inflow_angle: {[aoa*(180.0/math.pi) for aoa in get_inflow_angle(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'u_p: {get_u_p(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'u_t: {get_u_t(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'gamma: {get_gamma(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'd_gamma: {get_d_gamma(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+
 				start_time = now
 				log_file.flush()
-
 
 				if converged and not sim_done:
 					if converged_revolutions >= post_conv_revolutions:
@@ -332,8 +338,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 					converged_revolutions = converged_revolutions + 1
 
-			for r_idx in range(vehicle.input_state.rotor_inputs.length()):
-				basic_single_rotor_dynamics(vehicle.input_state.rotor_inputs[r_idx], dt)
+			for r_idx, rotor in enumerate(vehicle.aircraft.rotors):
+				_ = basic_single_rotor_dynamics(vehicle.input_state.rotor_inputs[r_idx], dt)
+
+				for motion_lambda in vehicle.motion_lambdas[r_idx]:
+					motion_lambda(vehicle.input_state.rotor_inputs[r_idx].azimuth)
 
 			step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt)
 
@@ -349,7 +358,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 				average_Ts[r_idx] = average_C_Ts[r_idx]*atmo.density*math.pi*vehicle.aircraft.rotors[r_idx].radius**4.0*abs(omegas[r_idx])**2.0
 				average_Mxs[r_idx] = average_C_Mxs[r_idx]*atmo.density*math.pi*vehicle.aircraft.rotors[r_idx].radius**5.0*abs(omegas[r_idx])**2.0
-				average_Mys[r_idx] = average_C_Mys[r_idx]*atmo.density*math.pi*vehicle.aircraft.rotors[r_idx].radius**5.0*abs(omegas[r_idx])**2.0
+				average_Mys[r_idx] = -average_C_Mys[r_idx]*atmo.density*math.pi*vehicle.aircraft.rotors[r_idx].radius**5.0*abs(omegas[r_idx])**2.0
 
 				average_chis[r_idx] = np.sum(average_chi_arrays[r_idx])/C_T_len
 
@@ -394,7 +403,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 					
 			for r_idx, rotor_state in enumerate(vehicle.ac_state.rotor_states):
 				for b_idx in range(num_blades[r_idx]):
-					#blade_azimuth = math.fmod(vehicle.input_state.rotor_inputs[r_idx].azimuth + vehicle.aircraft.rotors[r_idx].blades[b_idx].azimuth_offset, 2.0*math.pi)
 					blade_azimuth = vehicle.input_state.rotor_inputs[r_idx].azimuth + vehicle.aircraft.rotors[r_idx].blades[b_idx].azimuth_offset
 					cos_azimuth = math.cos(blade_azimuth)
 					sin_azimuth = math.sin(blade_azimuth)
@@ -403,7 +411,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 					vehicle.input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = thetas[r_idx, 1] + theta_1c[r_idx]*cos_azimuth + theta_1s[r_idx]*sin_azimuth + theta_3*sin3_azimuth
 					if elastic_twist:
-						vehicle.input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = vehicle.input_state.rotor_inputs[r_idx].blade_pitches[b_idx] + elastic_twist(blade_azimuth - math.pi)
+					  	vehicle.input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = vehicle.input_state.rotor_inputs[r_idx].blade_pitches[b_idx] + elastic_twist(blade_azimuth - math.pi)
 
 			if blade_flapping is not None:
 				for r_idx, rotor_state in enumerate(vehicle.ac_state.rotor_states):
@@ -416,10 +424,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 			loading_data.time = dt*acoustic_iteration
 
-			if converged and (vehicle.input_state.rotor_inputs[r_idx].angle_of_attack == rotor_aoa):
+			if converged:
 				if write_wake and (converged_revolutions >= (post_conv_revolutions - 1)):
 					for r_idx in range(num_rotors):
-						write_rotor_vtu(f"{vtu_output_path}/rotor", acoustic_iteration, r_idx, vtk_rotors[r_idx], vehicle.ac_state.rotor_states[r_idx], vehicle.input_state.rotor_inputs[r_idx])
+						write_rotor_vtu(f"{vtu_output_path}/rotor", acoustic_iteration, r_idx, vtk_rotors[r_idx], vehicle.ac_state.rotor_states[r_idx], vehicle.input_state.rotor_inputs[r_idx], rotor)
 
 						write_wake_vtu(f"{vtu_output_path}/wake", acoustic_iteration, vtk_wake, vehicle.wake_history.history[0])
 
@@ -454,7 +462,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 					for blade_idx, blade in enumerate(rotor.blade_states):
 
-						#blade_azimuth = (math.fmod(vehicle.input_state.rotor_inputs[rotor_idx].azimuth + vehicle.aircraft.rotors[rotor_idx].blades[blade_idx].azimuth_offset, 2.0*math.pi) - math.pi)*(180.0/math.pi)
 						blade_azimuth = vehicle.input_state.rotor_inputs[r_idx].azimuth + vehicle.aircraft.rotors[r_idx].blades[b_idx].azimuth_offset
 						
 						cos_azimuth = math.cos(blade_azimuth)
@@ -462,7 +469,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 						sin3_azimuth = math.cos(3.0*(blade_azimuth) - (psi_3 - math.pi))
 
-						#vehicle.input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = thetas[r_idx, 1] + theta_1c[r_idx]*cos_azimuth + theta_1s[r_idx]*sin_azimuth + theta_3*sin3_azimuth
 						collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]
 						sin_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1s[rotor_idx]*sin_azimuth
 						cos_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1c[rotor_idx]*cos_azimuth
@@ -483,8 +489,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 							for t_idx, target_y_slice in enumerate(target_y_slices):
 								fill_wake_y_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[blade_idx], temp_wake_array_y)
 
-
-								if (abs(temp_wake_array_y[0] - target_y_slice) < 0.01) and (not wake_element_found[rotor_idx][t_idx]) and (((blade.azimuth <= 1.02*0.5*math.pi) and (blade.azimuth >= -1.02*0.5*math.pi)) or ((blade.azimuth <= 1.02*5.0/2.0*math.pi) and (blade.azimuth >= 1.02*3.0/2.0*math.pi))):
+								if (abs(temp_wake_array_y[0] - (vehicle.aircraft.rotors[rotor_idx].radius*target_y_slice)) < 0.05) and (not wake_element_found[rotor_idx][t_idx]) and (((blade.azimuth <= 1.02*0.5*math.pi) and (blade.azimuth >= -1.02*0.5*math.pi)) or ((blade.azimuth <= 1.02*5.0/2.0*math.pi) and (blade.azimuth >= 1.02*3.0/2.0*math.pi))):
 									num_chunks = blade.chunks.len()
 									log_file.write(f"Found wake element to track for slice {target_y_slice} at position: {blade.chunks[num_chunks - 1].x[7]}, {temp_wake_array_y[0]}, {blade.chunks[num_chunks - 1].z[7]}\n")
 									wake_element_found[rotor_idx][t_idx] = True
@@ -492,17 +497,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 
 						fill_dC_Nf(blade, z_loading)
 						# fill_dC_cf(blade, y_loading)
-						#z_loading = [-z_load*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**4.0*abs(omegas[rotor_idx])**2.0/vehicle.aircraft.rotors[rotor_idx].blades[blade_idx].average_chord for z_load in z_loading]
 
-						#z_loading = -1.0*np.abs(z_loading)*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**4.0*abs(omegas[rotor_idx])**2.0
 						z_loading = -z_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0
-						#y_loading = np.sign(omegas[rotor_idx])*y_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**2.0*abs(omegas[rotor_idx])**2.0
 
 						loading_data.set_z_loading_array(z_loading)
 						loading_data.set_y_loading_array(y_loading)
 						loading_data.set_x_loading_array(x_loading)
-
-
 						append_loading_data(loading_files[rotor_idx][blade_idx], loading_data)
 
 				if track_wake_element:
@@ -513,8 +513,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 								fill_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[0].tip_vortices[wake_element_blade[r_idx, t_idx]], temp_wake_array_z)
 								fill_wake_r_c_component(vehicle.wake_history.history[0].rotor_wakes[0].tip_vortices[wake_element_blade[r_idx, t_idx]], temp_wake_array_r_c)
 
-								wake_element_trajectory[r_idx, t_idx, 0, wake_element_index[r_idx, t_idx]] = temp_wake_array_x[wake_element_index[r_idx, t_idx]]
-								wake_element_trajectory[r_idx, t_idx, 1, wake_element_index[r_idx, t_idx]] = temp_wake_array_z[wake_element_index[r_idx, t_idx]]
+								wake_element_trajectory[r_idx, t_idx, 0, wake_element_index[r_idx, t_idx]] = temp_wake_array_x[wake_element_index[r_idx, t_idx]]/vehicle.aircraft.rotors[r_idx].radius
+								wake_element_trajectory[r_idx, t_idx, 1, wake_element_index[r_idx, t_idx]] = temp_wake_array_z[wake_element_index[r_idx, t_idx]]/vehicle.aircraft.rotors[r_idx].radius
 								wake_element_core_size[r_idx, t_idx, wake_element_index[r_idx, t_idx]] = temp_wake_array_r_c[wake_element_index[r_idx, t_idx]]
 
 								wake_element_index[r_idx, t_idx] = wake_element_index[r_idx, t_idx] + 1
@@ -559,7 +559,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 		result_dictionary['span_element_gamma'] = span_element_gamma
 
 	namelists = []
-	collectives = [vehicle.input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
 
 	if (acoustics is not None) and (observer is not None):
 
@@ -615,18 +614,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 				makedirs(wopwop_case_path, exist_ok=True)
 
 			namelist = wopwop_input_files_generator.generate_wopwop_namelist(
-				[vehicle.aircraft.rotors[r_idx].radius for r_idx in range(num_rotors)],
-				[vehicle.aircraft.rotors[r_idx].origin for r_idx in range(num_rotors)],
 				atmo,
-				1,
-				num_blades[r_idx],
-				[omegas[r_idx]],
 				dt,
 				flight_condition["V_inf"],
 				acoustic_iteration,
-				#3*iter_per_rev,
-				vehicle.input_state.rotor_inputs[r_idx].angle_of_attack,
-				r_idx,
+				flight_condition["aoa"]*(math.pi/180.0),
 				t_min,
 				t_max,
 				nt,
@@ -634,8 +626,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 				acoustics,
 				wopwop_data_path,
 				flight_condition["sos"],
-				[collectives[r_idx]],
-				False
+				vehicle.aircraft,
+				[vehicle.aircraft.rotors[r_idx]],
+				wopwop_motion,
+				vehicle.input_state
 			)
 
 			namelists.append(namelist)
@@ -646,18 +640,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 			makedirs(wopwop_case_path, exist_ok=True)
 
 		namelist = wopwop_input_files_generator.generate_wopwop_namelist(
-			[vehicle.aircraft.rotors[r_idx].radius for r_idx in range(num_rotors)],
-			[vehicle.aircraft.rotors[r_idx].origin for r_idx in range(num_rotors)],
 			atmo,
-			num_rotors,
-			num_blades,
-			omegas,
 			dt,
 			flight_condition["V_inf"],
-			#3*iter_per_rev,
 			acoustic_iteration,
-			vehicle.input_state.rotor_inputs[0].angle_of_attack,
-			r_idx,
+			flight_condition["aoa"]*(math.pi/180.0),
 			t_min,
 			t_max,
 			nt,
@@ -665,8 +652,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, r, elements, wr
 			acoustics,
 			wopwop_data_path,
 			flight_condition["sos"],
-			collectives,
-			True
+			vehicle.aircraft,
+			vehicle.aircraft.rotors,
+			wopwop_motion,
+			vehicle.input_state
 		)
 
 		namelists.append(namelist)

@@ -2,8 +2,11 @@ module opencopter.aircraft.state;
 
 import opencopter.aircraft;
 import opencopter.config;
+import opencopter.math;
 import opencopter.memory;
 import opencopter.weissingerl;
+
+import numd.linearalgebra.matrix;
 
 import std.algorithm : map;
 import std.array : staticArray;
@@ -13,6 +16,7 @@ import std.traits;
 
 alias AircraftTimehistory = AircraftTimehistoryT!(ArrayContainer.none);
 extern (C++) struct AircraftTimehistoryT(ArrayContainer AC) {
+
 	mixin ArrayDeclMixin!(AC, AircraftStateT!(AC), "aircraft_history");
 
 	this(ref AircraftT!AC ac, size_t timesteps) {
@@ -54,9 +58,11 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 	alias AC = _AC;
 	mixin ArrayDeclMixin!(AC, RotorStateT!(AC), "rotor_states");
 
+	Vec4 freestream;
+
 	this(size_t num_rotors, size_t num_blades, size_t num_elements, ref AircraftT!AC ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
-		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
 		foreach(i, ref rotor_state; rotor_states) {
@@ -66,7 +72,7 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 
 	this(size_t num_rotors, size_t num_blades, size_t num_elements, AircraftT!AC* ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
-		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
 		foreach(i, ref rotor_state; rotor_states) {
@@ -76,7 +82,7 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 
 	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, ref AircraftT!AC ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
-		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
 		foreach(i, ref rotor_state; rotor_states) {
@@ -86,7 +92,7 @@ alias AircraftState = AircraftStateT!(ArrayContainer.none);
 
 	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, AircraftT!AC* ac) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
-		//enforce(num_elements % chunk_size == 0, "Number of spanwise elements must be a multiple of the chunk size ("~chunk_size.to!string~")");
+
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
 		foreach(i, ref rotor_state; rotor_states) {
@@ -254,6 +260,10 @@ extern (C++) struct BladeStateChunk {
 	Chunk r_c;
 
 	Chunk theta;
+
+	Vector!(4, Chunk) projected_vel;
+
+	Vector!(4, Chunk) blade_local_vel;
 }
 
 template is_blade_state(A) {
@@ -283,6 +293,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 
 		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, blade, radius);
 		foreach(ref chunk; chunks) {
+			chunk.aoa_eff[] = 0;
 			chunk.dC_L[] = 0;
 			chunk.dC_T[] = 0;
 			chunk.dC_D[] = 0;
@@ -292,7 +303,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 			chunk.d_gamma[] = 0;
 			chunk.dC_Mx[] = 0;
 			chunk.dC_My[] = 0;
-			chunk.r_c[] = 0;//0.22;
+			chunk.r_c[] = 0;
 		}
 	}
 
@@ -302,6 +313,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 
 		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, *blade, radius);
 		foreach(ref chunk; chunks) {
+			chunk.aoa_eff[] = 0;
 			chunk.dC_L[] = 0;
 			chunk.dC_T[] = 0;
 			chunk.dC_D[] = 0;
@@ -311,7 +323,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 			chunk.d_gamma[] = 0;
 			chunk.dC_Mx[] = 0;
 			chunk.dC_My[] = 0;
-			chunk.r_c[] = 0;//0.22;
+			chunk.r_c[] = 0;
 		}
 	}
 

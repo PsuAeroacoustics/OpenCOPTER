@@ -148,6 +148,14 @@ class C81: AirfoilModel {
         this.CM = new Coefftable(aoa_M, mach_m, Cm);
     }
 
+    override double lift_curve_slope() {
+        return 2.0*PI;
+    }
+
+    override double zero_lift_aoa() {
+        return 0;
+    }
+
     override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
         return CL.interpolation(alpha_query, mach_query);
     }

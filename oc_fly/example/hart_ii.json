@@ -1,5 +1,5 @@
 [
-	{
+	/*{
 		"name": "hart_ii",
 		"rotors": [
 			{
@@ -22,6 +22,136 @@
                         }
                     ]
 				}
+			}
+		]
+	},*/
+	{
+		// Top level always to be of type 'Aircraft'
+		// Convention will have x pointing towards the rear of the vehicle,
+		// y points out the starboard side,
+		// z points up (we aren't control nerds here)
+		"name": "hart_ii",
+		"type": "aircraft",
+		"children": [
+			{
+				// Parts of type "Rotor" will recieve azimuth updates,
+				// all children will receive azimuth updates as well
+				"type": "rotor",
+				"name": "Main Rotor",
+				"radius": 2,
+				// origin is relative to this frame of reference
+				"origin": [0, 0, 0],
+				// Axis of rotation, relative to this frame
+				"axis": [0, 0, 1],
+				"axis_angle_function": "constant",
+				"children": [
+					{
+						"type": "connection",
+						"name": "blade attach 0",
+						"axis": [0, 0, 1],
+						"axis_angle": 0,
+						"children": [
+							{"ref": "Coning angle"}
+						]
+					},
+					{
+						"type": "connection",
+						"name": "blade attach 1",
+						"axis": [0, 0, 1],
+						"axis_angle": 90,
+						"children": [
+							{"ref": "Coning angle"}
+						]
+					},
+					{
+						"type": "connection",
+						"name": "blade attach 2",
+						"axis": [0, 0, 1],
+						"axis_angle": 180,
+						"children": [
+							{"ref": "Coning angle"}
+						]
+					},
+					{
+						"type": "connection",
+						"name": "blade attach 3",
+						"axis": [0, 0, 1],
+						"axis_angle": 270,
+						"children": [
+							{"ref": "Coning angle"}
+						]
+					}
+				]
+			}
+		],
+		// Define components that are used multiple times in the definition of
+		// the vehicle. they can then be referenced by name as a short hand in
+		// vehicle def
+		"components": [
+			{
+				"type": "connection",
+				"name": "Coning angle",
+				"axis": [0, -1, 0],
+				"axis_angle": 2.5,
+				"children": [
+					{
+						// Pitch hinge joint.
+						"type": "connection",
+						"name": "pitch hinge",
+						//"trim": true,
+						"origin": [0.075, 0, 0],
+						"axis": [1, 0, 0],
+						// Coefficients of the fourier series will be defined
+						// in a parameter file. associated with this by the
+						// component name
+						"children": [
+							{
+								"type": "connection",
+								// HART doesn't actually have a flap hinge.
+								// However, this is a close enough approximation
+								"name": "flap hinge", 
+								"origin": [0.35, 0, 0],
+								"axis": [0, 1, 0],
+								"axis_angle_function": "fourier",
+								"children": [
+									{
+										"type": "connection",
+										"name": "elastic twist",
+										"origin": [0, 0, 0],
+										"axis": [0, 1, 0],
+										"axis_angle_function": "fourier",
+										"children": [{
+											// This will reference the blade
+											// defined below
+											"ref": "hart_blade"
+										}]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		],
+		"blades": [
+			{
+				"type": "blade",
+				"name": "hart_blade",
+				"origin": [0, 0, 0],
+				"AR": 16.5,
+				"theta_tw": -6.2,
+				"r_c": 0.22,
+				"airfoils": [
+					{
+						"type": "aerodas",
+						"extent": [
+							0.22,
+							1.0
+						],
+						"xfoil_polar": "polars/NACA23012mod_1000000_polar.dat",
+						"thickness": 0.12
+					}
+				]
 			}
 		]
 	}

@@ -14,6 +14,8 @@ class AirfoilModel {
     Chunk get_Cd(Chunk alpha_query, Chunk mach_query) { assert(0); }
     double get_Cl(double alpha_query, double mach_query) { assert(0); }
     double get_Cd(double alpha_query, double mach_query) { assert(0); }
+    double lift_curve_slope() { assert(0); }
+    double zero_lift_aoa() { assert(0); }
     //Chunk get_Cl(Chunk alpha_query, Chunk mach_query);
     //Chunk get_Cd(Chunk alpha_query, Chunk mach_query);
     //double get_Cl(double alpha_query, double mach_query);
@@ -34,6 +36,14 @@ unittest {
         string name;
         this(string _name) {
             name = _name;
+        }
+
+        override double lift_curve_slope() {
+            return 2.0*PI;
+        }
+
+        override double zero_lift_aoa() {
+            return 0;
         }
 
         override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {
@@ -122,5 +132,33 @@ class BladeAirfoil {
             }
         }
         return state;
+    }
+
+    Chunk lift_curve_slope(size_t chunk_idx) {
+        Chunk Cl_alpha;
+        auto chunk_models = airfoil_models[chunk_idx];
+        if(chunk_models.length == 1) {
+            Cl_alpha[] = chunk_models[0].lift_curve_slope();
+        } else {
+            foreach(c_idx; 0..chunk_size) {
+                Cl_alpha[c_idx] = chunk_models[c_idx].lift_curve_slope();
+            }
+        }
+
+        return Cl_alpha;
+    }
+
+    Chunk zero_lift_aoa(size_t chunk_idx) {
+        Chunk Cl_alpha;
+        auto chunk_models = airfoil_models[chunk_idx];
+        if(chunk_models.length == 1) {
+            Cl_alpha[] = chunk_models[0].zero_lift_aoa();
+        } else {
+            foreach(c_idx; 0..chunk_size) {
+                Cl_alpha[c_idx] = chunk_models[c_idx].zero_lift_aoa();
+            }
+        }
+
+        return Cl_alpha;
     }
 }

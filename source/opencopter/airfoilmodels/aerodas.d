@@ -72,14 +72,14 @@ class InputParam {
             this.A0 = this.alpha[countUntil(this.CL, 0)];
         } else {
             A0_indx = findindx(this.CL, 0);
-            debug writeln("aoa_0",this.alpha[A0_indx]);
+            //debug writeln("aoa_0",this.alpha[A0_indx]);
             A0 = this.alpha[A0_indx] - ((this.alpha[A0_indx+1]-this.alpha[A0_indx])/(this.CL[A0_indx+1]-this.CL[A0_indx]))*this.CL[A0_indx];
         }
 
         this.cl1max_2D = maxElement(this.CL);
         this.ACL1_2D = this.alpha[countUntil(this.CL[], this.cl1max_2D)];
-        debug writeln("this.CL: ", this.CL);
-        debug writeln("A0_indx: ", A0_indx);
+        //debug writeln("this.CL: ", this.CL);
+        //debug writeln("A0_indx: ", A0_indx);
         this.S1_2D = (this.CL[A0_indx + 3] - this.CL[A0_indx - 3]) / (
             this.alpha[A0_indx + 3] - this.alpha[A0_indx - 3]);
         this.CD0 = minElement(this.CD);
@@ -112,7 +112,7 @@ double getCD2(double aoa, double A0, double cd1max_3D, double ACL1_3D, double AC
     double G1 = 2.300 * exp(-1 * pow(0.65 * tbyc,0.9));
     double G2 = 0.52 + 0.48 * exp(-1 * pow((0.65 / AR),1.1));
     double cd2max = G1 * G2;
-    debug writeln("cd2max = ",cd2max);
+    // debug writeln("cd2max = ",cd2max);
 
     //(check this condition(might be typo in the paper pg18.) 
     if ((2 * A0 - ACL1_3D) < aoa && aoa < ACL1_3D) {
@@ -139,6 +139,14 @@ class AeroDAS: AirfoilModel {
     double CL2; //post-stall lift coefficient
     double CD2; //post-stall drag coefficient
 
+    override double lift_curve_slope() {
+        return ip.S1_2D*(180.0/PI);
+    }
+
+    override double zero_lift_aoa() {
+        return ip.A0*(PI/180.0);
+    }
+
     this(double[] alpha, double[] CL, double[] CD, double tbyc, double AR = double.infinity) {
         this.alpha = alpha;
         this.CL = CL;
@@ -147,7 +155,7 @@ class AeroDAS: AirfoilModel {
         this.tbyc = tbyc;
 
         this.ip = new InputParam(this.alpha, this.CL, this.CD);
-        debug writeln("A0 is",this.ip.A0);
+        // debug writeln("A0 is",this.ip.A0);
     }
 
     override double get_Cl(double alpha_query, double mach_query) {
@@ -155,8 +163,8 @@ class AeroDAS: AirfoilModel {
 
         //finite aspect ratio adjustment
         double ACL1_3D = this.ip.ACL1_2D + this.ip.cd1max_2D * 18.2 * pow(this.AR,-0.9);
-        debug writeln("ACL1_2d = ", this.ip.ACL1_2D);
-        debug writeln("ACL1_3d = ", ACL1_3D);
+        // debug writeln("ACL1_2d = ", this.ip.ACL1_2D);
+        // debug writeln("ACL1_3d = ", ACL1_3D);
         
         double S1_3D = this.ip.S1_2D / (1 + this.ip.S1_2D * 18.2 * pow(this.AR,-0.9));
         double ACD1_3D = this.ip.ACD1_2D + this.ip.cl1max_2D * 18.2 * pow(this.AR,-0.9);
@@ -203,7 +211,7 @@ class AeroDAS: AirfoilModel {
         //double S1_3D = this.ip.S1_2D / (1 + this.ip.S1_2D * 18.2 * pow(this.AR,-0.9));
         double ACD1_3D = ip.ACD1_2D + ip.cl1max_2D * 18.2 * pow(this.AR,-0.9);
         double cd1max_3D = ip.cd1max_2D + 0.280 * pow(ip.cl1max_2D,2.0) * pow(AR,-0.9);
-        debug writeln("CDmax_3D = ",cd1max_3D);
+        // debug writeln("CDmax_3D = ",cd1max_3D);
         
         //double cl1max_3D = this.ip.cl1max_2D * (0.67 + 0.33 * exp(-16 / pow(this.AR,2.0)));
         double Cd;
@@ -215,7 +223,7 @@ class AeroDAS: AirfoilModel {
         } else {
             CD1 = 0;
         }
-        debug writeln("CD1 = ",CD1);
+        // debug writeln("CD1 = ",CD1);
 
         if (alpha_query > (2 * ip.A0 - ACD1_3D)){
             CD2 = getCD2(alpha_query, ip.A0, cd1max_3D, ACL1_3D, ACD1_3D, tbyc, AR);
@@ -223,7 +231,7 @@ class AeroDAS: AirfoilModel {
             double updated_alpha_query = -alpha_query + 2 * this.ip.A0;
             CD2 = getCD2(updated_alpha_query, ip.A0, cd1max_3D, ACL1_3D, ACD1_3D, tbyc, AR);
         }
-        debug writeln("CD2 = ",CD2);
+        // debug writeln("CD2 = ",CD2);
         Cd = max(CD1, CD2);
 
         return Cd;
@@ -249,7 +257,7 @@ class AeroDAS: AirfoilModel {
 auto create_aerodas_from_xfoil_polar(string filename, double tbyc) {
     /*reads 2D airfoil Data file*/
     auto file = File(filename, "r");
-    debug writeln("file loaded");
+    // debug writeln("file loaded");
     // not so important things
     auto line = file.readln;
     line = file.readln;
@@ -260,7 +268,7 @@ auto create_aerodas_from_xfoil_polar(string filename, double tbyc) {
     line = file.readln;
     line = file.readln;
     auto Re = file.readln;
-    debug writeln("Re line is",Re);
+    // debug writeln("Re line is",Re);
     line = file.readln;
     //writeln(line);
     line = file.readln;
@@ -283,7 +291,7 @@ auto create_aerodas_from_xfoil_polar(string filename, double tbyc) {
         }
     }
     
-    debug writeln("File reading completed");
+    // debug writeln("File reading completed");
     auto afmodel = new AeroDAS(aoa, cl, cd, tbyc, double.infinity);
     return afmodel;
 }

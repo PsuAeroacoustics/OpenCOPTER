@@ -16,6 +16,8 @@ import scipy.io as sio
 import scipy.fft as sft
 import scipy.signal as sig
 
+import pyjson5
+
 RADPS_2_HZ = 0.1591549433
 R = 2
 
@@ -158,7 +160,7 @@ def plot_acoustic_contours(plot_name: str):
 	#print(x)
 	offset = x[0] - -4.0
 
-	clevels = np.linspace(85, 117, 17)
+	clevels = np.linspace(85, 119, 18)
 
 	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
@@ -170,8 +172,8 @@ def plot_acoustic_contours(plot_name: str):
 
 	fig = plt.figure()
 	ax0 = plt.subplot(121)
-	plt2 = plt.contour([_y/R for _y in y], [(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
-	plt1 = plt.contourf([_y/R for _y in y], [(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
+	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
+	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 	plt.clabel(plt2, clevels, colors='k', fontsize=5)
 	plt.ylabel('x/R')
@@ -203,7 +205,7 @@ def plot_acoustic_contours(plot_name: str):
 def plot_blade_normal_pressures(plot_name: str):
 
 	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json') as param_file:
-		params = json.load(param_file)
+		params = pyjson5.load(param_file)
 
 	flight_condition = list(filter(lambda x: x["name"] == plot_name, params['flight_conditions']))[0]
 
@@ -365,7 +367,7 @@ def plot_wake_trajectory(plot_name: str):
 
 		wake_data_points = list(filter(lambda x: x[0] >= (measured_indices[0] + 1) and x[0] <= measured_indices[1], measured_wake))
 
-		measured_x = np.asarray([-p[1]/R for p in wake_data_points])
+		measured_x = np.asarray([p[1]/R for p in wake_data_points])
 		measured_z = np.asarray([p[2]/R for p in wake_data_points])
 
 		
@@ -374,8 +376,8 @@ def plot_wake_trajectory(plot_name: str):
 		wake_x = wake_element_trajectory[idx, 0, 0:wake_element_index[idx]]
 		wake_z = wake_element_trajectory[idx, 1, 0:wake_element_index[idx]]
 
-		i_cos_aoa = math.cos(-5.3*(math.pi/180.0))
-		i_sin_aoa = math.sin(-5.3*(math.pi/180.0))
+		i_cos_aoa = math.cos(5.3*(math.pi/180.0))
+		i_sin_aoa = math.sin(5.3*(math.pi/180.0))
 
 		x_tppc = (wake_x*i_cos_aoa - wake_z*i_sin_aoa)
 		z_tppc = -(-wake_x*i_sin_aoa - wake_z*i_cos_aoa)
@@ -428,7 +430,7 @@ def plot_wake_trajectory(plot_name: str):
 def plot_blade_twist(plot_name: str):
 
 	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json') as param_file:
-		params = json.load(param_file)
+		params = pyjson5.load(param_file)
 
 	flight_condition = list(filter(lambda x: x["name"] == plot_name, params['flight_conditions']))[0]
 
@@ -553,23 +555,20 @@ def plot_blade_twist(plot_name: str):
 
 if __name__ == "__main__":
 
-	plot_blade_twist('BL')
-	plot_blade_twist('MN')
+	# plot_blade_twist('BL')
+	# plot_blade_twist('MN')
 	
 
 	plot_blade_normal_pressures('BL')
-	plot_blade_normal_pressures('MN')
-	
-
 	plot_wake_trajectory('BL')
-	plot_wake_trajectory('MN')
-	
-
 	plot_acoustic_contours("BL")
+
+	plot_blade_normal_pressures('MN')
+	plot_wake_trajectory('MN')
 	plot_acoustic_contours("MN")
 
 
-	plot_blade_twist('MV')
+	#plot_blade_twist('MV')
 	plot_blade_normal_pressures('MV')
 	plot_wake_trajectory('MV')
 	plot_acoustic_contours("MV")

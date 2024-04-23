@@ -1,6 +1,6 @@
 module opencopter.python;
 
-import opencopter.aircraft;
+static import opencopter.aircraft;
 import opencopter.airfoilmodels;
 import opencopter.atmosphere;
 import opencopter.math;
@@ -47,8 +47,11 @@ struct Direction {
 	}
 }
 
-void basic_aircraft_rotor_dynamics(PyAircraftInputState* input_state, double dt) {
-	foreach(r_idx, ref rotor; input_state.rotor_inputs) {
+void basic_aircraft_rotor_dynamics(PyAircraftInputState* ac_input, double dt) {
+	foreach(r_idx, ref rotor; ac_input.rotor_inputs) {
+		//double angle = rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
+
+		//rotor.frame.rotate(Vec3(0, 0, 1), angle);
 		rotor.azimuth += rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
 
 		// Keep the azimuth between 0 and 2*PI so we don't
@@ -60,8 +63,11 @@ void basic_aircraft_rotor_dynamics(PyAircraftInputState* input_state, double dt)
 	}
 }
 
-void basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
-	input_state.azimuth += input_state.angular_velocity*dt + input_state.angular_accel*dt*dt;
+double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
+	double angle = input_state.angular_velocity*dt + input_state.angular_accel*dt*dt;
+
+	//rotor.frame.rotate(Vec3(0, 0, 1), angle);
+	input_state.azimuth += angle;//input_state.angular_velocity*dt + input_state.angular_accel*dt*dt;
 
 	// Keep the azimuth between 0 and 2*PI so we don't
 	// lose fp precicion as the sim marches in time and
@@ -69,6 +75,8 @@ void basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
 	if(input_state.azimuth > 2.0*PI) {
 		input_state.azimuth = fmod(abs(input_state.azimuth), 2.0*PI);
 	}
+
+	return angle;
 }
 
 /++
@@ -82,6 +90,7 @@ class Inflow {
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) { assert(0); }
 	Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) { assert(0); }
 	double wake_skew() { assert(0); }
+	Frame* frame() { assert(0); }
 }
 
 
@@ -115,6 +124,10 @@ class HuangPeters : Inflow {
 	override double wake_skew() {
 		return huang_peters.wake_skew();
 	}
+
+	override Frame* frame() {
+		return huang_peters.frame();
+	}
 }
 
 class Beddoes : Inflow {
@@ -147,6 +160,10 @@ class Beddoes : Inflow {
 	override double wake_skew() {
 		return beddoes.wake_skew();
 	}
+
+	override Frame* frame() {
+		return null;
+	}
 }
 
 alias PyWakeHistory = opencopter.wake.WakeHistoryT!(ArrayContainer.array);
@@ -155,16 +172,23 @@ alias PyRotorWake = opencopter.wake.RotorWakeT!(ArrayContainer.array);
 alias PyVortexFilament = opencopter.wake.VortexFilamentT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
 
-alias PyAircraftTimehistory = AircraftTimehistoryT!(ArrayContainer.array);
-alias PyAircraftState = AircraftStateT!(ArrayContainer.array);
-alias PyRotorState = RotorStateT!(ArrayContainer.array);
-alias PyBladeState = BladeStateT!(ArrayContainer.array);
+alias PyAircraftTimehistory = opencopter.aircraft.AircraftTimehistoryT!(ArrayContainer.array);
+alias PyAircraftState = opencopter.aircraft.AircraftStateT!(ArrayContainer.array);
+alias PyRotorState = opencopter.aircraft.RotorStateT!(ArrayContainer.array);
+alias PyBladeState = opencopter.aircraft.BladeStateT!(ArrayContainer.array);
 
-alias PyAircraft = AircraftT!(ArrayContainer.array);
-alias PyAircraftInputState = AircraftInputStateT!(ArrayContainer.array);
-alias PyRotorGeometry = RotorGeometryT!(ArrayContainer.array);
-alias PyBladeGeometry = BladeGeometryT!(ArrayContainer.array);
-alias PyRotorInputState = RotorInputStateT!(ArrayContainer.array);
+alias PyAircraft = opencopter.aircraft.AircraftT!(ArrayContainer.array);
+alias PyAircraftInputState = opencopter.aircraft.AircraftInputStateT!(ArrayContainer.array);
+alias PyRotorGeometry = opencopter.aircraft.RotorGeometryT!(ArrayContainer.array);
+alias PyBladeGeometry = opencopter.aircraft.BladeGeometryT!(ArrayContainer.array);
+//alias PyFrame = opencopter.aircraft.Frame!(ArrayContainer.array);
+alias Frame = opencopter.aircraft.Frame;
+
+alias PyRotorInputState = opencopter.aircraft.RotorInputStateT!(ArrayContainer.array);
+
+alias set_geometry_array = opencopter.aircraft.set_geometry_array;
+alias get_geometry_array = opencopter.aircraft.get_geometry_array;
+alias get_state_array = opencopter.aircraft.get_state_array;
 
 void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
@@ -184,6 +208,10 @@ double[] get_chord(ref PyBladeGeometry bg) {
 
 void set_r(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"r"(data);
+}
+
+double[] get_r(ref PyBladeGeometry bg) {
+	return bg.get_geometry_array!"r";
 }
 
 void set_C_l_alpha(ref PyBladeGeometry bg, double[] data) {
@@ -274,6 +302,10 @@ double[] get_aoa(ref PyBladeState blade) {
 	return blade.get_state_array!"aoa";
 }
 
+double[] get_theta(ref PyBladeState blade) {
+	return blade.get_state_array!"theta";
+}
+
 void fill_aoad(ref PyBladeState blade, double[] data) {
 	return blade.get_state_array!"aoa"(data);
 }
@@ -304,6 +336,14 @@ double[] get_gamma(ref PyBladeState blade) {
 
 double[] get_u_p(ref PyBladeState blade) {
 	return blade.get_state_array!"u_p";
+}
+
+double[] get_u_t(ref PyBladeState blade) {
+	return blade.get_state_array!"u_t";
+}
+
+double[] get_inflow_angle(ref PyBladeState blade) {
+	return blade.get_state_array!"inflow_angle";
 }
 
 double[] get_aoa_eff(ref PyBladeState blade) {
@@ -363,6 +403,26 @@ void fill_wake_v_z_component(ref PyVortexFilament filament, double[] data) {
 	return opencopter.wake.get_wake_component!"v_z"(filament, data);
 }
 
+string FrameType_aircraft() {
+	return opencopter.aircraft.FrameType.aircraft.to!string;
+}
+
+string FrameType_connection() {
+	return opencopter.aircraft.FrameType.connection.to!string;
+}
+
+string FrameType_rotor() {
+	return opencopter.aircraft.FrameType.rotor.to!string;
+}
+
+string FrameType_blade() {
+	return opencopter.aircraft.FrameType.blade.to!string;
+}
+
+string FrameType_wing() {
+	return opencopter.aircraft.FrameType.wing.to!string;
+}
+
 
 void step(PyAircraftState* ac_state, PyAircraft* aircraft, PyAircraftInputState* ac_input_state, Inflow[] inflows, PyWakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt) {
 	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, inflows, *wake_history, *atmo, iteration, dt);
@@ -372,8 +432,14 @@ opencopter.vtk.VtkRotor build_base_vtu_rotor(PyRotorGeometry* rotor) {
 	return opencopter.vtk.build_base_vtu_rotor(rotor);
 }
 
-void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, PyRotorState* rotor_state, PyRotorInputState* rotor_input) {
-	opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_input);
+void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, PyRotorState* rotor_state, PyRotorInputState* rotor_input, PyRotorGeometry* rotor_geom) {
+	opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_input, rotor_geom);
+}
+
+void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkRotor[] rotors, PyAircraftState* ac_state, PyAircraftInputState* ac_input, PyAircraft* aircraft) {
+	foreach(r_idx; 0..aircraft.rotors.length()) {
+		opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], ac_input.rotor_inputs[r_idx], aircraft.rotors[r_idx]);
+	}
 }
 
 opencopter.vtk.VtkWake build_base_vtu_wake(PyWake* wake) {
@@ -388,7 +454,7 @@ void write_wake_field_vtu(string filename, PyAircraftState ac_state, PyWake wake
 	opencopter.vtk.write_wake_field_vtu(filename, ac_state, wake, delta, starts, num_x, num_y, num_z);
 }
 
-alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!Inflow;
+alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!(Inflow, Array!PyRotorGeometry);
 
 void wrap_array(T)() {
 	static if(isBasicType!T) {
@@ -405,7 +471,6 @@ void wrap_array(T)() {
 		);
 
 		ex_python_to_d((PyObject* o) {
-			
 			auto size = PyList_Size(o);
 			auto arr = Array!(T)(size.to!size_t);
 
@@ -442,11 +507,35 @@ void wrap_array(T)() {
 	}
 }
 
-opencopter.wake.InducedVelocities compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref PyAircraftState ac_state, double angular_velocity, size_t rotor_idx, bool single_rotor = false) {
-	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, angular_velocity, rotor_idx, 0, single_rotor);
+opencopter.wake.InducedVelocities compute_wake_induced_velocities(ref PyWake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref PyAircraftState ac_state, size_t rotor_idx, bool single_rotor = false) {
+	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, rotor_idx, 0, single_rotor);
+}
+
+void compute_blade_vectors(ref PyBladeGeometry blade) {
+	opencopter.aircraft.compute_blade_vectors(blade);
+}
+
+Mat4 Mat4_identity() {
+	return Mat4.identity();
+}
+
+Mat3 Mat3_identity() {
+	return Mat3.identity();
 }
 
 extern(C) void PydMain() {
+	import std.stdio : writeln;
+
+	def!FrameType_aircraft;
+	def!FrameType_connection;
+	def!FrameType_rotor;
+	def!FrameType_blade;
+	def!FrameType_wing;
+
+	def!(Mat4_identity);
+	def!(Mat3_identity);
+
+	def!(compute_blade_vectors);
 
 	def!(compute_wake_induced_velocities);
 
@@ -480,7 +569,32 @@ extern(C) void PydMain() {
 		:param vtk_rotor: The :class:`VtkRotor` object to save out
 		:param rotor_state: The :class:`RotorState` object containing the rotor state data to save
 		:param rotor_input: the :class:`RotorInput` object containing the rotor position data
+		:param rotor_geom: the :class:`RotorGeometry` object containing the rotor position data
 	});
+
+	def!(write_rotors_vtu, Docstring!q{
+		Takes the :class:`AircraftState` and :class:`AircraftInput` data, converts it :class:`VtkRotor`s,
+		and saves it to a vtu file.
+
+		The filaname that the data is saved to is constructed by the function such that::
+
+			filename = base_filename + "_" + rotor_idx + "_" + iteration + ".vtu"
+
+		This ensures that timeseries files can be iterpreted by paraview correctly
+
+		.. caution::
+			
+			This function has a relatively high runtime cost, use sparingly
+
+		:param base_filename: The filename to save the data to
+		:param iteration: The iteration of the saved data
+		:param rotor_idx: The index of the rotor being saved
+		:param vtk_rotor: The :class:`VtkRotor[]` objects to save out
+		:param rotor_state: The :class:`AircraftState` object containing the rotor state data to save
+		:param rotor_input: the :class:`AircraftInput` object containing the rotor position data
+		:param rotor_geom: the :class:`Aircraft` object containing the rotor position data
+	});
+
 
 	def!(build_base_vtu_wake, Docstring!q{
 		Construct and allocate all required data for a :class:`VtkWake`.
@@ -543,7 +657,7 @@ extern(C) void PydMain() {
 		:param dt: The current time step size
 	});
 
-	def!(generate_radius_points, Docstring!q{
+	def!(opencopter.aircraft.generate_radius_points, Docstring!q{
 		Generate a list of spanwise radial stations with the appropriate spacing
 
 		.. attention::
@@ -579,6 +693,12 @@ extern(C) void PydMain() {
 		Get the spanwise chord distribution (non-dimensional) of a :class:`BladeGeometry`
 
 		:param bg: :class:`BladeGeometry` object get chord from.
+	});
+
+	def!(get_r, Docstring!q{
+		Get the spanwise radial station distribution (non-dimensional) of a :class:`BladeGeometry`
+
+		:param bg: :class:`BladeGeometry` object get radial stations from.
 	});
 
 	def!(set_r, Docstring!q{
@@ -626,7 +746,7 @@ extern(C) void PydMain() {
 		:param data: List of sweep angles (in radians) for each radial station
 	});
 
-	def!(sweep_from_quarter_chord, Docstring!q{
+	def!(opencopter.aircraft.sweep_from_quarter_chord, Docstring!q{
 		Set the spanwise quarter chord derivative position distribution of a :class:`BladeGeometry`
 		from a linear array.
 
@@ -739,6 +859,13 @@ extern(C) void PydMain() {
 		:return: List of spanwise :math:`{\alpha}`
 	});
 
+	def!(get_theta, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise angle of attack (:math:`{\theta}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\theta}` from
+		:return: List of spanwise :math:`{\theta}`
+	});
+
 	def!(fill_aoad, void function(ref PyBladeState, double[]), Docstring!q{
 		Extract blade spanwise angle of attack to a linear double precision floating point array.
 
@@ -789,9 +916,23 @@ extern(C) void PydMain() {
 	});
 
 	def!(get_u_p, double[] function(ref PyBladeState), Docstring!q{
-		Extract blade spanwise bound circulation (:math:`{\Gamma}`) to a linear array.
+		Extract blade spanwise bound circulation (:math:`{u_p}`) to a linear array.
 
-		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\Gamma}` from
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{u_p}` from
+		:return: List of spanwise circulation values
+	});
+
+	def!(get_u_t, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise bound circulation (:math:`{u_t}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{u_p}` from
+		:return: List of spanwise circulation values
+	});
+
+	def!(get_inflow_angle, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade spanwise bound circulation (:math:`{\Phi}`) to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`{\Phi}` from
 		:return: List of spanwise circulation values
 	});
 
@@ -1089,10 +1230,6 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorInputState,
 		PyName!("RotorInputState"),
-		Member!("angle_of_attack", Docstring!q{Angle of attack of the rotor in radians}),
-		//Member!("sin_aoa", Docstring!q{}),
-		//Member!("cos_aoa", Docstring!q{}),
-		Member!("freestream_velocity", Docstring!q{The dimensional freestream velocity}),
 		Member!("angular_velocity", Docstring!q{The angular velocity of the rotor in :math:`mathrm{rad}/s`}),
 		Member!("angular_accel", Docstring!q{The angular acceleration of the rotor in :math:`mathrm{rad}/s^2`}),
 		Member!("azimuth", Docstring!q{The current azimuthal position of the rotor in radians}),
@@ -1118,7 +1255,7 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
-		BladeGeometryChunk,
+		opencopter.aircraft.BladeGeometryChunk,
 		Member!"twist",
 		Member!"chord",
 		Member!"r",
@@ -1129,7 +1266,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyBladeGeometry,
 		PyName!"BladeGeometry",
-		Init!(size_t, double, double, BladeAirfoil),
+		Init!(size_t, double, double, BladeAirfoil, double),
 		Docstring!q{
 			This class allocates and holds the blade geomteric parameters.
 
@@ -1138,14 +1275,17 @@ extern(C) void PydMain() {
 			:param num_elements: The number of spanwise blade elements.
 			:param azimuth_offset: The azimuthal offset that this blade has relative to its rotor.
 			:param average_chord: The average chord of the blade.
+			:param r_c: The dimensional root cutout of the blade.
 		},
 		Member!"chunks",
+		Member!"r_c",
 		Member!"airfoil",
 		Member!("azimuth_offset", Docstring!q{
 			The azimuthal offset for this blade. This is added to the :class:`RotorInputState` azimuth.
 		}),
 		Member!("average_chord", Docstring!q{The dimensional average chord of the blade}),
-		Member!("blade_length", Docstring!q{The dimensional actual length of the blade not accounting for root cutout})
+		Member!("blade_length", Docstring!q{The dimensional actual length of the blade not accounting for root cutout}),
+		Member!"frame"
 	);
 
 	wrap_struct!(
@@ -1165,7 +1305,8 @@ extern(C) void PydMain() {
 		Member!("blades", Docstring!q{An array of :class:`BladeGeomtery`, one for each blade of the rotor}),
 		Member!("origin", Docstring!q{The global origin of the rotor. This is where the center of the hub is located.}),
 		Member!("radius", Docstring!q{The dimensional radius of the rotor.}),
-		Member!("solidity", Docstring!q{The solidity of the rotor.})
+		Member!("solidity", Docstring!q{The solidity of the rotor.}),
+		Member!"frame"
 	);
 
 	wrap_struct!(
@@ -1180,10 +1321,11 @@ extern(C) void PydMain() {
 			:param num_rotors: The number of rotors the aircraft has.
 		},
 		Member!("rotors", Docstring!q{An array of :class:`RotorGeometry`, one for each rotor on the aircraft}),
+		Member!"root_frame"
 	);
 
 	wrap_struct!(
-		BladeStateChunk,
+		opencopter.aircraft.BladeStateChunk,
 		Member!("dC_T", Docstring!q{A chunk of spanwise sectional thrust coefficient}),
 		Member!("dC_T_dot", Docstring!q{A chunk of spanwise sectional thrust coefficient time derivative}),
 		Member!("dC_Q", Docstring!q{A chunk of spanwise sectional power/torque coefficient}),
@@ -1263,7 +1405,8 @@ extern(C) void PydMain() {
 			:param num_elements: The requested number of spanwise elements. This will be rounded up to the nearest :func:`chunk_size`.
 			:param ac: The :class:`Aircraft` object associated with this state
 		},
-		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft})
+		Member!("rotor_states", Docstring!q{An array of :class:`RotorState`, one for each rotor on the aircraft}),
+		Member!"freestream"
 	);
 
 	wrap_class!(
@@ -1317,7 +1460,6 @@ extern(C) void PydMain() {
 				:return: A chunk of z induced velocities.
 			}
 		),
-		//Def!(HuangPeters.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
 		Def!(HuangPeters.wake_skew, Docstring!q{
 			:return: The current wake skew angle of the rotor in radians.
 		})
@@ -1372,8 +1514,6 @@ extern(C) void PydMain() {
 		})
 	)();
 
-
-
 	import std.meta : AliasSeq, staticMap;
 	import std.traits : FunctionTypeOf;
 
@@ -1381,19 +1521,60 @@ extern(C) void PydMain() {
 		Vec3,
 		PyName!"Vec3",
 		Init!(double[3]),
-		//Member!"mData",
 		OpIndex!(staticMap!(FunctionTypeOf, __traits(getOverloads, Vec3, "opIndex"))[1]),
+	);
+
+	wrap_struct!(
+		Vec4,
+		PyName!"Vec4",
+		Init!(double[4]),
+		OpIndex!(staticMap!(FunctionTypeOf, __traits(getOverloads, Vec4, "opIndex"))[1]),
+	);
+
+	wrap_struct!(
+		Mat3,
+		PyName!"Mat3",
+		Init!(double[9]),
+		OpIndex!(staticMap!(FunctionTypeOf, __traits(getOverloads, Mat3, "opIndex"))[1])
+	);
+
+	wrap_struct!(
+		Mat4,
+		PyName!"Mat4",
+		Init!(double[16]),
+		OpIndex!(staticMap!(FunctionTypeOf, __traits(getOverloads, Mat4, "opIndex"))[1])
+	);
+
+	wrap_struct!(
+		Frame,
+		Init!(Vec3, double, Vec3, Frame*, string, string),
+		Member!"global_matrix",
+		Member!"local_matrix",
+		Member!"name",
+		Member!"children",
+		Member!"parent",
+		Def!(Frame.update, void function(Mat4*), PyName!"update"),
+		Def!(Frame.get_frame_type),
+		Def!(Frame.set_frame_type),
+		Def!(Frame.set_rotation),
+		Def!(Frame.local_rotation_axis),
+		Def!(Frame.local_rotation_angle),
+		Def!(Frame.local_position),
+		//Def!(Frame.set_parent),
+		Def!(Frame.rotate),
+		Def!(Frame.translate),
+		Def!(Frame.global_position),
 	);
 
 	wrap_array!double;
 	wrap_array!PyRotorGeometry;
 	wrap_array!PyBladeGeometry;
-	wrap_array!BladeGeometryChunk;
+	wrap_array!(opencopter.aircraft.BladeGeometryChunk);
 	wrap_array!PyRotorInputState;
 	wrap_array!PyAircraftState;
 	wrap_array!PyRotorState;
 	wrap_array!PyBladeState;
-	wrap_array!BladeStateChunk;
+	wrap_array!(opencopter.aircraft.BladeStateChunk);
 	wrap_array!PyWake;
 	wrap_array!PyRotorWake;
 	wrap_array!PyShedVortex;

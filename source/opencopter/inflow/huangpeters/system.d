@@ -30,6 +30,7 @@ void build_vlm_matrix(ArrayContainer AC)(HuangPetersInflowT!AC infl, double adva
 	
 	if(infl.average_inflow != 0) {
 		infl.chi = atan2(advance_ratio, (infl.average_inflow + axial_advance_ratio));
+		//debug writeln("advance_ratio: ", advance_ratio, " infl.average_inflow: ", infl.average_inflow, " axial_advance_ratio: ", axial_advance_ratio, " infl.chi: ", infl.chi*(180.0/PI));
 	}
 
 	infl.sin_chi = sin(infl.chi);
@@ -438,11 +439,21 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 	double[] zero;
 	Chunk[] c_zero;
 
+	Frame* local_frame;
+
+	@nogc Frame* frame() {
+		return local_frame;
+	}
+
 	@nogc package ptrdiff_t get_circular_index(ptrdiff_t idx) {
 		return ((idx % time_history) + time_history) % time_history;
 	}
 
 	this(long _Mo, long _Me, RG* _rotor, double dt) {
+
+		_rotor.frame.parent.children ~= new Frame(Vec3(1, 0, 0), PI, _rotor.frame.local_position(), _rotor.frame.parent, _rotor.frame.parent.name ~ " inflow", "connection");
+		local_frame = _rotor.frame.parent.children[$-1];
+
 		size_t len = round(2.0*PI/(dt*235.325)).to!size_t;
 		//ai_idx = 0;
 		average_inflow_array = new double[len];
@@ -939,7 +950,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Me, total_odd_states);
 
-
 		iterate_odds_sin!((m, n, idx) {
 			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Mo, 0);
@@ -957,7 +967,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 			foreach(n; 1..Qmn_bar[m].length) {
 				K_table[m][n] = K(m, n);
 			}
-		}		
+		}
 
 		curr_state = 0;
 		times[] = 0;
@@ -1203,7 +1213,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 		update_impl(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	package void compute_loading(RS)(auto ref RS rotor_state, double radius, double V_inf) {
+	package void compute_loading(RS)(auto ref RS rotor_state) {
 
 		tau_c[] = 0;
 		tau_s[] = 0;
@@ -1218,6 +1228,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 						Chunk atan_num = -omega_sgn*chunk.xi[];
 						immutable Chunk psi_r = atan2(atan_num, chunk.r);
 						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
+						//immutable Chunk mpsi = m.to!double*((PI - blade_state.azimuth) + psi_r[]);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
@@ -1255,6 +1266,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 						Chunk atan_num = -omega_sgn*chunk.xi[];
 						immutable Chunk psi_r = atan2(atan_num, chunk.r);
 						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
+						//immutable Chunk mpsi = m.to!double*((PI - blade_state.azimuth) + psi_r[]);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
@@ -1292,18 +1304,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 	package void update_impl(RIS, RS)(double C_T, auto ref RIS rotor_input, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, double dt) {
 
 		omega = rotor_input.angular_velocity;
-		immutable V_inf = rotor_input.freestream_velocity;
+		
 		immutable t_scale = abs(omega);
 
 		advance_ratio = _advance_ratio;
-		axial_advance_ratio = _axial_advance_ratio;
-		
+		axial_advance_ratio = -_axial_advance_ratio;
+
 		auto time = dt*curr_state.to!double*t_scale;
 
 		times[get_circular_index(curr_state + 1)] = time;
 
-		compute_loading(rotor_state, rotor.radius, V_inf);
-		
+		compute_loading(rotor_state);
+
 		integrator.step!(system_derivative)(state_history[get_circular_index(curr_state + 1)], state_history[get_circular_index(curr_state)], time, dt*t_scale, this, rotor_input, rotor_state, advance_ratio, axial_advance_ratio);
 
 		alpha = state_history[get_circular_index(curr_state + 1)][0..total_states];

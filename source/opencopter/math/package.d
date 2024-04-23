@@ -4,6 +4,7 @@ public import opencopter.math.algebraic;
 public import opencopter.math.complex;
 public import opencopter.math.trigonometry;
 public import opencopter.math.integration;
+public import opencopter.math.vectorarray;
 
 import opencopter.aircraft;
 import opencopter.math.sleef;
@@ -16,7 +17,9 @@ import std.algorithm : map;
 import std.traits : isStaticArray, Unqual, isFloatingPoint, ForeachType, isSIMDVector;
 
 alias Vec3 = Vector!(3, double);
+alias Vec4 = Vector!(4, double);
 alias Mat4 = Matrix!(4, 4, double);
+alias Mat3 = Matrix!(3, 3, double);
 
 void print_matlab(double[][] mat) {
 	import std.stdio : writeln, write;

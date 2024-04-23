@@ -11,161 +11,134 @@ import math
 
 RAD_TO_HZ = 0.1591549
 
-# def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, dt, V_inf, iterations, aoa, output_path, actual_rotor_idx, t_min, t_max, nt):
-# 	aircraft_cob = CB()
-# 	aircraft_cob.Title = "Forward Velocity"
-# 	aircraft_cob.TranslationType = TranslationType_known_function()
-# 	aircraft_cob.AH = FVec3([0, 0, 0])
-# 	aircraft_cob.VH = FVec3([V_inf, 0, 0])
-# 	aircraft_cob.Y0 = FVec3([0, 0, 0])
+# lol
+def flatten_children(frame, termination_type):
+	def _flatten_children(frame, termination_type):
 
-# 	wopwop_aircraft = ContainerIn()
-# 	wopwop_aircraft.Title = "HART"
-# 	wopwop_aircraft.dTau = dt
-# 	wopwop_aircraft.tauMax = dt*iterations
-# 	wopwop_aircraft.cobs = [aircraft_cob]
+		if (frame.get_frame_type() != termination_type):
 
-# 	environment_constants = EnvironmentConstants()
-# 	environment_constants.rho = atmo.density
-# 	environment_constants.c = 343
-# 	environment_constants.nu = atmo.dynamic_viscosity
+			components = _flatten_children(frame.parent, termination_type)
 
-# 	environment_in = EnvironmentIn()
-# 	environment_in.pressureFolderName = "pressure"
-# 	environment_in.SPLFolderName = "spl"
-# 	environment_in.sigmaFolderName = "sigma"
-# 	environment_in.debugLevel = 12
-# 	environment_in.ASCIIOutputFlag = False
-# 	environment_in.OASPLdBFlag = True
-# 	environment_in.OASPLdBAFlag = False
-# 	environment_in.spectrumFlag = True
-# 	environment_in.SPLdBFlag = True
-# 	environment_in.SPLdBAFlag = False
-# 	environment_in.pressureGradient1AFlag = False
-# 	environment_in.acousticPressureFlag = True
-# 	environment_in.thicknessNoiseFlag = True
-# 	environment_in.loadingNoiseFlag = True
-# 	environment_in.totalNoiseFlag = True
-# 	environment_in.sigmaFlag = False
+			if (frame.parent.get_frame_type() == FrameType_rotor()):
+				components.append(frame)
+			else:
+				components.append(frame.parent)
+				
+			return components
 
-# 	def build_blade_cntr(blade_idx):
-# 		blade_cntr = ContainerIn()
-# 		blade_cntr.Title = "blade "+str(blade_idx)+" containter"
-# 		blade_cntr.patchGeometryFile = "blade_geom.dat"
-# 		blade_cntr.patchLoadingFile = f"blade_{actual_rotor_idx}_{blade_idx}_loading.dat"
+		if (frame.get_frame_type() == FrameType_rotor()) or (frame.get_frame_type() == FrameType_aircraft()):
+			return []
+		else:
+			return frame
+		
+	flat_children = _flatten_children(frame, termination_type)
+	flat_children = flat_children[1:len(flat_children)]
+	return flat_children
 
-# 		blade_cob = CB()
-# 		blade_cob.Title = "blade "+str(blade_idx)+" azimuth offset"
-# 		blade_cob.AxisType = AxisType_time_independant()
-# 		blade_cob.AngleType = AngleType_time_independant()
-# 		blade_cob.AxisValue = FVec3([0, 0, 1])
-# 		blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades)
-# 		blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades)
+def make_cb(frame, wopwop_motion):
+	new_cb = CB()
+	new_cb.Title = frame.name
+	new_cb.TranslationType = TranslationType_time_independant()
 
-# 		blade_cntr.cobs = [blade_cob]
+	frame_pos = frame.local_position()
+	new_cb.TranslationValue = FVec3([frame_pos[0], frame_pos[1], frame_pos[2]])
 
-# 		return blade_cntr
+	angle = frame.local_rotation_angle()
+	axis = frame.local_rotation_axis()
 
-# 	def build_rotor_cntr(rotor_idx):
-# 		rotor_cntr = ContainerIn()
-# 		rotor_cntr.Title = "Rotor "+str(rotor_idx)
+	new_cb.AxisType = AxisType_time_independant()
 
-# 		rotor_offset_cb = CB()
-# 		rotor_offset_cb.Title = "Rotor "+str(actual_rotor_idx)+" vertical offset"
-# 		rotor_offset_cb.TranslationType = TranslationType_time_independant()
-# 		rotor_offset_cb.TranslationValue = FVec3([0, 0, R[rotor_idx]*origins[rotor_idx][2]])
+	if not math.isnan(angle):
+		new_cb.AxisValue = FVec3([axis[0], axis[1], axis[2]])
 
-# 		rotor_aoa_cb = CB()
-# 		rotor_aoa_cb.Title = "Rotor aoa"
-# 		rotor_aoa_cb.AxisType = AxisType_time_independant()
-# 		rotor_aoa_cb.AxisValue = FVec3([0, 1, 0])
-# 		rotor_aoa_cb.AngleType = AngleType_time_independant()
-# 		rotor_aoa_cb.AngleValue = -aoa
+	if frame.name in wopwop_motion:
+		motion = wopwop_motion[frame.name]
+		motion_type = motion["type"]
 
-# 		rotor_rotation_cb = CB()
-# 		rotor_rotation_cb.Title = "Rotor "+str(actual_rotor_idx)+" rotation"
-# 		rotor_rotation_cb.AxisType = AxisType_time_independant()
-# 		rotor_rotation_cb.AxisValue = FVec3([0, 0, 1])
-# 		rotor_rotation_cb.AngleType = AngleType_known_function()
-# 		rotor_rotation_cb.Omega = omegas[rotor_idx]
-# 		rotor_rotation_cb.Rotation = True
+		motion_axis = wopwop_motion[frame.name]['vector']
+		new_cb.AxisValue = FVec3([motion_axis[0], motion_axis[1], motion_axis[2]])
 
-# 		rotor_cntr.cobs = [rotor_offset_cb, rotor_aoa_cb, rotor_rotation_cb]
+		if motion_type == "constant":
+			new_cb.AngleType = AngleType_known_function()
+			new_cb.Omega = motion["omega"]
+			new_cb.Rotation = True
+		if motion_type == "fourier":
+			new_cb.AngleType = AngleType_periodic()
+			A = motion["A"]
+			B = motion["B"]
+			new_cb.A0 = A[0]
+			new_cb.A = [-a for a in A[1:len(A)]]
+			new_cb.B = [-b for b in B]
 
-# 		rotor_cntr.children = [build_blade_cntr(blade_idx) for blade_idx in range(num_blades)]
+	else:
+		new_cb.AngleType = AngleType_time_independant()
+		if not math.isnan(angle):
+			new_cb.AngleValue = angle
+			if frame.parent and frame.parent.get_frame_type() == FrameType_rotor():
+				new_cb.Psi0 = (angle - math.pi)
+	
+	return new_cb
 
-# 		return rotor_cntr
+def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
+	blade_cntr = ContainerIn()
 
-# 	wopwop_aircraft.children = [build_rotor_cntr(rotor_idx) for rotor_idx in range(num_rotors)]
-# 	RAD_TO_HZ = 1/(2*np.pi)
-# 	blade_passing_freq = num_blades*abs(omegas[0])*RAD_TO_HZ
-# 	lower_mid_freq = 6*blade_passing_freq
-# 	upper_mid_freq = 25*blade_passing_freq
+	blade_cntr.Title = blade.frame.name + " container"
 
-# 	#observer_nt = int(4*(1.0*(2.0*math.pi/abs(omega))/dt))
-# 	#tMin = 0.372249
-# 	observer = ObserverIn()
-# 	observer.Title = "Mic array"
-# 	observer.nt = nt# observer_nt
-# 	observer.tMin = t_min #tMin
-# 	observer.tMax = t_max # tMin + 2.0*(2.0*math.pi/abs(omega))
+	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
+	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 
-# 	#observer.xLoc = 16.577
-# 	#observer.yLoc = 14.6972
-# 	#observer.zLoc = -22.9814
+	if environment_in.thicknessNoiseFlag:
+		blade_cntr.patchGeometryFile = f"../data/{rotor_name}_{blade_name}_geometry.dat"
+	
+	if environment_in.loadingNoiseFlag:
+		blade_cntr.patchLoadingFile = f"../data/{rotor_name}_{blade_name}_loading.dat"
 
-# 	observer.nbTheta = 10
-# 	observer.nbPsi = 10
-# 	observer.thetaMin = 0
-# 	observer.thetaMax = 2*math.pi
-# 	observer.psiMin = -math.pi/2.0
-# 	observer.psiMax = 0
-# 	observer.radius = 20*R[0]
-# 	observer.nbHarmonics = 30
-# 	# observer.nbx = 23
-# 	# observer.nby = 17
-# 	# observer.nbz = 1
-# 	# observer.xMin = -2.0*R[0]
-# 	# observer.xMax = 2.0*R[0]
-# 	# observer.yMin = -1.345*R[0]
-# 	# observer.yMax = 1.345*R[0]
-# 	# observer.zMin = -1.1075*R[0]
-# 	# observer.zMax = -1.1075*R[0]
+	flat_frame_list = flatten_children(blade.frame, FrameType_rotor())
 
-# 	observer.lowPassFrequency = upper_mid_freq
-# 	observer.highPassFrequency = lower_mid_freq
-# 	observer.cobs = [aircraft_cob]
+	blade_cntr.cobs = [make_cb(frame, wopwop_motion) for frame in flat_frame_list]
 
-# 	namelist = Namelist()
-# 	namelist.environment_in = environment_in
-# 	namelist.environment_constants = environment_constants
-# 	namelist.observers = [observer]
-# 	namelist.containers = [wopwop_aircraft]
+	return blade_cntr
 
-# 	write_namelist(namelist, f"{output_path}/case.nam")
+def build_rotor_cntr(rotor, environment_in, wopwop_motion):
+	rotor_cntr = ContainerIn()
+	rotor_cntr.Title = rotor.frame.name + " container"
 
-# 	return namelist
+	flat_frame_list = flatten_children(rotor.frame, FrameType_aircraft())
 
-def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, dt, V_inf, iterations, aoa, actual_rotor_idx, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, collective, full_system = False):
+	rotor_cntr.cobs = [make_cb(frame, wopwop_motion) for frame in flat_frame_list]
+
+	rotor_cntr.children = [build_blade_cntr(rotor, blade, environment_in, wopwop_motion) for blade in rotor.blades]
+
+	return rotor_cntr
+	
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input):
+
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
 	aircraft_cob.TranslationType = TranslationType_known_function()
 	aircraft_cob.AH = FVec3([0, 0, 0])
-	aircraft_cob.VH = FVec3([V_inf, 0, 0])
+	aircraft_cob.VH = FVec3([-V_inf, 0, 0])
 	aircraft_cob.Y0 = FVec3([0, 0, 0])
+
+	aircraft_frame_change = CB()
+	aircraft_frame_change.Title = "Frame Change"
+	aircraft_frame_change.AxisType = AxisType_time_independant()
+	aircraft_frame_change.AxisValue = FVec3([0, 0, 1])
+	aircraft_frame_change.AngleType = AngleType_time_independant()
+	aircraft_frame_change.AngleValue = math.pi
 
 	aircraft_aoa_cb = CB()
 	aircraft_aoa_cb.Title = "Aircraft aoa"
 	aircraft_aoa_cb.AxisType = AxisType_time_independant()
 	aircraft_aoa_cb.AxisValue = FVec3([0, 1, 0])
 	aircraft_aoa_cb.AngleType = AngleType_time_independant()
-	aircraft_aoa_cb.AngleValue = aoa
+	aircraft_aoa_cb.AngleValue = -aoa
 
 	wopwop_aircraft = ContainerIn()
-	wopwop_aircraft.Title = "Aircraft"
+	wopwop_aircraft.Title = aircraft.root_frame.name + " container"
 	wopwop_aircraft.dTau = dt
 	wopwop_aircraft.tauMax = dt*iterations
-	wopwop_aircraft.cobs = [aircraft_cob, aircraft_aoa_cb]
+	wopwop_aircraft.cobs = [aircraft_cob, aircraft_frame_change, aircraft_aoa_cb]
 
 	environment_constants = EnvironmentConstants()
 	environment_constants.rho = atmo.density
@@ -206,89 +179,19 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	environment_in.MdotrSigmaFlag = acoustics_config["mdotr_sigma_flag"] if "mdotr_sigma_flag" in acoustics_config else False
 	environment_in.iblankSigmaFlag = acoustics_config["iblank_sigma_flag"] if "iblank_sigma_flag" in acoustics_config else False
 	
-	def build_blade_cntr(rotor_idx, blade_idx):
-		blade_cntr = ContainerIn()
-		blade_cntr.Title = "blade "+str(blade_idx)+" containter"
+	wopwop_aircraft.children = [build_rotor_cntr(rotor, environment_in, wopwop_motion) for rotor in rotors]
 
-		if environment_in.thicknessNoiseFlag:
-			blade_cntr.patchGeometryFile = f"../data/blade_geom_{rotor_idx}_{blade_idx}.dat"
-		
-		if environment_in.loadingNoiseFlag:
-			blade_cntr.patchLoadingFile = f"../data/blade_{rotor_idx if full_system else actual_rotor_idx}_{blade_idx}_loading.dat"
+	R = 1
+	num_blades = 1
+	ref_omega = 1
+	if ("reference_rotor" not in observer_config):
+		raise Exception("Required key 'reference_rotor' not found in observer config file")
+	elif ("radii_relative" in observer_config) and observer_config["radii_relative"]:
+		R = aircraft.rotors[observer_config['reference_rotor']].radius
+		num_blades = aircraft.rotors[observer_config['reference_rotor']].blades.length()
+		ref_omega = ac_input.rotor_inputs[observer_config['reference_rotor']].angular_velocity
 
-		blade_cob = CB()
-		blade_cob.Title = "blade "+str(blade_idx)+" azimuth offset"
-		blade_cob.AxisType = AxisType_time_independant()
-		blade_cob.AngleType = AngleType_time_independant()
-		blade_cob.AxisValue = FVec3([0, 0, 1])
-
-		blade_collective_cob = CB()
-		blade_collective_cob.Title = "blade "+str(blade_idx)+" pitch offset"
-		blade_collective_cob.AxisType = AxisType_time_independant()
-		blade_collective_cob.AngleType = AngleType_time_independant()
-		blade_collective_cob.AxisValue = FVec3([1, 0, 0])
-
-		if isinstance(num_blades, list):
-			blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades[rotor_idx])
-			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades[rotor_idx])
-		else:
-			blade_cob.AngleValue = blade_idx*(2.0*math.pi/num_blades)
-			blade_cob.Psi0 = blade_idx*(2.0*math.pi/num_blades)
-
-		if omegas[rotor_idx] < 0:
-			#blade_collective_cob.AngleValue = math.pi - collective[rotor_idx]
-			blade_collective_cob.AngleValue = -collective[rotor_idx]
-		else:
-			blade_collective_cob.AngleValue = collective[rotor_idx]
-
-
-		blade_cntr.cobs = [blade_cob]
-		#blade_cntr.cobs = [blade_cob, blade_collective_cob]
-
-		return blade_cntr
-
-	def build_rotor_cntr(rotor_idx):
-		rotor_cntr = ContainerIn()
-		rotor_cntr.Title = "Rotor "+str(rotor_idx)
-
-		rotor_offset_cb = CB()
-		rotor_offset_cb.Title = "Rotor "+str(rotor_idx if full_system else actual_rotor_idx)+" vertical offset"
-		rotor_offset_cb.TranslationType = TranslationType_time_independant()
-		if full_system:
-			rotor_offset_cb.TranslationValue = FVec3([R[rotor_idx]*origins[rotor_idx][0], R[rotor_idx]*origins[rotor_idx][1], R[rotor_idx]*origins[rotor_idx][2]])
-		else:
-			rotor_offset_cb.TranslationValue = FVec3([R[actual_rotor_idx]*origins[actual_rotor_idx][0], R[actual_rotor_idx]*origins[actual_rotor_idx][1], R[actual_rotor_idx]*origins[actual_rotor_idx][2]])
-
-		#rotor_aoa_cb = CB()
-		#rotor_aoa_cb.Title = "Rotor aoa"
-		#rotor_aoa_cb.AxisType = AxisType_time_independant()
-		#rotor_aoa_cb.AxisValue = FVec3([0, 1, 0])
-		#rotor_aoa_cb.AngleType = AngleType_time_independant()
-		#rotor_aoa_cb.AngleValue = -aoa
-
-		rotor_rotation_cb = CB()
-		rotor_rotation_cb.Title = "Rotor "+str(rotor_idx if full_system else actual_rotor_idx)+" rotation"
-		rotor_rotation_cb.AxisType = AxisType_time_independant()
-		rotor_rotation_cb.AxisValue = FVec3([0, 0, 1])
-		rotor_rotation_cb.AngleType = AngleType_known_function()
-		rotor_rotation_cb.Omega = omegas[rotor_idx]
-		rotor_rotation_cb.Rotation = True
-
-		rotor_cntr.cobs = [rotor_offset_cb, rotor_rotation_cb]
-
-		if isinstance(num_blades, list):
-			rotor_cntr.children = [build_blade_cntr(rotor_idx, blade_idx) for blade_idx in range(num_blades[rotor_idx])]
-		else:
-			rotor_cntr.children = [build_blade_cntr(rotor_idx, blade_idx) for blade_idx in range(num_blades)]
-
-		return rotor_cntr
-
-	wopwop_aircraft.children = [build_rotor_cntr(rotor_idx) for rotor_idx in range(num_rotors)]
-
-	if isinstance(num_blades, list):
-		blade_passing_freq = min(num_blades)*abs(omegas[0])*RAD_TO_HZ
-	else:
-		blade_passing_freq = num_blades*abs(omegas[0])*RAD_TO_HZ
+	blade_passing_freq = num_blades*abs(ref_omega)*RAD_TO_HZ
 	
 	observer = ObserverIn()
 
@@ -302,12 +205,12 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		observer.nby = observer_config["nb"][1]
 		observer.nbz = observer_config["nb"][2]
 		if observer_config["radii_relative"]:
-			observer.xMin = observer_config["min"][0]*np.max(R)
-			observer.xMax = observer_config["max"][0]*np.max(R)
-			observer.yMin = observer_config["min"][1]*np.max(R)
-			observer.yMax = observer_config["max"][1]*np.max(R)
-			observer.zMin = observer_config["min"][2]*np.max(R)
-			observer.zMax = observer_config["max"][2]*np.max(R)
+			observer.xMin = observer_config["min"][0]*R
+			observer.xMax = observer_config["max"][0]*R
+			observer.yMin = observer_config["min"][1]*R
+			observer.yMax = observer_config["max"][1]*R
+			observer.zMin = observer_config["min"][2]*R
+			observer.zMax = observer_config["max"][2]*R
 		else:
 			observer.xMin = observer_config["min"][0]
 			observer.xMax = observer_config["max"][0]
@@ -324,7 +227,7 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 		observer.psiMin = observer_config["psi_min"]*(math.pi/180.0)
 		observer.psiMax = observer_config["psi_max"]*(math.pi/180.0)
 		if observer_config["radii_relative"]:
-			observer.radius = observer_config["radius"]*np.max(R)
+			observer.radius = observer_config["radius"]*R
 		else:
 			observer.radius = observer_config["radius"]
 
@@ -360,14 +263,19 @@ def generate_wopwop_namelist(R, origins, atmo, num_rotors, num_blades, omegas, d
 	return namelist
 
 
-def write_wopwop_geometry(airfoil_xsection, r, twist, R, real_chord, output_path, rotor_idx, blade_idx):
+def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade):
 	print("Building wopwop geometry")
+
+	R = rotor.radius
+	r = get_r(blade)
+	twist = get_twist(blade)
+	real_chord = [c*R for c in get_chord(blade)]
 
 	#real_chord = (R/AR)*np.ones(len(r))
 	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, R, real_chord)
 	lifting_line_geom = GeometryData(num_nodes = len(r))
 
-	lifting_line_geom.set_x_nodes([R*_r for _r in r])
+	lifting_line_geom.set_x_nodes([R*_r - blade.r_c for _r in r])
 	lifting_line_geom.set_y_nodes(np.zeros(len(r), dtype=np.single))
 	lifting_line_geom.set_z_nodes(np.zeros(len(r), dtype=np.single))
 
@@ -393,15 +301,17 @@ def write_wopwop_geometry(airfoil_xsection, r, twist, R, real_chord, output_path
 		]
 	)
 
-	geom_file = create_geometry_file(wopwop_geom, f"{output_path}/blade_geom_{rotor_idx}_{blade_idx}.dat")
+	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
+	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
+
+	geom_file = create_geometry_file(wopwop_geom, f"{output_path}/{rotor_name}_{blade_name}_geometry.dat")
 	append_geometry_data(geom_file, lifting_line_geom, 0)
 	append_geometry_data(geom_file, blade_geom, 1)
-	#append_geometry_data(geom_file, blade_geom, 0)
 	
 	close_geometry_file(geom_file)
 
-def build_wopwop_loading(rotor_idx, blade_idx, iterations, r, airfoil_xsection, output_path):
-    loading = AperiodicStructuredVectorLoadingFile(
+def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path):
+	loading = AperiodicStructuredVectorLoadingFile(
 		comment = "Blade loading",
 		reference_frame = ReferenceFrame_patch_fixed(),
 		data_alignment = DataAlignment_node_centered(),
@@ -409,7 +319,7 @@ def build_wopwop_loading(rotor_idx, blade_idx, iterations, r, airfoil_xsection, 
 			AperiodicStructuredHeader(
 				name = "Lift line loading",
 				timesteps = iterations,
-				i_max = len(r),
+				i_max = len(get_r(blade)),
 				j_max = 1,
 				zone = 1,
 				compute_thickness = False,
@@ -418,7 +328,7 @@ def build_wopwop_loading(rotor_idx, blade_idx, iterations, r, airfoil_xsection, 
 			AperiodicStructuredHeader(
 				name = "Dummy blade loading",
 				timesteps = iterations,
-				i_max = len(r),
+				i_max = len(get_r(blade)),
 				j_max = len(airfoil_xsection),
 				zone = 2,
 				compute_thickness = True,
@@ -426,6 +336,8 @@ def build_wopwop_loading(rotor_idx, blade_idx, iterations, r, airfoil_xsection, 
 			)
 		]
 	)
-    
-    loading_file = create_loading_file(loading, f"{output_path}/blade_{rotor_idx}_{blade_idx}_loading.dat")
-    return loading_file
+	
+	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
+	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
+	loading_file = create_loading_file(loading, f"{output_path}/{rotor_name}_{blade_name}_loading.dat")
+	return loading_file
