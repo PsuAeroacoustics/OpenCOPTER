@@ -204,13 +204,19 @@ def plot_acoustic_contours(plot_name: str):
 
 def plot_blade_normal_pressures(plot_name: str):
 
-	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json') as param_file:
+	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json5') as param_file:
 		params = pyjson5.load(param_file)
 
 	flight_condition = list(filter(lambda x: x["name"] == plot_name, params['flight_conditions']))[0]
 
-	omega = flight_condition["omegas"][0]
+	#omega = flight_condition["omegas"][0]
+	omegas = []
+	for m in flight_condition["motion"]:
+		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
+			omegas.append(m['omega'])
 
+	omega = omegas[0]
+	
 	blade_results = loadmat(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/results.mat')
 
 	measured_blade_loading = read_hart_blade_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/CnM2_{plot_name}_ca.tec')
@@ -331,19 +337,31 @@ def plot_blade_normal_pressures(plot_name: str):
 
 def plot_wake_trajectory(plot_name: str):
 
-	slice_indides = {
-		-0.4: (0, 8),
-		-0.55: (8, 16),
-		-0.7: (16, 23),
-		-0.85: (23, 28),
-		-0.97: (28, 30),
-		0.4: (30, 36),
-		0.55: (36, 42),
-		0.7: (42, 47),
-		0.85: (47, 51),
-		0.97: (51, 53),
-	}
+	# slice_indides = {
+	# 	-0.4: (0, 8),
+	# 	-0.55: (8, 16),
+	# 	-0.7: (16, 23),
+	# 	-0.85: (23, 28),
+	# 	-0.97: (28, 30),
+	# 	0.4: (30, 36),
+	# 	0.55: (36, 42),
+	# 	0.7: (42, 47),
+	# 	0.85: (47, 51),
+	# 	0.97: (51, 53),
+	# }
 	
+	slice_indides = {
+		0.4: (0, 8),
+		0.55: (8, 16),
+		0.7: (16, 23),
+		0.85: (23, 28),
+		0.97: (28, 30),
+		-0.4: (30, 36),
+		-0.55: (36, 42),
+		-0.7: (42, 47),
+		-0.85: (47, 51),
+		-0.97: (51, 53),
+	}
 	print(f'Plotting wake trajectory for {plot_name}')
 	wake_results = loadmat(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/results.mat')
 
@@ -429,13 +447,17 @@ def plot_wake_trajectory(plot_name: str):
 
 def plot_blade_twist(plot_name: str):
 
-	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json') as param_file:
+	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json5') as param_file:
 		params = pyjson5.load(param_file)
 
 	flight_condition = list(filter(lambda x: x["name"] == plot_name, params['flight_conditions']))[0]
 
-	omega = flight_condition["omegas"][0]
+	omegas = []
+	for m in flight_condition["motion"]:
+		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
+			omegas.append(m['omega'])
 
+	omega = omegas[0]
 	ten_per_rev = 10*omega*RADPS_2_HZ
 
 	blade_results = loadmat(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/results.mat')
@@ -532,7 +554,7 @@ def plot_blade_twist(plot_name: str):
 
 	blade_flapping_array = blade_results['blade_flapping_array'][2,:]
 	
-	#print(f'blade_twist_array: {blade_twist_array}')
+	#print(fblade_twist_array: {blade_twist_array}')
 	plt.figure(num=1)
 	plt.plot(blade_twist_azimuth, blade_flapping_array, linewidth=0.5)
 	plt.title(f'{TITLE_DICT[plot_name.upper()]}: Flapping over time.')
@@ -555,8 +577,8 @@ def plot_blade_twist(plot_name: str):
 
 if __name__ == "__main__":
 
-	# plot_blade_twist('BL')
-	# plot_blade_twist('MN')
+	plot_blade_twist('BL')
+	plot_blade_twist('MN')
 	
 
 	plot_blade_normal_pressures('BL')
@@ -568,7 +590,7 @@ if __name__ == "__main__":
 	plot_acoustic_contours("MN")
 
 
-	#plot_blade_twist('MV')
+	plot_blade_twist('MV')
 	plot_blade_normal_pressures('MV')
 	plot_wake_trajectory('MV')
 	plot_acoustic_contours("MV")

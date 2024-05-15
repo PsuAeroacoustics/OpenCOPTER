@@ -20,3 +20,5 @@ pressure_plot
 validation/af_data/afdata_val
 *.bl
 *.out
+*.lock
+*.prog

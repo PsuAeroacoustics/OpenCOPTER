@@ -371,11 +371,7 @@ extern (C++) struct BladeGeometryChunk {
 	 +/
 	Chunk xi_p;
 
-	Vector!(4, Chunk) af_vec;
-
 	Vector!(4, Chunk) af_norm;
-
-	Matrix!(4, 4, Chunk) af_xform; // airfoil frame to blade frame
 }
 
 Matrix!(r, c, double) extract_single_mat(size_t r, size_t c)(auto ref Matrix!(r, c, Chunk) mat, size_t chunk_idx) {
@@ -474,9 +470,7 @@ void compute_blade_vectors(BG)(ref BG blade) {
 
 	Frame af_frame;
 
-	Vec4[] af_vecs = new Vec4[twist_array.length];
 	Vec4[] af_norms = new Vec4[twist_array.length];
-	Mat4[] af_xform = new Mat4[twist_array.length];
 
 	auto af_vec = Vec4(0);
 	af_vec[1] = 1;
@@ -503,19 +497,13 @@ void compute_blade_vectors(BG)(ref BG blade) {
 		af_frame.children[0].rotate(twist_axis, twist);
 		af_frame.update(Mat4.identity);
 
-		// Airfoil vector in blade frame
-		af_vecs[idx] = (af_frame.children[0].global_matrix*af_vec).normalize();
-		af_xform[idx] = af_frame.children[0].global_matrix;
-
 		af_frame.rotate(sweep_axis, -0.5*PI);
 		af_frame.update(Mat4.identity);
 
 		af_norms[idx] = (af_frame.global_matrix*af_vec).normalize();
 	}
 
-	blade.set_geometry_array!"af_vec"(af_vecs);
 	blade.set_geometry_array!"af_norm"(af_norms);
-	blade.set_geometry_array!"af_xform"(af_xform);
 }
 
 alias compute_blade_vectors_test = compute_blade_vectors!(BladeGeometry);
@@ -566,7 +554,6 @@ void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC b
 		immutable remaining = data.length - out_start_idx;
 		
 		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
-		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
 
 		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
 	}
@@ -580,7 +567,6 @@ void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC b
 		immutable remaining = data.length - out_start_idx;
 		
 		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
-		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
 
 		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
 	}

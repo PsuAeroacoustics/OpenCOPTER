@@ -2,7 +2,10 @@ module opencopter.math.integration;
 
 import opencopter.aircraft;
 import opencopter.config;
+import opencopter.math;
 import opencopter.memory;
+
+import std.math;
 
 double integrate_trapaziodal(string value, BS, BG)(auto ref BS blade, auto ref BG blade_geom) {
 	double val = 0;
@@ -22,7 +25,7 @@ double integrate_trapaziodal(string value, BS, BG)(auto ref BS blade, auto ref B
 			dr[$-1] = 0;
 		}
 
-		tmp_sum[] *= dr[];
+		tmp_sum[] *= abs(dr)[];
 
 		import std.algorithm : sum;
 		val += tmp_sum[].sum;
@@ -49,7 +52,7 @@ double integrate_trapaziodal(BG)(ref Chunk[] f, auto ref BG blade_geom) {
 			dr[$-1] = 0;
 		}
 
-		tmp_sum[] *= dr[];
+		tmp_sum[] *= abs(dr)[];
 
 		import std.algorithm : sum;
 		val += tmp_sum[].sum;
@@ -76,7 +79,7 @@ double integrate_trapaziodal(ref Chunk[] f, ref Chunk[] r) {
 			dr[$-1] = 0;
 		}
 
-		tmp_sum[] *= dr[];
+		tmp_sum[] *= abs(dr)[];
 
 		import std.algorithm : sum;
 		val += tmp_sum[].sum;
@@ -85,13 +88,40 @@ double integrate_trapaziodal(ref Chunk[] f, ref Chunk[] r) {
 	return val;
 }
 
-double integrate_trapaziodal(ref double[] f, ref double[] r) {
+double integrate_trapaziodal_reverse(ref Chunk[] f, ref Chunk[] r) {
+	double val = 0;
+	import std.stdio : writeln;
+
+	foreach(size_t idx, ref Chunk chunk; f) {
+		Chunk dr;
+		Chunk tmp_sum;
+		tmp_sum[0..$-1] = 0.5*(chunk[1..$] + chunk[0..$-1]);
+
+		dr[0..$-1] = r[idx][0..$ - 1] - r[idx][1..$];
+		if(idx != f.length - 1) {
+			dr[$-1] = r[idx][$-1] - r[idx + 1][0];
+			tmp_sum[$-1] = 0.5*(f[idx + 1][0] + chunk[$-1]);
+		} else {
+			tmp_sum[$-1] = 0;
+			dr[$-1] = 0;
+		}
+
+		tmp_sum[] *= abs(dr)[];
+
+		import std.algorithm : sum;
+		val += tmp_sum[].sum;
+	}
+
+	return val;
+}
+
+double integrate_trapaziodal(double[] f, double[] r) {
 	double sum = 0;
 	import std.math : abs;
 	//import std.range : iota;
 	//import std.algorithm;
 	foreach(size_t idx; 1..f.length) {
-		sum += (f[idx - 1] + f[idx])*(r[idx] - r[idx - 1]);
+		sum += (f[idx - 1] + f[idx])*abs(r[idx] - r[idx - 1]);
 	}
 	//return 0.5*iota(1, f.length).map!(idx => (f[idx - 1] + f[idx])*(r[idx] - r[idx - 1])).sum;
 

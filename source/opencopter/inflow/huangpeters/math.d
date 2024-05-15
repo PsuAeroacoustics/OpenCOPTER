@@ -75,8 +75,8 @@ package void zero_matrix(ref double[][] M_c) {
 
 @nogc package void associated_legendre_function(Chunk x, ref Chunk[][] Qmn_bar, double[][] K_table) {
 
-	version(LDC) pragma(inline, true);
-	version(GNU) pragma(inline, true);
+	//version(LDC) pragma(inline, true);
+	//version(GNU) pragma(inline, true);
 
 	immutable Chunk xs = x[]*x[];
 

@@ -200,7 +200,7 @@ class AeroDAS: AirfoilModel {
             Cl = min(CL1, CL2);
         }
 
-        return Cl;
+        return Cl/sqrt(1 - mach_query*mach_query);
     }
 
     override double get_Cd(double alpha_query, double mach_query) {
@@ -234,7 +234,7 @@ class AeroDAS: AirfoilModel {
         // debug writeln("CD2 = ",CD2);
         Cd = max(CD1, CD2);
 
-        return Cd;
+        return Cd/sqrt(1 - mach_query*mach_query);
     }
 
     override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {

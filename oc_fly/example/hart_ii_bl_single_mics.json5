@@ -1,0 +1,14 @@
+{
+	observer: {
+		cutoff_units: "bpf",
+		high_pass_cutoff: 0,
+		type: "plane",
+		radii_relative: true,
+		// Rotor 0 is the rotor to be relative to
+		reference_rotor: 0,
+		nb: [2, 1, 1],
+        x: [1.0, -0.054],
+        y: [-0.672, 0.905],
+        z: [-1.1095, -1.101]
+	}
+}

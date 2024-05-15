@@ -52,7 +52,7 @@ template is_aircraft_state(A) {
 	}();
 }
 
-alias AircraftState = AircraftStateT!(ArrayContainer.none); 
+alias AircraftState = AircraftStateT!(ArrayContainer.none);
 
  struct AircraftStateT(ArrayContainer _AC) {
 	alias AC = _AC;
@@ -136,6 +136,7 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 	double C_Q;
 	double C_Mx;
 	double C_My;
+	
 	double advance_ratio; // non-dim
 	double axial_advance_ratio; // non-dim
 
@@ -201,6 +202,10 @@ extern (C++) struct BladeStateChunk {
 	 +/
 	Chunk dC_T;
 	/++
+	 +  Spanwise drag coefficient distribution in blade frame
+	 +/
+	Chunk dC_Db;
+	/++
 	 +  Spanwise sectional normal force coefficient distribution
 	 +/
 	Chunk dC_N;
@@ -225,12 +230,14 @@ extern (C++) struct BladeStateChunk {
 	 +/
 	Chunk dC_L_dot;
 	/++
-	 +  Spanwise drag coefficient distribution
+	 +  Spanwise drag coefficient distribution in AF frame
 	 +/
 	Chunk dC_D;
-	Chunk dC_Mx;
+	Chunk dC_Mz;
 	Chunk dC_My;
+	//Chunk dC_M;
 	Chunk u_p;
+	Chunk shed_u_p;
 	Chunk u_t;
 	/++
 	 +	Spanwise angle of attack
@@ -301,7 +308,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 			chunk.aoa[] = 0;
 			chunk.gamma[] = 0;
 			chunk.d_gamma[] = 0;
-			chunk.dC_Mx[] = 0;
+			chunk.dC_Mz[] = 0;
 			chunk.dC_My[] = 0;
 			chunk.r_c[] = 0;
 		}
@@ -321,7 +328,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 			chunk.aoa[] = 0;
 			chunk.gamma[] = 0;
 			chunk.d_gamma[] = 0;
-			chunk.dC_Mx[] = 0;
+			chunk.dC_Mz[] = 0;
 			chunk.dC_My[] = 0;
 			chunk.r_c[] = 0;
 		}
@@ -334,7 +341,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 		this.C_Q = blade.C_Q;
 		this.C_L = blade.C_L;
 		this.C_D = blade.C_D;
-		this.C_Mx = blade.C_Mx;
+		this.C_Mz = blade.C_Mz;
 		this.C_My = blade.C_My;
 		this.circulation_model = blade.circulation_model;
 		return this;
@@ -347,7 +354,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 		this.C_Q = blade.C_Q;
 		this.C_L = blade.C_L;
 		this.C_D = blade.C_D;
-		this.C_Mx = blade.C_Mx;
+		this.C_Mz = blade.C_Mz;
 		this.C_My = blade.C_My;
 		this.circulation_model = blade.circulation_model;
 		return this;
@@ -360,7 +367,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 		this.C_Q = blade.C_Q;
 		this.C_L = blade.C_L;
 		this.C_D = blade.C_D;
-		this.C_Mx = blade.C_Mx;
+		this.C_Mz = blade.C_Mz;
 		this.C_My = blade.C_My;
 		this.circulation_model = blade.circulation_model;
 		return this;
@@ -384,8 +391,9 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 	 +  Drag coefficient for single blade.
 	 +/
 	double C_D;
-	double C_Mx;
+	double C_Mz;
 	double C_My;
+	//double C_M;
 }
 
 double[] get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade) {

@@ -49,29 +49,40 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	num_rotors = radii.size # aircraft["number_of_rotors"]
 	V_inf = flight_condition["V_inf"]
 	wake_dists = np.zeros(num_rotors)
-	omegas =  np.asarray([flight_condition["omegas"][r_idx] for r_idx in range(num_rotors)])
+	
+	omegas = []
+	for m in motion:
+		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
+			omegas.append(m['omega'])
+
+	omegas = np.asarray(omegas)
+	#omegas =  np.asarray([flight_condition["omegas"][r_idx] for r_idx in range(num_rotors)])
 	mus = V_inf/(np.abs(omegas)*radii)
 
 	d_psi = computational_parameters["d_psi"]*math.pi/180.0
 
-	wake_trail_distance = 3
+	wake_trail_distance = [4 for _ in range(num_rotors)]
+
+	if "wake_trail_distance" in computational_parameters:
+		wake_trail_distance = computational_parameters["wake_trail_distance"]
+	
 	for o_idx, origin in enumerate(origins):
 		for other_origin in origins:
 			if mus[o_idx] == 0:
 				delta_z = origin[2] - other_origin[2]
 
 				# plus 1R to finish going past the other rotor, and then wake_trail_distance more radii after that
-				wake_dists[o_idx] = max(wake_dists[o_idx], delta_z + 1 + wake_trail_distance)
+				wake_dists[o_idx] = max(wake_dists[o_idx], delta_z + 1 + wake_trail_distance[o_idx])
 
 			else:
-				delta_x = origin[0] - other_origin[0]
+				delta_x = abs(origin[0] - other_origin[0])
 
 				# plus 1R to finish going past the other rotor, and then wake_trail_distance more radii after that
-				wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + wake_trail_distance)
+				wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + wake_trail_distance[o_idx])
 
 		if wake_dists[o_idx] <= 0:
-			# if all others are upstream, just trail 6 radii behind
-			wake_dists[o_idx] = wake_trail_distance
+			# if all others are upstream, just trail wake_trail_distance radii behind
+			wake_dists[o_idx] = wake_trail_distance[o_idx]
 
 	wake_history_revs = np.zeros(wake_dists.size)
 
@@ -199,6 +210,13 @@ def main():
 		action='store_true',
 		help="Convert wopwop spheres to AAM spheres",
 		default=False, 
+		required=False
+	)
+	parser.add_argument(
+		"--pid",
+		type=int,
+		help="PID of the run to restart",
+		default=None, 
 		required=False
 	)
 	parser.add_argument(
@@ -372,7 +390,19 @@ def main():
 	cases_per_core = int(len(flat_cases)/total_procs)
 	left_over_cases = len(flat_cases)%total_procs
 
-	lock_file_name = f'./iris.lock'
+	pid = 0
+	if rank == 0:
+		pid = os.getpid()
+		if args.pid is not None:
+			pid = args.pid
+
+		if comm.size > 1:
+			pid = comm.bcast(pid, 0)
+
+	else:
+		pid = comm.bcast(pid, 0)
+
+	lock_file_name = f'./iris_{pid}.lock'
 
 	lock_exists = os.path.exists(lock_file_name)
 
@@ -391,7 +421,7 @@ def main():
 	
 	print(f'Rank {rank}: len(case_slice): {len(case_slice)}')
 
-	prog_file_name = f"rank_{rank}.prog"
+	prog_file_name = f"rank_{rank}_{pid}.prog"
 	start_idx = 0
 	acoustic_start_idx = 0
 

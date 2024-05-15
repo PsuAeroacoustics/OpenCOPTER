@@ -39,9 +39,11 @@ package struct CartisianCoords {
 	immutable Chunk eta = (1.0/sqrt(2.0))*sqrt(eta_tmp)[];
 
 	immutable Chunk neg_y = -coords.y[];
-	immutable Chunk psi = atan2(neg_y, coords.x);
+	//immutable Chunk atan_arg = neg_y[]/coords.x[];
+	//immutable Chunk psi = atan(atan_arg);
+	//immutable Chunk psi = atan2(neg_y, coords.x);
 
-	return ElipticalCoords(nu, eta, psi);
+	return ElipticalCoords(nu, eta/+, psi+/);
 }
 
 package immutable odd_states = [

@@ -188,8 +188,9 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 		raise Exception("Required key 'reference_rotor' not found in observer config file")
 	elif ("radii_relative" in observer_config) and observer_config["radii_relative"]:
 		R = aircraft.rotors[observer_config['reference_rotor']].radius
-		num_blades = aircraft.rotors[observer_config['reference_rotor']].blades.length()
-		ref_omega = ac_input.rotor_inputs[observer_config['reference_rotor']].angular_velocity
+	
+	num_blades = aircraft.rotors[observer_config['reference_rotor']].blades.length()
+	ref_omega = ac_input.rotor_inputs[observer_config['reference_rotor']].angular_velocity
 
 	blade_passing_freq = num_blades*abs(ref_omega)*RAD_TO_HZ
 	

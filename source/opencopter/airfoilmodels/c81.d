@@ -53,44 +53,45 @@ final class Coefftable {
             writeln("Atleast two values required for Angle of Attack");
         }
 
-        auto cols = mach.length;
-        auto rows = aoa.length;
+        // auto cols = mach.length;
+        // auto rows = aoa.length;
 
-        if (cols != vals.length) {
-            writeln("Inconsistant no. of mach");
-            debug writeln("Number of Mach number:",cols);
-            writeln("Number of Coeffiecient values:",vals.length);
-        }
+        // if (cols != vals.length) {
+        //     writeln("Inconsistant no. of mach");
+        //     debug writeln("Number of Mach number:",cols);
+        //     writeln("Number of Coeffiecient values:",vals.length);
+        // }
 
-        if (rows != vals.length) {
-            writeln("Inconsistant no. of aoa");
-            writeln("Number of aoa:",rows);
-            writeln("Number of Coeffiecient values:",vals[0].length);
-        }
+        // if (rows != vals.length) {
+        //     writeln("Inconsistant no. of aoa");
+        //     writeln("Number of aoa:",rows);
+        //     writeln("Number of Coeffiecient values:",vals[0].length);
+        // }
     }
 
     auto interpolation(double alpha_query, double mach_query) {
+        alpha_query *= (180.0/PI);
         double val_req;
         if (canFind(aoa, alpha_query) && canFind(mach, mach_query)) {
-            debug writeln("Requaired Angle of attack and Mach number are in the file");
+            //debug writeln("Requaired Angle of attack and Mach number are in the file");
             immutable alpha_indx = countUntil(aoa[], alpha_query);
             immutable mach_indx = countUntil(mach[], mach_query);
             val_req = vals[alpha_indx][mach_indx];
         } else if (canFind(aoa, alpha_query)) {
-            debug writeln("Requaired Angle of attack is in the file");
+            //debug writeln("Requaired Angle of attack is in the file");
             
             immutable alpha_indx = countUntil(aoa[], alpha_query);
             debug writeln(aoa[alpha_indx]);
             
             immutable mach_indx = findindx(mach[], mach_query);
-            debug writeln(mach[mach_indx], '\t', mach[mach_indx + 1]);
+            //debug writeln(mach[mach_indx], '\t', mach[mach_indx + 1]);
 
-            debug writeln(vals[alpha_indx][mach_indx + 1], "\t", vals[alpha_indx][mach_indx]);
+            //debug writeln(vals[alpha_indx][mach_indx + 1], "\t", vals[alpha_indx][mach_indx]);
 
             val_req = ((vals[alpha_indx][mach_indx + 1] - vals[alpha_indx][mach_indx]) /
                     (mach[mach_indx + 1] - mach[mach_indx])) * (mach_query - mach[mach_indx]) + vals[alpha_indx][mach_indx];
         } else if (canFind(mach, mach_query)) {
-            debug writeln("Requaired Mach number is in the file");
+            //debug writeln("Requaired Mach number is in the file");
             
             immutable mach_indx = countUntil(mach[], mach_query);
             debug writeln(this.mach[mach_indx]);
@@ -101,13 +102,13 @@ final class Coefftable {
             val_req = ((vals[alpha_indx + 1][mach_indx] - vals[alpha_indx][mach_indx]) /
                     (aoa[alpha_indx + 1] - aoa[alpha_indx])) * (alpha_query - aoa[alpha_indx]) + vals[alpha_indx][mach_indx];
         } else {
-            debug writeln("Interpolating through the data");
+            //debug writeln("Interpolating through the data");
             
             immutable alpha_indx = findindx(aoa[], alpha_query);
-            debug writeln(aoa[alpha_indx], aoa[alpha_indx + 1]);
+            //debug writeln(aoa[alpha_indx], aoa[alpha_indx + 1]);
             
             immutable mach_indx = findindx(mach[], mach_query);
-            debug writeln(mach[mach_indx], mach[mach_indx + 1]);
+            //debug writeln(mach[mach_indx], mach[mach_indx + 1]);
             
             double val_intr1 = ((vals[alpha_indx + 1][mach_indx] - vals[alpha_indx][mach_indx]) /
                     (aoa[alpha_indx + 1] - aoa[alpha_indx])) * (alpha_query - aoa[alpha_indx]) + vals[alpha_indx][mach_indx];
@@ -185,17 +186,22 @@ auto load_c81_file(string filename) {
     /*reads airfoil tabel from C81 formatted File*/
     bool multilinedata;
     auto file = File(filename, "r");
-    writeln("file loaded");
+    debug writeln("file loaded");
     auto blade_param = to!(double[])(split(file.readln));
-    double nfoil = blade_param[0]; // number of airfoils
+    //double nfoil = blade_param[0]; // number of airfoils
     double ithick = blade_param[1];
-    double[] xfoil = to!(double[])(split(file.readln)); // location of airfoil sections
+    // read past af xsections (unused)
+    file.readln;
+    //double[] xfoil = to!(double[])(split(file.readln)); // location of airfoil sections
     if (ithick == 0)
     {
-        double[] thickness = to!(double[])(split(file.readln)); // max thickness of airfoil at the section
+        // read past thickness line (unused)
+        file.readln;
+        //double[] thickness = to!(double[])(split(file.readln)); // max thickness of airfoil at the section
     }
-    auto com1 = file.readln;
-    auto com2 = file.readln;
+    // read past comment lines
+    file.readln;
+    file.readln;
     auto header = file.readln;
     //writeln(header[31..33]);
     string airfoilname = to!string(header[0 .. 30]);
@@ -203,8 +209,12 @@ auto load_c81_file(string filename) {
     int naoa_L = to!int(header[32 .. 34]);
     int nmach_d = to!int(header[34 .. 36]);
     int naoa_D = to!int(header[36 .. 38]);
-    int nmach_m = to!int(header[39 .. 40]);
+    int nmach_m = to!int(header[38 .. 40]);
     int naoa_M = to!int(header[40 .. 42]);
+
+    debug writeln("nmach_l: ", nmach_l, " naoa_L: ", naoa_L);
+    debug writeln("nmach_d: ", nmach_d, " naoa_D: ", naoa_D);
+    debug writeln("nmach_m: ", nmach_m, " naoa_M: ", naoa_M);
 
     // lift
     if (nmach_l > 9)
@@ -234,8 +244,8 @@ auto load_c81_file(string filename) {
     //writeln(naoa_L);
     //writeln(CL[38][0..$]);
     multilinedata = false;
-    writeln("Read the Cl data successfully");
-    writeln("aoa table: \n ", aoa_L);
+    debug writeln("Read the Cl data successfully");
+    debug writeln("aoa table: \n ", aoa_L);
     // Drag
     if (nmach_d > 9)
     {
@@ -261,13 +271,14 @@ auto load_c81_file(string filename) {
         CD[i][0 .. $] = line[1 .. $];
     }
     multilinedata = false;
-    writeln(naoa_D);
-    writeln(CD.length);
+    debug writeln(naoa_D);
+    debug writeln(CD.length);
 
-    writeln("Read the Cd data successfully");
+    debug writeln("Read the Cd data successfully");
     // Moment
     if (nmach_m > 9)
     {
+        debug writeln("Moment is multiline");
         multilinedata = true;
     }
     // read mach number
@@ -289,7 +300,7 @@ auto load_c81_file(string filename) {
         aoa_M[i] = line[0];
         CM[i][0 .. $] = line[1 .. $];
     }
-    writeln("Read the Cm data successfully");
+    debug writeln("Read the Cm data successfully");
     return new C81(airfoilname,
         aoa_L, mach_l, CL,
         aoa_D, mach_d, CD,

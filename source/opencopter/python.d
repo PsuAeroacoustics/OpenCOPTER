@@ -85,12 +85,13 @@ double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
  +	having an implementation it can link to. So here we are.
  +/
 class Inflow {
-	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) { assert(0); }
-	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) { assert(0); }
+	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) { assert(0); }
+	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState ac_state, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) { assert(0); }
 	Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) { assert(0); }
 	double wake_skew() { assert(0); }
 	Frame* frame() { assert(0); }
+	Mat4 inverse_global_frame() { assert(0); }
 }
 
 
@@ -105,12 +106,12 @@ class HuangPeters : Inflow {
 		huang_peters = new HP(4, 2, rotor, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		huang_peters.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) {
+		huang_peters.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, ac_state, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		huang_peters.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState ac_state, double dt) {
+		huang_peters.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, ac_state, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
@@ -128,6 +129,10 @@ class HuangPeters : Inflow {
 	override Frame* frame() {
 		return huang_peters.frame();
 	}
+
+	override Mat4 inverse_global_frame() {
+		return huang_peters.inverse_global_frame;
+	}
 }
 
 class Beddoes : Inflow {
@@ -141,11 +146,11 @@ class Beddoes : Inflow {
 		beddoes = new BI();
 	}
 
-	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+	override void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) {
 		beddoes.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
-	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+	override void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, PyAircraftState ac_state, double dt) {
 		beddoes.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
 	}
 
@@ -163,6 +168,10 @@ class Beddoes : Inflow {
 
 	override Frame* frame() {
 		return null;
+	}
+
+	override Mat4 inverse_global_frame() {
+		return Mat4.identity;
 	}
 }
 
@@ -256,6 +265,14 @@ void fill_dC_c(ref PyBladeState blade, double[] data) {
 
 void fill_dC_D(ref PyBladeState blade, double[] data) {
 	return blade.get_state_array!"dC_D"(data);
+}
+
+void fill_dC_Db(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dC_Db"(data);
+}
+
+void fill_dC_Dbf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dC_Db"(data);
 }
 
 void fill_dC_Nf(ref PyBladeState blade, float[] data) {
@@ -810,6 +827,20 @@ extern(C) void PydMain() {
 		:return: List of spanwise :math:`dC_D` values
 	});
 
+	def!(fill_dC_Db, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Db` from
+		:return: List of spanwise :math:`dC_Db` values
+	});
+
+	def!(fill_dC_Dbf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Db` from
+		:return: List of spanwise :math:`dC_Db` values
+	});
+
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
 		Extract blade spanwise thrust coefficient to a linear array.
 
@@ -1178,7 +1209,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorWake,
 		PyName!"RotorWake",
-		Init!(size_t),
+		Init!(size_t, size_t, size_t),
 		Member!("tip_vortices", Docstring!q{An array of :class:`VortexFilament`}),
 		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`})
 	);
@@ -1186,14 +1217,14 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWake,
 		PyName!"Wake",
-		Init!(size_t, size_t[], size_t[], size_t, size_t),
+		Init!(size_t, size_t[], size_t[], size_t, size_t[], size_t[]),
 		Member!("rotor_wakes", Docstring!q{An array of :class:`RotorWake`})
 	);
 
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t, double),
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t[], size_t[], double),
 		Docstring!q{
 			Top level structure for holding the wake and its history.
 			
@@ -1221,10 +1252,11 @@ extern(C) void PydMain() {
 			:param density: Atmospheric density.
 			:param dynamic_viscosity: Atmospheric dynamic viscosity.
 		},
-		Init!(double, double),
+		Init!(double, double, double),
 		Member!("density", Mode!"r", Docstring!"atmospheric density"),
 		Member!("dynamic_viscosity", Mode!"r", Docstring!"atmospheric dynamic viscosity"),
-		Member!("kinematic_viscosity", Mode!"r", Docstring!"atmospheric kinematic viscosity")
+		Member!("kinematic_viscosity", Mode!"r", Docstring!"atmospheric kinematic viscosity"),
+		Member!("speed_of_sound", Mode!"r", Docstring!"atmospheric speed of sound")
 	);
 
 	wrap_struct!(
@@ -1333,7 +1365,7 @@ extern(C) void PydMain() {
 		Member!("dC_L_dot", Docstring!q{A chunk of spanwise sectional lift coefficient time derivative}),
 		Member!("dC_N", Docstring!q{A chunk of spanwise sectional normal force coefficient}),
 		Member!("dC_c", Docstring!q{A chunk of spanwise sectional chordwise force coefficient}),
-		Member!("dC_Mx", Docstring!q{A chunk of spanwise sectional x moment coefficient}),
+		Member!("dC_Mz", Docstring!q{A chunk of spanwise sectional x moment coefficient}),
 		Member!("dC_My", Docstring!q{A chunk of spanwise sectional y moment coefficient}),
 		Member!("u_p", Docstring!q{A chunk of spanwise sectional perpendicular inflow}),
 		Member!("u_t", Docstring!q{A chunk of spanwise sectional tangential inflow}),
@@ -1367,8 +1399,8 @@ extern(C) void PydMain() {
 		Member!("C_Q", Docstring!q{The current power/torque coefficient contribution from this blade}),
 		Member!("C_L", Docstring!q{The current lift coefficient contribution from this blade}),
 		Member!("C_D", Docstring!q{The current drag coefficient contribution from this blade}),
-		Member!("C_Mx", Docstring!q{The current x moment coefficient contribution from this blade}),
-		Member!("C_My", Docstring!q{The current y moment coefficient contribution from this blade})
+		Member!("C_Mz", Docstring!q{The current z moment coefficient contribution from this blade in the blade frame of reference}),
+		Member!("C_My", Docstring!q{The current y moment coefficient contribution from this blade in the blade frame of reference})
 	);
 
 	wrap_struct!(
@@ -1444,6 +1476,7 @@ extern(C) void PydMain() {
 			:param rotor_state: The current rotor state.
 			:param advance_ratio: The current advance ratio for the rotor.
 			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param ac_state: The currect AircraftState object
 			:param dt: The current timestep size.
 		}),
 		Def!(HuangPeters.inflow_at,
@@ -1492,6 +1525,7 @@ extern(C) void PydMain() {
 			:param rotor_state: The current rotor state.
 			:param advance_ratio: The current advance ratio for the rotor.
 			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param ac_state: The currect AircraftState object
 			:param dt: The current timestep size.
 		}),
 		Def!(Beddoes.inflow_at,

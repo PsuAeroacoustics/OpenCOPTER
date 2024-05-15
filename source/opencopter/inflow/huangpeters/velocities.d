@@ -9,6 +9,8 @@ import opencopter.config;
 import opencopter.math;
 import opencopter.memory;
 
+import numd.linearalgebra.matrix;
+
 import std.algorithm;
 import std.conv;
 import std.math;
@@ -173,14 +175,41 @@ package auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 		if(m == 0) {
 			infl.mpsi_buff[m] = 1.0;
 			infl.sin_mpsi_buff[m] = 0.0;
-		} else {
-			immutable Chunk mpsi = m.to!double*coords.psi[];
-			immutable Chunk[2] sin_cos = sincos(mpsi);
+		} else if(m == 1) {
+			//immutable Chunk mpsi = m.to!double*coords.psi[];
+			//immutable Chunk[2] sin_cos = sincos(mpsi);
 
-			infl.mpsi_buff[m] = sin_cos[1];
-			infl.sin_mpsi_buff[m] = sin_cos[0];
+			//immutable Chunk neg_y = -ccoords.y[];
+			//auto v1 = Vector!(3, Chunk)(ccoords.x, neg_y, zero).normalize;
+			auto v1 = Vector!(3, Chunk)(ccoords.x, ccoords.y, zero).normalize;
+			auto v2 = Vector!(3, Chunk)(0);
+			v2[0][] = 1.0;
+
+			//auto cos_psi = v1.dot(v2);
+			infl.mpsi_buff[m][] = v1.dot(v2)[];
+			Chunk one_m_cos_psi = 1.0 - infl.mpsi_buff[m][]*infl.mpsi_buff[m][];
+			infl.sin_mpsi_buff[m][] = sgn(ccoords.y)[]*sqrt(one_m_cos_psi)[];
+
+			//infl.sin_mpsi_buff[m] = sin_cos[0];
+		} else {
+			
+			infl.mpsi_buff[m][] = 2.0*infl.mpsi_buff[1][]*infl.mpsi_buff[m-1][] - infl.mpsi_buff[m-2][];
+			infl.sin_mpsi_buff[m][] = 2.0*infl.mpsi_buff[1][]*infl.sin_mpsi_buff[m-1][] - infl.sin_mpsi_buff[m-2][];
 		}
 	}
+
+	// foreach(m; 0..max(infl.Mo, infl.Me) + 1) {
+	// 	if(m == 0) {
+	// 		infl.mpsi_buff[m] = 1.0;
+	// 		infl.sin_mpsi_buff[m] = 0.0;
+	// 	} else{
+	// 		immutable Chunk mpsi = m.to!double*coords.psi[];
+	// 		immutable Chunk[2] sin_cos = sincos(mpsi);
+
+	// 		infl.mpsi_buff[m][] = sin_cos[1];
+	// 		infl.sin_mpsi_buff[m] = sin_cos[0];
+	// 	}
+	// }
 
 	immutable Chunk V_md = compute_md ? compute_velocities_md(infl, coefficients_md, coefficients_md_sin, coords) : Z;
 	immutable Chunk V_nh = compute_nh ? compute_velocities_nh(infl, coefficients_nh, coefficients_nh_sin, coords) : Z;
@@ -212,6 +241,22 @@ package auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 			}
 		)
 		.staticArray!Chunk;
+		// zip(sigma[], sin_xi_2.repeat, g.repeat, y[], z[], x[], s_0[])
+		// .map!(
+		// 	(sxgy) {
+		// 		if((sxgy[0] < 0.0) || (sxgy[1] <= 1.0e-14) || ((sxgy[0] < 0.0) && (abs(sxgy[4]) <= 1.0e-14)) || (sxgy[5] > -sxgy[6]) /+|| (sxgy[4] > 0.0)+/) {
+		// 			return 0.0;
+		// 		} else {
+		// 			if(abs(sxgy[3]) <= 1.0) {
+		// 				return sxgy[1]/(sxgy[1] + sxgy[0]*sxgy[2]);
+		// 			} else {
+		// 				return sxgy[1]/(sxgy[1] + (sxgy[0] + 1.5*sqrt(sxgy[3]*sxgy[3] - 1.0))*sxgy[2]);
+		// 			}
+		// 		}
+		// 		assert(false);
+		// 	}
+		// )
+		// .staticArray!Chunk;
 	return f;
 }
 
@@ -222,6 +267,7 @@ package auto compute_velocities_final(ArrayContainer AC, T)(HuangPetersInflowT!A
 	immutable Chunk rho_axial = 1;
 
 	immutable Chunk y2z2 = ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
+	//immutable Chunk y2z2 = ccoords.x[]*ccoords.x[] + ccoords.y[]*ccoords.y[] + ccoords.z[]*ccoords.z[];
 	immutable Chunk rho2 = rho_axial[]*rho_axial[];
 	immutable Chunk s_0 = zip(y2z2[], rho2[]).map!(a => a[0] < a[1] ? sqrt(a[1] - a[0]) : 0).staticArray!Chunk;
 	
