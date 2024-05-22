@@ -9,6 +9,8 @@ from libwopwopd import *
 import numpy as np
 import math
 
+from os import path, makedirs
+
 RAD_TO_HZ = 0.1591549
 
 # lol
@@ -87,15 +89,17 @@ def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
 	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 
-	if environment_in.thicknessNoiseFlag:
-		blade_cntr.patchGeometryFile = f"../data/{rotor_name}_{blade_name}_geometry.dat"
+	#if environment_in.thicknessNoiseFlag:
+	blade_cntr.patchGeometryFile = f"../data/{rotor_name}_{blade_name}_geometry.dat"
 	
 	if environment_in.loadingNoiseFlag:
 		blade_cntr.patchLoadingFile = f"../data/{rotor_name}_{blade_name}_loading.dat"
 
 	flat_frame_list = flatten_children(blade.frame, FrameType_rotor())
 
-	blade_cntr.cobs = [make_cb(frame, wopwop_motion) for frame in flat_frame_list]
+	cob_list = [make_cb(frame, wopwop_motion) for frame in flat_frame_list]
+	cob_list.append(make_cb(blade.frame, wopwop_motion))
+	blade_cntr.cobs = cob_list
 
 	return blade_cntr
 
@@ -111,7 +115,7 @@ def build_rotor_cntr(rotor, environment_in, wopwop_motion):
 
 	return rotor_cntr
 	
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input):
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -241,6 +245,16 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 
 			observer.fileName = f"../data/observers.dat"
 
+	elif observer_config["type"] == "single_point":
+		if observer_config["radii_relative"]:
+			observer.xLoc = observer_config["x"]*R
+			observer.yLoc = observer_config["y"]*R
+			observer.zLoc = observer_config["z"]*R
+		else:
+			observer.xLoc = observer_config["x"]
+			observer.yLoc = observer_config["y"]
+			observer.zLoc = observer_config["z"]
+
 	if "low_pass_cutoff" in observer_config:
 		if observer_config["cutoff_units"] == "bpf":
 			observer.lowPassFrequency = observer_config["low_pass_cutoff"]*blade_passing_freq
@@ -255,6 +269,32 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 
 	observer.cobs = [aircraft_cob]
 
+	if "frequency_ranges" in observer_config:
+
+		if not path.isdir(f'{wopwop_case_path}/segmentProcess'):
+			makedirs(f'{wopwop_case_path}/segmentProcess', exist_ok=True)
+
+		range_list = []
+		for frequency_range in observer_config["frequency_ranges"]:
+			range_in = RangeIn()
+			range_in.Title = frequency_range["name"]
+			
+			if "high_pass_cutoff" in frequency_range:
+				if frequency_range["cutoff_units"] == "bpf":
+					range_in.minFrequency = frequency_range["high_pass_cutoff"]*blade_passing_freq
+				else:
+					range_in.minFrequency = frequency_range["high_pass_cutoff"]
+
+			if "low_pass_cutoff" in frequency_range:
+				if frequency_range["cutoff_units"] == "bpf":
+					range_in.maxFrequency = frequency_range["low_pass_cutoff"]*blade_passing_freq
+				else:
+					range_in.maxFrequency = frequency_range["low_pass_cutoff"]
+
+			range_list.append(range_in)
+		
+		observer.ranges = range_list
+
 	namelist = Namelist()
 	namelist.environment_in = environment_in
 	namelist.environment_constants = environment_constants
@@ -264,11 +304,12 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	return namelist
 
 
-def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade):
+def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_thickness):
 	print("Building wopwop geometry")
 
 	R = rotor.radius
 	r = get_r(blade)
+	r = [_r - blade.r_c for _r in r]
 	twist = get_twist(blade)
 	real_chord = [c*R for c in get_chord(blade)]
 
@@ -276,7 +317,7 @@ def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade):
 	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, R, real_chord)
 	lifting_line_geom = GeometryData(num_nodes = len(r))
 
-	lifting_line_geom.set_x_nodes([R*_r - blade.r_c for _r in r])
+	lifting_line_geom.set_x_nodes([R*_r for _r in r])
 	lifting_line_geom.set_y_nodes(np.zeros(len(r), dtype=np.single))
 	lifting_line_geom.set_z_nodes(np.zeros(len(r), dtype=np.single))
 
@@ -284,31 +325,52 @@ def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade):
 	lifting_line_geom.set_y_normals(np.zeros(len(r), dtype=np.single))
 	lifting_line_geom.set_z_normals(np.ones(len(r), dtype=np.single))
 
-	wopwop_geom = GeometryFile(
-		comment = "Blade geometry",
-		units = "Pa",
-		data_alignment = DataAlignment_node_centered(), # node centered,
-		zone_headers = [
-			ConstantStructuredGeometryHeader(
-				name = "lifting line",
-				i_max = len(r),
-				j_max = 1
-			),
-			ConstantStructuredGeometryHeader(
-				name = "blade",
-				i_max = len(r),
-				j_max = len(airfoil_xsection)
-			)
-		]
-	)
-
 	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 
-	geom_file = create_geometry_file(wopwop_geom, f"{output_path}/{rotor_name}_{blade_name}_geometry.dat")
-	append_geometry_data(geom_file, lifting_line_geom, 0)
-	append_geometry_data(geom_file, blade_geom, 1)
+	if not include_thickness:
+		wopwop_geom = GeometryFile(
+			comment = "Blade geometry",
+			units = "Pa",
+			data_alignment = DataAlignment_node_centered(), # node centered,
+			zone_headers = [
+				ConstantStructuredGeometryHeader(
+					name = "lifting line",
+					i_max = len(r),
+					j_max = 1
+				),
+				ConstantStructuredGeometryHeader(
+					name = "blade",
+					i_max = len(r),
+					j_max = len(airfoil_xsection)
+				)
+			]
+		)
+
+		geom_file = create_geometry_file(wopwop_geom, f"{output_path}/{rotor_name}_{blade_name}_geometry.dat")
+		
+		append_geometry_data(geom_file, lifting_line_geom, 0)
+		append_geometry_data(geom_file, blade_geom, 1)
 	
+	else:
+		wopwop_geom = GeometryFile(
+			comment = "Blade geometry",
+			units = "Pa",
+			data_alignment = DataAlignment_node_centered(), # node centered,
+			zone_headers = [
+				ConstantStructuredGeometryHeader(
+					name = "lifting line",
+					i_max = len(r),
+					j_max = 1
+				)
+			]
+		)
+
+		geom_file = create_geometry_file(wopwop_geom, f"{output_path}/{rotor_name}_{blade_name}_geometry.dat")
+
+		append_geometry_data(geom_file, lifting_line_geom, 0)
+
+
 	close_geometry_file(geom_file)
 
 def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path):

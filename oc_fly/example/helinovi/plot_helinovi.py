@@ -22,9 +22,10 @@ RADPS_2_HZ = 0.1591549433
 R = 2
 
 TITLE_DICT = {
-	"BL": "Baseline",
-	"MN": "Minimum Noise",
-	"MV": "Minimum Vibration"
+	"ID1": "ID1",
+	"ID2": "ID2",
+	"ID2_ASU": "ID2 Advancing side up",
+	"ID5": "ID5"
 }
 
 def loadmat(filename: str):
@@ -135,76 +136,164 @@ def read_hart_blade_data_tecplot(filename: str):
 
 	return blade_data
 
+ACOUSTIC_BOUNDS_DB = {
+	"ID1": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
+	"ID2": [(81, 99, 19), (81, 99, 19), (81, 109, 29)],
+	"ID2_ASU": [(81, 99, 19), (81, 99, 19), (81, 109, 29)],
+	"ID5": [(85, 119, 18), (85, 119, 18), (85, 119, 18)]
+}
+
+ACOUSTIC_BOUNDS_DBA = {
+	"ID1": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
+	"ID2": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
+	"ID2_ASU": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
+	"ID5": [(85, 119, 18), (85, 119, 18), (85, 119, 18)]
+}
+
 def plot_acoustic_contours(plot_name: str):
-	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
+	#x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
 
-	wopwop_results = parse_wopwop_results(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', 'case.nam')
+	namelist = parse_namelist(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system/case.nam')
+	wopwop_results = parse_wopwop_results_namelist(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', namelist)
 
-	i_max = len(wopwop_results.oaspl_db_grid.obs_x)
-	j_max = len(wopwop_results.oaspl_db_grid.obs_x[0])
+	i_max = len(wopwop_results.oaspl_dba_grid.obs_x)
+	j_max = len(wopwop_results.oaspl_dba_grid.obs_x[0])
 
-	print(f'i_max: {i_max}')
-	print(f'j_max: {j_max}')
+	#print(f'i_max: {i_max}')
+	#print(f'j_max: {j_max}')
 
-	oaspl_linear = [oaspl_db.functions[0].data[0] for oaspl_db in wopwop_results.oaspl_db]
+	for r_idx, freq_range in enumerate(namelist.observers[0].ranges):
+		oaspl_linear = [oaspl_db.functions[0].data[0] for oaspl_db in wopwop_results.frequency_ranges_db[r_idx]]
 
-	oaspl_db = [[oaspl_linear[i*j_max + j] for i in range(i_max)] for j in range(j_max)]
+		oaspl_db = [[oaspl_linear[j*i_max + i] for i in range(i_max)] for j in range(j_max)]
 
-	#print(wopwop_results.oaspl_db_grid.obs_y[0])
-	#print(wopwop_results.oaspl_db_grid.obs_x[1])
+		oaspl_linear = [oaspl_db.functions[0].data[0] for oaspl_db in wopwop_results.frequency_ranges_dba[r_idx]]
 
-	x = wopwop_results.oaspl_db_grid.obs_x[0]
-	y = [_y[0] for _y in wopwop_results.oaspl_db_grid.obs_y]
-	y.reverse()
+		oaspl_dba = [[oaspl_linear[j*i_max + i] for i in range(i_max)] for j in range(j_max)]
 
-	#print(x)
-	offset = x[0] - -4.0
+		#print(wopwop_results.oaspl_db_grid.obs_y[0])
+		#print(wopwop_results.oaspl_db_grid.obs_x[1])
 
-	clevels = np.linspace(85, 119, 18)
+		y = wopwop_results.oaspl_dba_grid.obs_y[0]
+		x = [_x[0] for _x in wopwop_results.oaspl_dba_grid.obs_x]
+		x.reverse()
 
-	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
+		#print(f'x: {x}')
+		#print(f'y: {y}')
+		#print(x)
+		offset = x[0] - -4.0
 
-	print([(_x - offset)/R for _x in x])
-	print([_y/R for _y in y])
-	print(x_grid[0,:])
-	print(y_grid[:,0])
-	#print(x)
+		#clevels = np.linspace(85, 119, 18)
+		clevels = np.linspace(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][2])
 
-	fig = plt.figure()
-	ax0 = plt.subplot(121)
-	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
-	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
-	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
-	plt.clabel(plt2, clevels, colors='k', fontsize=5)
-	plt.ylabel('x/R')
-	plt.xlabel('y/R')
-	plt.title('Prediction')
-	#plt.axis('scaled')
-	#plt.axis('equal')
+		#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
-	ax1 = plt.subplot(122)
-	ax1.set_yticklabels([])
-	#ax.set_xticklabels([])
-	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, linewidths=0.1)
-	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels)
-	plt.clabel(plt2, clevels, colors='k', fontsize=5)
-	plt.title('Measured')
-	#plt.clabel(CS, clevels, inline=True)
-	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
-	#plt.axis('equal')
-	#plt.colorbar()
-	plt.xlabel('y/R')
-	#plt.ylabel('-x/R')
+		#print([(_x - offset)/R for _x in x])
+		#print([_y/R for _y in y])
+		#print(x_grid[0,:])
+		#print(y_grid[:,0])
+		#print(x)
 
-	#ax = plt.subplot(133)
-	cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
-	fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	#plt.show()
+		#print(f'oaspl_db: {oaspl_db}')
+		fig = plt.figure()
+		#ax0 = plt.subplot(111)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
+		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, linewidths=0.1)
+		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
+		plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.1)
+		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels)
+		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+		plt.clabel(plt2, clevels, colors='k', fontsize=5)
+		plt.ylabel('x/R')
+		plt.xlabel('y/R')
+		plt.title('Prediction')
+		plt.axis('scaled')
+		#plt.axis('equal')
+
+		# ax1 = plt.subplot(122)
+		# ax1.set_yticklabels([])
+		# #ax.set_xticklabels([])
+		# plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, linewidths=0.1)
+		# plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels)
+		# plt.clabel(plt2, clevels, colors='k', fontsize=5)
+		# plt.title('Measured')
+		# #plt.clabel(CS, clevels, inline=True)
+		# #plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
+		# #plt.axis('equal')
+		# #plt.colorbar()
+		# plt.xlabel('y/R')
+		#plt.ylabel('-x/R')
+
+		#ax = plt.subplot(133)
+		cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
+		fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dB.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		#plt.show()
+
+
+		clevels = np.linspace(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][2])
+
+		#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
+
+		#print([(_x - offset)/R for _x in x])
+		#print([_y/R for _y in y])
+		#print(x_grid[0,:])
+		#print(y_grid[:,0])
+		#print(x)
+
+		#print(f'oaspl_db: {oaspl_db}')
+		fig = plt.figure()
+		#ax0 = plt.subplot(111)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
+		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, linewidths=0.1)
+		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
+		plt2 = plt.contour(y, x, oaspl_dba, levels=clevels, linewidths=0.1)
+		plt1 = plt.contourf(y, x, oaspl_dba, levels=clevels)
+		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+		plt.clabel(plt2, clevels, colors='k', fontsize=5)
+		plt.ylabel('x/R')
+		plt.xlabel('y/R')
+		plt.title('Prediction')
+		plt.axis('scaled')
+		#plt.axis('equal')
+
+		# ax1 = plt.subplot(122)
+		# ax1.set_yticklabels([])
+		# #ax.set_xticklabels([])
+		# plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, linewidths=0.1)
+		# plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels)
+		# plt.clabel(plt2, clevels, colors='k', fontsize=5)
+		# plt.title('Measured')
+		# #plt.clabel(CS, clevels, inline=True)
+		# #plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
+		# #plt.axis('equal')
+		# #plt.colorbar()
+		# plt.xlabel('y/R')
+		#plt.ylabel('-x/R')
+
+		#ax = plt.subplot(133)
+		cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
+		fig.colorbar(plt1, cax, orientation='vertical', label='SPL [dB]')
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dBA.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		#plt.show()
+
+
+SPAN_LOCATION = [
+	0.80,
+	0.87,
+	0.97
+]
+
+ROTOR = [
+	"MR",
+	"TR"
+]
 
 def plot_blade_normal_pressures(plot_name: str):
 
-	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json5') as param_file:
+	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../helinovi_params.json5') as param_file:
 		params = pyjson5.load(param_file)
 
 	flight_condition = list(filter(lambda x: x["name"] == plot_name, params['flight_conditions']))[0]
@@ -214,126 +303,131 @@ def plot_blade_normal_pressures(plot_name: str):
 	for m in flight_condition["motion"]:
 		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
 			omegas.append(m['omega'])
-
-	omega = omegas[0]
 	
 	blade_results = loadmat(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/results.mat')
 
-	measured_blade_loading = read_hart_blade_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/CnM2_{plot_name}_ca.tec')
+	#measured_blade_loading = read_hart_blade_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/CnM2_{plot_name}_ca.tec')
 
-	measured_mean = measured_blade_loading.mean()
-	measured_blade_loading = measured_blade_loading - measured_mean
+	#measured_mean = measured_blade_loading.mean()
+	#measured_blade_loading = measured_blade_loading - measured_mean
 	
-	blade_loading = blade_results['span_element_loading']
+	for rotor_idx, rotor_blade_loading in enumerate(blade_results['span_element_loading']):
+		for span_idx, blade_loading in enumerate(rotor_blade_loading):
+			#blade_loading = blade_results['span_element_loading'][0][0]
 
-	computed_mean = blade_loading.mean()
+			omega = omegas[rotor_idx]
 
-	blade_loading = blade_loading - computed_mean
+			computed_mean = blade_loading.mean()
 
-	measured_azimuth = np.linspace(0, 360, measured_blade_loading.size)
-	computational_azimuth = np.linspace(0, 360, blade_loading.size)
+			blade_loading = blade_loading - computed_mean
 
-	plt.figure(num=1)
-	plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Span blade loading. Mean removed.')
-	plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			measured_blade_loading = np.zeros(1440)
 
-	# 10/rev high pass
-	measured_dt = (2.0*math.pi/omega)/measured_blade_loading.shape[0]
-	computed_dt = (2.0*math.pi/omega)/blade_loading.shape[0]
+			measured_azimuth = np.linspace(0, 360, measured_blade_loading.size)
+			computational_azimuth = np.linspace(0, 360, blade_loading.size)
 
-	print(f'measured_dt: {measured_dt}')
-	print(f'computed_dt: {computed_dt}')
+			#measured_blade_loading = np.zeros(measured_azimuth.size)
 
-	fblade_loading = sft.fft(blade_loading)
-	fblade_freqz = sft.fftfreq(fblade_loading.shape[0], d=computed_dt)
+			plt.figure(num=1)
+			plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Span blade loading. Mean removed.')
+			plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
 
-	fmeasured_blade_loading = sft.fft(measured_blade_loading)
-	fmeasured_blade_freqz = sft.fftfreq(fmeasured_blade_loading.shape[0], d=measured_dt)
+			# 10/rev high pass
+			measured_dt = (2.0*math.pi/omega)/measured_blade_loading.shape[0]
+			computed_dt = (2.0*math.pi/omega)/blade_loading.shape[0]
 
-	ten_per_rev = 10*omega*RADPS_2_HZ
+			print(f'measured_dt: {measured_dt}')
+			print(f'computed_dt: {computed_dt}')
 
-	print(f'fblade_freqz: {fblade_freqz}')
-	print(f'fmeasured_blade_freqz: {fmeasured_blade_freqz}')
+			fblade_loading = sft.fft(blade_loading)
+			fblade_freqz = sft.fftfreq(fblade_loading.shape[0], d=computed_dt)
 
-	measured_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/measured_dt)
-	computed_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/computed_dt)
+			fmeasured_blade_loading = sft.fft(measured_blade_loading)
+			fmeasured_blade_freqz = sft.fftfreq(fmeasured_blade_loading.shape[0], d=measured_dt)
 
-	blade_loading = sig.sosfilt(computed_sos, blade_loading)
-	measured_blade_loading = sig.sosfilt(measured_sos, measured_blade_loading)
+			ten_per_rev = 10*omega*RADPS_2_HZ
 
-	plt.figure(num=1)
-	plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]}: 87% Span blade loading. 10/rev highpassed.')
-	plt.legend(['Measured', 'OpenCOPTER'])
-	#plt.xlim([20, 90])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			#print(f'fblade_freqz: {fblade_freqz}')
+			#print(f'fmeasured_blade_freqz: {fmeasured_blade_freqz}')
 
-	
-	aoa_eff = blade_results['span_element_aoa_eff']
-	
-	plt.figure(num=1)
-	plt.plot(computational_azimuth, aoa_eff, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Effective AOA.')
-	#plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_aoa_eff.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			measured_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/measured_dt)
+			computed_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/computed_dt)
 
-	u_p = blade_results['span_element_up']
-	
-	plt.figure(num=1)
-	plt.plot(computational_azimuth, u_p, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% U_p.')
-	#plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_u_p.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			blade_loading = sig.sosfilt(computed_sos, blade_loading)
+			measured_blade_loading = sig.sosfilt(measured_sos, measured_blade_loading)
 
-	aoa = blade_results['span_element_aoa']
-	
-	plt.figure(num=1)
-	plt.plot(computational_azimuth, aoa, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% AOA.')
-	#plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_aoa.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			plt.figure(num=1)
+			plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]}: 87% Span blade loading. 10/rev highpassed.')
+			plt.legend(['Measured', 'OpenCOPTER'])
+			#plt.xlim([20, 90])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_hp.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
 
-	theta = blade_results['span_element_theta']
-	
-	plt.figure(num=1)
-	plt.plot(computational_azimuth, theta, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% theta.')
-	#plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_theta.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			aoa_eff = blade_results['span_element_aoa_eff'][rotor_idx][span_idx]
+			
+			plt.figure(num=1)
+			plt.plot(computational_azimuth, aoa_eff, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Effective AOA.')
+			#plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_aoa_eff.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
 
-	inflow_angle = blade_results['span_element_inflow_angle']
-	
-	plt.figure(num=1)
-	plt.plot(computational_azimuth, inflow_angle, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% inflow angle.')
-	#plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_inflow_angle.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			u_p = blade_results['span_element_up'][rotor_idx][span_idx]
+			
+			plt.figure(num=1)
+			plt.plot(computational_azimuth, u_p, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% U_p.')
+			#plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_u_p.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
 
-	gamma = blade_results['span_element_gamma']
-	
-	plt.figure(num=1)
-	plt.plot(computational_azimuth, gamma, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% gamma.')
-	#plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_gamma.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+			aoa = blade_results['span_element_aoa'][rotor_idx][span_idx]
+			
+			plt.figure(num=1)
+			plt.plot(computational_azimuth, aoa, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% AOA.')
+			#plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_aoa.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
+
+			theta = blade_results['span_element_theta'][rotor_idx][span_idx]
+			
+			plt.figure(num=1)
+			plt.plot(computational_azimuth, theta, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% theta.')
+			#plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_theta.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
+
+			inflow_angle = blade_results['span_element_inflow_angle'][rotor_idx][span_idx]
+			
+			plt.figure(num=1)
+			plt.plot(computational_azimuth, inflow_angle, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% inflow angle.')
+			#plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_inflow_angle.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
+
+			gamma = blade_results['span_element_gamma'][rotor_idx][span_idx]
+			
+			plt.figure(num=1)
+			plt.plot(computational_azimuth, gamma, linewidth=0.5)
+			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% gamma.')
+			#plt.legend(['Measured', 'OpenCOPTER'])
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_gamma.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			plt.cla()
+			plt.clf()
 
 def plot_wake_trajectory(plot_name: str):
 
@@ -447,7 +541,7 @@ def plot_wake_trajectory(plot_name: str):
 
 def plot_blade_twist(plot_name: str):
 
-	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../hart_ii_params.json5') as param_file:
+	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../helinovi_params.json5') as param_file:
 		params = pyjson5.load(param_file)
 
 	flight_condition = list(filter(lambda x: x["name"] == plot_name, params['flight_conditions']))[0]
@@ -577,20 +671,23 @@ def plot_blade_twist(plot_name: str):
 
 if __name__ == "__main__":
 
-	plot_blade_twist('BL')
-	plot_blade_twist('MN')
+	#plot_blade_twist('BL')
+	#plot_blade_twist('MN')
 	
+	#plot_blade_normal_pressures('ID1')
+	#plot_wake_trajectory('BL')
+	plot_acoustic_contours("ID1")
 
-	plot_blade_normal_pressures('BL')
-	plot_wake_trajectory('BL')
-	plot_acoustic_contours("BL")
+	plot_blade_normal_pressures('ID2')
+	#plot_wake_trajectory('BL')
+	plot_acoustic_contours("ID2")
 
-	plot_blade_normal_pressures('MN')
-	plot_wake_trajectory('MN')
-	plot_acoustic_contours("MN")
+	plot_blade_normal_pressures('ID2_ASU')
+	#plot_wake_trajectory('MN')
+	plot_acoustic_contours("ID2_ASU")
 
 
-	plot_blade_twist('MV')
-	plot_blade_normal_pressures('MV')
-	plot_wake_trajectory('MV')
-	plot_acoustic_contours("MV")
+	#plot_blade_twist('MV')
+	plot_blade_normal_pressures('ID5')
+	#plot_wake_trajectory('MV')
+	plot_acoustic_contours("ID5")

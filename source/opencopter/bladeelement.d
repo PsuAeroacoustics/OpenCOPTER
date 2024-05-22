@@ -71,12 +71,11 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		immutable Chunk mu_sin_azimuth = -rotor_state.advance_ratio*sin_azimuth[];
 		immutable Chunk u_t = sweep_corrected_r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[];
-
-		immutable Chunk atan_arg = u_p[]/u_t[];
-		immutable Chunk inflow_angle = atan(atan_arg);
+		
+		immutable Chunk inflow_angle = atan2(u_p, u_t);
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
-		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/rotor_input.angular_velocity)*blade.chunks[chunk_idx].r[])/u_t[];
+		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
 		immutable Chunk theta = (rotor_input.blade_pitches[blade_idx] + blade.chunks[chunk_idx].twist[])[]*cos_sweep[];
 		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
@@ -180,10 +179,10 @@ extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG ro
 		auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0);
 		
 		auto global_frame_forces = rotor.blades[blade_idx].frame.global_matrix*blade_frame_forces;
-		auto rotor_frame_forces = rotor.frame.parent.global_matrix.transpose()*global_frame_forces;
+		auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
 
 		auto global_frame_moments = rotor.blades[blade_idx].frame.global_matrix*blade_frame_moments;
-		auto rotor_frame_moments = rotor.frame.parent.global_matrix.transpose()*global_frame_moments;
+		auto rotor_frame_moments = rotor.frame.parent.global_matrix.inverse.get()*global_frame_moments;
 
 		rotor_state.C_T += rotor_frame_forces[2];
 		rotor_state.C_Q += rotor_frame_moments[2];
@@ -218,7 +217,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 
-		auto rotor_local_freestream = aircraft.rotors[rotor_idx].frame.parent.global_matrix.transpose() * ac_state.freestream;
+		auto rotor_local_freestream = aircraft.rotors[rotor_idx].frame.parent.global_matrix.inverse.get() * ac_state.freestream;
 		
 		ac_state.rotor_states[rotor_idx].advance_ratio = abs(rotor_local_freestream[0])/abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity*aircraft.rotors[rotor_idx].radius);
 		ac_state.rotor_states[rotor_idx].axial_advance_ratio = rotor_local_freestream[2]/abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity*aircraft.rotors[rotor_idx].radius);

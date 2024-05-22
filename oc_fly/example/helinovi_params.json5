@@ -3,18 +3,102 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		shed_history_angle: [45, 90.0],
-		shed_release_angle: 1,
+		shed_release_angle: 2,
 		convergence_criteria: 1.0e-5,
+		//convergence_criteria: 1.0e-1,
 		convergence_type: "wake",
 		convergence_rotor: 0,
 		convergence_rev_multiple: 5,
 		r_0: 0.7,
 		a1: 1.0e-4,
-        post_conv_revolutions: 10,
+        post_conv_revolutions: 11,
+		//post_conv_revolutions: 1,
 		// rotor radii to trail wake
-		wake_trail_distance: [10, 4]
+		wake_trail_distance: [15, 4],
+		//wake_trail_distance: [1, 1]
 	},
 	flight_conditions: [
+		{
+			name: "ID1",
+			aoa: -13.1,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.00529,
+                0.00909
+			],
+            Mx: [
+                -63.3,
+                0
+            ],
+            My: [
+                268.8,
+                0
+            ],
+			psi_3: 300,
+			theta_3: 0.0,
+			V_inf: 32.9,
+			observer_file: "helinovi_observers_climb.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "Main Rotor",
+					blade_element_func: "rotation",
+					omega: 109.12
+				},
+                {
+					frame: "tail rotor",
+					blade_element_func: "rotation",
+					omega: 545.6
+				},
+				// {
+				// 	frame: "flap hinge",
+				// 	blade_element_func: "flapping",
+				// 	cos: [
+				// 		-0.007672,
+				// 		 0.002095,
+				// 		-0.0008852,
+				// 		-0.001253,
+				// 		-0.0001377
+				// 	],
+				// 	sin: [
+				// 		 -0.009844,
+				// 		-0.0004784,
+				// 		  0.001229,
+				// 		-1.665e-06
+				// 	]
+				// },
+				// {
+				// 	frame: "elastic twist",
+				// 	blade_element_func: "pitching",
+				// 	cos: [
+				// 		-0.009037,
+				// 		0.002961,
+				// 	   -0.009796,
+				// 	   0.0005252,
+				// 		0.001129,
+				// 	  -0.0006439,
+				// 	  -0.0001786,
+				// 	  -0.0004622
+				// 	],
+				// 	sin: [
+				// 		-0.003797,
+				// 		5.21e-06,
+				// 	   -0.000541,
+				// 		0.001793,
+				// 	   0.0003353,
+				// 	  -2.835e-05,
+				// 		-0.00036
+				// 	]
+				// }
+			],
+            moment_trim_const: [3, 0.01]
+		},
 		{
 			name: "ID5",
 			aoa: 3.6,
@@ -116,7 +200,8 @@
 			psi_3: 300,
 			theta_3: 0.0,
 			V_inf: 60,
-			observer_file: "helinovi_observers_fullscale.json5",
+			observer_file: "helinovi_observers.json5",
+			//observer_file: "test_observer.json5",
 			acoustics_file: "acoustics_total_noise.json",
 			// Indicates that this frame is used to trim the rotor.
 			// Will use the provided axis as the trim axis.
@@ -133,6 +218,88 @@
 					frame: "tail rotor",
 					blade_element_func: "rotation",
 					omega: 545.6
+				},
+				// {
+				// 	frame: "flap hinge",
+				// 	blade_element_func: "flapping",
+				// 	cos: [
+				// 		-0.007672,
+				// 		 0.002095,
+				// 		-0.0008852,
+				// 		-0.001253,
+				// 		-0.0001377
+				// 	],
+				// 	sin: [
+				// 		 -0.009844,
+				// 		-0.0004784,
+				// 		  0.001229,
+				// 		-1.665e-06
+				// 	]
+				// },
+				// {
+				// 	frame: "elastic twist",
+				// 	blade_element_func: "pitching",
+				// 	cos: [
+				// 		-0.009037,
+				// 		0.002961,
+				// 	   -0.009796,
+				// 	   0.0005252,
+				// 		0.001129,
+				// 	  -0.0006439,
+				// 	  -0.0001786,
+				// 	  -0.0004622
+				// 	],
+				// 	sin: [
+				// 		-0.003797,
+				// 		5.21e-06,
+				// 	   -0.000541,
+				// 		0.001793,
+				// 	   0.0003353,
+				// 	  -2.835e-05,
+				// 		-0.00036
+				// 	]
+				// }
+			],
+            moment_trim_const: [3, 0.01]
+		},
+		{
+			name: "ID2_ASU",
+			aoa: -6.8,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.00520,
+                0.00545
+			],
+            Mx: [
+                -5.9,
+                0
+            ],
+            My: [
+                431.6,
+                0
+            ],
+			psi_3: 300,
+			theta_3: 0.0,
+			V_inf: 60,
+			observer_file: "helinovi_observers.json5",
+			//observer_file: "test_observer.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "Main Rotor",
+					blade_element_func: "rotation",
+					omega: 109.12
+				},
+                {
+					frame: "tail rotor",
+					blade_element_func: "rotation",
+					omega: -545.6
 				},
 				// {
 				// 	frame: "flap hinge",
@@ -206,7 +373,9 @@
 			0.97
 		],
 		spanwise_time_series: [
-			0.87
+			0.80,
+			0.87,
+			0.97
 		]
 	}
 }

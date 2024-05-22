@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 if __name__ == "__main__":
 
 	iterations = 5400
+	#iterations = 900
 	wake_history_length = 1*1024
 
 	requested_elements = 45
@@ -23,39 +24,44 @@ if __name__ == "__main__":
 	num_blades = 4
 	R = 2
 
-	theta_75 = 4.5*(math.pi/180.0)
+	theta_75 = 2.0*(math.pi/180.0)
 	
 	density = 1.125
-	omega = -109.12
+	omega = 109.12
 	AR = 16.5
 	sos = 343
 
 	V_inf = 32.9
-	aoa = -5.3*(math.pi/180.0)
-	theta_tw_1 = -8.0*(math.pi/180.0);
+	aoa = 6.5*(math.pi/180.0)
+	theta_tw_1 = -6.5*(math.pi/180.0)
 
 	d_psi = 1.0
 	dt = d_psi*(math.pi/180.0)/math.fabs(omega)
 
 	shed_history_angle = 45.0
-	shed_history = round(shed_history_angle/d_psi);
+	shed_history = round(shed_history_angle/d_psi)
 
 	d_azimuth = 2.0*math.pi/num_blades
+
+	# Root cutout
+	r_c = 0.22
 
 	# Create the spanwise distributions for our blades
 	# We will later apply these to opencopters internal
 	# data layout. r and c arrays are normalized by the
 	# rotor radius
-	r = generate_radius_points(requested_elements)
+	r = generate_radius_points(requested_elements, r_c)
 	elements = len(r)
 	print("requested_elements: ", requested_elements, " actual elements: ", elements)
 	c = (1.0/AR)*np.ones(elements)
 	alpha_0 = np.zeros(elements)
+	xi = np.zeros(elements)
+	xi_p = np.zeros(elements)
 	twist = [(_r - 0.75)*theta_tw_1 for _r in r]
 	C_l_alpha = 2.0*math.pi*np.ones(elements)
 	sweep = np.zeros(elements)
 
-	atmo = Atmosphere(1.125, 18.03e-6)
+	atmo = Atmosphere(density = 1.125, dynamic_viscosity = 18.03e-6, speed_of_sound = 343)
 	
 	# Create our outer aircraft geometry container
 	aircraft = Aircraft(num_rotors)
@@ -63,14 +69,22 @@ if __name__ == "__main__":
 	# The origins of our 2 rotors
 	origins = [Vec3([0, 0, 0]), Vec3([0, -2.5, 1])]
 
-	
-	def build_blade(b_idx):
+	def build_blade(b_idx, parent_frame):
+
+		airfoil = create_aerodas_from_xfoil_polar(f"./NACA23012mod_1000000_polar.dat", 0.12)
+		extent = [0, 47]
+		blade_airfoil = BladeAirfoil([airfoil], [extent])
+
 		# Build the geom of the blades
 		blade = BladeGeometry(
 			num_elements = elements,
-			azimuth_offset = b_idx*d_azimuth,
-			average_chord = R*np.sum(c)/len(c)
+			azimuth_offset = 0,
+			average_chord = R*np.sum(c)/len(c),
+			airfoil = blade_airfoil,
+			r_c = r_c
 		)
+
+		blade.blade_length = R*(1.0 - r_c)
 
 		# Convert from linear array format to opencopter chunk format
 		set_r(blade, r)
@@ -79,11 +93,24 @@ if __name__ == "__main__":
 		set_C_l_alpha(blade, C_l_alpha)
 		set_chord(blade, c)
 		set_sweep(blade, sweep)
+		set_xi(blade, xi)
+		set_xi_p(blade, xi_p)
+
+		compute_blade_vectors(blade)
+
+		azimuth_offset_frame = Frame(Vec3([0, 0, 1]), b_idx*d_azimuth, Vec3([0, 0, 0]), parent_frame, f'blade_{b_idx}_azimuth', FrameType_connection())
+		root_cutout_frame = Frame(Vec3([1, 0, 0]), 0, Vec3([R*r_c, 0, 0]), azimuth_offset_frame, f'blade_{b_idx}_cutout', FrameType_connection())
+		blade_frame = Frame(Vec3([1, 0, 0]), 0, Vec3([0, 0, 0]), root_cutout_frame, f'blade_{b_idx}', FrameType_blade())
+
+		root_cutout_frame.children = [blade_frame]
+		azimuth_offset_frame.children = [root_cutout_frame]
+
+		blade.frame = blade_frame
 
 		return blade
 
 	
-	def build_rotor(r_idx):
+	def build_rotor(r_idx, parent_frame):
 		rotor = RotorGeometry(
 			num_blades = num_blades,
 			origin = origins[r_idx],
@@ -91,44 +118,58 @@ if __name__ == "__main__":
 			solidity = 0 # we set this later because we don't have the average blade chord
 		)
 
-		rotor.blades = [build_blade(b_idx) for b_idx in range(num_blades)]
+		rotor_frame = Frame(Vec3([1, 0, 0]), 0, Vec3([0, 0, 0]), parent_frame, f'rotor_{r_idx}', FrameType_rotor())
+
+		rotor.blades = [build_blade(b_idx, rotor_frame) for b_idx in range(num_blades)]
+		print(f'rotor.blades length: {rotor.blades.length()}')
 		rotor.solidity = num_blades*rotor.blades[0].average_chord/(math.pi*rotor.radius)
+
+		rotor_frame.children = [b.frame.parent.parent for b in rotor.blades]
+		rotor.frame = rotor_frame
+
 		return rotor
 
-	aircraft.rotors = [build_rotor(r_idx) for r_idx in range(num_rotors)]
+	aircraft.rotors = [build_rotor(r_idx, aircraft.root_frame) for r_idx in range(num_rotors)]
 	
+	aircraft.root_frame.name = "Aircraft frame"
+	aircraft.root_frame.children = [r.frame for r in aircraft.rotors]
+	aircraft.root_frame.set_frame_type(FrameType_aircraft())
+	
+	aircraft.root_frame.set_rotation(Vec3([0, 1, 0]), -aoa)
+
+	aircraft.root_frame.update(Mat4_identity())
+
 	# AircraftState is the top level container for holding the current
 	# aerodynamic state of the aircraft. It breaks down into rotors
 	# then the individual blades. There is a series of functions provided
 	# to turn internal state data into a linear array.
-	ac_state = AircraftState(num_rotors, num_blades, elements, aircraft)
+	ac_state = AircraftState(num_rotors, [num_blades], elements, aircraft)
 
 	print("Freestream vel: ", V_inf, " m/s")
 
 	# Create and setup the input state. This would be the
 	# sort of input a dynamics simulator might feed into
 	# the aero model.
-	ac_input_state = AircraftInputState(num_rotors, num_blades)
+	ac_input_state = AircraftInputState(num_rotors, [num_blades])
 
-	ac_input_state.rotor_inputs[0].angle_of_attack = aoa
+	ac_state.freestream = Vec4([V_inf, 0, 0, 0])
+
 	ac_input_state.rotor_inputs[0].angular_velocity = omega
 	ac_input_state.rotor_inputs[0].angular_accel = 0
 	ac_input_state.rotor_inputs[0].azimuth = 0
-	ac_input_state.rotor_inputs[0].freestream_velocity = V_inf
 	for b_idx in range(num_blades):
-		ac_input_state.rotor_inputs[0].r_0[b_idx] = 0.1*aircraft.rotors[0].blades[b_idx].average_chord
+		ac_input_state.rotor_inputs[0].r_0[b_idx] = 1.0*aircraft.rotors[0].blades[b_idx].average_chord
 		ac_input_state.rotor_inputs[0].blade_flapping[b_idx] = 0
 		ac_input_state.rotor_inputs[0].blade_flapping_rate[b_idx] = 0
 		ac_input_state.rotor_inputs[0].blade_pitches[b_idx] = theta_75
 
 	if num_rotors == 2:
-		ac_input_state.rotor_inputs[1].angle_of_attack = aoa
 		ac_input_state.rotor_inputs[1].angular_velocity = -omega # Negative indicates it rotates the other direction
 		ac_input_state.rotor_inputs[1].angular_accel = 0
 		ac_input_state.rotor_inputs[1].azimuth = 0
-		ac_input_state.rotor_inputs[1].freestream_velocity = V_inf
+
 		for b_idx in range(num_blades):
-			ac_input_state.rotor_inputs[1].r_0[b_idx] = 0.1*aircraft.rotors[1].blades[b_idx].average_chord
+			ac_input_state.rotor_inputs[1].r_0[b_idx] = 1.0*aircraft.rotors[1].blades[b_idx].average_chord
 			ac_input_state.rotor_inputs[1].blade_flapping[b_idx] = 0
 			ac_input_state.rotor_inputs[1].blade_flapping_rate[b_idx] = 0
 			ac_input_state.rotor_inputs[1].blade_pitches[b_idx] = theta_75
@@ -139,7 +180,7 @@ if __name__ == "__main__":
 
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
-	wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history)
+	wake_history = WakeHistory(num_rotors, [num_blades], [wake_history_length], 2, elements, [shed_history], [1])
 
 	vtk_rotor = build_base_vtu_rotor(aircraft.rotors[0])
 	vtk_wake = build_base_vtu_wake(wake_history.history[0])
@@ -157,13 +198,14 @@ if __name__ == "__main__":
 
 			if ac_input_state.rotor_inputs[r_idx].azimuth > 2.0*math.pi:
 				ac_input_state.rotor_inputs[r_idx].azimuth = math.fmod(ac_input_state.rotor_inputs[r_idx].azimuth, 2.0*math.pi)
-			
+
+			aircraft.rotors[r_idx].frame.set_rotation(Vec3([0, 0, 1]), ac_input_state.rotor_inputs[r_idx].azimuth)
+
 		step(ac_state, aircraft, ac_input_state, inflows, wake_history, atmo, iteration, dt)
 
 		if iteration > (iterations - 360):
-			write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], ac_input_state.rotor_inputs[0])
+			write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], ac_input_state.rotor_inputs[0], aircraft.rotors[0])
 			write_wake_vtu("wake", iteration, vtk_wake, wake_history.history[0])
-		
 
 	print("rotor 0 C_T: ", ac_state.rotor_states[0].C_T)
 
@@ -187,8 +229,8 @@ if __name__ == "__main__":
 			plt.plot(x, z, linewidth=0.5)
 
 			x_r = math.cos(blade.azimuth)
-			x_b = aircraft.rotors[r_idx].origin[0] + x_r*math.cos(ac_input_state.rotor_inputs[r_idx].angle_of_attack)
-			z_b = aircraft.rotors[r_idx].origin[2] - x_r*math.sin(ac_input_state.rotor_inputs[r_idx].angle_of_attack)
+			x_b = aircraft.rotors[r_idx].origin[0] + x_r*math.cos(aoa)
+			z_b = aircraft.rotors[r_idx].origin[2] - x_r*math.sin(aoa)
 
 			plt.plot([aircraft.rotors[r_idx].origin[0], x_b], [aircraft.rotors[r_idx].origin[2], z_b], "k-", linewidth=1.5)
 

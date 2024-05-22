@@ -451,8 +451,8 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	shed_history_angle = np.asarray(computational_parameters["shed_history_angle"])*math.pi/180.0
 	shed_release_angle = computational_parameters["shed_release_angle"]*math.pi/180.0
 
-	max_omega = np.max(omegas)
-	rotor_ratios = np.round(max_omega/omegas)
+	max_omega = np.max(np.abs(omegas))
+	rotor_ratios = np.round(max_omega/np.abs(omegas))
 
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()

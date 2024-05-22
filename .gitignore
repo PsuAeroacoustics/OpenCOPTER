@@ -22,3 +22,7 @@ validation/af_data/afdata_val
 *.out
 *.lock
 *.prog
+fort.*
+__pycache__
+DebugInfoForProc_0.dat
+cases_*.nam

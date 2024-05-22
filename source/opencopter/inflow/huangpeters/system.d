@@ -317,8 +317,6 @@ void system_derivative(ArrayContainer AC, RIS, RS)(double[] state_dot, double[] 
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.M_s_inv_D[0].ptr, infl.total_sin_states, infl.beta_scratch.ptr, 1, 0.0, state_dot[2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
 }
 
-
-
 class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 
 	alias RG = RotorGeometryT!AC;
@@ -1213,7 +1211,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 	}
 
 	package void compute_loading(RS)(auto ref RS rotor_state) {
-
 		tau_c[] = 0;
 		tau_s[] = 0;
 
@@ -1248,10 +1245,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 						blade_frame_forces[2][] = blade_state.chunks[c_idx].dC_T[];
 
 						auto global_frame_forces = rotor.blades[b_idx].frame.global_matrix*blade_frame_forces;
-						auto rotor_frame_forces = rotor.frame.parent.global_matrix.transpose()*global_frame_forces;
+						auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
 
 						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
 
+						//writeln("rotor_frame_forces[2][]: ", rotor_frame_forces[2][]);
 						blade_scratch[c_idx][] = rotor_frame_forces[2][]*Pmn[]*cos_mpsi[];
 
 						if(m != 0) {
@@ -1293,7 +1291,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 						blade_frame_forces[2][] = blade_state.chunks[c_idx].dC_T[];
 
 						auto global_frame_forces = rotor.blades[b_idx].frame.global_matrix*blade_frame_forces;
-						auto rotor_frame_forces = rotor.frame.parent.global_matrix.transpose()*global_frame_forces;
+						auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
 
 						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
 
@@ -1310,12 +1308,9 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) {
 						tau_s[sin_idx] += integrate_trapaziodal(blade_scratch_s, rotor.blades[b_idx]);
 						sin_idx++;
 					}
-
 				}
 			)(Me, _idx);
 		}
-
-		//writeln("tau_c: ", tau_c, " tau_s: ", tau_s, " blade_scratch: ", blade_scratch, " blade_scratch_s: ", blade_scratch_s);
 	}
 
 	package void update_impl(RIS, RS, AS)(double C_T, auto ref RIS rotor_input, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, auto ref AS ac_state, double dt) {
