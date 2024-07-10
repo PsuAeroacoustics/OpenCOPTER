@@ -18,6 +18,31 @@ import scipy.signal as sig
 
 import pyjson5
 
+import matplotlib.font_manager as font_manager
+import matplotlib
+
+font_dir = '/usr/share/fonts/truetype/msttcorefonts/times.ttf'
+font_manager.fontManager.addfont(font_dir)
+prop = font_manager.FontProperties(fname=font_dir)
+
+font_size0 = 18
+font_size1 = 17
+font_size2 = 16
+font_size3 = 12
+font_size4 = 5
+
+label_font = {'fontname':'Times New Roman', 'size':f'{font_size1}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+title_font = {'fontname':'Times New Roman', 'size':f'{font_size1}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+title_font2 = {'fontname':'Times New Roman', 'size':f'{font_size2}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+legend_font = {'fontname':'Times New Roman', 'size':f'{font_size4}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
 RADPS_2_HZ = 0.1591549433
 R = 2
 
@@ -175,30 +200,48 @@ def plot_acoustic_contours(plot_name: str):
 	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
 	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
-	plt.clabel(plt2, clevels, colors='k', fontsize=5)
-	plt.ylabel('x/R')
-	plt.xlabel('y/R')
-	plt.title('Prediction')
+	plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
+	plt.ylabel('$x/R$', **label_font)
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	plt.title('Prediction', **title_font)
 	#plt.axis('scaled')
+	
 	#plt.axis('equal')
+	
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
 
 	ax1 = plt.subplot(122)
 	ax1.set_yticklabels([])
 	#ax.set_xticklabels([])
 	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, linewidths=0.1)
 	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels)
-	plt.clabel(plt2, clevels, colors='k', fontsize=5)
-	plt.title('Measured')
+	plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
+	plt.title('Measured', **title_font)
 	#plt.clabel(CS, clevels, inline=True)
 	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
 	#plt.axis('equal')
 	#plt.colorbar()
-	plt.xlabel('y/R')
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
 	#plt.ylabel('-x/R')
 
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+
 	#ax = plt.subplot(133)
-	cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
-	fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
+	cax = fig.add_axes([0.93, 0.11, 0.02, 0.77])
+	cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
+	cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
+
+	#ax = plt.gca()
+	for label in (cax.get_xticklabels() + cax.get_yticklabels()):
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+
 	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	#plt.show()
 
@@ -231,13 +274,16 @@ def plot_blade_normal_pressures(plot_name: str):
 	blade_loading = blade_loading - computed_mean
 
 	measured_azimuth = np.linspace(0, 360, measured_blade_loading.size)
-	computational_azimuth = np.linspace(0, 360, blade_loading.size)
+	computational_azimuth = blade_results['span_element_azimuth']
+	#computational_azimuth = np.linspace(0, 360, blade_loading.size)
 
 	plt.figure(num=1)
-	plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
+	plt.plot(measured_azimuth, measured_blade_loading, 'r.-', computational_azimuth, blade_loading, 'b', linewidth=0.5, markersize=0.7)
 	plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Span blade loading. Mean removed.')
 	plt.legend(['Measured', 'OpenCOPTER'])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.xlabel("$\psi$")
+	plt.ylabel("$C_nM^2$")
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
 	plt.clf()
 
@@ -266,11 +312,13 @@ def plot_blade_normal_pressures(plot_name: str):
 	measured_blade_loading = sig.sosfilt(measured_sos, measured_blade_loading)
 
 	plt.figure(num=1)
-	plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
+	plt.plot(measured_azimuth, measured_blade_loading, 'r.-', computational_azimuth, blade_loading, 'b', linewidth=0.5, markersize=0.7)
+	plt.xlabel("$\psi$")
+	plt.ylabel("$C_nM^2$")
 	plt.title(f'{TITLE_DICT[plot_name.upper()]}: 87% Span blade loading. 10/rev highpassed.')
 	plt.legend(['Measured', 'OpenCOPTER'])
 	#plt.xlim([20, 90])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
 	plt.clf()
 
@@ -407,14 +455,16 @@ def plot_wake_trajectory(plot_name: str):
 			measured_z = measured_z - delta
 
 		plt.figure(num=1)
-		plt.plot(measured_x, measured_z, '*', x_tppc, z_tppc, '-', linewidth=0.5)
+		plt.plot(measured_x, measured_z, 'r*', x_tppc, z_tppc, 'b-', linewidth=0.5)
 		plt.title(f'{TITLE_DICT[plot_name.upper()]}: Y slice: {target_y_slice:.2f}')
 		plt.legend(['Measured', 'OpenCOPTER'])
 		#plt.axis('scaled')
 		plt.xlim([-1.1, 1.1])
 		plt.ylim([-0.1, 0.15])
-		plt.gca().invert_xaxis()
-		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.xlabel("$x/R$")
+		plt.ylabel("$z/R$")
+		#plt.gca().invert_xaxis()
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		plt.cla()
 		plt.clf()
 
@@ -427,7 +477,7 @@ def plot_wake_trajectory(plot_name: str):
 		#plt.xlim([-1.1, 1.1])
 		#plt.ylim([-0.1, 0.15])
 		#plt.gca().invert_xaxis()
-		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		plt.cla()
 		plt.clf()
 
@@ -478,16 +528,16 @@ def plot_blade_twist(plot_name: str):
 	plt.cla()
 	plt.clf()
 	
-	elastic_twist_array = blade_results['elastic_twist_array'][2,:]
+	# elastic_twist_array = blade_results['elastic_twist_array'][2,:]
 	
-	#print(f'blade_twist_array: {blade_twist_array}')
-	plt.figure(num=1)
-	plt.plot(blade_twist_azimuth, elastic_twist_array, linewidth=0.5)
-	plt.title(f'{TITLE_DICT[plot_name.upper()]}: Elastic twist over time.')
-	plt.xlim([0, 360])
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_elastic_twist.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-	plt.cla()
-	plt.clf()
+	# #print(f'blade_twist_array: {blade_twist_array}')
+	# plt.figure(num=1)
+	# plt.plot(blade_twist_azimuth, elastic_twist_array, linewidth=0.5)
+	# plt.title(f'{TITLE_DICT[plot_name.upper()]}: Elastic twist over time.')
+	# plt.xlim([0, 360])
+	# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_elastic_twist.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	# plt.cla()
+	# plt.clf()
 
 	collective_pitch_array = blade_results['collective_pitch_array'][:]
 	
@@ -556,7 +606,7 @@ def plot_blade_twist(plot_name: str):
 	
 	#print(fblade_twist_array: {blade_twist_array}')
 	plt.figure(num=1)
-	plt.plot(blade_twist_azimuth, blade_flapping_array, linewidth=0.5)
+	plt.plot(blade_twist_azimuth, blade_flapping_array*(180.0/math.pi), linewidth=0.5)
 	plt.title(f'{TITLE_DICT[plot_name.upper()]}: Flapping over time.')
 	plt.xlim([0, 360])
 	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_flap.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
@@ -576,6 +626,10 @@ def plot_blade_twist(plot_name: str):
 
 
 if __name__ == "__main__":
+
+	matplotlib.rcParams['font.family'] = 'serif'
+	matplotlib.rcParams['font.serif'] = prop.get_name()
+	matplotlib.rcParams['mathtext.fontset'] = 'stix'
 
 	plot_blade_twist('BL')
 	plot_blade_twist('MN')

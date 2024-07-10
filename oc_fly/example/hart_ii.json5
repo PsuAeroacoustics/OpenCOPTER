@@ -74,7 +74,7 @@
 						type: "connection",
 						name: "pitch hinge",
 						origin: [0.075, 0, 0],
-						axis: [1, 0, 0],
+						axis: [-1, 0, 0],
 						// Coefficients of the fourier series will be defined
 						// in a parameter file. associated with this by the
 						// component name
@@ -92,7 +92,7 @@
 										type: "connection",
 										name: "elastic twist",
 										origin: [0, 0, 0],
-										axis: [0, 1, 0],
+										axis: [-1, 0, 0],
 										axis_angle_function: "fourier",
 										children: [{
 											// This will reference the blade

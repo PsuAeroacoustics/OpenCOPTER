@@ -4,27 +4,30 @@
 		spanwise_elements: 48,
 		shed_history_angle: [45, 90.0],
 		shed_release_angle: 2,
+
 		convergence_criteria: 1.0e-5,
-		//convergence_criteria: 1.0e-1,
+		post_conv_revolutions: 6,
+		wake_trail_distance: [15, 4],
+		// convergence_criteria: 1.0e-1,
+		// post_conv_revolutions: 1,
+		// wake_trail_distance: [1, 1],
+
 		convergence_type: "wake",
 		convergence_rotor: 0,
 		convergence_rev_multiple: 5,
-		r_0: 0.7,
-		a1: 1.0e-4,
-        post_conv_revolutions: 11,
-		//post_conv_revolutions: 1,
-		// rotor radii to trail wake
-		wake_trail_distance: [15, 4],
-		//wake_trail_distance: [1, 1]
+		r_0: [0.9, 0.17],
+		a1: 1.0e-5,
+		
 	},
 	flight_conditions: [
 		{
 			name: "ID1",
-			aoa: -13.1,
+			aoa: -14.6,
 			density: 1.2055,
 			sos: 341.7,
 			c_t: [
 				0.00529,
+				//0.45
                 0.00909
 			],
             Mx: [
@@ -56,48 +59,143 @@
 					blade_element_func: "rotation",
 					omega: 545.6
 				},
-				// {
-				// 	frame: "flap hinge",
-				// 	blade_element_func: "flapping",
-				// 	cos: [
-				// 		-0.007672,
-				// 		 0.002095,
-				// 		-0.0008852,
-				// 		-0.001253,
-				// 		-0.0001377
-				// 	],
-				// 	sin: [
-				// 		 -0.009844,
-				// 		-0.0004784,
-				// 		  0.001229,
-				// 		-1.665e-06
-				// 	]
-				// },
-				// {
-				// 	frame: "elastic twist",
-				// 	blade_element_func: "pitching",
-				// 	cos: [
-				// 		-0.009037,
-				// 		0.002961,
-				// 	   -0.009796,
-				// 	   0.0005252,
-				// 		0.001129,
-				// 	  -0.0006439,
-				// 	  -0.0001786,
-				// 	  -0.0004622
-				// 	],
-				// 	sin: [
-				// 		-0.003797,
-				// 		5.21e-06,
-				// 	   -0.000541,
-				// 		0.001793,
-				// 	   0.0003353,
-				// 	  -2.835e-05,
-				// 		-0.00036
-				// 	]
-				// }
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.000285679, -8.33839e-05, -3.80477e-05, -9.35387e-06, -2.49497e-06, 2.58865e-06, 5.23999e-07, -1.66369e-07, 7.81526e-08, ],
+					sin: [7.63588e-05, 2.18893e-06, 9.95834e-06, 1.89731e-06, -2.47641e-06, -8.14859e-08, -1.15127e-07, -9.03734e-08, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0139205, 0.00222052, -0.00171365, -0.00516613, -0.000517873, -0.000283449, 7.54199e-05, 0.000173042, 8.67852e-05, ],
+					sin: [-0.0136082, -2.24392e-05, -0.001381, -0.000122017, 0.000545774, 0.000166072, 1.89337e-05, -6.44908e-05, ]
+				}
 			],
-            moment_trim_const: [3, 0.01]
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			//hybrid: true
+			hybrid: false,
+			initial_phase: [0, 120]
+		},
+		{
+			name: "ID1_ASD",
+			aoa: -14.6,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.00529,
+				//0.45
+                0.00888
+			],
+            Mx: [
+                -63.3,
+                0
+            ],
+            My: [
+                268.8,
+                0
+            ],
+			psi_3: 300,
+			theta_3: 0.0,
+			V_inf: 32.9,
+			observer_file: "helinovi_observers_climb.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "Main Rotor",
+					blade_element_func: "rotation",
+					omega: 109.12
+				},
+                {
+					frame: "tail rotor",
+					blade_element_func: "rotation",
+					omega: 545.6
+				},
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.000285679, -8.33839e-05, -3.80477e-05, -9.35387e-06, -2.49497e-06, 2.58865e-06, 5.23999e-07, -1.66369e-07, 7.81526e-08, ],
+					sin: [7.63588e-05, 2.18893e-06, 9.95834e-06, 1.89731e-06, -2.47641e-06, -8.14859e-08, -1.15127e-07, -9.03734e-08, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0139205, 0.00222052, -0.00171365, -0.00516613, -0.000517873, -0.000283449, 7.54199e-05, 0.000173042, 8.67852e-05, ],
+					sin: [-0.0136082, -2.24392e-05, -0.001381, -0.000122017, 0.000545774, 0.000166072, 1.89337e-05, -6.44908e-05, ]
+				}
+			],
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			//hybrid: true
+			hybrid: false,
+			initial_phase: [0, 90]
+		},
+		{
+			name: "ID1_ASU",
+			aoa: -14.6,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.00529,
+				//0.45
+                0.00888
+			],
+            Mx: [
+                -63.3,
+                0
+            ],
+            My: [
+                268.8,
+                0
+            ],
+			psi_3: 300,
+			theta_3: 0.0,
+			V_inf: 32.9,
+			observer_file: "helinovi_observers_climb.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "Main Rotor",
+					blade_element_func: "rotation",
+					omega: 109.12
+				},
+                {
+					frame: "tail rotor",
+					blade_element_func: "rotation",
+					omega: -545.6
+				},
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.000285679, -8.33839e-05, -3.80477e-05, -9.35387e-06, -2.49497e-06, 2.58865e-06, 5.23999e-07, -1.66369e-07, 7.81526e-08, ],
+					sin: [7.63588e-05, 2.18893e-06, 9.95834e-06, 1.89731e-06, -2.47641e-06, -8.14859e-08, -1.15127e-07, -9.03734e-08, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0139205, 0.00222052, -0.00171365, -0.00516613, -0.000517873, -0.000283449, 7.54199e-05, 0.000173042, 8.67852e-05, ],
+					sin: [-0.0136082, -2.24392e-05, -0.001381, -0.000122017, 0.000545774, 0.000166072, 1.89337e-05, -6.44908e-05, ]
+				}
+			],
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			//hybrid: true
+			hybrid: false,
+			initial_phase: [0, 0]
 		},
 		{
 			name: "ID5",
@@ -137,48 +235,23 @@
 					blade_element_func: "rotation",
 					omega: 545.6
 				},
-				// {
-				// 	frame: "flap hinge",
-				// 	blade_element_func: "flapping",
-				// 	cos: [
-				// 		-0.007672,
-				// 		 0.002095,
-				// 		-0.0008852,
-				// 		-0.001253,
-				// 		-0.0001377
-				// 	],
-				// 	sin: [
-				// 		 -0.009844,
-				// 		-0.0004784,
-				// 		  0.001229,
-				// 		-1.665e-06
-				// 	]
-				// },
-				// {
-				// 	frame: "elastic twist",
-				// 	blade_element_func: "pitching",
-				// 	cos: [
-				// 		-0.009037,
-				// 		0.002961,
-				// 	   -0.009796,
-				// 	   0.0005252,
-				// 		0.001129,
-				// 	  -0.0006439,
-				// 	  -0.0001786,
-				// 	  -0.0004622
-				// 	],
-				// 	sin: [
-				// 		-0.003797,
-				// 		5.21e-06,
-				// 	   -0.000541,
-				// 		0.001793,
-				// 	   0.0003353,
-				// 	  -2.835e-05,
-				// 		-0.00036
-				// 	]
-				// }
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.0378544, -0.00594704, -0.00182696, -0.000639107, -0.000873658, 0.000488106, 8.95571e-05, -1.96181e-05, 4.08168e-06, ],
+					sin: [-0.00251942, 0.000473757, 0.00151841, 0.000533687, -0.000553299, 1.16944e-05, 1.44776e-06, -7.80649e-06, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0128958, 0.00289249, -0.00476175, -0.00428804, 0.000846466, -0.000410003, -2.83734e-05, 0.000198224, ],
+					sin: [-0.005944, -0.00133598, 0.000611975, -0.000832974, 0.000686066, 0.000315794, 3.80171e-05, ]
+				}
 			],
-            moment_trim_const: [3, 0.01]
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			hybrid: false
 		},
 		{
 			name: "ID2",
@@ -187,6 +260,7 @@
 			sos: 341.7,
 			c_t: [
 				0.00520,
+				//0.00419
                 0.00545
 			],
             Mx: [
@@ -219,48 +293,25 @@
 					blade_element_func: "rotation",
 					omega: 545.6
 				},
-				// {
-				// 	frame: "flap hinge",
-				// 	blade_element_func: "flapping",
-				// 	cos: [
-				// 		-0.007672,
-				// 		 0.002095,
-				// 		-0.0008852,
-				// 		-0.001253,
-				// 		-0.0001377
-				// 	],
-				// 	sin: [
-				// 		 -0.009844,
-				// 		-0.0004784,
-				// 		  0.001229,
-				// 		-1.665e-06
-				// 	]
-				// },
-				// {
-				// 	frame: "elastic twist",
-				// 	blade_element_func: "pitching",
-				// 	cos: [
-				// 		-0.009037,
-				// 		0.002961,
-				// 	   -0.009796,
-				// 	   0.0005252,
-				// 		0.001129,
-				// 	  -0.0006439,
-				// 	  -0.0001786,
-				// 	  -0.0004622
-				// 	],
-				// 	sin: [
-				// 		-0.003797,
-				// 		5.21e-06,
-				// 	   -0.000541,
-				// 		0.001793,
-				// 	   0.0003353,
-				// 	  -2.835e-05,
-				// 		-0.00036
-				// 	]
-				// }
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.000339667, 2.28736e-05, -6.35028e-05, 5.21344e-06, -3.29513e-06, -1.09463e-06, 1.17973e-06, 6.46453e-07, -1.39329e-07, ],
+					sin: [-1.20882e-05, -1.52571e-06, 5.02105e-06, 7.30222e-06, 1.70932e-06, -4.22249e-09, 8.93993e-08, -1.50662e-08, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0145201, 0.0101021, -0.000809554, -0.00493994, 9.17815e-05, -0.000921938, 0.000237011, 2.74984e-05, 5.62579e-05, ],
+					sin: [-0.0187734, 0.00575028, 0.0025899, -0.000869096, -0.000246625, -9.56572e-06, 9.9594e-05, -7.3048e-05, ]
+				}
 			],
-            moment_trim_const: [3, 0.01]
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			//hybrid: true
+			hybrid: false,
+			initial_phase: [0, 100]
 		},
 		{
 			name: "ID2_ASU",
@@ -268,8 +319,8 @@
 			density: 1.2055,
 			sos: 341.7,
 			c_t: [
-				0.00520,
-                0.00545
+				0.00524,
+                0.00436
 			],
             Mx: [
                 -5.9,
@@ -301,48 +352,80 @@
 					blade_element_func: "rotation",
 					omega: -545.6
 				},
-				// {
-				// 	frame: "flap hinge",
-				// 	blade_element_func: "flapping",
-				// 	cos: [
-				// 		-0.007672,
-				// 		 0.002095,
-				// 		-0.0008852,
-				// 		-0.001253,
-				// 		-0.0001377
-				// 	],
-				// 	sin: [
-				// 		 -0.009844,
-				// 		-0.0004784,
-				// 		  0.001229,
-				// 		-1.665e-06
-				// 	]
-				// },
-				// {
-				// 	frame: "elastic twist",
-				// 	blade_element_func: "pitching",
-				// 	cos: [
-				// 		-0.009037,
-				// 		0.002961,
-				// 	   -0.009796,
-				// 	   0.0005252,
-				// 		0.001129,
-				// 	  -0.0006439,
-				// 	  -0.0001786,
-				// 	  -0.0004622
-				// 	],
-				// 	sin: [
-				// 		-0.003797,
-				// 		5.21e-06,
-				// 	   -0.000541,
-				// 		0.001793,
-				// 	   0.0003353,
-				// 	  -2.835e-05,
-				// 		-0.00036
-				// 	]
-				// }
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.000339667, 2.28736e-05, -6.35028e-05, 5.21344e-06, -3.29513e-06, -1.09463e-06, 1.17973e-06, 6.46453e-07, -1.39329e-07, ],
+					sin: [-1.20882e-05, -1.52571e-06, 5.02105e-06, 7.30222e-06, 1.70932e-06, -4.22249e-09, 8.93993e-08, -1.50662e-08, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0145201, 0.0101021, -0.000809554, -0.00493994, 9.17815e-05, -0.000921938, 0.000237011, 2.74984e-05, 5.62579e-05, ],
+					sin: [-0.0187734, 0.00575028, 0.0025899, -0.000869096, -0.000246625, -9.56572e-06, 9.9594e-05, -7.3048e-05, ]
+				}
 			],
-            moment_trim_const: [3, 0.01]
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			hybrid: false
+		},
+		{
+			name: "ID2_ASD",
+			aoa: -6.8,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.00520,
+                0.00391
+			],
+            Mx: [
+                -5.9,
+                0
+            ],
+            My: [
+                431.6,
+                0
+            ],
+			psi_3: 300,
+			theta_3: 0.0,
+			V_inf: 60,
+			observer_file: "helinovi_observers.json5",
+			//observer_file: "test_observer.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "Main Rotor",
+					blade_element_func: "rotation",
+					omega: 109.12
+				},
+                {
+					frame: "tail rotor",
+					blade_element_func: "rotation",
+					omega: 545.6
+				},
+				{
+					frame: "flap hinge",
+					blade_element_func: "flapping",
+					cos: [-0.000339667, 2.28736e-05, -6.35028e-05, 5.21344e-06, -3.29513e-06, -1.09463e-06, 1.17973e-06, 6.46453e-07, -1.39329e-07, ],
+					sin: [-1.20882e-05, -1.52571e-06, 5.02105e-06, 7.30222e-06, 1.70932e-06, -4.22249e-09, 8.93993e-08, -1.50662e-08, ]
+				},
+				{
+					frame: "elastic twist",
+					blade_element_func: "pitching",
+					cos: [-0.0145201, 0.0101021, -0.000809554, -0.00493994, 9.17815e-05, -0.000921938, 0.000237011, 2.74984e-05, 5.62579e-05, ],
+					sin: [-0.0187734, 0.00575028, 0.0025899, -0.000869096, -0.000246625, -9.56572e-06, 9.9594e-05, -7.3048e-05, ]
+				}
+			],
+            moment_trim_const: [3, 0.01],
+			lock_number: [8, 4.2],
+			delta_3: 45,
+			hybrid: false
 		}
 	],
 	results: {
@@ -372,6 +455,13 @@
 			0.85,
 			0.97
 		],
+		piv_window:
+		{
+			rotor: 1,
+			x: [2, 3],
+			y: [-0.108, -0.224],
+			z: [-0.15, 1.0]
+		},
 		spanwise_time_series: [
 			0.80,
 			0.87,

@@ -74,6 +74,7 @@ struct Frame {
 
 	Mat4 local_matrix;
 	Mat4 global_matrix;
+	Mat4 inverse_global_matrix;
 	string name;
 	FrameType frame_type;
 
@@ -205,6 +206,7 @@ struct Frame {
 
 	void update(ref Mat4 parent_global_mat) {
 		global_matrix = parent_global_mat*local_matrix;
+		inverse_global_matrix = global_matrix.inverse.get;
 
 		foreach(ref child; children){
 			child.update(global_matrix);
@@ -217,6 +219,12 @@ struct Frame {
 
 	void update(Mat4* parent_global_mat) {
 		update(*parent_global_mat);
+	}
+	
+	auto global_to_local(Vec3 global_pos) {
+		nop;
+		auto res = inverse_global_matrix*Vec4(global_pos[0], global_pos[1], global_pos[2], 1.0);
+		return Vec3(res[0], res[1], res[2]);
 	}
 }
 

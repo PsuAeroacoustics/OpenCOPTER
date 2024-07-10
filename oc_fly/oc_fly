@@ -35,12 +35,15 @@ def calculate_sound_power_level(oaspl_db,area):
 
 	return sound_power_level
 
-FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict")
+FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name")
 
 def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory):
 
 	motion = flight_condition["motion"] if "motion" in flight_condition else None
-	rotorcraft_system, motion_vec_dict, trim_vec_dict, component_dict = compute_aero.build_aircraft(aircraft, computational_parameters['spanwise_elements'], geom_directory, motion, flight_condition["trim_frame"] if "trim_frame" in flight_condition else None)
+	if "vsp" in aircraft:
+		rotorcraft_system = create_aircraft_from_vsp(aircraft["vsp"])
+	else:
+		rotorcraft_system, motion_vec_dict, trim_vec_dict, component_dict = compute_aero.build_aircraft(aircraft, computational_parameters['spanwise_elements'], geom_directory, motion, flight_condition["trim_frame"] if "trim_frame" in flight_condition else None)
 
 	#origins = [Vec3(aircraft['rotors'][r_idx]["origin"]) for r_idx in range(len(aircraft['rotors']))]
 	origins = [rotor.frame.global_position() for rotor in rotorcraft_system.rotors]
@@ -95,7 +98,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 	total_wake_history = wake_history_length.sum()
 	
-	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict)
+	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'])
 
 def main():
 	# push check
@@ -311,7 +314,8 @@ def main():
 	for aircraft in geom:
 		if 'parameter_file' in aircraft:
 			ac_param = None
-			with open(aircraft['parameter_file']) as param_file:
+
+			with open(path.join(geom_directory, aircraft['parameter_file'])) as param_file:
 				ac_param = pyjson5.load(param_file)
 
 		if input_flight_conditions is not None:
@@ -330,6 +334,12 @@ def main():
 			print("No computational_parameters specified on command line or aircraft file")
 			exit(-1)
 
+		flight_conditions_for_ac = flight_conditions
+		if "cases" in aircraft:
+			flight_conditions_for_ac = list(filter(lambda x: x["name"] in aircraft["cases"], flight_conditions))
+
+		print(f"rank {rank}: {[f['name'] for f in flight_conditions_for_ac]}")
+
 		results = None
 		if input_results is not None:
 			results = input_results
@@ -338,14 +348,14 @@ def main():
 				results = ac_param['results']
 
 		#if args.ci is None:
-		for flight_condition in flight_conditions:
+		for flight_condition in flight_conditions_for_ac:
 			observer = None
 			acoustics = None
 			if input_observer is not None:
 				observer = input_observer
 			elif 'observer_file' in flight_condition:
 				ac_observers = None
-				with open(flight_condition['observer_file']) as param_file:
+				with open(path.join(geom_directory, flight_condition['observer_file'])) as param_file:
 					ac_observers = pyjson5.load(param_file)
 					observer = ac_observers["observer"]
 
@@ -353,7 +363,7 @@ def main():
 				acoustics = input_acoustics
 			elif 'acoustics_file' in flight_condition:
 				ac_acoustics = None
-				with open(flight_condition['acoustics_file']) as param_file:
+				with open(path.join(geom_directory, flight_condition['acoustics_file'])) as param_file:
 					ac_acoustics = pyjson5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
@@ -429,6 +439,7 @@ def main():
 
 	do_compute_aero = args.aero
 
+	print(f'rank {rank}: {[c.condition["name"] for c in case_slice[start_idx:]]}')
 	print(f'Prog file: {prog_file_name}')
 	if prog_file_exists:
 		with open(prog_file_name, "r") as prog_file:

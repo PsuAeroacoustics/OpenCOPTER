@@ -137,6 +137,8 @@ class C81: AirfoilModel {
     Coefftable CD;
     Coefftable CM;
 
+    double zla;
+
     this(string airfoilname,
         double[] aoa_L, double[] mach_l, double[][] Cl,
         double[] aoa_D, double[] mach_d, double[][] Cd,
@@ -147,6 +149,12 @@ class C81: AirfoilModel {
         this.CL = new Coefftable(aoa_L, mach_l, Cl);
         this.CD = new Coefftable(aoa_D, mach_d, Cd);
         this.CM = new Coefftable(aoa_M, mach_m, Cm);
+
+        import std.numeric : findRoot;
+
+        auto f = (double a) => CL.interpolation(a, 0.0);
+
+        zla = findRoot(f, -10*(PI/180.0), 10*(PI/180.0));
     }
 
     override double lift_curve_slope() {
@@ -154,7 +162,7 @@ class C81: AirfoilModel {
     }
 
     override double zero_lift_aoa() {
-        return 0;
+        return zla;
     }
 
     override Chunk get_Cl(Chunk alpha_query, Chunk mach_query) {

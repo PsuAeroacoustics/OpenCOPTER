@@ -4,7 +4,8 @@
 	"license": "GPL-3.0",
 	"authors": ["Robert F. Rau II"],
 	"dependencies": {
-		"numd": {"path": "./dependencies/numd"}
+		"numd": {"path": "./dependencies/numd"},
+		"kxml": "~>1.1.1"
 	},
 	"targetType": "dynamicLibrary",
 	"lflags-posix": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib"],

@@ -3,10 +3,10 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		shed_history_angle: [45],
-		shed_release_angle: 2,
+		shed_release_angle: 1,
 		convergence_criteria: 1.0e-5,
 		convergence_type: "wake",
-		r_0: 1.0,
+		r_0: [1.0],
 		a1: 1.0e-5,
         post_conv_revolutions: 2
 	},
@@ -82,7 +82,8 @@
 					]
 				}
 			],
-            moment_trim_const: [3]
+            moment_trim_const: [3],
+			lock_number: [8],
 		},
 		{
 			name: "MN",
@@ -157,7 +158,8 @@
 					]
 				}
 			],
-            moment_trim_const: [3]
+            moment_trim_const: [3],
+			lock_number: [8],
 		},
 		{
 			name: "MV",
@@ -232,7 +234,8 @@
 					]
 				}
 			],
-            moment_trim_const: [3]
+            moment_trim_const: [3],
+			lock_number: [8],
 		}
 	],
 	results: {

@@ -36,9 +36,7 @@ def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, moti
 	frame.set_rotation(motion_axis, h)
 
 def constant_motion(omega: float, dt: float, frame: Frame, motion_axis: Vec3, azimuth: float):
-	delta_azimuth = omega*dt
-
-	frame.rotate(motion_axis, delta_azimuth)
+	frame.set_rotation(motion_axis, azimuth)
 
 def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 
@@ -63,14 +61,14 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		af_extent = airfoil_desc['extent']
 		airfoil = None
 		if type == 'aerodas':
-			airfoil = create_aerodas_from_xfoil_polar(f"{geom_directory}/{airfoil_desc['xfoil_polar']}", airfoil_desc['thickness'])
+			airfoil = create_aerodas_from_xfoil_polar(path.join(geom_directory, airfoil_desc['xfoil_polar']), airfoil_desc['thickness'])
 		elif type == 'thinaf':
-			airfoil = ThinAirfoil(0.0401)
+			airfoil = ThinAirfoil(0)
 		elif type == "C81":
-			airfoil = load_c81_file(airfoil_desc['filename'])
+			airfoil = load_c81_file(path.join(geom_directory, airfoil_desc['filename']))
 		else:
 			print(f"Unsupported airfoil type: {type}. Defaulting to ThinAirfoil theory")
-			airfoil = ThinAirfoil(0.0401)
+			airfoil = ThinAirfoil(0)
 
 		extent[0] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[0] - r_c)/non_dim_length) - 1.0))*elements))
 		extent[1] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[1] - r_c)/non_dim_length) - 1.0))*elements)) - 1
@@ -512,12 +510,16 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 
 	for r_idx in range(num_rotors):
 
+		initial_phase = 0
+		if 'initial_phase' in flight_condition:
+			initial_phase = flight_condition['initial_phase'][r_idx]*(math.pi/180.0)
+
 		rotorcraft_input_state.rotor_inputs[r_idx].angular_velocity = omegas[r_idx]
 		rotorcraft_input_state.rotor_inputs[r_idx].angular_accel = 0
-		rotorcraft_input_state.rotor_inputs[r_idx].azimuth = 0 # azimuths[r_idx]
+		rotorcraft_input_state.rotor_inputs[r_idx].azimuth = initial_phase # azimuths[r_idx]
 
 		for b_idx in range(num_blades[r_idx]):
-			rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = computational_parameters['r_0']*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/rotorcraft_system.rotors[r_idx].radius
+			rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = computational_parameters['r_0'][r_idx]*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/rotorcraft_system.rotors[r_idx].radius
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
@@ -525,7 +527,9 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	print(f'num_blades: {num_blades}')
 	
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+	#rotorcraft_inflows = [HuangPeters(6, 4, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 
@@ -533,10 +537,14 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	if "a1" in computational_parameters:
 		a1 = computational_parameters['a1']
 
+	hybrid = False
+	if "hybrid" in flight_condition:
+		hybrid = flight_condition['hybrid']
+
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
-	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1)
+	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1)#, hybrid)
 	
 	vehicle = SimulatedVehicle(
 		rotorcraft_system,
@@ -545,7 +553,8 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 		rotorcraft_inflows,
 		rotor_wake_history,
 		motion_lambdas,
-		trim_lambdas
+		trim_lambdas,
+		case.name
 	)
 
 	rotorcraft_thrusts, rotorcraft_namelists, results_dictionary = simulate_aircraft.simulate_aircraft(
@@ -616,8 +625,13 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 
 	cases = []
 	if (acoustics is not None) and (observer is not None):
+		print("Acoustics for individual rotors")
+		print(f"args.fs: {args.fs}")
+		print(f"num_rotors: {num_rotors}")
 		if (num_rotors > 1) and (args.fs is False):
+			print("Acoustics for individual rotors 1")
 			for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
+				print(f"Acoustics for individual rotor {r_idx}")
 				wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
 
 				if not path.isdir(wopwop_case_path):
