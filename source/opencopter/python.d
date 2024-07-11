@@ -450,17 +450,17 @@ opencopter.vtk.VtkRotor build_base_vtu_rotor(PyRotorGeometry* rotor) {
 	return opencopter.vtk.build_base_vtu_rotor(rotor);
 }
 
-//void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, PyRotorState* rotor_state, PyRotorGeometry* rotor_geom) {
-void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, PyRotorState* rotor_state, PyRotorInputState* rotor_input, PyRotorGeometry* rotor_geom) {
-	opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_input, rotor_geom);
-	//opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_geom);
+void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, PyRotorState* rotor_state, PyRotorGeometry* rotor_geom) {
+//void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, PyRotorState* rotor_state, PyRotorInputState* rotor_input, PyRotorGeometry* rotor_geom) {
+	//opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_input, rotor_geom);
+	opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_geom);
 }
 
-//void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkRotor[] rotors, PyAircraftState* ac_state, PyAircraft* aircraft) {
-void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkRotor[] rotors, PyAircraftState* ac_state, PyAircraftInputState* ac_input, PyAircraft* aircraft) {
+void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkRotor[] rotors, PyAircraftState* ac_state, PyAircraft* aircraft) {
+//void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkRotor[] rotors, PyAircraftState* ac_state, PyAircraftInputState* ac_input, PyAircraft* aircraft) {
 	foreach(r_idx; 0..aircraft.rotors.length()) {
-		//opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], aircraft.rotors[r_idx]);
-		opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], ac_input.rotor_inputs[r_idx], aircraft.rotors[r_idx]);
+		opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], aircraft.rotors[r_idx]);
+		//opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], ac_input.rotor_inputs[r_idx], aircraft.rotors[r_idx]);
 	}
 }
 
@@ -548,7 +548,7 @@ Mat3 Mat3_identity() {
 extern(C) void PydMain() {
 	import std.stdio : writeln;
 
-	//def!(create_aircraft_from_vsp!(ArrayContainer.array));
+	def!(create_aircraft_from_vsp!(ArrayContainer.array));
 
 	def!FrameType_aircraft;
 	def!FrameType_connection;
@@ -1229,7 +1229,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t[], size_t[], double/+, bool+/),
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t[], size_t[], double, bool),
 		Docstring!q{
 			Top level structure for holding the wake and its history.
 			

@@ -78,7 +78,7 @@ unittest {
 	}
 
 	double AR = 15;
-	auto blade = BladeGeometry(8, 0, 1/AR, blade_af);
+	auto blade = BladeGeometry(8, 0, 1/AR, blade_af, 0);
 	//BladeGeometryChunk chunk;
 	blade.chunks[0].r[] = generate_radius_points(8);// linspace(0., 1., chunk_size);
 	blade.chunks[0].twist[] = (12*(PI/180.0))/blade.chunks[0].r[];
@@ -86,8 +86,12 @@ unittest {
 	blade.chunks[0].sweep[] = 0;
 	blade.chunks[0].C_l_alpha[] = 2.0*PI;
 	blade.chunks[0].alpha_0[] = 0;
+	blade.chunks[0].xi[] = 0;
+	blade.chunks[0].xi_p[] = 0;
+	
 	double rotor_radius = 4;
 
+	blade.blade_length = rotor_radius/2;
 
 	double C_T = 0.008;
 	double lambda = sqrt(0.5*C_T);
@@ -96,7 +100,7 @@ unittest {
 
 	Chunk inflow_angle = atan2(inflow, u_t)[];
 
-	auto bs = BladeState(1, blade);
+	auto bs = BladeState(1, blade, rotor_radius);
 
 	
 	writeln;

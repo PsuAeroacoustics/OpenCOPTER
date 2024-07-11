@@ -3,7 +3,7 @@
 import sys
 import os
 
-sys.path.insert(0, f'{os.path.dirname(os.path.realpath(__file__))}/../../dependencies/wopwopd')
+sys.path.insert(0, f'{os.path.dirname(os.path.realpath(__file__))}/../../../dependencies/wopwopd')
 
 from libwopwopd import *
 import json
@@ -177,10 +177,10 @@ ACOUSTIC_BOUNDS_DB = {
 }
 
 ACOUSTIC_BOUNDS_DBA = {
-	"ID1": [(82, 100, 19), (82, 100, 19), (84, 101, 18)],
+	"ID1": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
 	"ID1_ASU": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
 	"ID1_ASD": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
-	"ID2": [(81, 99, 19), (81, 99, 19), (84, 104, 21)],
+	"ID2": [(81, 99, 19), (81, 99, 19), (84, 101, 18)],
 	"ID2_ASU": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
 	"ID2_ASD": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
 	"ID5": [(85, 119, 18), (85, 119, 18), (85, 114, 18)]
@@ -197,9 +197,9 @@ ACOUSTIC_BOUNDS_TR_DB = {
 }
 
 ACOUSTIC_BOUNDS_TR_DBA = {
-	"ID1": [(82, 100, 19), (82, 100, 19), (82, 101, 21)],
-	"ID1_ASU": [(82, 100, 19), (82, 100, 19), (84, 101, 18)],
-	"ID1_ASD": [(82, 100, 19), (82, 100, 19), (84, 101, 18)],
+	"ID1": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
+	"ID1_ASU": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
+	"ID1_ASD": [(82, 100, 19), (82, 100, 19), (82, 100, 19)],
 	"ID2": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
 	"ID2_ASU": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
 	"ID2_ASD": [(81, 99, 19), (81, 99, 19), (81, 99, 19)],
@@ -208,62 +208,8 @@ ACOUSTIC_BOUNDS_TR_DBA = {
 
 #cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "chartreuse", "yellow", "gold", "orange", "darkorange", "red"])
 #cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "greenyellow","yellow", "orange", "red"])
-
-
-#cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"])
-#cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red", "crimson", "magenta"])#, "purple"])
-#cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red", "magenta"])#, "purple"])
+cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"])
 cmap_lines = matplotlib.colors.LinearSegmentedColormap.from_list("", ["black", "black"])
-
-ACOUSTIC_CMAP = {
-	"ID1": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"]),
-	"ID1_ASU": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"]),
-	"ID1_ASD": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"]),
-	"ID2": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red", "magenta"]),
-	"ID2_ASU": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"]),
-	"ID2_ASD": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"]),
-	"ID5": matplotlib.colors.LinearSegmentedColormap.from_list("", ["b", "dodgerblue", "cyan", "springgreen", "chartreuse", "yellow", "orange", "red"]),
-}
-
-MEASURED_DATA_FS_DBA = {
-	"ID1": ["", "", "HeliNOVI_ID1_Full_spectrum_dBA_measured.jpg"],
-	"ID1_ASU": ["", "", ""],
-	"ID1_ASD": ["", "", ""],
-	"ID2": ["", "", "HeliNOVI_ID2_Full_spectrum_dBA_measured.jpg"],
-	"ID2_ASU": ["", "", ""],
-	"ID2_ASD": ["", "", ""],
-	"ID5": ["", "", ""],
-}
-
-UPM_DATA_FS_DBA = {
-	"ID1": ["", "", "HeliNOVI_ID1_Full_spectrum_dBA_upm.jpg"],
-	"ID1_ASU": ["", "", ""],
-	"ID1_ASD": ["", "", ""],
-	"ID2": ["", "", "HeliNOVI_ID2_Full_spectrum_dBA_upm.jpg"],
-	"ID2_ASU": ["", "", ""],
-	"ID2_ASD": ["", "", ""],
-	"ID5": ["", "", ""],
-}
-
-MEASURED_DATA_TR = {
-	"ID1": ["", "", ""],
-	"ID1_ASU": ["", "", ""],
-	"ID1_ASD": ["", "", ""],
-	"ID2": ["", "", ""],
-	"ID2_ASU": ["", "", ""],
-	"ID2_ASD": ["", "", ""],
-	"ID5": ["", "", ""],
-}
-
-UPM_DATA_TR = {
-	"ID1": ["", "", ""],
-	"ID1_ASU": ["", "", ""],
-	"ID1_ASD": ["", "", ""],
-	"ID2": ["", "", ""],
-	"ID2_ASU": ["", "", ""],
-	"ID2_ASD": ["", "", ""],
-	"ID5": ["", "", ""],
-}
 
 def plot_acoustic_contours_fs(plot_name: str):
 	#x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
@@ -325,12 +271,12 @@ def plot_acoustic_contours_fs(plot_name: str):
 		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, linewidths=0.1)
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
 		plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.5, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=cmap, norm=cnorm)
 		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 		clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
 		plt.ylabel('x [m]')
 		plt.xlabel('y [m]')
-		plt.title('Prediction: OpenCOPTER')
+		plt.title('Prediction')
 		plt.axis('scaled')
 		#plt.axis('equal')
 
@@ -359,57 +305,61 @@ def plot_acoustic_contours_fs(plot_name: str):
 
 		clevels = np.linspace(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][2])
 		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1])
+		#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
-		num_subplots = 1
-		if MEASURED_DATA_FS_DBA[plot_name][r_idx] != "":
-			num_subplots = num_subplots + 1
+		#print([(_x - offset)/R for _x in x])
+		#print([_y/R for _y in y])
+		#print(x_grid[0,:])
+		#print(y_grid[:,0])
+		#print(x)
 
-		if UPM_DATA_FS_DBA[plot_name][r_idx] != "":
-			num_subplots = num_subplots + 1
-
+		#print(f'oaspl_db: {oaspl_db}')
 		fig = plt.figure()
-		_ = plt.subplot(int("1"+str(num_subplots)+"1"))
-
+		ax0 = plt.subplot(121)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
+		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, linewidths=0.1)
+		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
 		plt2 = plt.contour(y, x, oaspl_dba, levels=clevels, linewidths=0.5, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_dba, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		plt1 = plt.contourf(y, x, oaspl_dba, levels=clevels, cmap=cmap, norm=cnorm)
 		plt.plot(rotor_x, rotor_z, "k", linewidth=1)
-
-		clabels = plt.clabel(plt2, clevels[0::2], colors='k', fontsize=font_size4)
+		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+		clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
 		plt.ylabel('x [m]')
 		plt.xlabel('y [m]')
 		
-		plt.title('Prediction: OpenCOPTER')
+		plt.title('Prediction')
 		plt.axis('scaled')
 		plt.ylim(-4, 4)
+		#plt.axis('equal')
 
 		for label in clabels:
 			label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
 
-		plotted_subplots = 2
-		if UPM_DATA_FS_DBA[plot_name][r_idx] != "":
-			_ = plt.subplot(int("1"+str(num_subplots)+str(plotted_subplots)))
-			arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/{UPM_DATA_FS_DBA[plot_name][r_idx]}')
-			
-			plt.imshow(np.flipud(arr) ,interpolation='bilinear', origin='lower', extent=[y[0],y[-1],-4,4])
-			plt.plot(rotor_x, rotor_z, "k", linewidth=1)
-			plt.title('Prediction: UPM')
-			plt.xlabel('y [m]')
+		ax1 = plt.subplot(122)
+		arr=plt.imread('/mnt/c/Users/rfr2/Pictures/helinovi_level_flight.JPG')
+		#arr=plt.imread('/mnt/c/Users/rfr2/Pictures/helinovi_level_flight_low_res-MikFaj7c_-transformed.png')
+		
+		plt.imshow(np.flipud(arr) ,interpolation='bilinear', origin='lower', extent=[y[0],y[-1],-4,4])
+		plt.plot(rotor_x, rotor_z, "k", linewidth=1)
+		# ax1.set_yticklabels([])
+		# #ax.set_xticklabels([])
+		# plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, linewidths=0.1)
+		# plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels)
+		# plt.clabel(plt2, clevels, colors='k', fontsize=5)
+		# plt.title('Measured')
+		# #plt.clabel(CS, clevels, inline=True)
+		# #plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
+		# #plt.axis('equal')
+		# #plt.colorbar()
+		plt.xlabel('y [m]')
+		#plt.ylabel('-x/R')
 
-			plotted_subplots = plotted_subplots+1
-
-		if MEASURED_DATA_FS_DBA[plot_name][r_idx] != "":
-			_ = plt.subplot(int("1"+str(num_subplots)+str(plotted_subplots)))
-			arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/{MEASURED_DATA_FS_DBA[plot_name][r_idx]}')
-
-			plt.imshow(np.flipud(arr) ,interpolation='bilinear', origin='lower', extent=[y[0],y[-1],-4,4])
-			plt.plot(rotor_x, rotor_z, "k", linewidth=1)
-			plt.title('Measured')
-			plt.xlabel('y [m]')
-
-		cax = fig.add_axes([0.95, 0.2, 0.02, 0.4])
+		#ax = plt.subplot(133)
+		cax = fig.add_axes([0.95, 0.2, 0.02, 0.582])
 		fig.colorbar(plt1, cax, orientation='vertical', label='OASPL [dBA]')
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dBA.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
-
+		#plt.show()
 
 def plot_acoustic_contours_mr(plot_name: str):
 	#x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
@@ -464,8 +414,8 @@ def plot_acoustic_contours_mr(plot_name: str):
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
 		#plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.1)
 		#plt1 = plt.contourf(y, x, oaspl_db, levels=clevels)
-		plt2 = plt.contour(y, x, oaspl_db, levels=15, linewidths=0.5, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_db, levels=15, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		plt2 = plt.contour(y, x, oaspl_db, levels=15, linewidths=0.5, cmap=cmap, norm=cnorm)
+		plt1 = plt.contourf(y, x, oaspl_db, levels=15, cmap=cmap, norm=cnorm)
 		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 		#plt.clabel(plt2, clevels, colors='k', fontsize=5)
 		#plt.colorbar()
@@ -515,8 +465,8 @@ def plot_acoustic_contours_mr(plot_name: str):
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
 		#plt2 = plt.contour(y, x, oaspl_dba, levels=clevels, linewidths=0.1)
 		#plt1 = plt.contourf(y, x, oaspl_dba, levels=clevels)
-		plt2 = plt.contour(y, x, oaspl_dba, levels=15, linewidths=0.1, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_dba, levels=15, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		plt2 = plt.contour(y, x, oaspl_dba, levels=15, linewidths=0.1, cmap=cmap, norm=cnorm)
+		plt1 = plt.contourf(y, x, oaspl_dba, levels=15, cmap=cmap, norm=cnorm)
 		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 		#plt.clabel(plt2, clevels, colors='k', fontsize=5)
 		#plt.colorbar()
@@ -572,10 +522,7 @@ def plot_acoustic_contours_tr(plot_name: str):
 
 		y = wopwop_results.oaspl_dba_grid.obs_y[0]
 		x = [_x[0] for _x in wopwop_results.oaspl_dba_grid.obs_x]
-		x_delta = 4 - x[0]
 		x.reverse()
-		x = np.asarray(x)
-		x = x + x_delta
 
 		#print(f'x: {x}')
 		#print(f'y: {y}')
@@ -600,8 +547,8 @@ def plot_acoustic_contours_tr(plot_name: str):
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
 		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, linewidths=0.1)
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
-		plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.1, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.1, cmap=cmap, norm=cnorm)
+		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=cmap, norm=cnorm)
 		#plt2 = plt.contour(y, x, oaspl_db, levels=15, linewidths=0.1)
 		#plt1 = plt.contourf(y, x, oaspl_db, levels=15)	
 		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
@@ -634,8 +581,8 @@ def plot_acoustic_contours_tr(plot_name: str):
 		#plt.show()
 
 
-		clevels = np.linspace(ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][1], ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][2])
-		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][1])
+		clevels = np.linspace(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][2])
+		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1])
 		#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
 		#print([(_x - offset)/R for _x in x])
@@ -651,25 +598,17 @@ def plot_acoustic_contours_tr(plot_name: str):
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
 		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, linewidths=0.1)
 		#plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db)
-		#plt2 = plt.contour(y, x, oaspl_dba, levels=clevels, linewidths=0.1)
-		plt2 = plt.contour(y, x, oaspl_dba, levels=clevels, linewidths=0.5, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_dba, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		plt2 = plt.contour(y, x, oaspl_dba, levels=clevels, linewidths=0.1)
+		plt1 = plt.contourf(y, x, oaspl_dba, levels=clevels)
 		#plt2 = plt.contour(y, x, oaspl_dba, levels=15, linewidths=0.1)
 		#plt1 = plt.contourf(y, x, oaspl_dba, levels=15)
 		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 		#plt.clabel(plt2, clevels, colors='k', fontsize=5)
 		#plt.colorbar()
-		clabels = plt.clabel(plt2, clevels[0::2], colors='k', fontsize=font_size4)
-		plt.ylabel('x [m]')
-		plt.xlabel('y [m]')
-		
-		plt.title('Prediction: OpenCOPTER')
+		plt.ylabel('x/R')
+		plt.xlabel('y/R')
+		plt.title('Prediction')
 		plt.axis('scaled')
-		plt.ylim(-4, 4)
-	
-		for label in clabels:
-			label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
-		
 		#plt.axis('equal')
 
 		# ax1 = plt.subplot(122)
@@ -744,16 +683,6 @@ MEASURED_LOADING_TR = {
 	"ID5": ["xx", "xx", "xx"]
 }
 
-MEASURED_WAKE = {
-	"ID1": ["HeliNOVI_ID1_MR_wake_trajectory_plane0_measured.tsv", "HeliNOVI_ID1_MR_wake_trajectory_plane1_measured.tsv"],
-	"ID1_ASU": ["xx", "xx"],
-	"ID1_ASD": ["xx", "xx"],
-	"ID2": ["HeliNOVI_ID2_MR_wake_trajectory_plane0_measured.tsv", "HeliNOVI_ID2_MR_wake_trajectory_plane1_measured.tsv"],
-	"ID2_ASU": ["xx", "xx"],
-	"ID2_ASD": ["xx", "xx"],
-	"ID5": ["xx", "xx"]
-}
-
 def plot_mr_wake(plot_name: str):
 	#with open(f'{os.path.dirname(os.path.realpath(__file__))}/../helinovi_params.json5') as param_file:
 	#	params = pyjson5.load(param_file)
@@ -774,39 +703,14 @@ def plot_mr_wake(plot_name: str):
 	# print(f"num_slices: {num_slices}")
 	# print(f"num_samples: {num_samples}")
 	for s_idx in range(2):
-
-		wake_x = -wake_element_piv[0, s_idx, 0, :]
+		wake_x = wake_element_piv[0, s_idx, 0, :]
 		wake_z = wake_element_piv[0, s_idx, 1, :]
-
-		in_wake_x = np.logical_and(wake_x <= 0.4, wake_x >= -0.4)
-		in_wake_z = np.logical_and(wake_z <= 0.4, wake_z >= -0.4)
-
-		non_zero_x = wake_x != 0.0
-		non_zero_z = wake_z != 0.0
-		non_zero = np.logical_and(non_zero_z, non_zero_x)
-
-		in_box = np.logical_and(in_wake_x, in_wake_z)
-
-		good_wake_points = np.logical_and(non_zero, in_box)
-		
-		wake_x = wake_x[good_wake_points]
-		wake_z = wake_z[good_wake_points]
-
-		if os.path.exists(f'{os.path.dirname(os.path.realpath(__file__))}/{MEASURED_WAKE[plot_name][s_idx]}'):
-			measured_wake_data = read_hart_blade_data_tsv(f'{os.path.dirname(os.path.realpath(__file__))}/{MEASURED_WAKE[plot_name][s_idx]}')
-			measured_x = measured_wake_data[0,:]
-			measured_z = measured_wake_data[1,:]
-
+		#print(f"Plotting slice {s_idx}")
+		#print(wake_x[s_idx, :])
+		#print(wake_z[s_idx, :])
 		plt.figure(num = 1)
-		plt.plot(rotor_x, rotor_z, 'k', label='_nolegend_', linewidth=1.0)
-		plt.plot(wake_x[:], wake_z[:], "b", measured_x, measured_z, "r*-", linewidth=0.5, markersize=5.0)
-		
-		plt.xlim(-.5, .5)
-		plt.ylim(-.4, .4)
-		plt.axis('equal')
-		plt.xlabel("x [m]")
-		plt.ylabel("z [m]")
-		plt.legend(["OpenCOPTER", "Measured"])
+		plt.plot(rotor_x, rotor_z, 'k', -wake_x[:], wake_z[:], "r-", markersize=0.8)
+		plt.axis('square')
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[0]}_wake_trajectory_plane{s_idx}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 		plt.cla()
 		plt.clf()
@@ -863,11 +767,6 @@ def plot_blade_normal_pressures(plot_name: str):
 			plt.plot(measured_azimuth, measured_blade_loading - measured_blade_loading.mean(), 'ro-', computational_azimuth + delta_azi, blade_loading - blade_loading.mean(), 'b-', linewidth=0.5, markersize=1.0, mfc='none')
 			plt.title(f'{TITLE_DICT[plot_name.upper()]} {SPAN_LOCATION[span_idx]*100}% Span blade loading. Mean removed.')
 			plt.legend(['Measured', 'OpenCOPTER'])
-			plt.ylim(-0.5, 0.5)
-			plt.gca().set_aspect(700)
-			plt.xlabel("$\psi$ [$^\circ$]")
-			plt.ylabel("$C_N$")
-			plt.xticks(ticks=np.linspace(0, 1800, 6))
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 			plt.cla()
 			plt.clf()
@@ -882,14 +781,9 @@ def plot_blade_normal_pressures(plot_name: str):
 					measured_blade_loading_tr = measured_loading_tr[1,:]
 
 				plt.figure(num=1)
-				plt.plot(measured_azimuth_tr, measured_blade_loading_tr - np.asarray(measured_blade_loading_tr).mean(), "r.-", computational_azimuth[0:360], blade_loading[start_azi:start_azi+360] - np.asarray(blade_loading[start_azi:start_azi+360]).mean(), 'b', linewidth=0.5)
+				plt.plot(measured_azimuth_tr, measured_blade_loading_tr - np.asarray(measured_blade_loading_tr).mean(), computational_azimuth[0:360], blade_loading[start_azi:start_azi+360] - np.asarray(blade_loading[start_azi:start_azi+360]).mean(), linewidth=0.5)
 				plt.title(f'{TITLE_DICT[plot_name.upper()]} {SPAN_LOCATION[span_idx]*100}% Span blade loading. Mean removed.')
 				plt.legend(['Measured', 'OpenCOPTER'])
-				plt.ylim(-0.5, 0.5)
-				plt.xticks(ticks=np.linspace(0, 360, 5))
-				plt.gca().set_aspect(120)
-				plt.xlabel("$\psi$ [$^\circ$]")
-				plt.ylabel("$C_N$")
 				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 				plt.cla()
 				plt.clf()
@@ -1242,28 +1136,25 @@ if __name__ == "__main__":
 	#plot_blade_twist('BL')
 	#plot_blade_twist('MN')
 	
-	plot_mr_wake("ID2")
-	plot_mr_wake("ID1")
+	# plot_mr_wake("ID2")
+	# plot_mr_wake("ID1")
 
-	# print("Plotting ID2_ASD")
 	# #plot_blade_twist('ID2_ASD')
 	# plot_blade_normal_pressures('ID2_ASD')
 	# plot_acoustic_contours_fs("ID2_ASD")
 
-	print("Plotting ID1_ASU")
 	# #plot_blade_twist('ID1_ASU')
-	plot_blade_normal_pressures('ID1_ASU')
-	plot_acoustic_contours_fs("ID1_ASU")
+	# plot_blade_normal_pressures('ID1_ASU')
+	# plot_acoustic_contours_fs("ID1_ASU")
 	# plot_acoustic_contours_mr("ID1_ASU")
-	plot_acoustic_contours_tr("ID1_ASU")
+	# plot_acoustic_contours_tr("ID1_ASU")
 
-	print("Plotting ID1_ASD")
 	# #plot_blade_twist('ID1_ASD')
-	plot_blade_normal_pressures('ID1_ASD')
+	# plot_blade_normal_pressures('ID1_ASD')
 	# #plot_wake_trajectory('BL')
-	plot_acoustic_contours_fs("ID1_ASD")
+	# plot_acoustic_contours_fs("ID1_ASD")
 	# plot_acoustic_contours_mr("ID1_ASD")
-	plot_acoustic_contours_tr("ID1_ASD")
+	# plot_acoustic_contours_tr("ID1_ASD")
 
 	# # plot_blade_twist('ID5')
 	# # plot_blade_normal_pressures('ID5')
@@ -1272,21 +1163,19 @@ if __name__ == "__main__":
 	# # #plot_acoustic_contours_mr("ID5")
 	# # #plot_acoustic_contours_tr("ID5")
 
-	print("Plotting ID1")
 	# plot_blade_twist('ID1')
-	plot_blade_normal_pressures('ID1')
+	# plot_blade_normal_pressures('ID1')
 	# #plot_wake_trajectory('BL')
-	plot_acoustic_contours_fs("ID1")
+	# plot_acoustic_contours_fs("ID1")
 	# plot_acoustic_contours_mr("ID1")
-	plot_acoustic_contours_tr("ID1")
+	# plot_acoustic_contours_tr("ID1")
 
-	print("Plotting ID2")
 	# # plot_blade_twist('ID2')
 	plot_blade_normal_pressures('ID2')
 	# #plot_wake_trajectory('BL')
-	plot_acoustic_contours_fs("ID2")
+	# plot_acoustic_contours_fs("ID2")
 	# plot_acoustic_contours_mr("ID2")
-	plot_acoustic_contours_tr("ID2")
+	# plot_acoustic_contours_tr("ID2")
 	
 	# plot_blade_twist('ID2_ASU')
 	# plot_blade_normal_pressures('ID2_ASU')

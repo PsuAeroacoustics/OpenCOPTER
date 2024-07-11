@@ -62,6 +62,17 @@ void set_rotation_matrix(ref Mat4 mat4, ref Mat3 rot_mat) {
 	mat4[2, 2] = rot_mat[2, 2];
 }
 
+void print_frame(F)(F frame, int depth = 0) {
+	import std.stdio : writeln;
+	import std.range : repeat;
+
+	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.global_matrix);//, "\t", frame.local_matrix);
+
+	foreach(ref child; frame.children) {
+		print_frame(child, depth + 1);
+	}
+}
+
 enum FrameType : int {
 	aircraft,
 	connection,
@@ -91,6 +102,32 @@ struct Frame {
 		angle = _angle;
 
 		frame_type = _frame_type.to!FrameType;
+		
+		local_matrix = Mat4.identity();
+		global_matrix = Mat4.identity();
+
+		translate(translation);
+		rotate(axis, angle);
+	}
+
+	this(Frame* _frame, string _name) {
+		this.local_matrix = _frame.local_matrix;
+		this.global_matrix = _frame.global_matrix;
+		this.name = _name;
+		this.frame_type = _frame.frame_type;
+		this.parent = _frame.parent;
+		this.children = _frame.children.dup;
+		this.axis = _frame.axis;
+		this.angle = _frame.angle;
+	}
+
+	this(Vec3 _axis, double _angle, Vec3 translation, Frame* _parent, string _name, FrameType _frame_type) {
+		parent = _parent;
+		name = _name;
+		axis = _axis;
+		angle = _angle;
+
+		frame_type = _frame_type;
 		
 		local_matrix = Mat4.identity();
 		global_matrix = Mat4.identity();
@@ -435,6 +472,26 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 		this.r_c = r_c;
 	}
 
+	this(ref typeof(this) blade) {
+		this.airfoil = blade.airfoil;
+		this.chunks = blade.chunks;
+		this.azimuth_offset = blade.azimuth_offset;
+		this.average_chord = blade.average_chord;
+		this.blade_length = blade.blade_length;
+		this.frame = blade.frame;
+		this.r_c = blade.r_c;
+	}
+
+	this(typeof(this)* blade) {
+		this.airfoil = blade.airfoil;
+		this.chunks = blade.chunks;
+		this.azimuth_offset = blade.azimuth_offset;
+		this.average_chord = blade.average_chord;
+		this.blade_length = blade.blade_length;
+		this.frame = blade.frame;
+		this.r_c = blade.r_c;
+	}
+
 	ref typeof(this) opAssign(typeof(this) blade) {
 		this.airfoil = blade.airfoil;
 		this.chunks = blade.chunks;
@@ -469,7 +526,7 @@ extern (C++) struct BladeGeometryT(ArrayContainer AC) {
 	}
 }
 
-void compute_blade_vectors(BG)(ref BG blade) {
+void compute_blade_vectors(BG)(auto ref BG blade) {
 
 	auto twist_array = blade.get_geometry_array!"twist";
 	auto sweep_array = blade.get_geometry_array!"sweep";
@@ -514,7 +571,7 @@ void compute_blade_vectors(BG)(ref BG blade) {
 	blade.set_geometry_array!"af_norm"(af_norms);
 }
 
-alias compute_blade_vectors_test = compute_blade_vectors!(BladeGeometry);
+//alias compute_blade_vectors_test = compute_blade_vectors!(BladeGeometry);
 
 double[] sweep_from_quarter_chord(double[] r, double[] xi) {
 	double[] sweep = new double[xi.length];
@@ -580,6 +637,46 @@ void set_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC b
 	}
 }
 
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, double[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, Vec4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
+void set_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade, Mat4[] data) {
+
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+
+		mixin("chunk."~value~" = data[out_start_idx..out_end_idx];");
+	}
+}
+
 double[] get_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!AC blade) {
 	immutable elements = blade.chunks.length*chunk_size;
 	double[] geom_array = new double[elements];
@@ -595,3 +692,20 @@ double[] get_geometry_array(string value, ArrayContainer AC)(ref BladeGeometryT!
 	}
 	return geom_array;
 }
+
+double[] get_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* blade) {
+	immutable elements = blade.chunks.length*chunk_size;
+	double[] geom_array = new double[elements];
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = elements - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("geom_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+	return geom_array;
+}
+

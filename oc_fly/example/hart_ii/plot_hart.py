@@ -160,6 +160,8 @@ def read_hart_blade_data_tecplot(filename: str):
 
 	return blade_data
 
+cmap_lines = matplotlib.colors.LinearSegmentedColormap.from_list("", ["black", "black"])
+
 def plot_acoustic_contours(plot_name: str):
 	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
 
@@ -171,7 +173,7 @@ def plot_acoustic_contours(plot_name: str):
 	print(f'i_max: {i_max}')
 	print(f'j_max: {j_max}')
 
-	oaspl_linear = [oaspl_db.functions[0].data[0] for oaspl_db in wopwop_results.oaspl_db]
+	oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.oaspl_db]
 
 	oaspl_db = [[oaspl_linear[i*j_max + j] for i in range(i_max)] for j in range(j_max)]
 
@@ -197,10 +199,10 @@ def plot_acoustic_contours(plot_name: str):
 
 	fig = plt.figure()
 	ax0 = plt.subplot(121)
-	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, linewidths=0.1)
-	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels)
+	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap='Blues')
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
-	plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
+	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
 	plt.ylabel('$x/R$', **label_font)
 	plt.xlabel('$y/R$', labelpad=20, **label_font)
 	plt.title('Prediction', **title_font)
@@ -208,17 +210,20 @@ def plot_acoustic_contours(plot_name: str):
 	
 	#plt.axis('equal')
 	
+	for label in clabels:
+		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+	
 	ax = plt.gca()
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-			label.set_fontname('Times New Roman')
-			label.set_fontsize(font_size3)
+		label.set_fontname('Times New Roman')
+		label.set_fontsize(font_size3)
 
 	ax1 = plt.subplot(122)
 	ax1.set_yticklabels([])
 	#ax.set_xticklabels([])
-	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, linewidths=0.1)
-	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels)
-	plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
+	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap='Blues')
+	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
 	plt.title('Measured', **title_font)
 	#plt.clabel(CS, clevels, inline=True)
 	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
@@ -227,10 +232,13 @@ def plot_acoustic_contours(plot_name: str):
 	plt.xlabel('$y/R$', labelpad=20, **label_font)
 	#plt.ylabel('-x/R')
 
+	for label in clabels:
+		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+
 	ax = plt.gca()
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
-			label.set_fontname('Times New Roman')
-			label.set_fontsize(font_size3)
+		label.set_fontname('Times New Roman')
+		label.set_fontsize(font_size3)
 
 	#ax = plt.subplot(133)
 	cax = fig.add_axes([0.93, 0.11, 0.02, 0.77])
@@ -633,7 +641,7 @@ if __name__ == "__main__":
 
 	plot_blade_twist('BL')
 	plot_blade_twist('MN')
-	
+	plot_blade_twist('MV')	
 
 	plot_blade_normal_pressures('BL')
 	plot_wake_trajectory('BL')
@@ -643,8 +651,6 @@ if __name__ == "__main__":
 	plot_wake_trajectory('MN')
 	plot_acoustic_contours("MN")
 
-
-	plot_blade_twist('MV')
 	plot_blade_normal_pressures('MV')
 	plot_wake_trajectory('MV')
 	plot_acoustic_contours("MV")

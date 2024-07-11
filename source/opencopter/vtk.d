@@ -164,7 +164,7 @@ class VtkRotor {
 	}
 }
 
-void write_rotor_vtu(RS, RIS, RG)(string base_filename, size_t iteration, size_t rotor_idx, ref VtkRotor rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref RG rotor_geom) {
+void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t rotor_idx, ref VtkRotor rotor, auto ref RS rotor_state, auto ref RG rotor_geom) {
 
 	version(Have_vtkd) {
 		immutable elements = rotor_state.blade_states[0].chunks.length*chunk_size;
@@ -178,21 +178,15 @@ void write_rotor_vtu(RS, RIS, RG)(string base_filename, size_t iteration, size_t
 				vtkIdType id = pi.key;
 				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0/rotor_geom.radius)*rotor_geom.radius;
 
-				auto origin = rotor.origin;
-				if(rotor_input.angular_velocity < 0) {
-					origin[0] = origin[0];
-					origin[2] = origin[2];
-				}
-
 				auto final_p = rotor_geom.blades[blade_idx].frame.global_matrix * point;
 				
 				rotor.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
 			}
 
-			foreach(rotor_idx, loop; rotor.r_to_point_map[blade_idx*elements..elements*(blade_idx + 1)]) {
+			foreach(radial_idx, loop; rotor.r_to_point_map[blade_idx*elements..elements*(blade_idx + 1)]) {
 
-				auto chunk_idx = rotor_idx/chunk_size;
-				auto inner_idx = rotor_idx%chunk_size;
+				auto chunk_idx = radial_idx/chunk_size;
+				auto inner_idx = radial_idx%chunk_size;
 
 				auto af_norm = rotor_geom.blades[blade_idx].frame.global_matrix*rotor_geom.blades[blade_idx].chunks[chunk_idx].af_norm;
 

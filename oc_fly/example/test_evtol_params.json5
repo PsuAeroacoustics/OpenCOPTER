@@ -1,0 +1,75 @@
+{
+	computational_parameters: {
+		d_psi: 1.0,
+		spanwise_elements: 48,
+		shed_history_angle: [45, 45, 45, 45],
+		shed_release_angle: 2,
+
+		convergence_criteria: 1.0e-1,
+		post_conv_revolutions: 2,
+		wake_trail_distance: [4, 4, 4, 4],
+		// convergence_criteria: 1.0e-1,
+		// post_conv_revolutions: 1,
+		// wake_trail_distance: [1, 1],
+
+		trim_algo: "lympany",
+		convergence_type: "wake",
+		convergence_rotor: 0,
+		convergence_rev_multiple: 1,
+		r_0: [0.9, 0.9, 0.9, 0.9],
+		a1: 1.0e-5,
+	},
+	flight_conditions: [
+		{
+			name: "LevelFlight",
+			aoa: 0,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.01,
+                0.01,
+                0.01,
+                0.01
+			],
+            // Mx: [
+            //     -63.3,
+            //     0
+            // ],
+            // My: [
+            //     268.8,
+            //     0
+            // ],
+			V_inf: 32.9,
+			observer_file: "helinovi_observers_climb.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			//trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "CruiseProp",
+					blade_element_func: "rotation",
+					omega: -200
+				},
+                {
+					frame: "LiftRotor",
+					blade_element_func: "rotation",
+					omega: 200
+				},
+                {
+					frame: "CruiseProp_symmetry",
+					blade_element_func: "rotation",
+					omega: 200
+				},
+                {
+					frame: "LiftRotor_symmetry",
+					blade_element_func: "rotation",
+					omega: -200
+				}
+			],
+			hybrid: false,
+		}
+	]
+}

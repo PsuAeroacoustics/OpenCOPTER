@@ -105,6 +105,13 @@ package immutable even_states = [
 ];
 
 unittest {
+	import std.conv : to;
+	import std.range : chunks, enumerate;
+	import std.stdio : writeln;
+	
+	import opencopter.aircraft.geometry : BladeGeometryChunk, RotorGeometry, set_geometry_array;
+	import opencopter.config : chunk_size;
+
 	writeln("Hello hp");
 	import numd.utility : linspace;
 

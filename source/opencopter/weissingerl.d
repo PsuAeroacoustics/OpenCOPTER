@@ -141,8 +141,8 @@ struct WeissingerL(ArrayContainer AC) {
 			_influence_inv[r_idx][] = influence[r_idx][];
 		}
 
-		debug writeln;
-		debug _influence_inv.print_matlab;
+		//debug writeln;
+		//debug _influence_inv.print_matlab;
 		openblas_set_num_threads(1);
 
 		int info = 0;

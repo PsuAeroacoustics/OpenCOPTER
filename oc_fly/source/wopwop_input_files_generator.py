@@ -314,7 +314,7 @@ def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_t
 	r = get_r(blade)
 	r = [_r - blade.r_c for _r in r]
 	twist = get_twist(blade)
-	real_chord = [c*R for c in get_chord(blade)]
+	real_chord = [c*R*(1.0 - blade.r_c) for c in get_chord(blade)]
 
 	#real_chord = (R/AR)*np.ones(len(r))
 	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, R, real_chord)
@@ -331,7 +331,7 @@ def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_t
 	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 
-	if not include_thickness:
+	if include_thickness:
 		wopwop_geom = GeometryFile(
 			comment = "Blade geometry",
 			units = "Pa",

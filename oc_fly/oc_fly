@@ -41,7 +41,18 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 	motion = flight_condition["motion"] if "motion" in flight_condition else None
 	if "vsp" in aircraft:
-		rotorcraft_system = create_aircraft_from_vsp(aircraft["vsp"])
+		rotorcraft_system = create_aircraft_from_vsp(path.join(geom_directory, aircraft["vsp"]))
+		trim_vec_dict = {}
+		motion_vec_dict = {}
+		component_dict = {}
+		for rotor in rotorcraft_system.rotors:
+			rotor_name = rotor.frame.name
+			print(f'rotor name: {rotor_name}')
+			matched_motions = list(filter(lambda x: x["frame"] == rotor_name, motion))
+			if len(matched_motions) > 0:
+
+				motion_vec_dict[rotor_name] = (Vec3([0, 0, 1]), "constant")
+
 	else:
 		rotorcraft_system, motion_vec_dict, trim_vec_dict, component_dict = compute_aero.build_aircraft(aircraft, computational_parameters['spanwise_elements'], geom_directory, motion, flight_condition["trim_frame"] if "trim_frame" in flight_condition else None)
 
@@ -312,8 +323,8 @@ def main():
 	
 	flat_cases = []
 	for aircraft in geom:
+		ac_param = None
 		if 'parameter_file' in aircraft:
-			ac_param = None
 
 			with open(path.join(geom_directory, aircraft['parameter_file'])) as param_file:
 				ac_param = pyjson5.load(param_file)
@@ -340,7 +351,7 @@ def main():
 
 		print(f"rank {rank}: {[f['name'] for f in flight_conditions_for_ac]}")
 
-		results = None
+		results = {}
 		if input_results is not None:
 			results = input_results
 		elif ac_param is not None:

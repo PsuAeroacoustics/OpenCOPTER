@@ -205,7 +205,6 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 	if trim_frame_name is not None and trim_frame_name == name:
 		trim_axis_dict[actual_name] = angle_axis
 
-
 	if motion is not None:
 		matched_motions = list(filter(lambda x: x["frame"] == name, motion))
 		
@@ -528,7 +527,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 4, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
@@ -544,7 +543,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
-	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1)#, hybrid)
+	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1, hybrid)
 	
 	vehicle = SimulatedVehicle(
 		rotorcraft_system,
