@@ -12,7 +12,34 @@ import os
 import subprocess
 import argparse
 
-def write_xfoil_inputs(Re: float, n: float, NACA: str | None, af_file: str | None, aoa_min: float, aoa_max: float):
+import matplotlib.font_manager as font_manager
+import matplotlib
+
+font_dir = '/usr/share/fonts/truetype/msttcorefonts/times.ttf'
+font_manager.fontManager.addfont(font_dir)
+prop = font_manager.FontProperties(fname=font_dir)
+
+font_size0 = 18
+font_size1 = 17
+font_size2 = 16
+font_size3 = 12
+font_size4 = 7
+font_size5 = 5
+
+label_font = {'fontname':'Times New Roman', 'size':f'{font_size1}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+title_font = {'fontname':'Times New Roman', 'size':f'{font_size1}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+title_font2 = {'fontname':'Times New Roman', 'size':f'{font_size2}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+legend_font = {'fontname':'Times New Roman', 'size':f'{font_size4}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+
+def write_xfoil_inputs(Re: float, n: float, NACA: str | None, af_file: str | None, aoa_min: float, aoa_max: float, aoa_step: float):
 	xfoil_input_filename = ""
 	polar_output_filename = ""
 	if NACA is not None:
@@ -35,9 +62,9 @@ def write_xfoil_inputs(Re: float, n: float, NACA: str | None, af_file: str | Non
 		xfoil_file.write(f"visc {Re}\n")
 		xfoil_file.write("iter 10000\n")
 		xfoil_file.write("pacc \n\n\n")
-		xfoil_file.write(f"aseq 0 {aoa_max} 0.5\n")
+		xfoil_file.write(f"aseq 0 {aoa_max} {aoa_step}\n")
 		xfoil_file.write("init\n")
-		xfoil_file.write(f"aseq 0 {aoa_min} 0.5\n")
+		xfoil_file.write(f"aseq 0 {aoa_min} {aoa_step}\n")
 		xfoil_file.write("pacc\n")
 		xfoil_file.write("psor 1\n")
 		xfoil_file.write("pwrt 1\n")
@@ -61,7 +88,7 @@ def run_xfoil(xfoil_path: str | None, xf_input_file: str):
 
 	subprocess.run(run_args)
 
-def check_aerodas(polar_filename: str, tc_ratio: float, NACA: str | None):
+def check_aerodas(polar_filename: str, tc_ratio: float, NACA: str | None, plot_suffix: str = "", plot_legend: bool = True):
 	sys.path.insert(0, f'{os.path.dirname(os.path.realpath(__file__))}/../')
 	import libopencopter as oc
 	import matplotlib.pyplot as plt
@@ -82,23 +109,37 @@ def check_aerodas(polar_filename: str, tc_ratio: float, NACA: str | None):
 
 	xfoil_label = f'NACA {NACA} XFOIL data' if NACA is not None else "XFOIL data"
 
+	print(f'plotting curves')
 	plt.figure()
-	plt.plot(aoa_deg, c_l, label = "AERODAS MODEL", linewidth=2)
-	plt.plot(aerodas_model.alpha, aerodas_model.CL,label = xfoil_label, linewidth=2)
-	plt.xlabel("Angle of attack (degrees)")
-	plt.ylabel("Coefficient of lift")
-	plt.legend()
+	plt.plot(aoa_deg, c_l, 'r', label = "AERODAS MODEL", linewidth=1)
+	plt.plot(aerodas_model.alpha, aerodas_model.CL, 'b', label = xfoil_label, linewidth=1)
+	plt.xlabel("$\\alpha$ [$^\circ$]", fontsize=font_size0)
+	plt.ylabel("$C_l$", fontsize=font_size0)
+	if plot_legend:
+		plt.legend()
 	plt.grid()
-	plt.savefig("Cl.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
+	plt.ylim(-1.5, 1.5)
+	plt.xticks(fontsize=font_size3)
+	plt.yticks(fontsize=font_size3)
+	if plot_suffix != "":
+		plt.savefig(f"Cl_{plot_suffix}.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
+	else:
+		plt.savefig("Cl.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
 
 	plt.figure()
-	plt.plot(aoa_deg, c_d, label = "AERODAS MODEL", linewidth=2)
-	plt.plot(aerodas_model.alpha, aerodas_model.CD, label=xfoil_label, linewidth=2)
-	plt.xlabel("Angle of attack (degrees)")
-	plt.ylabel("Coefficient of drag")
-	plt.legend()
+	plt.plot(aoa_deg, c_d, 'r', label = "AERODAS MODEL", linewidth=1)
+	plt.plot(aerodas_model.alpha, aerodas_model.CD, 'b', label=xfoil_label, linewidth=1)
+	plt.xlabel("$\\alpha$ [$^\circ$]", fontsize=font_size0)
+	plt.ylabel("$C_d$", fontsize=font_size0)
+	#plt.legend()
 	plt.grid()
-	plt.savefig("Cd.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
+	plt.ylim(-0.1, 2.1)
+	plt.xticks(fontsize=font_size3)
+	plt.yticks(fontsize=font_size3)
+	if plot_suffix != "":
+		plt.savefig(f"Cd_{plot_suffix}.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
+	else:
+		plt.savefig("Cd.png", dpi=500, bbox_inches="tight", pad_inches=0.1)
 	#plt.show()
 
 def generate_polar(Re, n, NACA, filename, aoa_min, aoa_max, xf):
@@ -109,6 +150,11 @@ def generate_polar(Re, n, NACA, filename, aoa_min, aoa_max, xf):
 
 
 def main():
+
+	matplotlib.rcParams['font.family'] = 'serif'
+	matplotlib.rcParams['font.serif'] = prop.get_name()
+	matplotlib.rcParams['mathtext.fontset'] = 'stix'
+
 	parser = argparse.ArgumentParser("xf_gen", description="Xfoil data generator for AERODAS model input")
 
 	parser.add_argument(
@@ -186,6 +232,30 @@ def main():
 		required=False
 	)
 	
+	parser.add_argument(
+		"-aoa_step",
+		type=float,
+		help="Maximum angle of attack to perform sweep over. Default = 15 degrees",
+		default=0.5,
+		required=False
+	)
+	
+	parser.add_argument(
+		"-ps",
+		type=str,
+		help="Suffix for plot output",
+		default="",
+		required=False
+	)
+
+	parser.add_argument(
+		"-l",
+		action="store_true",
+		help="plot legend",
+		default=False,
+		required=False
+	)
+
 	args = parser.parse_args()
 
 	polar_output_filename = ""
@@ -196,7 +266,7 @@ def main():
 		polar_output_filename = f"{af_name}_{int(round(args.re))}_polar.dat"
 
 	if not args.d:
-		polar_output_filename = generate_polar(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max, args.xf)
+		polar_output_filename = generate_polar(args.re, args.n, args.N, args.f, args.aoa_min, args.aoa_max, args.xf, args.aoa_step)
 
 	if args.c:
 		if args.tc_ratio is None:
@@ -204,7 +274,7 @@ def main():
 			quit()
 		
 		print("Checking aerodas model. Stand by for plots")
-		check_aerodas(polar_output_filename, args.tc_ratio, args.N)
+		check_aerodas(polar_output_filename, args.tc_ratio, args.N, args.ps, args.l)
 
 
 if __name__ == "__main__":

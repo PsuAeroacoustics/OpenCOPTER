@@ -362,6 +362,30 @@ void get_wake_component(string value, VF)(auto ref VF filament, double[] d) {
 	}
 }
 
+void fill_wake_xyz_rotor_frame(RG, VF)(auto ref RG rotor, auto ref VF filament, double[] x, double[] y, double[] z) {
+	foreach(c_idx, ref chunk; filament.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = x.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		auto xyz_chunk = Vector!(4, Chunk)(1);
+		xyz_chunk.mData[0][] = chunk.x[];
+		xyz_chunk.mData[1][] = chunk.y[];
+		xyz_chunk.mData[2][] = chunk.z[];
+
+		auto xyz_tpp = rotor.frame.parent.inverse_global_matrix * xyz_chunk;
+
+		x[out_start_idx..out_end_idx] = xyz_tpp[0][0..in_end_idx];
+		y[out_start_idx..out_end_idx] = xyz_tpp[1][0..in_end_idx];
+		z[out_start_idx..out_end_idx] = xyz_tpp[2][0..in_end_idx];
+
+		//mixin("d[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+}
+
 import std.algorithm : map, fold, maxElement, minElement;
 import std.array;
 import std.range;
@@ -915,11 +939,37 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 				}
 			}
 
+			immutable num_chunks = ac_state
+				.rotor_states[rotor_idx]
+				.blade_states[blade_idx]
+				.chunks.length();
+
+			immutable omega_sgn = std.math.sgn(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
+
+			// double max_gamma = 0;
+			// foreach(chunk_idx, ref c; ac_state
+			// 	.rotor_states[rotor_idx]
+			// 	.blade_states[blade_idx]
+			// 	.chunks[num_chunks/2..$-1]) {
+			// 	foreach(n, ref g; c.gamma) {
+			// 		if(chunk_idx == 0 && n == 0) {
+			// 			max_gamma = -omega_sgn*g;
+			// 		} else {
+			// 			if(-omega_sgn*g > max_gamma) {
+			// 				max_gamma = -omega_sgn*g;
+			// 			}
+			// 		}
+			// 	}
+			// }
+
+			// // //immutable omega_sgn = std.math.sgn(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
+			// max_gamma = -omega_sgn*max_gamma;
+
 			double max_gamma = 0;
 			foreach(ref c; ac_state
 				.rotor_states[rotor_idx]
 				.blade_states[blade_idx]
-				.chunks) {
+				.chunks[num_chunks/3..$-1]) {
 				foreach(ref g; c.gamma) {
 					if(abs(g) > abs(max_gamma)) {
 						max_gamma = g;

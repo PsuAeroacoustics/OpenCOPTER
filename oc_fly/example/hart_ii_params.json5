@@ -3,7 +3,8 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		shed_history_angle: [45],
-		shed_release_angle: 1,
+		wake_trail_distance: [5],
+		shed_release_angle: 1.0,
 		convergence_criteria: 1.0e-5,
 		convergence_type: "wake",
 		r_0: [1.0],
@@ -13,7 +14,7 @@
 	flight_conditions: [
 		{
 			name: "BL",
-			aoa: 4.5,
+			aoa: 4.3,
 			density: 1.2055,
 			sos: 341.7,
 			T: [

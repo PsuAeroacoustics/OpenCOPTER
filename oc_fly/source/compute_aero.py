@@ -517,8 +517,12 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 		rotorcraft_input_state.rotor_inputs[r_idx].angular_accel = 0
 		rotorcraft_input_state.rotor_inputs[r_idx].azimuth = initial_phase # azimuths[r_idx]
 
+		r_0 = computational_parameters['r_0'][r_idx]
+		if 'r_0' in flight_condition:
+			r_0 = flight_condition['r_0'][r_idx]
+
 		for b_idx in range(num_blades[r_idx]):
-			rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = computational_parameters['r_0'][r_idx]*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/rotorcraft_system.rotors[r_idx].radius
+			rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = r_0*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/rotorcraft_system.rotors[r_idx].radius
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
@@ -539,6 +543,9 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	hybrid = False
 	if "hybrid" in flight_condition:
 		hybrid = flight_condition['hybrid']
+
+	if args.hybrid:
+		hybrid = True
 
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation

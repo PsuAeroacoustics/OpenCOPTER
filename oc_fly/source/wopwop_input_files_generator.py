@@ -376,11 +376,9 @@ def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_t
 
 	close_geometry_file(geom_file)
 
-def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path):
-	loading = AperiodicStructuredVectorLoadingFile(
-		comment = "Blade loading",
-		reference_frame = ReferenceFrame_patch_fixed(),
-		data_alignment = DataAlignment_node_centered(),
+def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path, include_thickness):
+	zone_headers = []
+	if include_thickness:
 		zone_headers = [
 			AperiodicStructuredHeader(
 				name = "Lift line loading",
@@ -401,6 +399,24 @@ def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path
 				has_data = False
 			)
 		]
+	else:
+		zone_headers = [
+			AperiodicStructuredHeader(
+				name = "Lift line loading",
+				timesteps = iterations,
+				i_max = len(get_r(blade)),
+				j_max = 1,
+				zone = 1,
+				compute_thickness = False,
+				has_data = True
+			)
+		]
+
+	loading = AperiodicStructuredVectorLoadingFile(
+		comment = "Blade loading",
+		reference_frame = ReferenceFrame_patch_fixed(),
+		data_alignment = DataAlignment_node_centered(),
+		zone_headers = zone_headers
 	)
 	
 	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
