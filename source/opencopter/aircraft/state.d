@@ -434,7 +434,6 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 	double C_My;
 }
 
-
 //Adding wing states 
 
 template is_wing_state(A) {
@@ -588,7 +587,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		size_t ctrl_pt_chunks = span_chunks*chord_ctrl_pt;
 		mixin(array_ctor_mixin!(AC, "WingPartStateChunk", "chunks", "span_chunks"));
 		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"));
-		circulation_model = new VortexLattice!AC(span_chunks*chunk_size, chord_ctrl_pt, wing_part);
+		circulation_model = new VortexLatticeT!AC(span_chunks*chunk_size, chord_ctrl_pt, wing_part);
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			//chunk.dC_T[] = 0;
@@ -613,7 +612,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		size_t ctrl_pt_chunks = span_chunks*chord_ctrl_pt;
 		mixin(array_ctor_mixin!(AC, "WingPartStateChunk", "chunks", "span_chunks"));
 		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"));
-		circulation_model = new VortexLattice!AC(span_chunks*chunk_size, chord_ctrl_pt, *wing_part);
+		circulation_model = new VortexLatticeT!AC(span_chunks*chunk_size, chord_ctrl_pt, *wing_part);
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			//chunk.dC_T[] = 0;

@@ -1,6 +1,8 @@
 module opencopter.python;
 
 static import opencopter.aircraft;
+import opencopter.aircraft : get_wing_state_array, get_wing_state_matrix, WingPartGeometryChunk, WingPartCtrlPointChunk, WingPartStateChunk, WingPartCtrlPointStateChunk;
+
 import opencopter.airfoilmodels;
 import opencopter.atmosphere;
 import opencopter.io;
@@ -13,8 +15,6 @@ static import opencopter.vtk;
 static import opencopter.bladeelement;
 static import opencopter.wake;
 static import opencopter.inflow;
-
-
 
 import pyd.pyd;
 import std.algorithm;
@@ -96,8 +96,9 @@ double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
  +/
 class Inflow {
 	Inflow_D get_wrapped_inflow(){ assert (0);}
-	void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) { assert(0); }
-	void update(PyAircraftInputState ac_input, PyAircraft aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState ac_state, double dt) { assert(0); }
+	void update(Inflow_D[] inflows, Vec4 freestream_velocity, double dt);
+	//void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) { assert(0); }
+	//void update(ref PyAircraftInputState ac_input, ref PyAircraft aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, ref PyAircraftState ac_state, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) { assert(0); }
 	//Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) { assert(0); }
 	void update_wing_circulation() { assert(0); }
@@ -106,7 +107,7 @@ class Inflow {
 	double wake_skew() { assert(0); }
 	Frame* frame() { assert(0); }
 	Mat4 inverse_global_frame() { assert(0); }
-	Vec3 origin() { assert(0); }
+	//Vec3 origin() { assert(0); }
 }
 
 
@@ -121,13 +122,16 @@ class HuangPeters : Inflow {
 		huang_peters = new HP(4, 2, rotor, rotor_state, rotor_input, dt);
 	}
 
-	override void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) {
-		huang_peters.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	override void update(Inflow_D[] inflows, Vec4 freestream_velocity, double dt) {
+		huang_peters.update(inflows, freestream_velocity, dt);
 	}
+	// override void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) {
+	// 	huang_peters.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	// }
 
-	override void update(PyAircraftInputState ac_input, PyAircraft aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState ac_state, double dt) {
-		huang_peters.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
-	}
+	// override void update(ref PyAircraftInputState ac_input, ref PyAircraft aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, ref PyAircraftState ac_state, double dt) {
+	// 	huang_peters.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	// }
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		return huang_peters.inflow_at(x, y, z, x_e, angle_of_attack);
@@ -149,7 +153,7 @@ class HuangPeters : Inflow {
 		return huang_peters.compute_wing_induced_vel_on_blade(x, y, z);
 	}
 
-	override Vec3 origin() { return Vec3(0, 0, 0); }
+	//override Vec3 origin() { return Vec3(0, 0, 0); }
 
 	override Inflow_D get_wrapped_inflow(){
 		return huang_peters;
@@ -184,50 +188,50 @@ class Beddoes{
 		return beddoes.wake_skew();
 	}
 
-	Vec3 origin() { return Vec3(0, 0, 0); }
+	//Vec3 origin() { return Vec3(0, 0, 0); }
 }
 
-class SimpleWing{
-	private SW simple_wing;
+// class SimpleWing: Inflow{
+// 	private SW simple_wing;
 
-	this(double _C_L, double V_inf, double V_tip, double y_0, double c, Vec3 origin) {
-		simple_wing = new SW(_C_L, V_inf, V_tip, y_0, c, origin);
-	}
+// 	this(double _C_L, double V_inf, double V_tip, double y_0, double c, Vec3 origin) {
+// 		simple_wing = new SW(_C_L, V_inf, V_tip, y_0, c, origin);
+// 	}
 
-	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
-	}
+// 	void update(double C_T, PyRotorInputState* rotor, PyRotorState* rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+// 		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+// 	}
 
-	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
-		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
-	}
+// 	void update(double C_T, PyRotorInputState rotor, PyRotorState rotor_state, double advance_ratio, double axial_advance_ratio, double dt) {
+// 		simple_wing.update(C_T, rotor, rotor_state, advance_ratio, axial_advance_ratio, dt);
+// 	}
 
-	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
-		return simple_wing.inflow_at(x, y, z, x_e, angle_of_attack);
-	}
+// 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
+// 		return simple_wing.inflow_at(x, y, z, x_e, angle_of_attack);
+// 	}
 
-	double wake_skew() {
-		return simple_wing.wake_skew();
-	}
+// 	double wake_skew() {
+// 		return simple_wing.wake_skew();
+// 	}
 
-	override Frame* frame() {
-		return null;
-	}
+// 	override Frame* frame() {
+// 		return null;
+// 	}
 
-	override Mat4 inverse_global_frame() {
-		return Mat4.identity;
-	}
+// 	override Mat4 inverse_global_frame() {
+// 		return Mat4.identity;
+// 	}
 
-	override Frame* frame() {
-		return null;
-	}
+// 	override Frame* frame() {
+// 		return null;
+// 	}
 
-	override Mat4 inverse_global_frame() {
-		return Mat4.identity;
-	}
+// 	override Mat4 inverse_global_frame() {
+// 		return Mat4.identity;
+// 	}
 
-		Vec3 origin() { return simple_wing.origin; }
-}
+// 		Vec3 origin() { return simple_wing.origin; }
+// }
 
 class WingInflow: Inflow{
 	private WI wing_inflow;
@@ -236,12 +240,16 @@ class WingInflow: Inflow{
 		wing_inflow = new WI(_wing, _wing_state, _wing_inputs, _wing_lift_surf);
 	}
 
-	override void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		wing_inflow.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
-	}
+	// override void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) {
+	// 	wing_inflow.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	// }
 
-	override void update(PyAircraftInputState ac_input, PyAircraft aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		wing_inflow.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
+	// override void update(ref PyAircraftInputState ac_input, ref PyAircraft aircraft, Inflow_D[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, ref PyAircraftState ac_state, double dt) {
+	// 	wing_inflow.update(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	// }
+
+	override void update(Inflow_D[] inflows, Vec4 freestream_velocity, double dt) {
+		wing_inflow.update(inflows, freestream_velocity, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
@@ -264,9 +272,6 @@ class WingInflow: Inflow{
 		return wing_inflow;
 	}
 }
-
-
-
 
 alias PyWakeHistory = opencopter.wake.WakeHistoryT!(ArrayContainer.array);
 alias PyWake = opencopter.wake.WakeT!(ArrayContainer.array);
@@ -297,13 +302,13 @@ alias set_geometry_array = opencopter.aircraft.set_geometry_array;
 alias get_geometry_array = opencopter.aircraft.get_geometry_array;
 alias get_state_array = opencopter.aircraft.get_state_array;
 
-alias PyWingGeometry = WingGeometryT!(ArrayContainer.array);
-alias PyWingPartGeometry = WingPartGeometryT!(ArrayContainer.array);
-alias PyWingState = WingStateT!(ArrayContainer.array);
-alias PyWingPartState = WingPartStateT!(ArrayContainer.array);
-alias PyWingInputState = WingInputStateT!(ArrayContainer.array);
+alias PyWingGeometry = opencopter.aircraft.WingGeometryT!(ArrayContainer.array);
+alias PyWingPartGeometry = opencopter.aircraft.WingPartGeometryT!(ArrayContainer.array);
+alias PyWingState = opencopter.aircraft.WingStateT!(ArrayContainer.array);
+alias PyWingPartState = opencopter.aircraft.WingPartStateT!(ArrayContainer.array);
+alias PyWingInputState = opencopter.aircraft.WingInputStateT!(ArrayContainer.array);
 
-alias DWingPartGeometry = WingPartGeometryT!(ArrayContainer.none);
+alias DWingPartGeometry = opencopter.aircraft.WingPartGeometryT!(ArrayContainer.none);
 
 void set_twist(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"twist"(data);
@@ -339,30 +344,6 @@ void set_alpha_0(ref PyBladeGeometry bg, double[] data) {
 
 void set_sweep(ref PyBladeGeometry bg, double[] data) {
 	bg.set_geometry_array!"sweep"(data);
-}
-
-void set_xi(ref PyBladeGeometry bg, double[] data) {
-	bg.set_geometry_array!"xi"(data);
-}
-
-void set_xi_p(ref PyBladeGeometry bg, double[] data) {
-	bg.set_geometry_array!"xi_p"(data);
-}
-
-void set_xi(ref PyBladeGeometry bg, double[] data) {
-	bg.set_geometry_array!"xi"(data);
-}
-
-void set_xi_p(ref PyBladeGeometry bg, double[] data) {
-	bg.set_geometry_array!"xi_p"(data);
-}
-
-void set_xi(ref PyBladeGeometry bg, double[] data) {
-	bg.set_geometry_array!"xi"(data);
-}
-
-void set_xi_p(ref PyBladeGeometry bg, double[] data) {
-	bg.set_geometry_array!"xi_p"(data);
 }
 
 void set_xi(ref PyBladeGeometry bg, double[] data) {
@@ -629,7 +610,7 @@ void set_wing_vortex_geometry(PyWingLiftSurf* wing_lift_surf, PyWingGeometry* wi
 }
 
 void set_wing_ctrl_pt_geometry(PyWingGeometry* wing, size_t spanwise_nodes, size_t chordwise_nodes, double camber){
-	opencopter.aircraft.geometry.set_wing_ctrl_pt_geometry(wing, spanwise_nodes, chordwise_nodes, camber);
+	opencopter.aircraft.set_wing_ctrl_pt_geometry(wing, spanwise_nodes, chordwise_nodes, camber);
 }
 
 opencopter.vtk.VtkRotor build_base_vtu_rotor(PyRotorGeometry* rotor) {
@@ -648,14 +629,6 @@ void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.Vtk
 		opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], aircraft.rotors[r_idx]);
 		//opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], ac_input.rotor_inputs[r_idx], aircraft.rotors[r_idx]);
 	}
-}
-
-opencopter.vtk.VtkWing build_base_vtu_wing(PyWingGeometry* wing){
-	return opencopter.vtk.build_base_vtu_wing(wing);
-}
-
-void write_wing_vtu(string base_filename, size_t iteration, size_t wing_idx, opencopter.vtk.VtkWing wing, PyWingState* wing_state, PyWingInputState wing_input){
-	opencopter.vtk.write_wing_vtu(base_filename, iteration, wing_idx, wing, wing_state, wing_input);
 }
 
 opencopter.vtk.VtkWing build_base_vtu_wing(PyWingGeometry* wing){
@@ -765,11 +738,11 @@ struct Location{
 }
 
 Location location_right_wing(){
-	return Location(opencopter.aircraft.geometry.Location.right);
+	return Location(opencopter.aircraft.Location.right);
 }
 
 Location location_left_wing(){
-	return Location(opencopter.aircraft.geometry.Location.left);
+	return Location(opencopter.aircraft.Location.left);
 }
 
 PyWingPartGeometry build_wing_part_geometry(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, Location Pyloc){
@@ -986,7 +959,7 @@ extern(C) void PydMain() {
 		:return: The list of radial stations. The length of this list may be different than n_sections
 	});
 
-	def!(generate_spanwise_control_points, Docstring!q{
+	def!(opencopter.aircraft.generate_spanwise_control_points, Docstring!q{
 		Generate list of spanwise control points with the appropriate spacing
 
 		.. attention::
@@ -1767,10 +1740,10 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorInputState,
 		PyName!("RotorInputState"),
-		Member!("angle_of_attack", Docstring!q{Angle of attack of the rotor in radians}),
-		Member!("sin_aoa", Docstring!q{Cosine of rotor angle of attack}),
-		Member!("cos_aoa", Docstring!q{Sine of rotor angle of attack}),
-		Member!("freestream_velocity", Docstring!q{The dimensional freestream velocity}),
+		//Member!("angle_of_attack", Docstring!q{Angle of attack of the rotor in radians}),
+		//Member!("sin_aoa", Docstring!q{Cosine of rotor angle of attack}),
+		//Member!("cos_aoa", Docstring!q{Sine of rotor angle of attack}),
+		//Member!("freestream_velocity", Docstring!q{The dimensional freestream velocity}),
 		Member!("angular_velocity", Docstring!q{The angular velocity of the rotor in :math:`mathrm{rad}/s`}),
 		Member!("angular_accel", Docstring!q{The angular acceleration of the rotor in :math:`mathrm{rad}/s^2`}),
 		Member!("azimuth", Docstring!q{The current azimuthal position of the rotor in radians}),
@@ -1783,10 +1756,10 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWingInputState,
 		PyName!("WingInputState"),
-		Member!("angle_of_attack", Docstring!q{Angle of attack of wing in radians}),
-		Member!("cos_aoa", Docstring!q{cosine of angle of attack of the wing}),
-		Member!("sin_aoa", Docstring!q{sin of angle of attack of the wing}),
-		Member!("freestream_velocity", Docstring!q{The dimentional freestram velocity}),
+		//Member!("angle_of_attack", Docstring!q{Angle of attack of wing in radians}),
+		//Member!("cos_aoa", Docstring!q{cosine of angle of attack of the wing}),
+		//Member!("sin_aoa", Docstring!q{sin of angle of attack of the wing}),
+		//Member!("freestream_velocity", Docstring!q{The dimentional freestram velocity}),
 	);
 
 	wrap_struct!(
@@ -1901,7 +1874,7 @@ extern(C) void PydMain() {
 			:param solidity: The solidity of the rotor.
 		},
 		Member!("blades", Docstring!q{An array of :class:`BladeGeomtery`, one for each blade of the rotor}),
-		Member!("origin", Docstring!q{The global origin of the rotor. This is where the center of the hub is located.}),
+		//Member!("origin", Docstring!q{The global origin of the rotor. This is where the center of the hub is located.}),
 		Member!("radius", Docstring!q{The dimensional radius of the rotor.}),
 		Member!("solidity", Docstring!q{The solidity of the rotor.}),
 		Member!"frame"
@@ -2141,114 +2114,114 @@ extern(C) void PydMain() {
 		Def!(HuangPeters.wake_skew, Docstring!q{
 			:return: The current wake skew angle of the rotor in radians.
 		}),
-		Def!(HuangPeters.origin, Docstring!q{
-			:return: The current wake skew angle of the rotor in radians.
-		})
+		// Def!(HuangPeters.origin, Docstring!q{
+		// 	:return: The current wake skew angle of the rotor in radians.
+		// })
 	)();
 
-	wrap_class!(
-		Beddoes,
-		Init!(),
-		Docstring!q{
-			This class instantiates a dynamic inflow model for a single rotor.
-			One of these will be needed for each rotor in the aircraft.
+	// wrap_class!(
+	// 	Beddoes,
+	// 	Init!(),
+	// 	Docstring!q{
+	// 		This class instantiates a dynamic inflow model for a single rotor.
+	// 		One of these will be needed for each rotor in the aircraft.
 
-			Constructor:
+	// 		Constructor:
 
-			:param Mo: The number of odd modes used in the model. 4 typically works well.
-			:param Me: The number of even modes used in the model. 2 typically works well.
-			:param rotor: The geometry of the rotor this inflow model is modeling.
-			:param dt: The timestep of the simulation.
-		},
-		Def!(Beddoes.update, Docstring!q{
-			Updates the inflow model by one timestep
+	// 		:param Mo: The number of odd modes used in the model. 4 typically works well.
+	// 		:param Me: The number of even modes used in the model. 2 typically works well.
+	// 		:param rotor: The geometry of the rotor this inflow model is modeling.
+	// 		:param dt: The timestep of the simulation.
+	// 	},
+	// 	Def!(Beddoes.update, Docstring!q{
+	// 		Updates the inflow model by one timestep
 
-			.. attention
+	// 		.. attention
 
-				You will likely never have to call this function yourself. This is called automaticall
-				in the :func:`step` function.
+	// 			You will likely never have to call this function yourself. This is called automaticall
+	// 			in the :func:`step` function.
 
-			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
-			:param rotor: The current input state for the rotor.
-			:param rotor_state: The current rotor state.
-			:param advance_ratio: The current advance ratio for the rotor.
-			:param axial_advance_ratio: The current axial advance ratio for the rotor.
-			:param ac_state: The currect AircraftState object
-			:param dt: The current timestep size.
-		}),
-		Def!(Beddoes.inflow_at,
-			Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
-			PyName!"inflow_at",
-			Docstring!q{
-				Computes the rotor induced flow at the requested location.
+	// 		:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+	// 		:param rotor: The current input state for the rotor.
+	// 		:param rotor_state: The current rotor state.
+	// 		:param advance_ratio: The current advance ratio for the rotor.
+	// 		:param axial_advance_ratio: The current axial advance ratio for the rotor.
+	// 		:param ac_state: The currect AircraftState object
+	// 		:param dt: The current timestep size.
+	// 	}),
+	// 	Def!(Beddoes.inflow_at,
+	// 		Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
+	// 		PyName!"inflow_at",
+	// 		Docstring!q{
+	// 			Computes the rotor induced flow at the requested location.
 
-				:param x: A chunk of x positions to compute the induced velocity at.
-				:param y: A chunk of y positions to compute the induced velocity at.
-				:param z: A chunk of z positions to compute the induced velocity at.
-				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
-				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
-				:return: A chunk of z induced velocities.
-			}
-		),
-		//Def!(HuangPeters.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
-		Def!(Beddoes.wake_skew, Docstring!q{
-			:return: The current wake skew angle of the rotor in radians.
-		}),
-		Def!(Beddoes.origin, Docstring!q{
-			:return: The current wake skew angle of the rotor in radians.
-		})
-	)();
+	// 			:param x: A chunk of x positions to compute the induced velocity at.
+	// 			:param y: A chunk of y positions to compute the induced velocity at.
+	// 			:param z: A chunk of z positions to compute the induced velocity at.
+	// 			:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+	// 			:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+	// 			:return: A chunk of z induced velocities.
+	// 		}
+	// 	),
+	// 	//Def!(HuangPeters.inflow_at, Chunk function(immutable Chunk, immutable double, immutable double), PyName!"inflow_at_r"),
+	// 	Def!(Beddoes.wake_skew, Docstring!q{
+	// 		:return: The current wake skew angle of the rotor in radians.
+	// 	}),
+	// 	Def!(Beddoes.origin, Docstring!q{
+	// 		:return: The current wake skew angle of the rotor in radians.
+	// 	})
+	// )();
 
-	wrap_class!(
-		SimpleWing,
-		Init!(double, double, double, double, double, Vec3),
-		Docstring!q{
-			This class instantiates a dynamic inflow model for a single rotor.
-			One of these will be needed for each rotor in the aircraft.
+	// wrap_class!(
+	// 	SimpleWing,
+	// 	Init!(double, double, double, double, double, Vec3),
+	// 	Docstring!q{
+	// 		This class instantiates a dynamic inflow model for a single rotor.
+	// 		One of these will be needed for each rotor in the aircraft.
 
-			Constructor:
+	// 		Constructor:
 
-			:param Mo: The number of odd modes used in the model. 4 typically works well.
-			:param Me: The number of even modes used in the model. 2 typically works well.
-			:param rotor: The geometry of the rotor this inflow model is modeling.
-			:param dt: The timestep of the simulation.
-		},
-		Def!(SimpleWing.update, Docstring!q{
-			Updates the inflow model by one timestep
+	// 		:param Mo: The number of odd modes used in the model. 4 typically works well.
+	// 		:param Me: The number of even modes used in the model. 2 typically works well.
+	// 		:param rotor: The geometry of the rotor this inflow model is modeling.
+	// 		:param dt: The timestep of the simulation.
+	// 	},
+	// 	Def!(SimpleWing.update, Docstring!q{
+	// 		Updates the inflow model by one timestep
 
-			.. attention
+	// 		.. attention
 
-				You will likely never have to call this function yourself. This is called automaticall
-				in the :func:`step` function.
+	// 			You will likely never have to call this function yourself. This is called automaticall
+	// 			in the :func:`step` function.
 
-			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
-			:param rotor: The current input state for the rotor.
-			:param rotor_state: The current rotor state.
-			:param advance_ratio: The current advance ratio for the rotor.
-			:param axial_advance_ratio: The current axial advance ratio for the rotor.
-			:param dt: The current timestep size.
-		}),
-		Def!(SimpleWing.inflow_at,
-			Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
-			PyName!"inflow_at",
-			Docstring!q{
-				Computes the rotor induced flow at the requested location.
+	// 		:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+	// 		:param rotor: The current input state for the rotor.
+	// 		:param rotor_state: The current rotor state.
+	// 		:param advance_ratio: The current advance ratio for the rotor.
+	// 		:param axial_advance_ratio: The current axial advance ratio for the rotor.
+	// 		:param dt: The current timestep size.
+	// 	}),
+	// 	Def!(SimpleWing.inflow_at,
+	// 		Chunk function(immutable Chunk, immutable Chunk, immutable Chunk, immutable Chunk, double),
+	// 		PyName!"inflow_at",
+	// 		Docstring!q{
+	// 			Computes the rotor induced flow at the requested location.
 
-				:param x: A chunk of x positions to compute the induced velocity at.
-				:param y: A chunk of y positions to compute the induced velocity at.
-				:param z: A chunk of z positions to compute the induced velocity at.
-				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
-				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
-				:return: A chunk of z induced velocities.
-			}
-		),
-		Def!(SimpleWing.wake_skew, Docstring!q{
-			:return: The current wake skew angle of the rotor in radians.
-		}),
-		Def!(SimpleWing.origin, Docstring!q{
-			:return: The current wake skew angle of the rotor in radians.
-		})
-	)();
+	// 			:param x: A chunk of x positions to compute the induced velocity at.
+	// 			:param y: A chunk of y positions to compute the induced velocity at.
+	// 			:param z: A chunk of z positions to compute the induced velocity at.
+	// 			:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+	// 			:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+	// 			:return: A chunk of z induced velocities.
+	// 		}
+	// 	),
+	// 	Def!(SimpleWing.wake_skew, Docstring!q{
+	// 		:return: The current wake skew angle of the rotor in radians.
+	// 	}),
+	// 	Def!(SimpleWing.origin, Docstring!q{
+	// 		:return: The current wake skew angle of the rotor in radians.
+	// 	})
+	// )();
 
 	wrap_class!(
 		WingInflow,

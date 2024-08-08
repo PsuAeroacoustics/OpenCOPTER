@@ -263,8 +263,8 @@ void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t roto
 
 		rotor.grid.SetPoints(rotor.points);
 
-		foreach(b_idx, blade; rotor_state.blade_states) {
-			foreach(pi; rotor.base_points[b_idx].byKeyValue) {
+		foreach(blade_idx, blade; rotor_state.blade_states) {
+			foreach(pi; rotor.base_points[blade_idx].byKeyValue) {
 				vtkIdType id = pi.key;
 				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0/rotor_geom.radius)*rotor_geom.radius;
 
@@ -580,146 +580,6 @@ class VtkWake {
 				rotor_wake = new VtkRotorWake(num_blades, shed_length[r_idx], elements);
 			}
 		}
-	}
-}
-
-class VtkWingWake {
-	this(){
-
-	}
-
-	version(Have_vtkd) {
-		private vtkIdType[][][] basepoint_ids;
-		private vtkPoints* filament_points;
-		private vtkUnstructuredGrid* grid;
-		private Vec3[vtkIdType][] base_points;
-		private vtkDoubleArray* gamma;
-		private vtkDoubleArray* A_kl;
-
-		private this(size_t num_wing_parts) {
-			base_points = new Vec3[vtkIdType][num_wing_parts];
-			gamma = vtkDoubleArray.New;
-			A_kl = vtkDoubleArray.New;
-			grid = vtkUnstructuredGrid.New;
-			filament_points = vtkPoints.New;
-		}		
-	}
-}
-
-VtkWingWake build_base_vtu_wing_wake(W, WLS)(auto ref W wing_geom, auto ref WLS wing_lift_surf) {
-
-	version(Have_vtkd) {
-		immutable num_wing_part = wing_geom.wing_parts.length;
-		immutable num_span_elements = wing_geom.wing_parts[0].chunks.length * chunk_size;
-		immutable num_chord_elements = wing_lift_surf.wing_part_lift_surf[0].spanwise_filaments.length;
-
-		auto vtk_wing_wake = new VtkWingWake(num_wing_part);
-
-		vtk_wing_wake.gamma.SetNumberOfComponents(1);
-		vtk_wing_wake.gamma.SetNumberOfTuples(num_span_elements*num_chord_elements*num_wing_part);
-		vtk_wing_wake.gamma.SetName("gamma");
-
-
-		vtk_wing_wake.A_kl.SetNumberOfComponents(1);
-		vtk_wing_wake.A_kl.SetNumberOfTuples(num_span_elements*num_chord_elements*num_wing_part);
-		vtk_wing_wake.A_kl.SetName("A_kl");
-
-		vtk_wing_wake.basepoint_ids = new vtkIdType[][][](num_wing_part,num_span_elements,num_chord_elements);
-
-		foreach(wp_idx, ref wing_part_ls ; wing_lift_surf.wing_part_lift_surf) {
-			foreach(fl_idx, fil; wing_part_ls.spanwise_filaments){
-				foreach(ch_idx, chunk; fil.chunks){
-					foreach(c_idx; 0..chunk_size){
-						double twist = wing_geom.wing_parts[wp_idx].chunks[ch_idx].twist[c_idx];
-						double xp0 = chunk.x[c_idx];
-						double y0 = chunk.y[c_idx];
-						double zp0 = chunk.z[c_idx];
-
-						double x0 = xp0*std.math.cos(twist) + zp0*std.math.sin(twist);
-						double z0 = -xp0*std.math.sin(twist) + zp0*std.math.cos(twist);
-
-						auto p0 = Vec3(x0,y0,z0);
-						auto id0 = vtk_wing_wake.filament_points.InsertNextPoint(p0[0], p0[1], p0[2]);
-
-						vtk_wing_wake.base_points[wp_idx][id0] = p0;
-						vtk_wing_wake.basepoint_ids[wp_idx][ch_idx][fl_idx] = id0;
-					}
-				}
-			}
-
-			foreach(crd_idx; 0..num_chord_elements){
-				foreach(sp_idx; 0..num_span_elements-1){
-					vtkIdType[2] ids = [
-						vtk_wing_wake.basepoint_ids[wp_idx][sp_idx][crd_idx],
-						vtk_wing_wake.basepoint_ids[wp_idx][sp_idx+1][crd_idx]
-					];
-					vtk_wing_wake.grid.InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
-				}
-			}
-		}
-
-		auto point_data = vtk_wing_wake.grid.GetPointData;
-		point_data.AddArray(vtk_wing_wake.gamma);
-		point_data.AddArray(vtk_wing_wake.A_kl);
-
-		return vtk_wing_wake;
-	} else {
-		auto vtk_wing_wake = new VtkWingWake;
-		return vtk_wing;
-	}
-}
-
-void write_wing_wake_vtu(WG, WLS, WIS)(string base_filename, size_t iteration, size_t wing_idx, ref VtkWingWake wing_wake, auto ref WG wing_geom, auto ref WLS wing_lift_surf, auto ref WIS wing_input) {
-	
-	version(Have_vtkd) {
-		writeln("writing wing wake vtu");
-		immutable spanwise_elements = wing_lift_surf.wing_part_lift_surf[0].spanwise_filaments[0].length;
-		immutable chordwise_elements = wing_lift_surf.wing_part_lift_surf[0].spanwise_filaments.length;
-
-		auto wing_wake_writer = vtkXMLUnstructuredGridWriter.New;
-
-		auto aoa_rotation = 
-			Mat3(
-				-std.math.cos(wing_input.angle_of_attack /++ flip_angle+/), 0, -std.math.sin(wing_input.angle_of_attack/+ + flip_angle+/),
-				0, -1, 0,
-				-std.math.sin(wing_input.angle_of_attack /++ flip_angle+/), 0, std.math.cos(wing_input.angle_of_attack /++ flip_angle+/)
-			);
-
-		wing_wake.grid.SetPoints(wing_wake.filament_points);
-
-		foreach(wp_idx, wing_part_ls; wing_lift_surf.wing_part_lift_surf){
-			foreach(pi; wing_wake.base_points[wp_idx].byKeyValue){
-				vtkIdType id = pi.key;
-				Vec3 point = pi.value;
-				auto origin = wing_geom.origin;
-
-				auto aoa_rot = aoa_rotation*point;
-				auto final_p =  aoa_rot + origin;
-				writeln("final_p = ", final_p);
-
-				wing_wake.filament_points.SetPoint(id, final_p[0], final_p[1], final_p[2]);				
-			}
-
-			foreach(fl_idx, fil; wing_part_ls.spanwise_filaments){
-				foreach(ch_idx, chunk; fil.chunks){
-					foreach(c_idx; 0..chunk_size){
-
-						auto id = wing_wake.basepoint_ids[wp_idx][ch_idx][fl_idx];
-
-						wing_wake.gamma.SetTuple1(id, chunk.gamma[c_idx]);
-						wing_wake.A_kl.SetTuple1(id, chunk.A_kl[c_idx]);
-					}
-				}
-			}
-		}
-
-		import std.string : toStringz;
-
-		auto filename = base_filename~"_"~wing_idx.to!string~"_"~iteration.to!string~".vtu";
-
-		wing_wake_writer.SetFileName(filename.toStringz);
-		wing_wake_writer.SetInputData(wing_wake.grid);
-		wing_wake_writer.Write;
 	}
 }
 

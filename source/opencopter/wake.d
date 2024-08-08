@@ -840,7 +840,7 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 							xyz_chunk.mData[1][] = chunk.y[];
 							xyz_chunk.mData[2][] = chunk.z[];
 
-							auto xyz_tpp = inflow.inverse_global_frame * xyz_chunk;
+							auto xyz_tpp = inflow.frame.inverse_global_matrix * xyz_chunk;
 
 							xyz_tpp /= ac.rotors[i_rotor_idx].radius;
 
@@ -899,7 +899,7 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 							xyz_chunk.mData[1][] = chunk.y[];
 							xyz_chunk.mData[2][] = chunk.z[];
 
-							auto xyz_tpp = inflow.inverse_global_frame * xyz_chunk;
+							auto xyz_tpp = inflow.frame.inverse_global_matrix * xyz_chunk;
 
 							xyz_tpp /= ac.rotors[i_rotor_idx].radius;
 
@@ -998,13 +998,13 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 				foreach(i_rotor_idx, ref inflow; inflows) {
 
-					Vec3 origin;
-					if(i_rotor_idx >= ac_state.rotor_states.length) {
-						i_rotor_idx = 0;
-						origin = inflow.origin;
-					} else {
-						origin = ac.rotors[i_rotor_idx].origin;
-					}
+					// Vec3 origin;
+					// if(i_rotor_idx >= ac_state.rotor_states.length) {
+					// 	i_rotor_idx = 0;
+					// 	origin = inflow.origin;
+					// } else {
+					// 	origin = ac.rotors[i_rotor_idx].origin;
+					// }
 					
 					if((i_rotor_idx == 0) && (rotor_idx == 1) && wake_history.hybrid) {
 					 	auto wake_velocities = wake_history.history[1].compute_wake_induced_velocities(chunk.x, chunk.y, chunk.z, ac_state, i_rotor_idx, blade_idx, true, false, false);
@@ -1017,13 +1017,14 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 						xyz_chunk.mData[1][] = chunk.y[];
 						xyz_chunk.mData[2][] = chunk.z[];
 
-						auto xyz_tpp = inflow.inverse_global_frame * xyz_chunk;
+						auto xyz_tpp = inflow.frame.inverse_global_matrix * xyz_chunk;
 
 						xyz_tpp /= ac.rotors[i_rotor_idx].radius;
 
 						immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
 
-						immutable Chunk lambda_i = ac.rotors[i_rotor_idx].radius*i_omega*inflow.inflow_at(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2], chunk.x_e, 0)[];
+						//immutable Chunk lambda_i = ac.rotors[i_rotor_idx].radius*i_omega*inflow.inflow_at(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2], chunk.x_e, 0)[];
+						immutable Chunk lambda_i = inflow.inflow_at(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2], chunk.x_e, 0)[];
 						
 						auto local_inflow = Vector!(4, Chunk)(0);
 

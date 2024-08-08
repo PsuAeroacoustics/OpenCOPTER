@@ -1224,13 +1224,13 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	// 	update_impl(*ac_input, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
 	// }
 
-	void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
-	}
+	// void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, ref AircraftStateT!(AC) ac_state, double dt) {
+	// 	update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	// }
 
-	void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, double dt) {
-		update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, dt);
-	}
+	// void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, AircraftStateT!(AC)* ac_state, double dt) {
+	// 	update_impl(ac_input, aircraft, inflows, freestream_velocity, advance_ratio, axial_advance_ratio, ac_state, dt);
+	// }
 
 	package void compute_loading(RS)(auto ref RS rotor_state) {
 		tau_c[] = 0;
@@ -1337,13 +1337,14 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 	//package void update_impl(RIS, RS, AS)(double C_T, auto ref RIS rotor_input, auto ref RS rotor_state, double _advance_ratio, double _axial_advance_ratio, auto ref AS ac_state, double dt) {
 	//package void update_impl(ArrayContainer AC = ArrayContainer.None)(ref AircraftInputStateT!AC ac_input , Inflow[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
-	package void update_impl(AIS, AG)(auto ref AIS ac_input ,auto ref AG aircraft, InflowT!AC[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, double dt) {
+	//package void update_impl(AIS, AG, AS)(auto ref AIS ac_input ,auto ref AG aircraft, InflowT!AC[] inflows, double freestream_velocity, double _advance_ratio, double _axial_advance_ratio, auto ref AS ac_state, double dt) {
+	void update(InflowT!AC[] inflows, Vec4 freestream_velocity, double dt) {
 		omega = rotor_input.angular_velocity;
 		
 		immutable t_scale = abs(omega);
 
-		advance_ratio = _advance_ratio;
-		axial_advance_ratio = -_axial_advance_ratio;
+		advance_ratio = rotor_state.advance_ratio;
+		axial_advance_ratio = -rotor_state.axial_advance_ratio;
 
 		auto time = dt*curr_state.to!double*t_scale;
 
@@ -1411,7 +1412,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		global_inverse = local_frame.global_matrix.inverse.get;
 		if (advance_ratio > 0) {
-			immutable local_freestream = global_inverse*ac_state.freestream;
+			immutable local_freestream = global_inverse*freestream_velocity;
 			immutable normal = Vec4(0, 0, -1, 0);
 			immutable projected_freestream = local_freestream - local_freestream.dot(normal)*normal;
 			immutable x_axis = Vec4(-1, 0, 0, 0);
@@ -1514,7 +1515,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) {
 		if(!contraction_mapping) {
-			immutable V = inflow_at_impl(this, x, y, z);
+			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, x, y, z)[];
 			return V;
 		} else {
 
@@ -1522,7 +1523,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 			immutable Chunk x_c = x[]/k_bar[];
 			immutable Chunk y_c = y[]/k_bar[];
-			immutable V = inflow_at_impl(this, x_c, y_c, z);
+			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, x_c, y_c, z)[];
 			return V;
 		}
 	}
