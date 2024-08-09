@@ -242,6 +242,8 @@ enum ArrayContainer : int {
 
 template ArrayDeclMixin(ArrayContainer AC, Type, string name) {
 	static if(AC == ArrayContainer.none) {
+		// Nitya: String mixin enable string constants to be compiled
+		//        as regular D code and inserted into the program
 		mixin("Type[] "~name~";");
 	} else {
 		//import opencopter.python : Array;
@@ -270,7 +272,7 @@ void set_array(ref Chunk[] chunks, double[] data) {
 		immutable out_start_idx = c_idx*chunk_size;
 
 		immutable remaining = data.length - out_start_idx;
-		
+		// Nitya: RESULT = (COND) ? ( STATEMENT IF TRUE) : (STATEMENT IF FALSE)
 		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
 		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
 

@@ -36,6 +36,9 @@ extern (C++) struct FilamentChunk {
 
 extern (C++) struct VortexFilamentT(ArrayContainer AC) {
 
+	//Nitya: mixin template from "memory.d" used here 
+	//		 '!' before parentheses is for type declaration 
+	// 		declaring an array of FilamentChunk named chunks 	
 	mixin ArrayDeclMixin!(AC, FilamentChunk, "chunks");
 
 	size_t length;
@@ -46,6 +49,8 @@ extern (C++) struct VortexFilamentT(ArrayContainer AC) {
 
 		immutable num_chunks = wake_history/chunk_size;
 
+		// Nitya: definig the size of the array "chunks"
+		// 		IS D CASE SENSITIVE??
 		mixin(array_ctor_mixin!(AC, "FilamentChunk", "chunks", "num_chunks"));
 
 		foreach(ref chunk; chunks) {
@@ -74,6 +79,7 @@ extern(C++) struct ShedVortexT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, VortexFilamentT!(AC), "shed_filaments");
 
 	private size_t shed_wake_length;
+	// Nitya: WHERE DO WE GET shed_wake_length FROM?
 	this(size_t radial_elements, size_t _shed_wake_length) {
 		shed_wake_length = _shed_wake_length;
 		immutable radial_chunks = radial_elements/chunk_size;
@@ -121,6 +127,7 @@ extern(C++) struct RotorWakeT(ArrayContainer AC) {
 
 template is_wake(A) {
 	enum bool is_wake = {
+		// Nitya: isInstanceOf(S, T) check if template T is an instance of S 
 		static if(isPointer!(A)) {
 			return isInstanceOf!(WakeT, PointerTarget!A);
 		} else {
@@ -140,6 +147,7 @@ struct WakeT(ArrayContainer AC) {
 
 	double[][] smoothing_buffer;
 	double[][] raw_buffer;
+	// Nitya: WHAT ARE THESE BUFFERS FOR?
 
 	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
 
@@ -164,6 +172,7 @@ struct WakeT(ArrayContainer AC) {
 	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
 
 		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
+		// Nitya: WHAT IS wake_history.map??
 
 		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
 
@@ -246,6 +255,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 
 	mixin ArrayDeclMixin!(AC, WakeT!(AC), "history");
 	alias history this;
+	// Nitya: AM I ALIASING 'HISTORY' AS 'THIS' (constructor)?
 
 	immutable double a1 =  6.5e-5;
 
@@ -301,6 +311,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 						foreach(chunk_idx, ref chunk; shed_filament.chunks) {
 							auto fil = history[i].rotor_wakes[rotor_idx].shed_vortices[blade_idx].shed_filaments[f_idx];
 							fil.chunks[chunk_idx] = chunk;
+						// Nitya: AM I ASSIGNING CHUNK BACK TO CHUNK??
 						}
 					}
 					foreach(chunk_idx, ref chunk; filament.chunks) {
@@ -387,7 +398,7 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 
 		i_c_idx += chunk_offset;
 
-		Chunk x_b, y_b, z_b;
+		Chunk x_b, y_b, z_b; // Nitya: what are 'a' and 'b' subscripts? end points of vortex-filament you're working at 
 		Chunk x_a, y_a, z_a;
 
 		Chunk x_bm1, y_bm1, z_bm1;
@@ -396,7 +407,8 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 		Chunk x_bp1, y_bp1, z_bp1;
 		Chunk x_ap1, y_ap1, z_ap1;
 
-		Chunk r_c, r_cm1, r_cp1;
+		Chunk r_c, r_cm1, r_cp1; // Vortex-core size 
+								 // r_c is also used in blade geometry: root_cutout
 
 		x_am1[1..$] = chunk_i.x[0..$-1];
 		y_am1[1..$] = chunk_i.y[0..$-1];
@@ -572,6 +584,10 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 			immutable Chunk r_y3 = y_p[] - y_mp1[];
 			immutable Chunk r_z3 = z_p[] - z_mp1[];
 
+			// Nitya: We are doing average over three vortex elements 
+			//        that's why we are taking three cross-products
+			//        Eq. 54 (except for the averaging part)
+
 			immutable Chunk x_cross1 = r_y1[]*dz_m1[] - r_z1[]*dy_m1[];
 			immutable Chunk y_cross1 = r_z1[]*dx_m1[] - r_x1[]*dz_m1[];
 			immutable Chunk z_cross1 = r_x1[]*dy_m1[] - r_y1[]*dx_m1[];
@@ -587,7 +603,10 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 			immutable Chunk x_cross = (1.0/3.0)*(x_cross1[] + x_cross2[] + x_cross3[]);
 			immutable Chunk y_cross = (1.0/3.0)*(y_cross1[] + y_cross2[] + y_cross3[]);
 			immutable Chunk z_cross = (1.0/3.0)*(z_cross1[] + z_cross2[] + z_cross3[]);
+			
 
+			// Nitya: MISS DISTANCES!!!
+			// 		  miss distance required is total miss distance!!!
 			immutable Chunk miss_dist1 = r_x1[]*r_x1[] + r_y1[]*r_y1[] + r_z1[]*r_z1[];
 			immutable Chunk miss_dist2 = r_x2[]*r_x2[] + r_y2[]*r_y2[] + r_z2[]*r_z2[];
 			immutable Chunk miss_dist3 = r_x3[]*r_x3[] + r_y3[]*r_y3[] + r_z3[]*r_z3[];
@@ -595,6 +614,8 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 			immutable Chunk miss_dist = (1.0/3.0)*(miss_dist1[] + miss_dist2[] + miss_dist3[]);
 			immutable Chunk r_c_ave = (1.0/3.0)*(r_cm1[] + r_c[] + r_cp1[]);
 			import std.stdio : writeln;
+
+			// Nitya: WHAT IS r_c?? 
 
 			immutable Chunk unorm = 1.0/(miss_dist[] + r_c_ave[]*r_c_ave[]);
 			//immutable Chunk unorm = 1.0/(miss_dist[] + r_c[]*r_c[]);
@@ -734,6 +755,7 @@ void smooth_wake_component(string component, VF)(auto ref VF filament, double[] 
 	set_wake_component!component(filament, smooth_buffer);
 }
 
+// Nitya: WHere am I updating wake??
 void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, ref AircraftStateT!AC ac_state, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, I[] inflows, immutable Atmosphere atmo, size_t time_step, double dt) {
 
 	static import std.math;
@@ -779,6 +801,8 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					chunk.z[] = blade_state.chunks[c_idx].z[];
 
 					chunk.gamma[] = wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][] - blade_state.chunks[c_idx].gamma[];
+					// Nitya: Gamma_w - circulation strength of the filament 
+					
 					chunk.l_0[] = 0;
 					chunk.r_0[] = 1.5*ac.rotors[rotor_idx].blades[blade_idx].average_chord;
 					chunk.r_c[] = 1.5*ac.rotors[rotor_idx].blades[blade_idx].average_chord;

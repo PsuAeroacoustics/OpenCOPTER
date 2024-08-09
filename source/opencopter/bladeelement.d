@@ -86,11 +86,12 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		immutable Chunk M_inf = u_inf[]/atmo.speed_of_sound;
 
 		auto gamma = blade_state.circulation_model.compute_bound_circulation_band(blade_state, chunk_idx, rotor_input.angular_velocity, blade.airfoil.lift_curve_slope(chunk_idx), blade.airfoil.zero_lift_aoa(chunk_idx));
-
+	
 		immutable Chunk dimensional_u_inf = u_inf[] * rotor.radius * abs(rotor_input.angular_velocity);
 
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
+		// Nitya: Blade circulation normalized here!!
 
 		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
 		blade_state.chunks[chunk_idx].gamma[] = gamma[];
@@ -258,7 +259,8 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 			atmo
 		);
 	}
-
+	
+	// Nitya: HOW?? 
 	aircraft.update_wake(ac_state, ac_input_state, wake_history, inflows, atmo, iteration, dt);
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {

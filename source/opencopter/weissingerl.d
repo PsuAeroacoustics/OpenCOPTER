@@ -15,6 +15,8 @@ import std.conv;
 import std.math;
 import std.range;
 
+// Nitya: CIRCULATION MODEL
+
 private auto P(double xi_y, double xi_eta, double y, double eta, double local_aspect) {
 	immutable global_divisor = 1.0/(y - eta);
 	immutable numerator = xi_y - xi_eta + 0.5;

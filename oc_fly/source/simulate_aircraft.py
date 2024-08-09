@@ -2,6 +2,8 @@ from ast import operator
 import sys
 import os
 
+# Nitya: This one is responsible for writing out files 
+
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/OpenCOPTER')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
 
@@ -562,6 +564,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 						# fill_dC_cf(blade, y_loading)
 
 						z_loading = -z_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0
+						z_loading = z_loading.astype(dtype=np.single)
+						# Nitya: converting z_loading back to single. For some reason, on the lab computer it's getting converted to double!!
 
 						loading_data.set_z_loading_array(z_loading)
 						loading_data.set_y_loading_array(y_loading)
