@@ -545,7 +545,7 @@ extern(C) void PydMain() {
 
 	def!FrameType_aircraft;
 	def!FrameType_connection;
-	def!FrameType_rotor;
+	def!FrameType_rotor;  // Nitya: I don't understand this syntax
 	def!FrameType_blade;
 	def!FrameType_wing;
 

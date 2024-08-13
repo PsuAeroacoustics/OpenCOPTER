@@ -164,6 +164,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	return blade
 
 def build_component(component_json, parent_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref):
+	# Nitya: What is did_dref for?
 
 	rotors = []
 	blades = []
@@ -189,6 +190,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 	name = component_json["name"]
 	frame_type = component_json["type"]
 	origin = Vec3(component_json["origin"]) if "origin" in component_json else Vec3([0.0, 0.0, 0.0])
+	# Nitya: Vec3 - from opencopter/math/package.d
 	angle_axis = Vec3(component_json["axis"]) if "axis" in component_json else Vec3([1.0, 0.0, 0.0])
 	angle = component_json["axis_angle"]*(math.pi/180.0) if "axis_angle" in component_json else 0.0
 
@@ -196,6 +198,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 	if did_deref:
 		actual_name = name + " " + str(ref_count)
 
+	# Nitya: where do I get information about components_dict and frame_type?
 	components_dict[actual_name] = {
 		"name": actual_name,
 		"frame_type": frame_type,
@@ -210,6 +213,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 	if motion is not None:
 		matched_motions = list(filter(lambda x: x["frame"] == name, motion))
+		# Nitya: l
 		
 		if len(matched_motions) > 0:
 			#print(f'matched_motions: {matched_motions}')
@@ -223,6 +227,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 		name = component_json["name"] + " " + str(ref_count)
 
 	component_frame = Frame(angle_axis, angle, origin, parent_frame, name, frame_type)
+	# Nitya: Frame- opencopter/aircraft/geometry.d
 
 	if frame_type == FrameType_rotor():
 
@@ -315,7 +320,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 
 	components_ref_dict = {}
 	blade_ref_dict = {}
-	rotor_ref_dict = {}
+	rotor_ref_dict = {}  # Initialize an empty dictionary to hold rotor references
 	components_dict = {}
 	if "blades" in geometry:
 		for blade_obj in geometry['blades']:
@@ -333,7 +338,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	for child in geometry["children"]:
 		num_rotors = count_rotors(child, rotor_ref_dict) + num_rotors
 
-	aircraft = Aircraft(num_rotors)
+	aircraft = Aircraft(num_rotors)  # from opencopter/aircrat/geometry.d?
 
 	motion_dict = {}
 	trim_axis_dict = {}
@@ -349,6 +354,8 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	aircraft.root_frame.update(Mat4_identity())
 
 	return aircraft, motion_dict, trim_axis_dict, components_dict
+    #Nitya: Aren't most of these empty?
+
 
 def compute_aero(log_file, args, output_base, do_compute, case):
 
@@ -375,6 +382,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	dt = d_psi/np.max(np.abs(omegas))
 
 	motion_lambdas = [[] for r_idx in range(rotorcraft_system.rotors.length())]
+	# Nitya: What is motion_lambdas??
 	wopwop_motion = {}
 
 	if "motion" in flight_condition:
@@ -386,9 +394,11 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 					for child_motion in flight_condition["motion"]:
 						child_motion = deepcopy(child_motion)
 						if (child.name == child_motion["frame"]) or (child.name[0:-2] == child_motion["frame"]):
+							# Nitya: Why not just the latter condition? I don't undersrand the need for the latter condition
 
 							if motion_vec_dict[child.name][1] == "fourier":
 								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
+								# Nitya: I don't understand what is lambda a ? Online it says that lambda is used to define anonymous function
 
 								wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
@@ -457,6 +467,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
 	#rotor_ratios = rotor_ratios.astype(dtype=np.int64).tolist()
+	# Nitya: What is release ratio?
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
@@ -500,6 +511,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	if do_compute:
 		rotorcraft_state = AircraftState(num_rotors, num_blades, elements, rotorcraft_system)
 		rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
+		# Nitya: figure out maybe later, why this needs to have 4 elements?
 
 	log_file.write(f"Freestream vel: {flight_condition['V_inf']} m/s\n")
 
@@ -526,6 +538,8 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+	# Nitya: Where does this function get defined?
+	 
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 

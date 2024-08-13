@@ -65,6 +65,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 	if "wake_trail_distance" in computational_parameters:
 		wake_trail_distance = computational_parameters["wake_trail_distance"]
+		# Nitya: Just to confirm, we don't have this in the json5 file for hart_ii case!!
 	
 	for o_idx, origin in enumerate(origins):
 		for other_origin in origins:
@@ -384,6 +385,7 @@ def main():
 	# sort cases by total number of wake points. This will helps with load balancing
 	# across many cores
 	flat_cases = sorted(flat_cases, key=lambda tup: tup[3])
+	#Nitya: flat_cases should have 3 cases in the list for the hart_ii case, 'key=lambda tup: tup[3]' sorts the list on the basis of the 4th element of each case, which is 'total_wake_history'
 	
 	total_procs = comm.Get_size()
 
@@ -491,14 +493,17 @@ def main():
 					log_file.write("simulating aero\n")
 					# wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, flight_condition, computational_parameters, results, observer, acoustics, case.wake_lengths, aircraft, case.motion_vec_dict, case.trim_vec_dict)
 					wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, case)
+					# Nitya: This is the calculation part 
 
 					cases = cases + wopwop_cases
 
 					for case in wopwop_cases:
 						write_namelist(case.namelist, f'{case.globalFolderName}/{case.caseNameFile}')
+						# Nitya: This is where wopwop namelist is written 
 
 					prog_file.seek(0)
 					prog_file.write(f'aero {idx + start_idx}')
+					# Nitya: What is this for? I noticed this is the only statement printed in the file
 					prog_file.flush()
 
 			if args.acoustics:

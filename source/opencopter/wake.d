@@ -587,6 +587,8 @@ InducedVelocities compute_filament_induced_velocities(FC)(auto ref FC chunks, im
 			// Nitya: We are doing average over three vortex elements 
 			//        that's why we are taking three cross-products
 			//        Eq. 54 (except for the averaging part)
+			// Vortex interaction angles will need to be calculated 
+			// Most likely in this function 
 
 			immutable Chunk x_cross1 = r_y1[]*dz_m1[] - r_z1[]*dy_m1[];
 			immutable Chunk y_cross1 = r_z1[]*dx_m1[] - r_x1[]*dz_m1[];
