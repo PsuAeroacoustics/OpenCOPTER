@@ -109,7 +109,7 @@
 		],
 		blades: [
 			{
-				type: "blade",
+				type: "blade",  // frame_type
 				name: "hart_blade",
 				origin: [0, 0, 0],
 				AR: 16.5,

@@ -61,7 +61,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 	d_psi = computational_parameters["d_psi"]*math.pi/180.0
 
-	wake_trail_distance = [4 for _ in range(num_rotors)]
+	wake_trail_distance = [4 for _ in range(num_rotors)]  # Nitya: 4 rotor radii 
 
 	if "wake_trail_distance" in computational_parameters:
 		wake_trail_distance = computational_parameters["wake_trail_distance"]
@@ -504,6 +504,8 @@ def main():
 					prog_file.seek(0)
 					prog_file.write(f'aero {idx + start_idx}')
 					# Nitya: What is this for? I noticed this is the only statement printed in the file
+					# Keeps track of where you are, and you can restart the run 
+					# 
 					prog_file.flush()
 
 			if args.acoustics:

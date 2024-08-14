@@ -213,7 +213,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 	if motion is not None:
 		matched_motions = list(filter(lambda x: x["frame"] == name, motion))
-		# Nitya: l
+		# Nitya: lambda is an anonymous function. For each element in the list, it's going to call the function lambda and add those to a new list and return that 
 		
 		if len(matched_motions) > 0:
 			#print(f'matched_motions: {matched_motions}')
@@ -344,6 +344,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	trim_axis_dict = {}
 
 	root_frame, rotors, _ = build_component(geometry, aircraft.root_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, None, requested_elements, geom_directory, motion_dict, motion, trim_frame_name, trim_axis_dict, 0, False)
+	# Nitya: filled here - motion_dict, trim_axis_dict, components_dict
 
 	aircraft.rotors = rotors
 
@@ -354,7 +355,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	aircraft.root_frame.update(Mat4_identity())
 
 	return aircraft, motion_dict, trim_axis_dict, components_dict
-    #Nitya: Aren't most of these empty?
+
 
 
 def compute_aero(log_file, args, output_base, do_compute, case):
@@ -399,6 +400,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 							if motion_vec_dict[child.name][1] == "fourier":
 								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
 								# Nitya: I don't understand what is lambda a ? Online it says that lambda is used to define anonymous function
+								# a- current azimuth angle which gets updated when motion_lambda is called in compute_aero.py, a - function arguement 
 
 								wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
@@ -467,7 +469,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
 	#rotor_ratios = rotor_ratios.astype(dtype=np.int64).tolist()
-	# Nitya: What is release ratio?
+	# Nitya: What is release ratio? - Match the release for rotors with different speed 
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
