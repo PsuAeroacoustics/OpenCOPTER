@@ -61,7 +61,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		immutable shed_vel_dot = shed_vel_vec.dot(blade.chunks[chunk_idx].af_norm);
 		immutable shed_projected_vel = shed_vel_vec - blade.chunks[chunk_idx].af_norm*shed_vel_dot;
 
-		blade_state.chunks[chunk_idx].projected_vel = projected_vel;
+		blade_state.chunks[chunk_idx].projected_vel = blade.frame.global_matrix*projected_vel;
 
 		immutable Chunk wake_z = -projected_vel[2][];
 

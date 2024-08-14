@@ -426,7 +426,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 	auto root_components = geom_dict.byPair.filter!(a => a.value.parent_id == "NONE").assocArray;
 
-	RotorGeometryT!AC*[] build_oc_frame(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
+	RotorGeometryT!AC*[] build_oc_rotor(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
 		
 		RotorGeometryT!AC*[] rotors;
 
@@ -463,8 +463,8 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 					geom_dict[child_id].xml_node
 				);
 
-				rotors ~= build_oc_frame(child1_frame_data, frame_data, true, false);
-				rotors ~= build_oc_frame(child2_frame_data, frame_data, true, true);
+				rotors ~= build_oc_rotor(child1_frame_data, frame_data, true, false);
+				rotors ~= build_oc_rotor(child2_frame_data, frame_data, true, true);
 
 			} else {
 				writeln("geom_dict[child_id].frame.name: ", geom_dict[child_id].frame.name);
@@ -482,7 +482,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 				
 				frame_data.frame.children ~= new_frame.frame;
 
-				rotors ~= build_oc_frame(new_frame, frame_data, symmetry_applied, symmetry_parent);
+				rotors ~= build_oc_rotor(new_frame, frame_data, symmetry_applied, symmetry_parent);
 			}
 		}
 
@@ -629,17 +629,17 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			rotors ~= rotor;
 		}
 
-		writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
+		//writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
 		return rotors;
 	}
 
-	ac.root_frame = new Frame(Vec3(0, 0, 1), 0, Vec3(0, 0, 0), null, "aircraft", "connection");
+	ac.root_frame = new Frame(Vec3(0, 0, 1), 0, Vec3(0, 0, 0), null, "aircraft", "aircraft");
 
 	RotorGeometryT!AC*[] rotors;
 	foreach(comp_id, ref root_component; root_components) {
 		ac.root_frame.children ~= root_component.frame;
 		root_component.frame.parent = ac.root_frame;
-		rotors ~= build_oc_frame(&root_component, null, false, false);
+		rotors ~= build_oc_rotor(&root_component, null, false, false);
 	}
 
 	writeln("rotors.length: ", rotors.length);

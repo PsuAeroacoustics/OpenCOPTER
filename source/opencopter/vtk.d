@@ -343,7 +343,7 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 
 					if(c_idx != 0 || idx != 0) {
 						vtkIdType[2] ids = [last_id, id0];
-						vtk_rotor.grid.InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
+						vtk_rotor.grid.InsertNextCell(VTK__LINE, ids.length, ids.ptr);
 					}
 
 					last_id = id0;
@@ -574,7 +574,7 @@ VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 							if((idx > 0) || ((idx == 0) && (c_idx > 0))) {
 								vtkIdType[2] ids = [last_point_id, point_id];
 
-								auto cell_id = vtk_wake.rotor_wakes[rotor_idx].shed_grids[shed_idx].InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
+								auto cell_id = vtk_wake.rotor_wakes[rotor_idx].shed_grids[shed_idx].InsertNextCell(VTK__LINE, ids.length, ids.ptr);
 								vtk_wake.rotor_wakes[rotor_idx].shed_cell_ids ~= cell_id;
 
 								vtk_wake.rotor_wakes[rotor_idx].shed_circ[shed_idx].SetTuple1(cell_id, 0);
@@ -633,7 +633,7 @@ VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 						if((idx > 0) || ((idx == 0) && (c_idx > 0))) {
 							vtkIdType[2] ids = [last_point_id, point_id];
 
-							auto cell_id = vtk_wake.rotor_wakes[rotor_idx].tip_grids[blade_idx].InsertNextCell(VTK__POLY_LINE, ids.length, ids.ptr);
+							auto cell_id = vtk_wake.rotor_wakes[rotor_idx].tip_grids[blade_idx].InsertNextCell(VTK__LINE, ids.length, ids.ptr);
 
 							vtk_wake.rotor_wakes[rotor_idx].tip_cell_ids ~= cell_id;
 
