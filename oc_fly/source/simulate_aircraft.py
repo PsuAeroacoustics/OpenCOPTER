@@ -500,13 +500,14 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 				for rotor_idx, rotor in enumerate(vehicle.ac_state.rotor_states):
 
-					blade_idx = 2
+					blade_idx = 2   
+					# What's the point of making blade_idx 2??
 					if rotor_idx > 0:
 						blade_idx = 1
 
 					if start_recording and not done_recording:
 						for t_idx in range(len(target_span_elements)):
-							rotor_idx
+							rotor_idx  # Nitya: WHY?
 							dC_L = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].dC_L[target_span_element_index[rotor_idx][t_idx]]
 							aoa_eff = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].aoa_eff[target_span_element_index[rotor_idx][t_idx]]
 							aoa = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].aoa[target_span_element_index[rotor_idx][t_idx]]

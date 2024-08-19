@@ -164,7 +164,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	return blade
 
 def build_component(component_json, parent_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref):
-	# Nitya: What is did_dref for?
+	# Nitya: What is did_dref for? Just for making sure that everything has an unique name!
 
 	rotors = []
 	blades = []
@@ -198,7 +198,6 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 	if did_deref:
 		actual_name = name + " " + str(ref_count)
 
-	# Nitya: where do I get information about components_dict and frame_type?
 	components_dict[actual_name] = {
 		"name": actual_name,
 		"frame_type": frame_type,
@@ -383,7 +382,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	dt = d_psi/np.max(np.abs(omegas))
 
 	motion_lambdas = [[] for r_idx in range(rotorcraft_system.rotors.length())]
-	# Nitya: What is motion_lambdas??
+	# Nitya: What is motion_lambdas?? - just for storing motion conditions (no special meaning for lambda, I guess)
 	wopwop_motion = {}
 
 	if "motion" in flight_condition:
@@ -396,6 +395,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 						child_motion = deepcopy(child_motion)
 						if (child.name == child_motion["frame"]) or (child.name[0:-2] == child_motion["frame"]):
 							# Nitya: Why not just the latter condition? I don't undersrand the need for the latter condition
+							# In order to have a unique name for everything, numbers are added to the name if it's repeated (done with did_deref). This is why, it compares w/o last two elements too 
 
 							if motion_vec_dict[child.name][1] == "fourier":
 								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
@@ -541,6 +541,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	# Nitya: Where does this function get defined?
+	# There us a wrapper function in python.d which aliases HuangPetersInflow as HuangPeters
 	 
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
