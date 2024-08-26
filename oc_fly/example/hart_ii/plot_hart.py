@@ -1159,14 +1159,14 @@ if __name__ == "__main__":
 	plot_blade_twist('MN')
 	plot_blade_twist('MV')
 
-	# plot_blade_normal_pressures('BL')
-	# plot_wake_trajectory('BL')
-	# plot_acoustic_contours("BL")
+	plot_blade_normal_pressures('BL')
+	plot_wake_trajectory('BL')
+	plot_acoustic_contours("BL")
 
-	# plot_blade_normal_pressures('MN')
-	# plot_wake_trajectory('MN')
-	# plot_acoustic_contours("MN")
+	plot_blade_normal_pressures('MN')
+	plot_wake_trajectory('MN')
+	plot_acoustic_contours("MN")
 
-	# plot_blade_normal_pressures('MV')
-	# plot_wake_trajectory('MV')
-	# plot_acoustic_contours("MV")
+	plot_blade_normal_pressures('MV')
+	plot_wake_trajectory('MV')
+	plot_acoustic_contours("MV")

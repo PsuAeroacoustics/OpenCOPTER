@@ -62,6 +62,36 @@ void set_rotation_matrix(ref Mat4 mat4, ref Mat3 rot_mat) {
 	mat4[2, 2] = rot_mat[2, 2];
 }
 
+Mat3 build_rotation_matrix(Vec3 axis, double angle) {
+	Mat3 temp_mat;
+	double cs = cos(angle);
+	double sn = sin(angle);
+
+	double x = axis[0];
+	double y = axis[1];
+	double z = axis[2];
+
+	double mag = sqrt((x*x)+(y*y)+(z*z));
+	x = x/mag;
+	y = y/mag;
+	z = z/mag;
+	
+	double xx = x*x;
+	double xy = x*y;
+	double xz = x*z;
+	double yy = y*y;
+	double yz = y*z;
+	double zz = z*z;
+	double one_cs = 1 - cs;
+	
+	alias M = temp_mat;
+	M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
+	M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
+	M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
+
+	return temp_mat;
+}
+
 void print_frame(F)(F frame, int depth = 0) {
 	import std.stdio : writeln;
 	import std.range : repeat;

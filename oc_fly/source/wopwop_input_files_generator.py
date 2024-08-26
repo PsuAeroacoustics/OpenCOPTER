@@ -21,10 +21,10 @@ def flatten_children(frame, termination_type):
 
 			components = _flatten_children(frame.parent, termination_type)
 
-			if (frame.parent.get_frame_type() == FrameType_rotor()):
-				components.append(frame)
-			else:
-				components.append(frame.parent)
+			#if (frame.parent.get_frame_type() == FrameType_rotor()):
+			components.append(frame)
+			#else:
+			#	components.append(frame.parent)
 				
 			return components
 
@@ -34,7 +34,7 @@ def flatten_children(frame, termination_type):
 			return frame
 		
 	flat_children = _flatten_children(frame, termination_type)
-	flat_children = flat_children[1:len(flat_children)]
+	#flat_children = flat_children[1:len(flat_children)]
 	return flat_children
 
 def make_cb(frame, wopwop_motion, rotor_phase):
@@ -100,7 +100,7 @@ def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
 
 	flat_frame_list = flatten_children(blade.frame, FrameType_rotor())
 
-	cob_list = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list]
+	cob_list = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list[:-1]]
 	cob_list.append(make_cb(blade.frame, wopwop_motion, None))
 	blade_cntr.cobs = cob_list
 

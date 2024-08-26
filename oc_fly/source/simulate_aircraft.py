@@ -310,12 +310,16 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	blade_flapping = None
 	elastic_twist = None
 
-	# for rotor_idx in range(num_rotors):
-	# 	write_rotor_vtu(f"{vtu_output_path}/rotor", 1000000000, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.input_state.rotor_inputs[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
+	# for motion_lambda in vehicle.motion_lambdas:
+	# 	motion_lambda(vehicle.input_state.rotor_inputs, rotor_idx)
 	
-	# convergence_rev_multiple = 1
-	# if "convergence_rev_multiple" in computational_parameters:
-	# 	convergence_rev_multiple = computational_parameters["convergence_rev_multiple"]
+	# vehicle.aircraft.root_frame.update(Mat4_identity())
+	# for rotor_idx in range(num_rotors):
+	# 	write_rotor_vtu(f"{vtu_output_path}/rotor", 1000000000, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
+
+	convergence_rev_multiple = 1
+	if "convergence_rev_multiple" in computational_parameters:
+		convergence_rev_multiple = computational_parameters["convergence_rev_multiple"]
 
 	max_l2 = 1000
 
@@ -426,8 +430,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			for rotor_idx, rotor in enumerate(vehicle.aircraft.rotors):
 				_ = basic_single_rotor_dynamics(vehicle.input_state.rotor_inputs[rotor_idx], dt)
 
-				for motion_lambda in vehicle.motion_lambdas[rotor_idx]:
-					motion_lambda(vehicle.input_state.rotor_inputs[rotor_idx].azimuth)
+			for motion_lambda in vehicle.motion_lambdas:
+				motion_lambda(vehicle.input_state.rotor_inputs)
 
 			step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt)
 

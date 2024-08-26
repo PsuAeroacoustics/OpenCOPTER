@@ -7,7 +7,8 @@
 
 		convergence_criteria: 1.0e-1,
 		post_conv_revolutions: 2,
-		wake_trail_distance: [4, 4, 4, 4],
+		//wake_trail_distance: [4, 4, 4, 4],
+		wake_trail_distance: [0, 0, 0, 0],
 		// convergence_criteria: 1.0e-1,
 		// post_conv_revolutions: 1,
 		// wake_trail_distance: [1, 1],
@@ -49,24 +50,34 @@
 			//trim_frame: "pitch hinge",
 			motion: [
 				{
-					frame: "CruiseProp",
-					blade_element_func: "rotation",
-					omega: -200
-				},
-                {
 					frame: "LiftRotor",
 					blade_element_func: "rotation",
 					omega: 200
+				},
+				{
+					frame: "LiftRotor_symmetry",
+					blade_element_func: "rotation",
+					omega: -200
+				},
+				{
+					frame: "CruiseProp",
+					blade_element_func: "rotation",
+					omega: -200
 				},
                 {
 					frame: "CruiseProp_symmetry",
 					blade_element_func: "rotation",
 					omega: 200
 				},
-                {
-					frame: "LiftRotor_symmetry",
-					blade_element_func: "rotation",
-					omega: -200
+				{
+					frame: "HingeGeom",
+					axis_angle_function: "static",
+					angle: 30
+				},
+				{
+					frame: "HingeGeom_symmetry",
+					axis_angle_function: "static",
+					angle: 30
 				}
 			],
 			hybrid: false,

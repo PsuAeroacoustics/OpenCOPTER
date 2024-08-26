@@ -25,7 +25,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 	static import std.math;
 
 	import std.stdio : writeln;
-	
+
 	foreach(chunk_idx; 0..blade.chunks.length) {
 
 		immutable Chunk effective_azimuth = blade_state.azimuth - std.math.sgn(rotor_input.angular_velocity)*blade.chunks[chunk_idx].sweep[];
@@ -61,7 +61,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		immutable shed_vel_dot = shed_vel_vec.dot(blade.chunks[chunk_idx].af_norm);
 		immutable shed_projected_vel = shed_vel_vec - blade.chunks[chunk_idx].af_norm*shed_vel_dot;
 
-		blade_state.chunks[chunk_idx].projected_vel = blade.frame.global_matrix*projected_vel;
+		blade_state.chunks[chunk_idx].projected_vel = /+blade.frame.global_matrix*+/projected_vel;
 
 		immutable Chunk wake_z = -projected_vel[2][];
 
@@ -76,6 +76,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
 		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
+
 		immutable Chunk theta = (rotor_input.blade_pitches[blade_idx] + blade.chunks[chunk_idx].twist[])[]*cos_sweep[];
 		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
@@ -236,7 +237,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 				immutable Chunk adjusted_r = blade.chunks[chunk_idx].r[] - blade.r_c;
 				local_blade_pos[0][] = adjusted_r[]*aircraft.rotors[rotor_idx].radius;
 				local_blade_pos[1][] = blade.chunks[chunk_idx].xi[]*aircraft.rotors[rotor_idx].radius;
-				local_blade_pos[1][] = 0;
+				local_blade_pos[2][] = 0;
 				local_blade_pos[3][] = 1;
 
 				auto global_blade_pos = blade.frame.global_matrix * local_blade_pos;

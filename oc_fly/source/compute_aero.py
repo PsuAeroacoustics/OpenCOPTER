@@ -20,13 +20,16 @@ import numpy as np
 
 from os import path, makedirs
 
-def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, motion_axis: Vec3, azimuth_offset: float, azimuth: float):
+def static_motion(angle, vec, frame, rotor_inputs, r_idx):
+	frame.set_rotation(vec, angle)
+
+def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, motion_axis: Vec3, azimuth_offset: float, rotor_inputs, _r_idx):
 	h = 0
 	h_star = 0
 
 	for idx in range(len(a)):
-		cos = math.cos(float(idx)*(azimuth + azimuth_offset))
-		sin = math.sin(float(idx)*(azimuth + azimuth_offset))
+		cos = math.cos(float(idx)*(rotor_inputs[_r_idx].azimuth + azimuth_offset))
+		sin = math.sin(float(idx)*(rotor_inputs[_r_idx].azimuth + azimuth_offset))
 
 		h = h + a[idx]*cos + b[idx - 1]*sin
 
@@ -35,8 +38,8 @@ def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, moti
 
 	frame.set_rotation(motion_axis, h)
 
-def constant_motion(omega: float, dt: float, frame: Frame, motion_axis: Vec3, azimuth: float):
-	frame.set_rotation(motion_axis, azimuth)
+def constant_motion(omega: float, dt: float, frame: Frame, motion_axis: Vec3, rotor_inputs, _r_idx):
+	frame.set_rotation(motion_axis, rotor_inputs[_r_idx].azimuth)
 
 def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 
@@ -256,9 +259,11 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 		rotating_rotor_frame = Frame(angle_axis, angle, origin, component_frame, name, frame_type)
 		rotating_rotor_frame.children = child_components
+		for child in child_components:
+			child.parent = rotating_rotor_frame
 
 		component_frame.name = component_frame.name + " fixed"
-
+		component_frame.set_frame_type("connection")
 		component_frame.children = [rotating_rotor_frame]
 
 		rotor = build_rotor(blades, rotating_rotor_frame, current_rotor_radius)
@@ -358,7 +363,6 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	rotorcraft_system = case.aircraft
 	motion_vec_dict = case.motion_vec_dict
 	trim_vec_dict = case.trim_vec_dict
-	component_dict = case.component_dict
 
 	num_rotors = rotorcraft_system.rotors.length()
 
@@ -371,56 +375,72 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	d_psi = computational_parameters["d_psi"]*math.pi/180.0
 	dt = d_psi/np.max(np.abs(omegas))
 
-	motion_lambdas = [[] for r_idx in range(rotorcraft_system.rotors.length())]
+	motion_lambdas = []
 	wopwop_motion = {}
 
 	if "motion" in flight_condition:
-		for r_idx, rotor in enumerate(rotorcraft_system.rotors):
+		def ends_with_blade(frame):
+			if frame.get_frame_type() == FrameType_blade():
+				the_blade = None
+				for rotor in rotorcraft_system.rotors:
+					for blade in rotor.blades:
+						if blade.frame == frame:
+							the_blade = blade
+				return (True, the_blade)
+			else:
+				for child in frame.children:
+					has_blade, blade = ends_with_blade(child)
+					if has_blade:
+						return (has_blade, blade)
 
-			def build_motion_lambdas(parent_frame, azimuth_offset):
-				sub_motion_lambdas = []
-				for child in parent_frame.children:
-					for child_motion in flight_condition["motion"]:
-						child_motion = deepcopy(child_motion)
-						if (child.name == child_motion["frame"]) or (child.name[0:-2] == child_motion["frame"]):
-
-							if motion_vec_dict[child.name][1] == "fourier":
-								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
-
-								wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
-
-							elif motion_vec_dict[child.name][1] == "constant":
-								omega = motion["omega"]
-								motion_lambda = lambda a, omega=omega, dt=dt, frame=child, vec=motion_vec_dict[rotor_frame.name][0]: constant_motion(omega, dt, frame, vec, a)
-								wopwop_motion[child.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[child.name][0]}
-
-							sub_motion_lambdas.append(deepcopy(motion_lambda))
-
-					sub_motion_lambdas = sub_motion_lambdas + build_motion_lambdas(child, azimuth_offset)
-
-				return sub_motion_lambdas
+			return (False, None)
 			
-			rotor_frame = rotor.frame
+		def get_rotor(rotor_frame):
+			for r_idx, rotor in enumerate(rotorcraft_system.rotors):
+				if rotor_frame == rotor.frame:
+					return (rotor, r_idx)
+				
+		def build_motion_lambdas(parent_frame, azimuth_offset, r_idx):
+			sub_motion_lambdas = []
 
-			for motion in flight_condition["motion"]:
-				motion = deepcopy(motion)
-				if rotor_frame.name == motion["frame"]:
-					if motion_vec_dict[rotor_frame.name][1] == "fourier":
+			for child in parent_frame.children:
 
-						#motion_lambda = lambda a: fourier_motion(motion["cos"], motion["sin"], dt, rotor.frame, motion_vec_dict[rotor_frame.name][0], 0, a)
-						motion_lambda = lambda a, cos=motion["cos"], sin=motion["sin"], dt=dt, frame=rotor_frame, vec=motion_vec_dict[rotor_frame.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
-						wopwop_motion[rotor_frame.name] = {"type": "fourier", "A": motion["cos"], "B": motion["sin"], "vector": motion_vec_dict[rotor_frame.name][0]}
+				rotor = None
+				if (child.get_frame_type() == FrameType_rotor()):
+					(rotor, r_idx) = get_rotor(child)
+					log_file.write(f"Rotor {child.name} is rotor {r_idx}\n")	
 
-					elif motion_vec_dict[rotor_frame.name][1] == "constant":
-						print(f"Adding constant motion lambda for rotor {rotor.frame.name}")
-						omega = motion["omega"]
-						motion_lambda = lambda a, omega=omega, dt=dt, frame=rotor.frame, vec=motion_vec_dict[rotor_frame.name][0]: constant_motion(omega, dt, frame, vec, a)
-						wopwop_motion[rotor_frame.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[rotor_frame.name][0]}
+				if (rotor is not None) and (rotor.blades.length() == len(parent_frame.children)):
+					has_blade, blade = ends_with_blade(child)
+					if has_blade:
+						azimuth_offset = blade.azimuth_offset
 
-					motion_lambdas[r_idx].append(deepcopy(motion_lambda))
+				for child_motion in flight_condition["motion"]:
+					child_motion = deepcopy(child_motion)
+					if (child.name == child_motion["frame"]) or (child.name[0:-2] == child_motion["frame"]):
+						if motion_vec_dict[child.name][1] == "fourier":
+							log_file.write(f"Adding fourier motion lambda for frame {child.name} with azimuth offset {azimuth_offset}. Part of rotor {r_idx}\n")
+							motion_lambda = lambda rotor_inputs, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset, _r_idx=r_idx: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, rotor_inputs, _r_idx)
+							wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
-			for b_idx, attach_frame in enumerate(rotor_frame.children):
-				motion_lambdas[r_idx] = motion_lambdas[r_idx] + build_motion_lambdas(attach_frame, rotor.blades[b_idx].azimuth_offset)
+						elif motion_vec_dict[child.name][1] == "constant":
+							log_file.write(f"Adding constant motion lambda for frame {child.name}. Part of rotor {r_idx}\n")
+							omega = child_motion["omega"]
+							motion_lambda = lambda rotor_inputs, _r_idx=r_idx, _omega=omega, dt=dt, frame=child, vec=motion_vec_dict[child.name][0]: constant_motion(_omega, dt, frame, vec, rotor_inputs, _r_idx)
+							wopwop_motion[child.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[child.name][0]}
+
+						elif motion_vec_dict[child.name][1] == "static":
+							log_file.write(f"Adding static motion lambda for frame {child.name}\n")
+							angle = child_motion["angle"]*(math.pi/180.0)
+							motion_lambda = lambda rotor_inputs, _r_idx=r_idx, angle=angle, frame=child, vec=motion_vec_dict[child.name][0]: static_motion(angle, vec, frame, rotor_inputs, _r_idx)
+
+						sub_motion_lambdas.append(deepcopy(motion_lambda))
+
+				sub_motion_lambdas = sub_motion_lambdas + build_motion_lambdas(child, azimuth_offset, r_idx)
+
+			return sub_motion_lambdas
+
+		motion_lambdas = build_motion_lambdas(rotorcraft_system.root_frame, 0, 0)
 
 	trim_lambdas = []
 
@@ -453,7 +473,6 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
-	#rotor_ratios = rotor_ratios.astype(dtype=np.int64).tolist()
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
@@ -529,13 +548,8 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 
 	print(f'num_blades: {num_blades}')
 	
-	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	#rotorcraft_inflows = [HuangPeters(6, 4, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-
+	
 	a1 = 6.5e-5
 	if "a1" in computational_parameters:
 		a1 = computational_parameters['a1']
@@ -582,7 +596,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	)
 	
 	if do_compute:
-		# results_dictionary = {}
+
 		for r_idx in range(num_rotors):
 			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
 			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
@@ -614,8 +628,6 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
 						start = Vec3(inflow_slice["slice_start"])
 
-						#aoa =  vehicle.input_state.rotor_inputs[0].angle_of_attack
-						#write_inflow_vtu(f"{vtu_output_path}/../inflow_model_slice_    .vtu", vehicle.inflows, deltas, start, res_x, res_y, res_z, 0, omegas[0], vehicle.aircraft.rotors)
 						write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
 
 				if 'wake_slices' in results:

@@ -3,9 +3,11 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		shed_history_angle: [45],
-		wake_trail_distance: [5],
+		//wake_trail_distance: [5],
+		wake_trail_distance: [0],
 		shed_release_angle: 1.0,
-		convergence_criteria: 1.0e-5,
+		//convergence_criteria: 1.0e-5,
+		convergence_criteria: 1.0e-1,
 		convergence_type: "wake",
 		r_0: [1.0],
 		a1: 1.0e-5,
@@ -88,7 +90,7 @@
 		},
 		{
 			name: "MN",
-			aoa: 4.5,
+			aoa: 4.3,
 			density: 1.1931,
 			sos: 342.2,
 			T: [
