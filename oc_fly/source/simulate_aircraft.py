@@ -313,9 +313,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	# for rotor_idx in range(num_rotors):
 	# 	write_rotor_vtu(f"{vtu_output_path}/rotor", 1000000000, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.input_state.rotor_inputs[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
 	
-	# convergence_rev_multiple = 1
-	# if "convergence_rev_multiple" in computational_parameters:
-	# 	convergence_rev_multiple = computational_parameters["convergence_rev_multiple"]
+	convergence_rev_multiple = 1
+	if "convergence_rev_multiple" in computational_parameters:
+		convergence_rev_multiple = computational_parameters["convergence_rev_multiple"]
 
 	max_l2 = 1000
 

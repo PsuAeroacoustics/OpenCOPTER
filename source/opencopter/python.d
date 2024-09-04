@@ -96,7 +96,7 @@ double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
  +/
 class Inflow {
 	Inflow_D get_wrapped_inflow(){ assert (0);}
-	void update(Inflow_D[] inflows, Vec4 freestream_velocity, double dt);
+	void update(Inflow_D[] inflows, Vec4 freestream_velocity, double dt) { assert(0); };
 	//void update(PyAircraftInputState* ac_input, PyAircraft* aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, PyAircraftState* ac_state, double dt) { assert(0); }
 	//void update(ref PyAircraftInputState ac_input, ref PyAircraft aircraft, Inflow_D[] inflows,double freestream_velocity, double advance_ratio, double axial_advance_ratio, ref PyAircraftState ac_state, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack) { assert(0); }

@@ -340,7 +340,8 @@ void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_s
 
 	get_ind_vel_on_rotor(ac_state.rotor_states, aircraft.rotors, ac_input_state.rotor_inputs, aircraft.wings, ac_input_state.wing_inputs, ac_state.wing_states, inflows);
 
-	foreach(inflow_idx; num_rotors..inflows.length){
+	//foreach(inflow_idx; num_rotors..inflows.length){
+	foreach(inflow_idx; 0..inflows.length){
 		//writeln("iterting through wing update function");
 		//inflows[inflow_idx].update(ac_input_state, aircraft, inflows,ac_input_state.wing_inputs[0].freestream_velocity, 0.0, 0.0, dt);	
 		inflows[inflow_idx].update(inflows, ac_state.freestream, dt);

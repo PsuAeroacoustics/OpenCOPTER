@@ -65,7 +65,7 @@ template is_aircraft_state(A) {
 
 alias AircraftState = AircraftStateT!(ArrayContainer.none);
 
- struct AircraftStateT(ArrayContainer _AC) {
+struct AircraftStateT(ArrayContainer _AC) {
 	alias AC = _AC;
 	mixin ArrayDeclMixin!(AC, RotorStateT!(AC), "rotor_states");
 	mixin ArrayDeclMixin!(AC, WingStateT!(AC), "wing_states");

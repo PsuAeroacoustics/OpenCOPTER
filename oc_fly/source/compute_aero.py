@@ -307,12 +307,33 @@ def count_rotors(component, rotor_ref_dict):
 
 	return num_rotors
 
+def count_wings(component, wing_ref_dict):
+	num_wings = 0
+
+	if "type" in component:
+		if "wing" == component["type"]:
+			num_wings = 1
+
+	if "ref" in component:
+		referenced_component_name = component["ref"]
+		if referenced_component_name in wing_ref_dict:
+			if "children" in wing_ref_dict[referenced_component_name]:
+				for child in wing_ref_dict[referenced_component_name]["children"]:
+					num_wings = num_wings + count_wings(child) + 1
+	else:
+		if "children" in component:
+			for child in component["children"]:
+				num_wings = num_wings + count_wings(child, wing_ref_dict)
+
+	return num_wings
+
 def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_frame_name):
 	print("building aircraft")
 
 	components_ref_dict = {}
 	blade_ref_dict = {}
 	rotor_ref_dict = {}
+	wing_ref_dict = {}
 	components_dict = {}
 	if "blades" in geometry:
 		for blade_obj in geometry['blades']:
@@ -326,11 +347,19 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 		for rotor_obj in geometry["rotors"]:
 			rotor_ref_dict[rotor_obj["name"]] = {"obj": rotor_obj, "ref_count": 0}
 
+	if "wings" in geometry:
+		for wing_obj in geometry["wings"]:
+			wing_ref_dict[wing_obj["name"]] = {"obj": wing_obj, "ref_count": 0}
+
 	num_rotors = 0
 	for child in geometry["children"]:
 		num_rotors = count_rotors(child, rotor_ref_dict) + num_rotors
 
-	aircraft = Aircraft(num_rotors)
+	num_wings = 0
+	for child in geometry["children"]:
+		num_wings = count_wings(child, rotor_ref_dict) + num_wings
+
+	aircraft = Aircraft(num_rotors, num_wings)
 
 	motion_dict = {}
 	trim_axis_dict = {}
@@ -361,6 +390,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	component_dict = case.component_dict
 
 	num_rotors = rotorcraft_system.rotors.length()
+	num_wings = rotorcraft_system.wings.length()
 
 	omegas = []
 	for m in flight_condition['motion']:
@@ -484,18 +514,27 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	log_file.write(f'wake_history_length: {wake_history_length}\n') # this must be a list of integers
 
 	num_blades = [rotor.blades.length() for rotor in rotorcraft_system.rotors]
+	num_wing_parts = [1 for wing in rotorcraft_system.wings]
 
 	r = generate_radius_points(requested_elements)
 	elements = len(r)
 	log_file.write(f"requested_elements: {requested_elements}, actual elements:  {elements}\n")
 
+	span_elements = 32
+	chord_elements = 8
+
+	if "span_elements" in computational_parameters:
+		span_elements = computational_parameters["span_elements"]
+
+	if "chord_elements" in computational_parameters:
+		chord_elements = computational_parameters["chord_elements"]
 	# AircraftState is the top level container for holding the current
 	# aerodynamic state of the tandem_system. It breaks down into rotors
 	# the the individual blades. There is a series of functions provided
 	# to turn internal state data into a linear array.
 	rotorcraft_state = None
 	if do_compute:
-		rotorcraft_state = AircraftState(num_rotors, num_blades, elements, rotorcraft_system)
+		rotorcraft_state = AircraftState(num_rotors, num_blades, elements, num_wings, num_wing_parts, span_elements, chord_elements, rotorcraft_system)
 		rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
 
 	log_file.write(f"Freestream vel: {flight_condition['V_inf']} m/s\n")
@@ -503,7 +542,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	# Create and setup the input state. This would be the
 	# sort of input a dynamics simulator might feed into
 	# the aero model.
-	rotorcraft_input_state = AircraftInputState(num_rotors, num_blades)
+	rotorcraft_input_state = AircraftInputState(num_rotors, num_blades, num_wings)
 
 	rotorcraft_system.root_frame.rotate(Vec3([0, 1, 0]), flight_condition["aoa"]*(math.pi/180.0))
 
@@ -531,7 +570,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 4, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_state.rotor_states[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_state.rotor_states[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]

@@ -9,6 +9,7 @@ from libwopwopd import *
 import json
 import numpy as np
 import math
+import argparse
 
 import matplotlib.pyplot as plt
 
@@ -265,7 +266,7 @@ UPM_DATA_TR_DBA = {
 	"ID5": ["", "", ""],
 }
 
-def plot_acoustic_contours_fs(plot_name: str, plot_hybrid = False):
+def plot_acoustic_contours_fs(plot_name: str, presentation: bool, plot_hybrid = False):
 	#x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
 
 	namelist = parse_namelist(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system/case.nam')
@@ -286,9 +287,9 @@ def plot_acoustic_contours_fs(plot_name: str, plot_hybrid = False):
 	rotor_z = 2*np.sin(phi)
 
 	for r_idx, freq_range in enumerate(namelist.observers[0].ranges):
-		oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.frequency_ranges_db[r_idx]]
+		#oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.frequency_ranges_db[r_idx]]
 
-		oaspl_db = [[oaspl_linear[j*i_max + i] for i in range(i_max)] for j in range(j_max)]
+		#oaspl_db = [[oaspl_linear[j*i_max + i] for i in range(i_max)] for j in range(j_max)]
 
 		oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.frequency_ranges_dba[r_idx]]
 
@@ -304,25 +305,25 @@ def plot_acoustic_contours_fs(plot_name: str, plot_hybrid = False):
 		x = np.asarray(x)
 		x = x + x_delta
 
-		clevels = np.linspace(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][2])
-		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1])
+		# clevels = np.linspace(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][2])
+		# cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1])
 
-		fig = plt.figure()
+		# fig = plt.figure()
 
-		plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.5, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
-		clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
-		plt.ylabel('x [m]')
-		plt.xlabel('y [m]')
-		plt.title('OpenCOPTER Standard')
-		plt.axis('scaled')
+		# plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.5, cmap=cmap_lines, norm=cnorm)
+		# plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		# clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size4)
+		# plt.ylabel('x [m]')
+		# plt.xlabel('y [m]')
+		# plt.title('OpenCOPTER Standard')
+		# plt.axis('scaled')
 
-		for label in clabels:
-			label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+		# for label in clabels:
+		# 	label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
 
-		cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
-		fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
-		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dB.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		# cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
+		# fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
+		# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dB.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
 
 		clevels = np.linspace(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][2])
 		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DBA[plot_name][r_idx][1])
@@ -402,9 +403,15 @@ def plot_acoustic_contours_fs(plot_name: str, plot_hybrid = False):
 		cax = fig.add_axes([0.95, 0.31, 0.02, 0.37])
 		fig.colorbar(plt1, cax, orientation='vertical', label='OASPL [dBA]')
 		if not plot_hybrid:
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			if not presentation:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			else:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_dBA.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 		else:
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_hybrid_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			if not presentation:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_hybrid_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			else:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_hybrid_dBA.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 
 		plt.clf()
 		plt.cla()
@@ -545,7 +552,7 @@ def plot_acoustic_contours_mr(plot_name: str):
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_MR_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
 		#plt.show()
 
-def plot_acoustic_contours_tr(plot_name: str, plot_hybrid = False):
+def plot_acoustic_contours_tr(plot_name: str, presentation: bool, plot_hybrid = False):
 	#x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
 
 	namelist = parse_namelist(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/rotor_1/case.nam')
@@ -563,9 +570,9 @@ def plot_acoustic_contours_tr(plot_name: str, plot_hybrid = False):
 	rotor_z = 2*np.sin(phi)
 
 	for r_idx, freq_range in enumerate(namelist.observers[0].ranges):
-		oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.frequency_ranges_db[r_idx]]
+		#oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.frequency_ranges_db[r_idx]]
 
-		oaspl_db = [[oaspl_linear[j*i_max + i] for i in range(i_max)] for j in range(j_max)]
+		#oaspl_db = [[oaspl_linear[j*i_max + i] for i in range(i_max)] for j in range(j_max)]
 
 		oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.frequency_ranges_dba[r_idx]]
 
@@ -578,22 +585,22 @@ def plot_acoustic_contours_tr(plot_name: str, plot_hybrid = False):
 		x = np.asarray(x)
 		x = x + x_delta
 
-		clevels = np.linspace(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][2])
-		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1])
+		# clevels = np.linspace(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][2])
+		# cnorm = plt.Normalize(ACOUSTIC_BOUNDS_DB[plot_name][r_idx][0], ACOUSTIC_BOUNDS_DB[plot_name][r_idx][1])
 
-		fig = plt.figure()
+		# fig = plt.figure()
 
-		plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.1, cmap=cmap_lines, norm=cnorm)
-		plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
+		# plt2 = plt.contour(y, x, oaspl_db, levels=clevels, linewidths=0.1, cmap=cmap_lines, norm=cnorm)
+		# plt1 = plt.contourf(y, x, oaspl_db, levels=clevels, cmap=ACOUSTIC_CMAP[plot_name], norm=cnorm)
 
-		plt.ylabel('x/R')
-		plt.xlabel('y/R')
-		plt.title('Prediction')
-		plt.axis('scaled')
+		# plt.ylabel('x/R')
+		# plt.xlabel('y/R')
+		# plt.title('Prediction')
+		# plt.axis('scaled')
 
-		cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
-		fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
-		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_dB.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		# cax = fig.add_axes([0.95, 0.11, 0.02, 0.77])
+		# fig.colorbar(plt1, cax, orientation='vertical', label='BVI SPL [dB]')
+		# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_dB.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
 
 		clevels = np.linspace(ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][1], ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][2])
 		cnorm = plt.Normalize(ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][0], ACOUSTIC_BOUNDS_TR_DBA[plot_name][r_idx][1])
@@ -671,9 +678,15 @@ def plot_acoustic_contours_tr(plot_name: str, plot_hybrid = False):
 		cax = fig.add_axes([0.95, 0.31, 0.02, 0.37])
 		fig.colorbar(plt1, cax, orientation='vertical', label='SPL [dB]')
 		if not plot_hybrid:
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			if not presentation:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			else:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_dBA.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 		else:
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_hybrid_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			if not presentation:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_hybrid_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			else:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_hybrid_dBA.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 
 		plt.clf()
 		plt.cla()
@@ -781,7 +794,7 @@ MEASURED_WAKE = {
 	"ID5": ["xx", "xx"]
 }
 
-def plot_mr_wake(plot_name: str):
+def plot_mr_wake(plot_name: str, presentation: bool):
 	#with open(f'{os.path.dirname(os.path.realpath(__file__))}/../helinovi_params.json5') as param_file:
 	#	params = pyjson5.load(param_file)
 
@@ -845,11 +858,15 @@ def plot_mr_wake(plot_name: str):
 		plt.legend(ncol=2, frameon=False, fancybox=False, fontsize=font_size4+2)
 		#plt.legend(["OpenCOPTER", "Measured"])
 
-		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[0]}_wake_trajectory_blade_{b_idx}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		if not presentation:
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[0]}_wake_trajectory_blade_{b_idx}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		else:
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[0]}_wake_trajectory_blade_{b_idx}.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
+
 		plt.cla()
 		plt.clf()
 
-def plot_hybrid_wake(plot_name: str, azimuth: int = 0):
+def plot_hybrid_wake(plot_name: str, presentation: bool, azimuth: int = 0):
 	blade_results = loadmat(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/results.mat')
 	hybrid_blade_results = loadmat(f'{os.path.dirname(os.path.realpath(__file__))}/../helinovi_hybrid/helinovi/{plot_name.upper()}/results.mat')
 
@@ -888,11 +905,14 @@ def plot_hybrid_wake(plot_name: str, azimuth: int = 0):
 	plt.ylabel('$x$ [m]')
 	plt.xticks(fontsize=font_size3)
 	plt.yticks(fontsize=font_size3)
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_TR_hybrid_wake_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	if not presentation:
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_TR_hybrid_wake_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	else:
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_TR_hybrid_wake_compare.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
 	plt.clf()
 
-def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated_compare = False):
+def plot_blade_normal_pressures(plot_name: str, presentation: bool, hybrid_compare = False, isolated_compare = False):
 
 	with open(f'{os.path.dirname(os.path.realpath(__file__))}/../helinovi_params.json5') as param_file:
 		params = pyjson5.load(param_file)
@@ -965,7 +985,10 @@ def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated
 				plt.gca().set_aspect(200)
 				plt.xticks(ticks=np.linspace(0, 360, 5))
 
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			if not presentation:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			else:
+				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 			plt.cla()
 			plt.clf()
 
@@ -999,7 +1022,10 @@ def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated
 				plt.xlabel("$\psi$ [$^\circ$]")
 				plt.ylabel("$C_N$")
 				plt.xticks(ticks=np.linspace(0, 1800, 6))
-				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_hybrid_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+				if not presentation:
+					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_hybrid_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+				else:
+					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_hybrid_compare.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 				plt.cla()
 				plt.clf()
 
@@ -1033,7 +1059,10 @@ def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated
 				plt.xlabel("$\psi$ [$^\circ$]")
 				plt.ylabel("$C_N$")
 				plt.xticks(ticks=np.linspace(0, 1800, 6))
-				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_isolated_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+				if not presentation:
+					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_isolated_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+				else:
+					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_isolated_compare.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 				plt.cla()
 				plt.clf()
 
@@ -1070,7 +1099,10 @@ def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated
 				plt.gca().set_aspect(120)
 				plt.xlabel("$\psi$ [$^\circ$]")
 				plt.ylabel("$C_N$")
-				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+				if not presentation:
+					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+				else:
+					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 				plt.cla()
 				plt.clf()
 
@@ -1102,7 +1134,10 @@ def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated
 					plt.gca().set_aspect(120)
 					plt.xlabel("$\psi$ [$^\circ$]")
 					plt.ylabel("$C_N$")
-					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev_hybrid_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+					if not presentation:
+						plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev_hybrid_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+					else:
+						plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev_hybrid_compare.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 					plt.cla()
 					plt.clf()
 
@@ -1134,105 +1169,108 @@ def plot_blade_normal_pressures(plot_name: str, hybrid_compare = False, isolated
 					plt.gca().set_aspect(120)
 					plt.xlabel("$\psi$ [$^\circ$]")
 					plt.ylabel("$C_N$")
-					plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev_isolated_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+					if not presentation:
+						plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev_isolated_compare.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+					else:
+						plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_1rev_isolated_compare.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 					plt.cla()
 					plt.clf()
 				
-			# 10/rev high pass
-			if measured_blade_loading.shape[0] != 0:
-				measured_dt = (2.0*math.pi/omega)/measured_blade_loading.shape[0]
-				computed_dt = (2.0*math.pi/omega)/blade_loading.shape[0]
+			# # 10/rev high pass
+			# if measured_blade_loading.shape[0] != 0:
+			# 	measured_dt = (2.0*math.pi/omega)/measured_blade_loading.shape[0]
+			# 	computed_dt = (2.0*math.pi/omega)/blade_loading.shape[0]
 
-				print(f'measured_dt: {measured_dt}')
-				print(f'computed_dt: {computed_dt}')
+			# 	print(f'measured_dt: {measured_dt}')
+			# 	print(f'computed_dt: {computed_dt}')
 
-				fblade_loading = sft.fft(blade_loading - blade_loading.mean())
-				fblade_freqz = sft.fftfreq(fblade_loading.shape[0], d=computed_dt)
+			# 	fblade_loading = sft.fft(blade_loading - blade_loading.mean())
+			# 	fblade_freqz = sft.fftfreq(fblade_loading.shape[0], d=computed_dt)
 
-				fmeasured_blade_loading = sft.fft(measured_blade_loading - measured_blade_loading.mean())
-				fmeasured_blade_freqz = sft.fftfreq(fmeasured_blade_loading.shape[0], d=measured_dt)
+			# 	fmeasured_blade_loading = sft.fft(measured_blade_loading - measured_blade_loading.mean())
+			# 	fmeasured_blade_freqz = sft.fftfreq(fmeasured_blade_loading.shape[0], d=measured_dt)
 
-				ten_per_rev = 10*omega*RADPS_2_HZ
+			# 	ten_per_rev = 10*omega*RADPS_2_HZ
 
-				#print(f'fblade_freqz: {fblade_freqz}')
-				#print(f'fmeasured_blade_freqz: {fmeasured_blade_freqz}')
+			# 	#print(f'fblade_freqz: {fblade_freqz}')
+			# 	#print(f'fmeasured_blade_freqz: {fmeasured_blade_freqz}')
 
-				measured_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/measured_dt)
-				computed_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/computed_dt)
+			# 	measured_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/measured_dt)
+			# 	computed_sos = sig.butter(13, ten_per_rev, 'highpass', output='sos', fs=1/computed_dt)
 
-				blade_loading = sig.sosfilt(computed_sos, blade_loading - blade_loading.mean())
-				measured_blade_loading = sig.sosfilt(measured_sos, measured_blade_loading - measured_blade_loading.mean())
+			# 	blade_loading = sig.sosfilt(computed_sos, blade_loading - blade_loading.mean())
+			# 	measured_blade_loading = sig.sosfilt(measured_sos, measured_blade_loading - measured_blade_loading.mean())
 
-			#plt.figure(num=1)
-			plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]}: 87% Span blade loading. 10/rev highpassed.')
-			plt.legend(['Measured', 'OpenCOPTER'])
-			#plt.xlim([20, 90])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_hp.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(measured_azimuth, measured_blade_loading, computational_azimuth, blade_loading, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]}: 87% Span blade loading. 10/rev highpassed.')
+			# plt.legend(['Measured', 'OpenCOPTER'])
+			# #plt.xlim([20, 90])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_normal_loading_hp.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-			aoa_eff = blade_results['span_element_aoa_eff'][rotor_idx][span_idx]
+			# aoa_eff = blade_results['span_element_aoa_eff'][rotor_idx][span_idx]
 			
-			#plt.figure(num=1)
-			plt.plot(computational_azimuth, aoa_eff, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Effective AOA.')
-			#plt.legend(['Measured', 'OpenCOPTER'])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_aoa_eff.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(computational_azimuth, aoa_eff, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% Effective AOA.')
+			# #plt.legend(['Measured', 'OpenCOPTER'])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_aoa_eff.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-			u_p = blade_results['span_element_up'][rotor_idx][span_idx]
+			# u_p = blade_results['span_element_up'][rotor_idx][span_idx]
 			
-			#plt.figure(num=1)
-			plt.plot(computational_azimuth, u_p, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% U_p.')
-			#plt.legend(['Measured', 'OpenCOPTER'])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_u_p.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(computational_azimuth, u_p, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% U_p.')
+			# #plt.legend(['Measured', 'OpenCOPTER'])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_u_p.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-			aoa = blade_results['span_element_aoa'][rotor_idx][span_idx]
+			# aoa = blade_results['span_element_aoa'][rotor_idx][span_idx]
 			
-			#plt.figure(num=1)
-			plt.plot(computational_azimuth, aoa, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% AOA.')
-			#plt.legend(['Measured', 'OpenCOPTER'])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_aoa.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(computational_azimuth, aoa, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% AOA.')
+			# #plt.legend(['Measured', 'OpenCOPTER'])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_aoa.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-			theta = blade_results['span_element_theta'][rotor_idx][span_idx]
+			# theta = blade_results['span_element_theta'][rotor_idx][span_idx]
 			
-			#plt.figure(num=1)
-			plt.plot(computational_azimuth, theta, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% theta.')
-			#plt.legend(['Measured', 'OpenCOPTER'])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_theta.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(computational_azimuth, theta, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% theta.')
+			# #plt.legend(['Measured', 'OpenCOPTER'])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_theta.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-			inflow_angle = blade_results['span_element_inflow_angle'][rotor_idx][span_idx]
+			# inflow_angle = blade_results['span_element_inflow_angle'][rotor_idx][span_idx]
 			
-			#plt.figure(num=1)
-			plt.plot(computational_azimuth, inflow_angle, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% inflow angle.')
-			#plt.legend(['Measured', 'OpenCOPTER'])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_inflow_angle.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(computational_azimuth, inflow_angle, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% inflow angle.')
+			# #plt.legend(['Measured', 'OpenCOPTER'])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_inflow_angle.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-			gamma = blade_results['span_element_gamma'][rotor_idx][span_idx]
+			# gamma = blade_results['span_element_gamma'][rotor_idx][span_idx]
 			
-			#plt.figure(num=1)
-			plt.plot(computational_azimuth, gamma, linewidth=0.5)
-			plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% gamma.')
-			#plt.legend(['Measured', 'OpenCOPTER'])
-			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_gamma.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
-			plt.cla()
-			plt.clf()
+			# #plt.figure(num=1)
+			# plt.plot(computational_azimuth, gamma, linewidth=0.5)
+			# plt.title(f'{TITLE_DICT[plot_name.upper()]} 87% gamma.')
+			# #plt.legend(['Measured', 'OpenCOPTER'])
+			# plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name}_{ROTOR[rotor_idx]}_{SPAN_LOCATION[span_idx]:0.2f}_gamma.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+			# plt.cla()
+			# plt.clf()
 
-def plot_wake_trajectory(plot_name: str):
+def plot_wake_trajectory(plot_name: str, presentation: bool):
 
 	# slice_indides = {
 	# 	-0.4: (0, 8),
@@ -1497,6 +1535,17 @@ def plot_tr_wake(plot_name: str):
 	
 
 if __name__ == "__main__":
+	parser = argparse.ArgumentParser("plot_helinovi", description="HeliNOVI Data plotting")
+
+	parser.add_argument(
+		"-p",
+		action="store_true",
+		help="Plot for presentation",
+		default=False,
+		required=False
+	)
+
+	args = parser.parse_args()
 
 	matplotlib.rcParams['font.family'] = 'serif'
 	matplotlib.rcParams['font.serif'] = prop.get_name()
@@ -1505,64 +1554,66 @@ if __name__ == "__main__":
 	#plot_blade_twist('BL')
 	#plot_blade_twist('MN')
 	
-	#plot_mr_wake("ID2")
-	#plot_mr_wake("ID1")
+	# plot_mr_wake("ID2", args.p)
+	# plot_mr_wake("ID1", args.p)
 
-	# # # print("Plotting ID2_ASD")
-	# # # #plot_blade_twist('ID2_ASD')
-	# # # plot_blade_normal_pressures('ID2_ASD')
-	# # # plot_acoustic_contours_fs("ID2_ASD")
+	# # # # print("Plotting ID2_ASD")
+	# # # # #plot_blade_twist('ID2_ASD')
+	# # # # plot_blade_normal_pressures('ID2_ASD')
+	# # # # plot_acoustic_contours_fs("ID2_ASD")
 
-	#print("Plotting ID1_ASU")
-	#plot_hybrid_wake('ID1_ASU', 590)
-	# # # # #plot_blade_twist('ID1_ASU')
-	#plot_blade_normal_pressures('ID1_ASU', True)
-	# # plot_acoustic_contours_fs("ID1_ASU")
-	# # # # plot_acoustic_contours_mr("ID1_ASU")
-	# plot_acoustic_contours_tr("ID1_ASU")
-	#plot_acoustic_contours_tr("ID1_ASU", True)
+	# print("Plotting ID1_ASU")
+	# plot_hybrid_wake('ID1_ASU', args.p, 590)
+	# # # # # #plot_blade_twist('ID1_ASU')
+	# plot_blade_normal_pressures('ID1_ASU', args.p, True)
+	# # # plot_acoustic_contours_fs("ID1_ASU", args.p)
+	# # # # # plot_acoustic_contours_mr("ID1_ASU")
+	# plot_acoustic_contours_tr("ID1_ASU", args.p)
+	# plot_acoustic_contours_tr("ID1_ASU", args.p, True)
 
-	#print("Plotting ID1_ASD")
-	#plot_hybrid_wake('ID1_ASD', 1050)
-	# # # # #plot_blade_twist('ID1_ASD')
-	#plot_blade_normal_pressures('ID1_ASD', True)
-	# # # # #plot_wake_trajectory('BL')
-	#plot_acoustic_contours_fs("ID1_ASD")
-	# # # # plot_acoustic_contours_mr("ID1_ASD")
-	# plot_acoustic_contours_tr("ID1_ASD")
-	#plot_acoustic_contours_tr("ID1_ASD", True)
+	# print("Plotting ID1_ASD")
+	# plot_hybrid_wake('ID1_ASD', args.p, 1050)
+	# # # # # #plot_blade_twist('ID1_ASD')
+	# plot_blade_normal_pressures('ID1_ASD', args.p, True)
+	# # # # # #plot_wake_trajectory('BL')
+	# #plot_acoustic_contours_fs("ID1_ASD", args.p)
+	# # # # # plot_acoustic_contours_mr("ID1_ASD")
+	# plot_acoustic_contours_tr("ID1_ASD", args.p)
+	# plot_acoustic_contours_tr("ID1_ASD", args.p, True)
 
 	print("Plotting ID5")
 	# # # # # plot_blade_twist('ID5')
-	plot_blade_normal_pressures('ID5')
+	plot_blade_normal_pressures('ID5', args.p)
 	# # # # # #plot_wake_trajectory('MV')
-	plot_acoustic_contours_fs("ID5")
+	plot_acoustic_contours_fs("ID5", args.p)
 	# # # # # #plot_acoustic_contours_mr("ID5")
-	# # # # # #plot_acoustic_contours_tr("ID5")
+	# # # # # #plot_acoustic_contours_tr("ID5", args.p)
 
-	#print("Plotting ID1")
-	#plot_hybrid_wake('ID1', 173)
+	print("Plotting ID1")
+	#plot_hybrid_wake('ID1', args.p, 173)
 	# # # # plot_blade_twist('ID1')
 	# plot_tr_wake('ID1')
-	#plot_blade_normal_pressures('ID1', True, True)
+	#plot_blade_normal_pressures('ID1', args.p, True, True)
+	plot_blade_normal_pressures('ID1', args.p, False, False)
 	# # # # #plot_wake_trajectory('BL')
-	#plot_acoustic_contours_fs("ID1", True)
-	# plot_acoustic_contours_fs("ID1")
+	#plot_acoustic_contours_fs("ID1", args.p, True)
+	plot_acoustic_contours_fs("ID1", args.p)
 	
 	# # # plot_acoustic_contours_mr("ID1")
-	# plot_acoustic_contours_tr("ID1")
+	# plot_acoustic_contours_tr("ID1", args.p)
 
-	#print("Plotting ID2")
-	#plot_hybrid_wake('ID2', 870)
+	print("Plotting ID2")
+	#plot_hybrid_wake('ID2', args.p, 870)
 	# # # # plot_blade_twist('ID2')
 	# plot_blade_normal_pressures('ID2')
 	#plot_tr_wake('ID2')
-	#plot_blade_normal_pressures('ID2', True, True)
+	#plot_blade_normal_pressures('ID2', args.p, True, True)
+	plot_blade_normal_pressures('ID2', args.p, False, False)
 	# # #plot_wake_trajectory('BL')
-	# plot_acoustic_contours_fs("ID2")
-	# plot_acoustic_contours_fs("ID2", True)
+	plot_acoustic_contours_fs("ID2", args.p)
+	#plot_acoustic_contours_fs("ID2", args.p, True)
 	# # # plot_acoustic_contours_mr("ID2")
-	# plot_acoustic_contours_tr("ID2")
+	# plot_acoustic_contours_tr("ID2", args.p)
 	
 	# plot_blade_twist('ID2_ASU')
 	# plot_blade_normal_pressures('ID2_ASU')
