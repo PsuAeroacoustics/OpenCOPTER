@@ -118,7 +118,7 @@ def build_rotor_cntr(rotor, environment_in, wopwop_motion, rotor_phase):
 
 	return rotor_cntr
 	
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases):
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases, args):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -257,6 +257,16 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 			observer.xLoc = observer_config["x"]
 			observer.yLoc = observer_config["y"]
 			observer.zLoc = observer_config["z"]
+
+	elif observer_config["type"] == "external_file":
+		observer.fileName = observer_config["fileName"]
+		external_observer_file = f'{args.geom_directory}/{observer.fileName}'
+		os.system(f'cp {external_observer_file} {wopwop_case_path}')  
+
+
+	if "ntMultiplier" in observer_config:
+		observer.nt = observer_config["ntMultiplier"]*nt
+
 
 	if "low_pass_cutoff" in observer_config:
 		if observer_config["cutoff_units"] == "bpf":

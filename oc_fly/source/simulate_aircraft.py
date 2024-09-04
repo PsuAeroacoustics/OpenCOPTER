@@ -44,7 +44,9 @@ def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 
 	return h
 
-def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+
+	write_wake = args.ws
 
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
@@ -803,6 +805,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		elif observer["type"] == "sphere":
 			min_obs_dist = observer["radius"]*dist_multiplier
 			max_obs_dist = observer["radius"]*dist_multiplier
+
+		elif observer["type"] == "external_file":
+			min_obs_dist = observer["radius"]*dist_multiplier
+			max_obs_dist = observer["radius"]*dist_multiplier
+
 		elif observer["type"] == "points":
 			for x, y, z in zip(observer['x'], observer['y'], observer['z']):
 				x = x*dist_multiplier
@@ -868,7 +875,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				wopwop_motion,
 				vehicle.input_state,
 				wopwop_case_path,
-				[rotor_phases[rotor_idx]]
+				[rotor_phases[rotor_idx]],
+				args
 			)
 
 			namelists.append(namelist)
@@ -896,7 +904,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			wopwop_motion,
 			vehicle.input_state,
 			wopwop_case_path,
-			rotor_phases
+			rotor_phases,
+			args
 		)
 
 		namelists.append(namelist)

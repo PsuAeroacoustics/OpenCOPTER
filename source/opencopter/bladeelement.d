@@ -201,7 +201,7 @@ void print_frame(F)(F frame, int depth = 0) {
 	import std.stdio : writeln;
 	import std.range : repeat;
 
-	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.global_matrix);
+	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.local_matrix);
 
 	foreach(ref child; frame.children) {
 		print_frame(child, depth + 1);
@@ -220,6 +220,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 	immutable time = iteration.to!double*dt;
 	
 	aircraft.root_frame.update(Mat4.identity);
+	//aircraft.root_frame.print_frame;
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 

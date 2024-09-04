@@ -325,6 +325,8 @@ def main():
 			with open(ac) as geom_file:
 				geom = geom + pyjson5.load(geom_file)
 
+	args.geom_directory = geom_directory
+
 	param = None
 	if args.input_param is not None:
 		with open(args.input_param) as param_file:

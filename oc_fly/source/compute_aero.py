@@ -250,6 +250,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 				if len(built_blades) > 1:
 					raise Exception("Rotor has multiple blades on single attachment")
 
+				#print(f"Setting azimuth offset for blade: {child_component['axis_angle']*(math.pi/180.0)}")
 				built_blades[0].azimuth_offset = child_component["axis_angle"]*(math.pi/180.0)
 
 	elif frame_type != FrameType_blade():
@@ -400,19 +401,19 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 				if rotor_frame == rotor.frame:
 					return (rotor, r_idx)
 				
-		def build_motion_lambdas(parent_frame, azimuth_offset, r_idx):
+		def build_motion_lambdas(parent_frame, rotor, azimuth_offset, r_idx):
 			sub_motion_lambdas = []
 
 			for child in parent_frame.children:
-
-				rotor = None
 				if (child.get_frame_type() == FrameType_rotor()):
 					(rotor, r_idx) = get_rotor(child)
 					log_file.write(f"Rotor {child.name} is rotor {r_idx}\n")	
 
 				if (rotor is not None) and (rotor.blades.length() == len(parent_frame.children)):
+					print(f'looking for blade down node {child.name}')
 					has_blade, blade = ends_with_blade(child)
 					if has_blade:
+						print(f"found blade. azimuth offset: {blade.azimuth_offset}")
 						azimuth_offset = blade.azimuth_offset
 
 				for child_motion in flight_condition["motion"]:
@@ -436,11 +437,11 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 
 						sub_motion_lambdas.append(deepcopy(motion_lambda))
 
-				sub_motion_lambdas = sub_motion_lambdas + build_motion_lambdas(child, azimuth_offset, r_idx)
+				sub_motion_lambdas = sub_motion_lambdas + build_motion_lambdas(child, rotor, azimuth_offset, r_idx)
 
 			return sub_motion_lambdas
 
-		motion_lambdas = build_motion_lambdas(rotorcraft_system.root_frame, 0, 0)
+		motion_lambdas = build_motion_lambdas(rotorcraft_system.root_frame, None, 0, 0)
 
 	trim_lambdas = []
 
@@ -582,7 +583,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 		vehicle,
 		atmo,
 		elements,
-		args.ws,
+		args,
 		f'{output_base}/vtu',
 		f'{output_base}/acoustics',
 		do_compute,
