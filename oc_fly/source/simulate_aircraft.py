@@ -240,6 +240,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	blade_twist_array = np.zeros((num_rotors, max(num_blades), int(round(post_conv_revolutions*iter_per_rev)) + 1))
 	blade_twist_azimuth = np.zeros((num_rotors, max(num_blades), int(round(post_conv_revolutions*iter_per_rev)) + 1))
 
+	# Nitya, 09.16
+	wake_x = np.zeros((max(num_blades), 1800, int(round(post_conv_revolutions*iter_per_rev)) + 1))
+	wake_y = np.zeros((max(num_blades), 1800, int(round(post_conv_revolutions*iter_per_rev)) + 1))
+	blade_x = np.zeros((max(num_blades), 48, int(round(post_conv_revolutions*iter_per_rev)) + 1))
+	blade_y = np.zeros((max(num_blades), 48, int(round(post_conv_revolutions*iter_per_rev)) + 1))
+	wake_miss_dist = np.zeros((max(num_blades), 1800, int(round(post_conv_revolutions*iter_per_rev)) + 1))
+
 	target_y_slices = []
 	if track_wake_element:
 		target_y_slices = results['element_trajectories']
@@ -391,8 +398,15 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 				for motion_lambda in vehicle.motion_lambdas[rotor_idx]:
 					motion_lambda(vehicle.input_state.rotor_inputs[rotor_idx].azimuth)
+					# Nitya: The value of a is taken from here!! This will plug in the current azimuth value into all those functions defined in motion_lambda
+
+					# Nitya: Where are we using these motion_lambdas?? 
 
 			step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt)
+			# Nitya: opencopter/bladeelement.d
+			#BWI_gamma = []
+			#BWI_gamma = get_BWIinputs_gamma_w(vehicle.wake_history.history[0].rotor_wakes[0].tip_vortex_interaction[0])
+			#print("missDist(0,0):",vehicle.wake_history.history[0].rotor_wakes[0].tip_vortex_interaction[0].BWI_inputs[0].miss_dist[0])
 
 			for rotor_idx, rotor_state in enumerate(vehicle.ac_state.rotor_states):
 				average_C_T_arrays[rotor_idx][iteration % C_T_len[rotor_idx]] = rotor_state.C_T
@@ -500,13 +514,14 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 				for rotor_idx, rotor in enumerate(vehicle.ac_state.rotor_states):
 
-					blade_idx = 2
+					blade_idx = 2   
+					# What's the point of making blade_idx 2??
 					if rotor_idx > 0:
 						blade_idx = 1
 
 					if start_recording and not done_recording:
 						for t_idx in range(len(target_span_elements)):
-							rotor_idx
+							rotor_idx  # Nitya: WHY?
 							dC_L = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].dC_L[target_span_element_index[rotor_idx][t_idx]]
 							aoa_eff = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].aoa_eff[target_span_element_index[rotor_idx][t_idx]]
 							aoa = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].aoa[target_span_element_index[rotor_idx][t_idx]]
@@ -572,6 +587,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 						loading_data.set_x_loading_array(x_loading)
 						append_loading_data(loading_files[rotor_idx][blade_idx], loading_data)
 
+						# Nitya, 09.16
+						wake_x[blade_idx, :, acoustic_iteration] = get_wake_x_component(vehicle.wake_history.history[0].rotor_wakes[0].tip_vortices[blade_idx])
+						wake_y[blade_idx, :, acoustic_iteration] = get_wake_y_component(vehicle.wake_history.history[0].rotor_wakes[0].tip_vortices[blade_idx])
+						blade_x[blade_idx, :, acoustic_iteration] = get_x(vehicle.ac_state.rotor_states[0].blade_states[blade_idx])
+						blade_y[blade_idx, :, acoustic_iteration] = get_y(vehicle.ac_state.rotor_states[0].blade_states[blade_idx])
+						wake_miss_dist[blade_idx, :, acoustic_iteration] = get_BWIinputs_missDist(vehicle.wake_history.history[0].rotor_wakes[0].tip_vortex_interaction[blade_idx])
+
 				if track_wake_element:
 					for t_idx in range(len(target_y_slices)):
 						for rotor_idx in range(num_rotors):
@@ -603,6 +625,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	result_dictionary['sin_pitch_array'] = sin_pitch_array
 	result_dictionary['cos_pitch_array'] = cos_pitch_array
 	result_dictionary['hhc_pitch_array'] = hhc_pitch_array
+	result_dictionary['wake_miss_dist'] = wake_miss_dist
+
+	# Nitya, 09.16
+	result_dictionary['blade_x'] = blade_x
+	result_dictionary['blade_y'] = blade_y
+	result_dictionary['wake_x'] = wake_x
+	result_dictionary['wake_y'] = wake_y
 
 	if elastic_twist is not None:
 		result_dictionary['elastic_twist_array'] = elastic_twist_array

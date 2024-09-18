@@ -164,7 +164,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	return blade
 
 def build_component(component_json, parent_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref):
-	# Nitya: What is did_dref for?
+	# Nitya: What is did_dref for? Just for making sure that everything has an unique name!
 
 	rotors = []
 	blades = []
@@ -198,7 +198,6 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 	if did_deref:
 		actual_name = name + " " + str(ref_count)
 
-	# Nitya: where do I get information about components_dict and frame_type?
 	components_dict[actual_name] = {
 		"name": actual_name,
 		"frame_type": frame_type,
@@ -213,7 +212,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 	if motion is not None:
 		matched_motions = list(filter(lambda x: x["frame"] == name, motion))
-		# Nitya: l
+		# Nitya: lambda is an anonymous function. For each element in the list, it's going to call the function lambda and add those to a new list and return that 
 		
 		if len(matched_motions) > 0:
 			#print(f'matched_motions: {matched_motions}')
@@ -344,6 +343,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	trim_axis_dict = {}
 
 	root_frame, rotors, _ = build_component(geometry, aircraft.root_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, None, requested_elements, geom_directory, motion_dict, motion, trim_frame_name, trim_axis_dict, 0, False)
+	# Nitya: filled here - motion_dict, trim_axis_dict, components_dict
 
 	aircraft.rotors = rotors
 
@@ -354,7 +354,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	aircraft.root_frame.update(Mat4_identity())
 
 	return aircraft, motion_dict, trim_axis_dict, components_dict
-    #Nitya: Aren't most of these empty?
+
 
 
 def compute_aero(log_file, args, output_base, do_compute, case):
@@ -382,7 +382,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	dt = d_psi/np.max(np.abs(omegas))
 
 	motion_lambdas = [[] for r_idx in range(rotorcraft_system.rotors.length())]
-	# Nitya: What is motion_lambdas??
+	# Nitya: What is motion_lambdas?? - just for storing motion conditions (no special meaning for lambda, I guess)
 	wopwop_motion = {}
 
 	if "motion" in flight_condition:
@@ -395,10 +395,12 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 						child_motion = deepcopy(child_motion)
 						if (child.name == child_motion["frame"]) or (child.name[0:-2] == child_motion["frame"]):
 							# Nitya: Why not just the latter condition? I don't undersrand the need for the latter condition
+							# In order to have a unique name for everything, numbers are added to the name if it's repeated (done with did_deref). This is why, it compares w/o last two elements too 
 
 							if motion_vec_dict[child.name][1] == "fourier":
 								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
 								# Nitya: I don't understand what is lambda a ? Online it says that lambda is used to define anonymous function
+								# a- current azimuth angle which gets updated when motion_lambda is called in compute_aero.py, a - function arguement 
 
 								wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
@@ -467,7 +469,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
 	#rotor_ratios = rotor_ratios.astype(dtype=np.int64).tolist()
-	# Nitya: What is release ratio?
+	# Nitya: What is release ratio? - Match the release for rotors with different speed 
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
@@ -539,6 +541,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	# Nitya: Where does this function get defined?
+	# There us a wrapper function in python.d which aliases HuangPetersInflow as HuangPeters
 	 
 	#rotorcraft_inflows = [HuangPeters(5, 3, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
 	#rotorcraft_inflows = [HuangPeters(6, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 2, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
@@ -586,15 +589,21 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
 			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
 			wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
+			wake_gamma_w = np.zeros((num_blades[r_idx], actual_wake_history))
+			wake_missDist = np.zeros((num_blades[r_idx], actual_wake_history))
 
 			for b_idx in range(num_blades[r_idx]):
 				wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+				wake_gamma_w[b_idx, :] = get_BWIinputs_gamma_w(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortex_interaction[b_idx])
+				# wake_missDist[b_idx, :] = get_BWIinputs_missDist(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortex_interaction[b_idx])
 
 			results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
 			results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
+			results_dictionary[f'wake_{r_idx}_gamma_w'] = wake_gamma_w
+			results_dictionary[f'wake_{r_idx}_missDist'] = wake_missDist
 			
 		results_dictionary["rotor_c_t"] = rotorcraft_thrusts
 		results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]

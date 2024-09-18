@@ -11,6 +11,7 @@ static import opencopter.vtk;
 static import opencopter.bladeelement;
 static import opencopter.wake;
 static import opencopter.inflow;
+static import opencopter.bwi;
 
 
 import pyd.pyd;
@@ -179,6 +180,7 @@ alias PyWakeHistory = opencopter.wake.WakeHistoryT!(ArrayContainer.array);
 alias PyWake = opencopter.wake.WakeT!(ArrayContainer.array);
 alias PyRotorWake = opencopter.wake.RotorWakeT!(ArrayContainer.array);
 alias PyVortexFilament = opencopter.wake.VortexFilamentT!(ArrayContainer.array);
+alias PyBWIinputs = opencopter.bwi.TipVortexInteractionT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
 
 alias PyAircraftTimehistory = opencopter.aircraft.AircraftTimehistoryT!(ArrayContainer.array);
@@ -253,6 +255,15 @@ double[] get_dC_N(ref PyBladeState blade) {
 
 double[] get_dC_c(ref PyBladeState blade) {
 	return blade.get_state_array!"dC_c";
+}
+
+// Nitya, 09.16
+double[] get_x(ref PyBladeState blade) {
+	return blade.get_state_array!"x";
+}
+
+double[] get_y(ref PyBladeState blade) {
+	return blade.get_state_array!"y";
 }
 
 void fill_dC_N(ref PyBladeState blade, double[] data) {
@@ -369,6 +380,14 @@ double[] get_aoa_eff(ref PyBladeState blade) {
 
 double[] get_d_gamma(ref PyBladeState blade) {
 	return blade.get_state_array!"d_gamma";
+}
+
+double[] get_BWIinputs_gamma_w(ref PyBWIinputs VortexInteraction) {
+	return opencopter.bwi.get_BWIinputs!"gamma_w"(VortexInteraction);
+}
+
+double[] get_BWIinputs_missDist(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_BWIinputs!"miss_dist"(VortexInteraction);
 }
 
 double[] get_wake_x_component(ref PyVortexFilament filament) {
@@ -799,6 +818,22 @@ extern(C) void PydMain() {
 		:return: List of spanwise :math:`dC_c` values
 	});
 
+	// Nitya, 09.16
+
+	def!(get_x, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade x coordinate.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`x` from
+		:return: List of spanwise :math:`x` values
+	});
+
+	def!(get_y, double[] function(ref PyBladeState), Docstring!q{
+		Extract blade x coordinate.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`y` from
+		:return: List of spanwise :math:`y` values
+	});
+
 	def!(fill_dC_c, void function(ref PyBladeState, double[]), Docstring!q{
 		Extract blade spanwise chord wise force coefficient to a linear array.
 
@@ -993,6 +1028,20 @@ extern(C) void PydMain() {
 
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`C_D` from
 		:return: List of spanwise :math:`dC_D` values
+	});
+
+	def!(get_BWIinputs_gamma_w, double[] function(ref PyBWIinputs), Docstring!q{
+		Extract vortex circulation component to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the vortex circulation component from
+		:return: List of tip vortex filament gamma values
+	});
+
+	def!(get_BWIinputs_missDist, double[] function(ref PyBWIinputs), Docstring!q{
+		Extract vortex circulation component to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the vortex miss_dist component from
+		:return: List of tip vortex filament miss distance values
 	});
 	
 	def!(get_wake_x_component, double[] function(ref PyVortexFilament), Docstring!q{
@@ -1200,6 +1249,24 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		opencopter.bwi.BWIinputsChunk,
+		Member!("r_c_ave", Docstring!q{A chunk of tip vortex r_c}),
+		Member!("gamma_w", Docstring!q{A chunk of tip vortex gamma}),
+		Member!("gamma_sec", Docstring!q{A chunk of blade sectional gamma}),
+		Member!("theta_v", Docstring!q{A chunk of interaction angle 1}),
+		Member!("phi_v", Docstring!q{A chunk of interaction angle 2})
+	);
+
+	wrap_struct!(
+		//alias PyBWIinputs = opencopter.bwi.TipVortexInteractionT!(ArrayContainer.array);
+		PyBWIinputs,
+		PyName!"TipVortexInteraction",
+		Init!size_t,
+		Member!("BWI_inputs", Docstring!q{An array of :class:`BWIinputsChunk`}),
+		//Member!"length"
+	);
+
+	wrap_struct!(
 		PyShedVortex,
 		PyName!"ShedVortex",
 		//Init!(size_t, size_t),
@@ -1211,7 +1278,8 @@ extern(C) void PydMain() {
 		PyName!"RotorWake",
 		Init!(size_t, size_t, size_t),
 		Member!("tip_vortices", Docstring!q{An array of :class:`VortexFilament`}),
-		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`})
+		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`}),
+		Member!("tip_vortex_interaction", Docstring!q{An array of :class:`TipVortexInteraction`}),
 	);
 
 	wrap_struct!(
@@ -1615,6 +1683,8 @@ extern(C) void PydMain() {
 	wrap_array!PyVortexFilament;
 	wrap_array!(opencopter.wake.FilamentChunk);
 	wrap_array!PyShedVortex;
+	wrap_array!PyBWIinputs;
+	wrap_array!(opencopter.bwi.BWIinputsChunk);
 }
 
 // Boilerplate take from Pyd so I don't have to use distutils to build

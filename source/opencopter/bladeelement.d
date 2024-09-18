@@ -8,6 +8,7 @@ import opencopter.math;
 import opencopter.memory;
 import opencopter.trim;
 import opencopter.wake;
+import opencopter.bwi;
 
 import numd.linearalgebra.matrix;
 
@@ -92,6 +93,8 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 		// Nitya: Blade circulation normalized here!!
+		// Nitya, 09/04
+		wake.rotor_wakes[rotor_idx].tip_vortex_interaction[blade_idx].BWI_inputs[chunk_idx].gamma_sec = gamma;
 
 		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
 		blade_state.chunks[chunk_idx].gamma[] = gamma[];
@@ -136,6 +139,11 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 	blade_state.C_T = integrate_trapaziodal!"dC_T"(blade_state, blade);
 	blade_state.C_Mz = integrate_trapaziodal!"dC_Mz"(blade_state, blade);
 	blade_state.C_My = integrate_trapaziodal!"dC_My"(blade_state, blade);
+
+	// Nitya, 09.14
+	// Call calculate BWI interaction points here! 
+
+	calculate_BWI_points(wake.rotor_wakes[rotor_idx].tip_vortex_interaction[blade_idx].BWI_inputs, wake, blade_state, rotor_idx, blade_idx);
 }
 
 /++
@@ -158,6 +166,7 @@ extern (C++) void compute_rotor_properties(RG, RS, RIS, AS, I, W)(auto ref RG ro
 
 	foreach(blade_idx; 0..rotor.blades.length) {
 		rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
+		// Nitya: blade azimuth calculated here! 
 	}
 
 	foreach(blade_idx; 0..rotor.blades.length) {
@@ -232,7 +241,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 				immutable Chunk adjusted_r = blade.chunks[chunk_idx].r[] - blade.r_c;
 				local_blade_pos[0][] = adjusted_r[]*aircraft.rotors[rotor_idx].radius;
 				local_blade_pos[1][] = blade.chunks[chunk_idx].xi[]*aircraft.rotors[rotor_idx].radius;
-				local_blade_pos[1][] = 0;
+				local_blade_pos[2][] = 0;
 				local_blade_pos[3][] = 1;
 
 				auto global_blade_pos = blade.frame.global_matrix * local_blade_pos;
@@ -260,9 +269,9 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 		);
 	}
 	
-	// Nitya: HOW?? 
+	// Nitya: HOW?? - you can call a function by referencing first argument in the function too!
 	aircraft.update_wake(ac_state, ac_input_state, wake_history, inflows, atmo, iteration, dt);
-
+	
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 		inflows[rotor_idx].update(ac_state.rotor_states[rotor_idx].C_T, ac_input_state.rotor_inputs[rotor_idx], ac_state.rotor_states[rotor_idx], ac_state.rotor_states[rotor_idx].advance_ratio, ac_state.rotor_states[rotor_idx].axial_advance_ratio, &ac_state, dt);
 	}
