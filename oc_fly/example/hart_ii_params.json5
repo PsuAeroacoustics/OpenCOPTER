@@ -3,7 +3,7 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		shed_history_angle: [45],
-		shed_release_angle: 2,
+		shed_release_angle: 2,  // release ratio
 		convergence_criteria: 1.0e-5,
 		convergence_type: "wake",
 		r_0: 1.0,
