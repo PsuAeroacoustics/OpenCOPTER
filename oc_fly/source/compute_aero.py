@@ -588,22 +588,13 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 		for r_idx in range(num_rotors):
 			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
 			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
-			wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
-			wake_gamma_w = np.zeros((num_blades[r_idx], actual_wake_history))
-			wake_missDist = np.zeros((num_blades[r_idx], actual_wake_history))
 
 			for b_idx in range(num_blades[r_idx]):
 				wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_gamma_w[b_idx, :] = get_BWIinputs_gamma_w(rotor_wake_history.history[0].rotor_wakes[r_idx].blade_vortex_interaction[0].tip_vortex_interaction[b_idx])
-				# wake_missDist[b_idx, :] = get_BWIinputs_missDist(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortex_interaction[b_idx])
-
+				
 			results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
-			results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
-			results_dictionary[f'wake_{r_idx}_gamma_w'] = wake_gamma_w
-			results_dictionary[f'wake_{r_idx}_missDist'] = wake_missDist
 			
 		results_dictionary["rotor_c_t"] = rotorcraft_thrusts
 		results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]

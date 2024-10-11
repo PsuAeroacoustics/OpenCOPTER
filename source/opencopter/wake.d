@@ -693,7 +693,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			v_z[n_idx][] += tmp_v_z[];
 
 			if(save_BWIinputs){
-				//BWIinputs[i_c_idx].miss_dist = miss_dist;
 				if((n_idx == 0) && (blade_chunk_idx == 0)) {
 					BWIinputs[i_c_idx].miss_dist = miss_dist;
 					BWIinputs[i_c_idx].bladeSec_idx = 0;
@@ -704,12 +703,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 							BWIinputs[i_c_idx].bladeSec_idx[bwi_idx] = n_idx + chunk_size*blade_chunk_idx;
 							BWIinputs[i_c_idx].gamma_w[bwi_idx] = gamma[bwi_idx];
 							BWIinputs[i_c_idx].r_c_ave[bwi_idx] = r_c_ave[bwi_idx];
- 							BWIinputs[i_c_idx].r_vortex[bwi_idx].x = dx[bwi_idx];
-							BWIinputs[i_c_idx].r_vortex[bwi_idx].y = dy[bwi_idx];
-							BWIinputs[i_c_idx].r_vortex[bwi_idx].z = dz[bwi_idx];
-							/* BWIinputs[i_c_idx].r_blade[bwi_idx].x = dx_p[bwi_idx];
-							BWIinputs[i_c_idx].r_blade[bwi_idx].y = dy_p[bwi_idx];
-							BWIinputs[i_c_idx].r_blade[bwi_idx].z = dz_p[bwi_idx]; */
+							BWIinputs[i_c_idx].r_vortex[bwi_idx] = Vec3(dx[bwi_idx], dy[bwi_idx], dz[bwi_idx]);
 						}
 					}
 					
