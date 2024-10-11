@@ -597,7 +597,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 				wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 				wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_gamma_w[b_idx, :] = get_BWIinputs_gamma_w(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortex_interaction[b_idx])
+				wake_gamma_w[b_idx, :] = get_BWIinputs_gamma_w(rotor_wake_history.history[0].rotor_wakes[r_idx].blade_vortex_interaction[0].tip_vortex_interaction[b_idx])
 				# wake_missDist[b_idx, :] = get_BWIinputs_missDist(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortex_interaction[b_idx])
 
 			results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
