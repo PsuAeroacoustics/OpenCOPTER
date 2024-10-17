@@ -721,7 +721,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 	return ret;
 }
 
-InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, auto ref AS ac_state, size_t rotor_idx, size_t blade_idx, size_t blade_chunk_idx = 0, bool single_rotor = false, bool shed_only = false, bool tip_only = false)
+InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, auto ref AS ac_state, size_t rotor_idx, size_t blade_idx, size_t blade_chunk_idx = 0, bool single_rotor = false, bool shed_only = false, bool tip_only = false, bool trackBWIevents = false)
 	if(is_wake!W && is_aircraft_state!AS)
 {
 	static import std.math;
@@ -784,7 +784,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 		if(!shed_only) {
 			foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
 				foreach(i_blade_idx; 0..i_rotor.blade_states.length) {
-					auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, blade_chunk_idx, true);
+					auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, blade_chunk_idx, trackBWIevents);
 					ret.v_x[] += ind_vel.v_x[];
 					ret.v_y[] += ind_vel.v_y[];
 					ret.v_z[] += ind_vel.v_z[];

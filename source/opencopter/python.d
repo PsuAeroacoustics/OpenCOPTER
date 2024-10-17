@@ -521,8 +521,8 @@ string FrameType_wing() {
 }
 
 
-void step(PyAircraftState* ac_state, PyAircraft* aircraft, PyAircraftInputState* ac_input_state, Inflow[] inflows, PyWakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt, bool converged) {
-	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, inflows, *wake_history, *atmo, iteration, dt, converged);
+void step(PyAircraftState* ac_state, PyAircraft* aircraft, PyAircraftInputState* ac_input_state, Inflow[] inflows, PyWakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
+	opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, inflows, *wake_history, *atmo, iteration, dt, trackBWIevents, converged);
 }
 
 opencopter.vtk.VtkRotor build_base_vtu_rotor(PyRotorGeometry* rotor) {
