@@ -676,7 +676,7 @@ def plot_acoustic_contours_tr(plot_name: str, presentation: bool, plot_hybrid = 
 			plt.ylim(-4, 4)
 
 		cax = fig.add_axes([0.95, 0.31, 0.02, 0.37])
-		fig.colorbar(plt1, cax, orientation='vertical', label='SPL [dB]')
+		fig.colorbar(plt1, cax, orientation='vertical', label='OASPL [dBA]')
 		if not plot_hybrid:
 			if not presentation:
 				plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/HeliNOVI_{plot_name.upper()}_{freq_range.Title}_TR_dBA.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
@@ -1568,8 +1568,8 @@ if __name__ == "__main__":
 	# plot_blade_normal_pressures('ID1_ASU', args.p, True)
 	# # # plot_acoustic_contours_fs("ID1_ASU", args.p)
 	# # # # # plot_acoustic_contours_mr("ID1_ASU")
-	# plot_acoustic_contours_tr("ID1_ASU", args.p)
-	# plot_acoustic_contours_tr("ID1_ASU", args.p, True)
+	plot_acoustic_contours_tr("ID1_ASU", args.p)
+	plot_acoustic_contours_tr("ID1_ASU", args.p, True)
 
 	# print("Plotting ID1_ASD")
 	# plot_hybrid_wake('ID1_ASD', args.p, 1050)
@@ -1578,8 +1578,8 @@ if __name__ == "__main__":
 	# # # # # #plot_wake_trajectory('BL')
 	# #plot_acoustic_contours_fs("ID1_ASD", args.p)
 	# # # # # plot_acoustic_contours_mr("ID1_ASD")
-	# plot_acoustic_contours_tr("ID1_ASD", args.p)
-	# plot_acoustic_contours_tr("ID1_ASD", args.p, True)
+	plot_acoustic_contours_tr("ID1_ASD", args.p)
+	plot_acoustic_contours_tr("ID1_ASD", args.p, True)
 
 	print("Plotting ID5")
 	# # # # # plot_blade_twist('ID5')

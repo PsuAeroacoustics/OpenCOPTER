@@ -22,6 +22,8 @@ import pyjson5
 import matplotlib.font_manager as font_manager
 import matplotlib
 
+hart_cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#382685", "#2f44a1", "#3c5dad", "#63bfe0", "#91dfd8", "#d8f5f3", "#d0f4cb", "#f6f39a", "#ece231", "#fbca11", "#f59620", "#ef641f", "#df3123", "#ba49ae", "#9a3365", "#810e7d"])
+
 font_dir_times = '/usr/share/fonts/truetype/msttcorefonts/times.ttf'
 font_manager.fontManager.addfont(font_dir_times)
 prop_times = font_manager.FontProperties(fname=font_dir_times)
@@ -32,11 +34,16 @@ prop_arial = font_manager.FontProperties(fname=font_dir_arial)
 font_size0 = 22
 font_size1 = 17
 font_size2 = 16
+font_size25 = 14
 font_size3 = 12
+font_size36 = 10
 font_size35 = 8
 font_size4 = 5
 
 label_font_text = {'fontname':'Times New Roman', 'size':f'{font_size1}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+label_font2_text = {'fontname':'Times New Roman', 'size':f'{font_size3}', 'color':'black', 'weight':'normal',
               'verticalalignment':'bottom'}
 
 label_font_present = {'fontname':'Arial', 'size':f'{font_size1}', 'color':'black', 'weight':'normal',
@@ -49,6 +56,9 @@ title_font_present = {'fontname':'Arial', 'size':f'{font_size1}', 'color':'black
               'verticalalignment':'bottom'}
 
 title_font2 = {'fontname':'Times New Roman', 'size':f'{font_size2}', 'color':'black', 'weight':'normal',
+              'verticalalignment':'bottom'}
+
+title_font3_text = {'fontname':'Times New Roman', 'size':f'{font_size25}', 'color':'black', 'weight':'normal',
               'verticalalignment':'bottom'}
 
 legend_font = {'fontname':'Times New Roman', 'size':f'{font_size4}', 'color':'black', 'weight':'normal',
@@ -620,7 +630,8 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	#print(x)
 	offset = x[0] - -4.0
 
-	clevels = np.linspace(85, 119, 18)
+	#clevels = np.linspace(85, 119, 18)
+	clevels = np.linspace(86, 118, 17)
 
 	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
@@ -646,11 +657,11 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	fig = plt.figure()
 	ax0 = plt.subplot(121)
 	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
-	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
-	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap)
+	#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
 	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
-	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
 	plt.ylabel('$x/R$', **label_font)
 	plt.xlabel('$y/R$', labelpad=20, **label_font)
 	plt.title('Prediction', **title_font)
@@ -659,8 +670,8 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	
 	plt.axis('scaled')
 	
-	for label in clabels:
-		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+	# for label in clabels:
+	# 	label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
 	
 	ax = plt.gca()
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
@@ -674,10 +685,10 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	ax1.set_yticklabels([])
 	#ax.set_xticklabels([])
 	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
-	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap_lines, linewidths=0.5)
-	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap)
+	#plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=hart_cmap)
 	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
-	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
 	plt.title('Measured', **title_font)
 	#plt.clabel(CS, clevels, inline=True)
 	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
@@ -690,8 +701,8 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	plt.xlabel('$y/R$', labelpad=20, **label_font)
 	#plt.ylabel('-x/R')
 
-	for label in clabels:
-		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+	# for label in clabels:
+	# 	label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
 
 	ax = plt.gca()
 	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
@@ -717,7 +728,340 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	if presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	else:
-		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	#plt.show()
+	plt.cla()
+	plt.clf()
+
+
+def plot_acoustic_contours_all(plot_name: str, presentation: bool):
+	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
+
+	wopwop_results = parse_wopwop_results(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', 'case.nam')
+
+	i_max = len(wopwop_results.oaspl_db_grid.obs_x)
+	j_max = len(wopwop_results.oaspl_db_grid.obs_x[0])
+
+	phi = np.linspace(0, 2*math.pi, 1000)
+	rotor_x = 1*np.cos(phi)
+	rotor_z = 1*np.sin(phi)
+
+	print(f'i_max: {i_max}')
+	print(f'j_max: {j_max}')
+
+	oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.oaspl_db]
+
+	oaspl_db = [[oaspl_linear[i*j_max + j] for i in range(i_max)] for j in range(j_max)]
+
+	#print(wopwop_results.oaspl_db_grid.obs_y[0])
+	#print(wopwop_results.oaspl_db_grid.obs_x[1])
+
+	x = wopwop_results.oaspl_db_grid.obs_x[0]
+	y = [_y[0] for _y in wopwop_results.oaspl_db_grid.obs_y]
+	y.reverse()
+
+	#print(x)
+	offset = x[0] - -4.0
+
+	#clevels = np.linspace(85, 119, 18)
+	clevels = np.linspace(86, 118, 17)
+
+	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
+
+	print([(_x - offset)/R for _x in x])
+	print([_y/R for _y in y])
+	print(x_grid[0,:])
+	print(y_grid[:,0])
+	#print(x)
+
+	mic_x = -0.054
+	#mic_x = 0.1
+	mic_y = 0.905
+	#mic_y = 1.1
+
+	title_font = title_font3_text
+	if presentation:
+		title_font = title_font_present
+
+	label_font = label_font_text
+	if presentation:
+		label_font = label_font_present
+
+	fig = plt.figure(figsize=(10, 10))
+	#fig = plt.figure()
+	#fig.tight_layout()
+	plt.subplots_adjust(wspace=-0.5)
+	#ax0 = plt.subplot(421)
+	ax0 = plt.subplot(331)
+	ax0.set_xticklabels([])
+	plt.plot(rotor_x, rotor_z, 'k', linewidth=0.5)
+	#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
+	plt.arrow(0, 1.75, 0, -0.5, length_includes_head=True, width=0.00001, head_width=0.05, color='k')
+	plt.annotate('$\mathrm{\mu}$', (0.1, 1.5), fontsize=font_size36)
+	plt.arrow(-0.25/2, -1.1, 0.25, 0.0, length_includes_head=True, width=0.00001, head_width=0.05, color='k')
+	plt.annotate('$\Psi$, $\Omega$', (-0.2, -1.35), fontsize=font_size36)
+	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	plt.ylabel('$x/R$', **label_font)
+	#plt.xlabel('$y/R$', labelpad=20, **label_font)
+	plt.title('OpenCOPTER', **title_font)
+	plt.ylim(-2, 2)
+	#plt.axis('equal')
+	
+	plt.axis('scaled')
+	
+	# for label in clabels:
+	# 	label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+	
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	#ax1 = plt.subplot(422, sharey=ax0)
+	#ax1 = plt.subplot(422)
+	ax1 = plt.subplot(332)
+	ax1.set_yticklabels([])
+	ax1.set_xticklabels([])
+	plt.plot(rotor_x, rotor_z, 'k', linewidth=0.5)
+	#plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=hart_cmap)
+	plt.arrow(0, 1.75, 0, -0.5, length_includes_head=True, width=0.00001, head_width=0.05, color='k')
+	plt.annotate('$\mathrm{\mu}$', (0.1, 1.5), fontsize=font_size36)
+	plt.arrow(-0.25/2, -1.1, 0.25, 0.0, length_includes_head=True, width=0.00001, head_width=0.05, color='k')
+	plt.annotate('$\Psi$, $\Omega$', (-0.2, -1.35), fontsize=font_size36)
+	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	plt.title('Measured', **title_font)
+	#plt.clabel(CS, clevels, inline=True)
+	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
+	
+	#plt.axis('equal')
+
+	plt.ylim(-2, 2)
+	plt.axis('scaled')
+	#plt.colorbar()
+	#plt.xlabel('$y/R$', labelpad=20, **label_font)
+	#plt.ylabel('-x/R')
+
+	# for label in clabels:
+	# 	label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	# #ax = plt.subplot(133)
+	# cax = fig.add_axes([0.93, 0.11, 0.02, 0.77])
+	# cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
+	# cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
+
+	# #ax = plt.gca()
+	# for label in (cax.get_xticklabels() + cax.get_yticklabels()):
+	# 	if not presentation:
+	# 		label.set_fontname('Times New Roman')
+	# 		label.set_fontsize(font_size3)
+	# 	else:
+	# 		label.set_fontsize(font_size1)
+
+
+
+
+
+	## US
+	#ax2 = plt.subplot(423, sharex=ax0)
+	#ax2 = plt.subplot(423)
+	ax2 = plt.subplot(333)
+	ax2.set_yticklabels([])
+	ax2.set_xticklabels([])
+	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/US_{plot_name}.JPG')
+
+	#plt.imshow(np.fliplr(np.flipud(np.transpose(arr, [1, 0, 2]))) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
+	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
+
+	plt.title('US', **title_font)
+
+	#plt.xlabel('y [m]', **label_font)
+	plt.ylim(-2, 2)
+	plt.axis('scaled')	
+	#plt.xlabel('$y/R$', labelpad=20, **label_font)
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	## KU
+	#ax3 = plt.subplot(424, sharex=ax1, sharey=ax2)
+	#ax3 = plt.subplot(424)
+	ax3 = plt.subplot(334)
+	#ax3.set_yticklabels([])
+	ax3.set_xticklabels([])
+	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/KU_{plot_name}.JPG')
+
+	plt.imshow(np.flipud(arr) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
+
+	plt.title('KU', **title_font)
+	plt.ylabel('$x/R$', **label_font)
+	#plt.xlabel('y [m]', **label_font)
+	plt.ylim(-2, 2)
+	plt.axis('scaled')	
+	#plt.xlabel('$y/R$', labelpad=20, **label_font)
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+	## Onera
+	#ax4 = plt.subplot(425, sharex=ax0)
+	#ax4 = plt.subplot(425)
+	ax4 = plt.subplot(335)
+	ax4.set_yticklabels([])
+	#ax4.set_xticklabels([])
+	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/Onera_{plot_name}.JPG')
+
+	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
+
+	plt.title('Onera', **title_font)
+	#plt.xlabel('y [m]', **label_font)
+	plt.ylim(-2, 2)
+	plt.axis('scaled')
+	#plt.ylabel('$x/R$', **label_font)
+	#plt.xlabel('$y/R$', labelpad=20, **label_font)
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	if plot_name != "BL":
+		plt.xlabel('$y/R$', labelpad=20, **label_font)
+	else:
+		ax4.set_xticklabels([])
+
+	## DLR
+	#ax5 = plt.subplot(426, sharex=ax1, sharey=ax4)
+	#ax5 = plt.subplot(426)
+	ax5 = plt.subplot(336)
+	ax5.set_yticklabels([])
+	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/DLR_{plot_name}.JPG')
+
+	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
+	#plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
+
+	plt.title('DLR', **title_font)
+	#plt.xlabel('y [m]', **label_font)
+	plt.ylim(-2, 2)
+	plt.axis('scaled')
+
+	#if plot_name != "BL":
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	#else:
+	#	ax5.set_xticklabels([])
+
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+	## UM
+	#ax6 = plt.subplot(427, sharex=ax0)
+	#ax6 = plt.subplot(427)
+	ax6 = plt.subplot(337)
+	#ax6.set_yticklabels([])
+	
+	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/UM_{plot_name}.JPG')
+
+	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
+	#plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
+
+	plt.title('UM', **title_font)
+	#plt.xlabel('y [m]', **label_font)
+	plt.ylim(-2, 2)
+	plt.axis('scaled')
+	plt.ylabel('$x/R$', **label_font)
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	if plot_name == "BL":
+		wopwop_results_charm = parse_wopwop_results(f'/mnt/e/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
+
+		oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results_charm.oaspl_db]
+
+		oaspl_db = [[oaspl_linear[i*j_max + j] for i in range(i_max)] for j in range(j_max)]
+
+		#plt.subplots_adjust(wspace=-0.8)
+		#ax7 = plt.subplot(428)
+		ax7 = plt.subplot(338)
+		ax7.set_yticklabels([])
+		plt.plot(rotor_x, rotor_z, 'k', linewidth=0.5)
+		#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+		plt1 = plt.contourf([-_y/R for _y in y], [(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
+		plt.xlabel('$y/R$', labelpad=20, **label_font)
+		plt.arrow(0, 1.75, 0, -0.5, length_includes_head=True, width=0.00001, head_width=0.05, color='k')
+		plt.annotate('$\mathrm{\mu}$', (0.1, 1.5), fontsize=font_size36)
+		plt.arrow(-0.25/2, -1.1, 0.25, 0.0, length_includes_head=True, width=0.00001, head_width=0.05, color='k')
+		plt.annotate('$\Psi$, $\Omega$', (-0.2, -1.35), fontsize=font_size36)
+		#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+		#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+		#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+
+
+		plt.title('CHARM', **title_font)
+		plt.ylim(-2, 2)
+
+		plt.axis('scaled')
+		
+		ax = plt.gca()
+		for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+			if not presentation:
+				label.set_fontname('Times New Roman')
+				label.set_fontsize(font_size3)
+			else:
+				label.set_fontsize(font_size1)
+
+	cax = fig.add_axes([0.8, 0.08, 0.02, 0.8])
+	cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
+	cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
+
+	#ax = plt.gca()
+	for label in (cax.get_xticklabels() + cax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontname('Arial')
+			label.set_fontsize(font_size1)
+
+	if presentation:
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	else:
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_all.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_all.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+
 	#plt.show()
 	plt.cla()
 	plt.clf()
@@ -775,7 +1119,7 @@ def plot_acoustic_contours_cfd(plot_name: str, presentation: bool):
 		label_font = label_font_present
 		
 	fig = plt.figure()
-	ax0 = plt.subplot(121)
+	ax0 = plt.subplot(131)
 	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
 	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
 	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap='plasma')
@@ -806,13 +1150,64 @@ def plot_acoustic_contours_cfd(plot_name: str, presentation: bool):
 			label.set_fontsize(font_size2)
 		#label.set_color("yellow")
 
-	ax1 = plt.subplot(122)
+
+	ax1 = plt.subplot(132)
+	ax1.set_yticklabels([])
+	#ax.set_xticklabels([])
+	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
+	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap='plasma')
+	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	plt.title('Measured', **title_font)
+	#plt.clabel(CS, clevels, inline=True)
+	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
+	
+	#plt.axis('equal')
+
+	plt.ylim(-2, 2)
+	plt.axis('scaled')
+	#plt.colorbar()
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	#plt.ylabel('-x/R')
+
+	for label in clabels:
+		label.set_fontname('Arial')
+		#label.set_fontsize(font_size3)
+		label.set_color("yellow")
+
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	#ax = plt.subplot(133)
+	# cax = fig.add_axes([0.93, 0.11, 0.02, 0.77])
+	# cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
+	# cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
+
+	#ax = plt.gca()
+	# for label in (cax.get_xticklabels() + cax.get_yticklabels()):
+	# 	if not presentation:
+	# 		label.set_fontname('Times New Roman')
+	# 		label.set_fontsize(font_size3)
+	# 	else:
+	# 		label.set_fontsize(font_size1)
+
+
+
+
+
+	ax1 = plt.subplot(133)
 	ax1.set_yticklabels([])
 	arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/hart_ii_bl_jia.JPG')
 
 	plt.imshow(np.fliplr(np.flipud(np.transpose(arr, [1, 0, 2]))) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	#plt.plot(rotor_x, rotor_z, "k", linewidth=1)
-	plt.title('OVERFLOW/SAMCart', **title_font)
+	plt.title('OVERFLOW + \n SAMCart', **title_font)
 	plt.xlabel('y [m]', **label_font)
 	#ax = plt.gca()
 	#ax.set_xticklabels([-1, 0, 1])
@@ -844,7 +1239,7 @@ def plot_acoustic_contours_cfd(plot_name: str, presentation: bool):
 	# 	label.set_fontsize(font_size3)
 
 	#ax = plt.subplot(133)
-	cax = fig.add_axes([0.93, 0.11, 0.02, 0.77])
+	cax = fig.add_axes([0.93, 0.2, 0.02, 0.6])
 	cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
 	cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
 
@@ -861,6 +1256,191 @@ def plot_acoustic_contours_cfd(plot_name: str, presentation: bool):
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_cfd.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_cfd.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	#plt.show()
+	plt.cla()
+	plt.clf()
+
+def plot_acoustic_contours_charm(plot_name: str, presentation: bool):
+	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
+
+	wopwop_results_charm = parse_wopwop_results(f'/mnt/e/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
+
+	wopwop_results = parse_wopwop_results(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', 'case.nam')
+
+	i_max = len(wopwop_results.oaspl_db_grid.obs_x)
+	j_max = len(wopwop_results.oaspl_db_grid.obs_x[0])
+
+	phi = np.linspace(0, 2*math.pi, 1000)
+	rotor_x = 1*np.cos(phi)
+	rotor_z = 1*np.sin(phi)
+
+	print(f'i_max: {i_max}')
+	print(f'j_max: {j_max}')
+
+
+	oaspl_linear_charm = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results_charm.oaspl_db]
+
+	oaspl_db_charm = [[oaspl_linear_charm[i*j_max + j] for i in range(i_max)] for j in range(j_max)]
+
+
+	oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results.oaspl_db]
+
+	oaspl_db = [[oaspl_linear[i*j_max + j] for i in range(i_max)] for j in range(j_max)]
+
+	#print(wopwop_results.oaspl_db_grid.obs_y[0])
+	#print(wopwop_results.oaspl_db_grid.obs_x[1])
+
+	x = wopwop_results.oaspl_db_grid.obs_x[0]
+	y = [_y[0] for _y in wopwop_results.oaspl_db_grid.obs_y]
+	y.reverse()
+
+	#print(x)
+	offset = x[0] - -4.0
+
+	clevels = np.linspace(85, 119, 18)
+
+	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
+
+	print([(_x - offset)/R for _x in x])
+	print([_y/R for _y in y])
+	print(x_grid[0,:])
+	print(y_grid[:,0])
+	#print(x)
+
+	mic_x = -0.054
+	#mic_x = 0.1
+	mic_y = 0.905
+	#mic_y = 1.1
+
+	title_font = title_font_text
+	if presentation:
+		title_font = title_font_present
+
+	label_font = label_font_text
+	if presentation:
+		label_font = label_font_present
+
+	fig = plt.figure()
+	ax0 = plt.subplot(131)
+	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
+	plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap)
+	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	plt.ylabel('$x/R$', **label_font)
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	plt.title('OpenCOPTER', **title_font)
+	plt.ylim(-2, 2)
+	#plt.axis('equal')
+	
+	plt.axis('scaled')
+	
+	for label in clabels:
+		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+	
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontname('Arial')
+			label.set_fontsize(font_size2)
+		#label.set_color("yellow")
+
+
+	ax1 = plt.subplot(132)
+	ax1.set_yticklabels([])
+	#ax.set_xticklabels([])
+	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
+	plt2 = plt.contour(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt.contourf(x_grid[0,:], y_grid[:,0], measured, levels=clevels, cmap=cmap)
+	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	plt.title('Measured', **title_font)
+	#plt.clabel(CS, clevels, inline=True)
+	#plt.contourf(y_grid[:,0], x_grid[0,:], measured, levels=clevels)
+	
+	#plt.axis('equal')
+
+	plt.ylim(-2, 2)
+	plt.axis('scaled')
+	#plt.colorbar()
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	#plt.ylabel('-x/R')
+
+	for label in clabels:
+		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	#ax = plt.subplot(133)
+	# cax = fig.add_axes([0.93, 0.11, 0.02, 0.77])
+	# cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
+	# cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
+
+	#ax = plt.gca()
+	# for label in (cax.get_xticklabels() + cax.get_yticklabels()):
+	# 	if not presentation:
+	# 		label.set_fontname('Times New Roman')
+	# 		label.set_fontsize(font_size3)
+	# 	else:
+	# 		label.set_fontsize(font_size1)
+
+
+	ax0 = plt.subplot(133)
+	ax0.set_yticklabels([])
+	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
+	plt2 = plt.contour([-_y/R for _y in y], [(_x - offset)/R for _x in x], oaspl_db_charm, levels=clevels, cmap=cmap_lines, linewidths=0.5)
+	plt1 = plt.contourf([-_y/R for _y in y], [(_x - offset)/R for _x in x], oaspl_db_charm, levels=clevels, cmap=cmap)
+	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
+	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
+	clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
+	#plt.ylabel('$x/R$', **label_font)
+	plt.xlabel('$y/R$', labelpad=20, **label_font)
+	plt.title('CHARM', **title_font)
+	plt.ylim(-2, 2)
+	#plt.axis('equal')
+	
+	plt.axis('scaled')
+	
+	for label in clabels:
+		label.set_bbox(dict(facecolor='white', edgecolor='white', pad=0.01))
+	
+	ax = plt.gca()
+	for label in (ax.get_xticklabels() + ax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontname('Arial')
+			label.set_fontsize(font_size2)
+		#label.set_color("yellow")
+
+	cax = fig.add_axes([0.93, 0.2, 0.02, 0.6])
+	cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
+	cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
+
+	#ax = plt.gca()
+	for label in (cax.get_xticklabels() + cax.get_yticklabels()):
+		if not presentation:
+			label.set_fontname('Times New Roman')
+			label.set_fontsize(font_size3)
+		else:
+			label.set_fontsize(font_size1)
+
+	if not presentation:
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_charm.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_charm.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	else:
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_charm.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	#plt.show()
 	plt.cla()
 	plt.clf()
@@ -1407,19 +1987,25 @@ if __name__ == "__main__":
 
 	#plot_spectrum('BL')
 
+	plot_acoustic_contours_all("BL", args.p)
+	plot_acoustic_contours_all("MN", args.p)
+	plot_acoustic_contours_all("MV", args.p)
+
+	plot_acoustic_contours("BL", args.p)
 	plot_acoustic_contours_cfd("BL", args.p)
+	plot_acoustic_contours_charm("BL", args.p)
 	#plot_blade_twist('BL', args.p)
 	#plot_blade_twist('MN', args.p)
 	#plot_blade_twist('MV', args.p)
 
-	plot_blade_normal_pressures('BL', args.p, blade_results_bl)
-	plot_wake_trajectory('BL', args.p, blade_results_bl)
-	plot_acoustic_contours("BL", args.p)
+	# plot_blade_normal_pressures('BL', args.p, blade_results_bl)
+	# plot_wake_trajectory('BL', args.p, blade_results_bl)
+	# plot_acoustic_contours("BL", args.p)
 
-	plot_blade_normal_pressures('MN', args.p, blade_results_mn)
-	plot_wake_trajectory('MN', args.p, blade_results_mn)
-	plot_acoustic_contours("MN", args.p)
+	# plot_blade_normal_pressures('MN', args.p, blade_results_mn)
+	# plot_wake_trajectory('MN', args.p, blade_results_mn)
+	# plot_acoustic_contours("MN", args.p)
 
-	plot_blade_normal_pressures('MV', args.p, blade_results_mv)
-	plot_wake_trajectory('MV', args.p, blade_results_mv)
-	plot_acoustic_contours("MV", args.p)
+	# plot_blade_normal_pressures('MV', args.p, blade_results_mv)
+	# plot_wake_trajectory('MV', args.p, blade_results_mv)
+	# plot_acoustic_contours("MV", args.p)
