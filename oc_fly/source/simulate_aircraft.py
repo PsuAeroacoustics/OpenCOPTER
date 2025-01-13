@@ -12,6 +12,7 @@ import numpy as np
 from scipy.integrate import simpson
 import math
 import time
+from scipy.interpolate import interp1d
 
 from simulated_vehicle import SimulatedVehicle
 
@@ -73,6 +74,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 
 	d_psi = d_psi*np.abs(omegas)/np.max(np.abs(omegas))
 
+
 	vtk_rotors = [build_base_vtu_rotor(vehicle.aircraft.rotors[rotor_idx]) for rotor_idx in range(num_rotors)]
 	vtk_wake = build_base_vtu_wake(vehicle.wake_history.history[0])
 
@@ -124,7 +126,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 	
 	for rotor in vehicle.aircraft.rotors:
 		for blade in rotor.blades:
-			wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, wopwop_data_path, rotor, blade, acoustics["thickness_noise_flag"])
+			if computational_parameters['linear_element_distribution']:
+				r = np.arange(computational_parameters['spanwise_elements']+1)*(1-blade.r_c)/(computational_parameters['spanwise_elements'])+blade.r_c
+				r = 0.5*(r[1:]+r[:-1])
+			else:
+				r = get_r(blade)
+			wopwop_input_files_generator.write_wopwop_geometry(naca0012_xsection, wopwop_data_path, rotor, blade, acoustics["thickness_noise_flag"],np.array(r)-blade.r_c)
 
 	log_file.write("Performing simulation\n")
 
@@ -333,6 +340,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 					blade_flapping = lambda az, a=m['cos'], b=m['sin']: flapping_at_azimuth(a, b, 1.0, az)
 				elif m['blade_element_func'] == 'pitching':
 					elastic_twist = lambda az, a=m['cos'], b=m['sin']: elastic_twist_at_azimuth(a, b, az)
+
+		z_loading_store = np.zeros((int(iter_per_rev*post_conv_revolutions)+1,num_rotors,num_blades[0],elements))
+		x_loading_store = np.zeros((int(iter_per_rev*post_conv_revolutions)+1,num_rotors,num_blades[0],elements))
 
 		z_loading = np.zeros(elements, dtype=np.single)
 		x_loading = np.zeros(elements, dtype=np.single)
@@ -648,8 +658,25 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 									wake_element_blade[rotor_idx, t_idx] = blade_idx
 
 						fill_dC_Nf(blade, z_loading)
+						fill_dC_Dbf(blade, x_loading)
 
-						z_loading = -z_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0
+						if computational_parameters['linear_element_distribution']:
+							# x_loading,z_loading = list(map(lambda x: interp1d(x = np.array(get_r(vehicle.aircraft.rotors[rotor_idx].blades[blade_idx])), y = x, kind='cubic')(r),[x_loading,z_loading]))
+							z_loading = interp1d(np.array(get_r(vehicle.aircraft.rotors[rotor_idx].blades[blade_idx])), y = z_loading, kind='cubic')(r)
+						# x_loading,z_loading = list(map(lambda x: (-x*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0).astype(np.single),[x_loading,z_loading])) 
+
+							# import matplotlib.pyplot as plt
+							# fig,ax = plt.subplots(1,1, figsize = (6.27,5))
+							# ax.scatter(np.array(get_r(vehicle.aircraft.rotors[rotor_idx].blades[blade_idx])), z_loading)
+							# ax.scatter(r, z_loading_2)
+							# plt.savefig('loading_interp.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
+
+
+						z_loading = (-z_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0).astype(np.single)
+						# x_loading = (-x_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0).astype(np.single)
+
+						z_loading_store[acoustic_iteration,rotor_idx,blade_idx] = z_loading
+						# x_loading_store[acoustic_iteration,rotor_idx,blade_idx] = x_loading
 
 						loading_data.set_z_loading_array(z_loading)
 						loading_data.set_y_loading_array(y_loading)
@@ -737,46 +764,51 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 				close_loading_file(loading_files[rotor_idx][blade_idx])
 
 	log_file.write("Sim done\n")
+# 4*np.trapz(np.trapz(z_loading_store[-360:,0,0],dx = 2*np.diff(r)),dx =np.pi/180)/(2*np.pi)
+# 4/(2*np.pi)*np.trapz(np.trapz(x_loading_store[-360:,0,0]*np.array(get_r(vehicle.aircraft.rotors[0].blades[0])),x = np.array(get_r(vehicle.aircraft.rotors[0].blades[0]))),dx =np.pi/180)*(atmo.density*np.pi*2**2*(109.12*2)**3)
 
-	result_dictionary = {}
+	saved_params = {}
 
 	for rotor_idx in range(num_rotors):
-		result_dictionary[f'rotor_{rotor_idx}_wake_timehistory'] = wake_trajectory_timehistories[rotor_idx]
+		saved_params[f'rotor_{rotor_idx}_wake_timehistory'] = wake_trajectory_timehistories[rotor_idx]
 
-	result_dictionary['blade_twist_array'] = blade_twist_array
-	result_dictionary['blade_twist_azimuth'] = blade_twist_azimuth
+	saved_params['blade_twist_array'] = blade_twist_array
+	saved_params['blade_twist_azimuth'] = blade_twist_azimuth
 
-	result_dictionary['collective_pitch_array'] = collective_pitch_array
-	result_dictionary['sin_pitch_array'] = sin_pitch_array
-	result_dictionary['cos_pitch_array'] = cos_pitch_array
-	result_dictionary['hhc_pitch_array'] = hhc_pitch_array
+	saved_params['collective_pitch_array'] = collective_pitch_array
+	saved_params['sin_pitch_array'] = sin_pitch_array
+	saved_params['cos_pitch_array'] = cos_pitch_array
+	saved_params['hhc_pitch_array'] = hhc_pitch_array
 
 	if elastic_twist is not None:
-		result_dictionary['elastic_twist_array'] = elastic_twist_array
+		saved_params['elastic_twist_array'] = elastic_twist_array
 
 	if blade_flapping is not None:
-		result_dictionary['blade_flapping_array'] = blade_flapping_array
-		result_dictionary['blade_flapping_der_array'] = blade_flapping_der_array
+		saved_params['blade_flapping_array'] = blade_flapping_array
+		saved_params['blade_flapping_der_array'] = blade_flapping_der_array
 
 	if track_wake_element:
-		result_dictionary['wake_element_index'] = wake_element_index
-		result_dictionary['target_y_slices'] = target_y_slices
-		result_dictionary["wake_element_trajectory"] = wake_element_trajectory
-		result_dictionary["wake_element_core_size"] = wake_element_core_size
+		saved_params['wake_element_index'] = wake_element_index
+		saved_params['target_y_slices'] = target_y_slices
+		saved_params["wake_element_trajectory"] = wake_element_trajectory
+		saved_params["wake_element_core_size"] = wake_element_core_size
 
 	if track_span_element:
-		result_dictionary['span_element_af_loading'] = span_element_af_loading
-		result_dictionary['span_element_loading'] = span_element_loading
-		result_dictionary['span_element_aoa_eff'] = span_element_aoa_eff
-		result_dictionary['span_element_aoa'] = span_element_aoa
-		result_dictionary['span_element_up'] = span_element_up
-		result_dictionary['span_element_inflow_angle'] = span_element_inflow_angle
-		result_dictionary['span_element_theta'] = span_element_theta
-		result_dictionary['span_element_gamma'] = span_element_gamma
-		result_dictionary['span_element_azimuth'] = span_element_azimuth
+		saved_params['span_element_af_loading'] = span_element_af_loading
+		saved_params['span_element_loading'] = span_element_loading
+		saved_params['span_element_aoa_eff'] = span_element_aoa_eff
+		saved_params['span_element_aoa'] = span_element_aoa
+		saved_params['span_element_up'] = span_element_up
+		saved_params['span_element_inflow_angle'] = span_element_inflow_angle
+		saved_params['span_element_theta'] = span_element_theta
+		saved_params['span_element_gamma'] = span_element_gamma
+		saved_params['span_element_azimuth'] = span_element_azimuth
 
 	if track_piv_window:
-		result_dictionary['wake_element_piv'] = wake_element_piv
+		saved_params['wake_element_piv'] = wake_element_piv
+
+
+	saved_params.update({'z_loading':z_loading_store,'iter_per_rev':iter_per_rev,'post_conv_revolutions':post_conv_revolutions})
 
 	namelists = []
 
@@ -910,4 +942,4 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 
 		namelists.append(namelist)
 
-	return average_C_Ts, namelists, result_dictionary
+	return average_C_Ts, namelists, saved_params

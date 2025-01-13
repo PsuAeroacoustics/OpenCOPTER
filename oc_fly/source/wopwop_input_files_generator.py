@@ -317,12 +317,12 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	return namelist
 
 
-def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_thickness):
+def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_thickness,r):
 	print("Building wopwop geometry")
 
 	R = rotor.radius
-	r = get_r(blade)
-	r = [_r - blade.r_c for _r in r]
+	# r = get_r(blade)
+	# r = [_r - blade.r_c for _r in r]
 	twist = get_twist(blade)
 	real_chord = [c*R*(1.0 - blade.r_c) for c in get_chord(blade)]
 
@@ -431,5 +431,51 @@ def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path
 	
 	rotor_name = rotor.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
+	loading_file = create_loading_file(loading, f"{output_path}/{rotor_name}_{blade_name}_loading.dat")
+	return loading_file
+
+def build_wopwop_loading_mod(rotor_name, blade_name,N_elements, iterations, airfoil_xsection, output_path, include_thickness):
+	zone_headers = []
+	if include_thickness:
+		zone_headers = [
+			AperiodicStructuredHeader(
+				name = "Lift line loading",
+				timesteps = iterations,
+				i_max = N_elements,
+				j_max = 1,
+				zone = 1,
+				compute_thickness = False,
+				has_data = True
+			),
+			AperiodicStructuredHeader(
+				name = "Dummy blade loading",
+				timesteps = iterations,
+				i_max = N_elements,
+				j_max = len(airfoil_xsection),
+				zone = 2,
+				compute_thickness = True,
+				has_data = False
+			)
+		]
+	else:
+		zone_headers = [
+			AperiodicStructuredHeader(
+				name = "Lift line loading",
+				timesteps = iterations,
+				i_max = N_elements,
+				j_max = 1,
+				zone = 1,
+				compute_thickness = False,
+				has_data = True
+			)
+		]
+
+	loading = AperiodicStructuredVectorLoadingFile(
+		comment = "Blade loading",
+		reference_frame = ReferenceFrame_patch_fixed(),
+		data_alignment = DataAlignment_node_centered(),
+		zone_headers = zone_headers
+	)
+	
 	loading_file = create_loading_file(loading, f"{output_path}/{rotor_name}_{blade_name}_loading.dat")
 	return loading_file

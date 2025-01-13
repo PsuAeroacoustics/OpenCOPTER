@@ -21,7 +21,7 @@ import pyjson5
 import matplotlib.font_manager as font_manager
 import matplotlib
 
-font_dir = '/usr/share/fonts/truetype/msttcorefonts/times.ttf'
+font_dir = '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf'
 font_manager.fontManager.addfont(font_dir)
 prop = font_manager.FontProperties(fname=font_dir)
 
@@ -580,6 +580,11 @@ def plot_spectrum(plot_name: str):
 	plt.clf()
 
 	#wopwop_results.observer_pressures
+
+def plot_pressure_tseries(plot_name: str):
+	wopwop_results = parse_wopwop_results(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', 'case.nam')
+	p = np.array(wopwop_results.observer_pressures[0].functions[-1].data)
+	phi = np.linspace(0, 2*math.pi, 1000)
 
 def plot_acoustic_contours(plot_name: str):
 	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
@@ -1155,18 +1160,18 @@ if __name__ == "__main__":
 
 	#plot_spectrum('BL')
 
-	plot_blade_twist('BL')
-	plot_blade_twist('MN')
-	plot_blade_twist('MV')
+	# plot_blade_twist('BL')
+	# plot_blade_twist('MN')
+	# plot_blade_twist('MV')
 
 	plot_blade_normal_pressures('BL')
-	plot_wake_trajectory('BL')
+	# plot_wake_trajectory('BL')
 	plot_acoustic_contours("BL")
 
-	plot_blade_normal_pressures('MN')
-	plot_wake_trajectory('MN')
-	plot_acoustic_contours("MN")
+	# plot_blade_normal_pressures('MN')
+	# plot_wake_trajectory('MN')
+	# plot_acoustic_contours("MN")
 
-	plot_blade_normal_pressures('MV')
-	plot_wake_trajectory('MV')
-	plot_acoustic_contours("MV")
+	# plot_blade_normal_pressures('MV')
+	# plot_wake_trajectory('MV')
+	# plot_acoustic_contours("MV")

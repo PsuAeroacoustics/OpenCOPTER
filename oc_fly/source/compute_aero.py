@@ -17,6 +17,7 @@ import scipy.io
 from scipy.interpolate import interp1d
 from scipy.misc import derivative
 import numpy as np
+import h5py
 
 from os import path, makedirs
 
@@ -616,7 +617,12 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 		results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
 		results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
 
-		scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
+		# scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
+
+		with h5py.File(os.path.join(output_base, 'saved_params.h5'), 'w') as f:
+			for k,v in results_dictionary.items():
+				f.create_dataset(k, data = v)
+
 
 		if args.vtu_results:
 			if results is not None:
