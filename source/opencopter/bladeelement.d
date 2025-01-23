@@ -111,9 +111,6 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[]*cos(blade_state.chunks[chunk_idx].aoa)[];
 		blade_state.chunks[chunk_idx].dC_d[] = af_coefficients.C_d[];
 
-		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[]*cos(blade_state.chunks[chunk_idx].aoa)[];
-		blade_state.chunks[chunk_idx].dC_d[] = af_coefficients.C_d[];
-
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
 		blade_state.chunks[chunk_idx].dC_L[] = dC_L[];
 		blade_state.chunks[chunk_idx].dC_D[] = dC_D[];
