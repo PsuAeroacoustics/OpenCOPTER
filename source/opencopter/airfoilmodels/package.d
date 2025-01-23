@@ -30,6 +30,7 @@ struct AirfoilState {
 unittest {
     import std.conv : to;
     import std.stdio : writeln;
+    import std.math : PI;
 
     writeln("hello");
     class DummyAF: AirfoilModel {
@@ -103,15 +104,15 @@ class BladeAirfoil {
 
         airfoil_models = new AirfoilModels[num_chunks];
 
-        debug writeln("num_chunks: ", num_chunks);
+        //debug writeln("num_chunks: ", num_chunks);
 
         foreach(e_idx, extent; extents) {
-            debug writeln("extent: ", extent);
+            //debug writeln("extent: ", extent);
             foreach(c_idx; (e_idx != 0 ? extent[0] - 1 : extent[0])..(e_idx != extents.length - 1 ? extent[1] : extent[1] + 1)) {
-                debug writeln("c_idx: ", c_idx);
+                //debug writeln("c_idx: ", c_idx);
                 immutable chunk_idx = c_idx/chunk_size;
 
-                debug writeln("chunk_idx: ", chunk_idx);
+                //debug writeln("chunk_idx: ", chunk_idx);
 
                 airfoil_models[chunk_idx] ~= af_models[e_idx];
 

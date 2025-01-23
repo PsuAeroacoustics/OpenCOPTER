@@ -1,0 +1,10 @@
+[
+	{
+		// Top level always to be of type 'Aircraft'
+		// Convention will have x pointing towards the rear of the vehicle,
+		// y points out the starboard side,
+		// z points up (we aren't control nerds here)
+		name: "test_evtol",
+		vsp: "test_evtol.vsp3",
+	}
+]

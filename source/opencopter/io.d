@@ -592,10 +592,10 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			foreach(b_idx; 0..num_blades) {
 				double azimuth = (b_idx.to!double/num_blades.to!double)*2.0*PI;
 
-				auto blade_frame = new Frame(Vec3(0, 0, 1), azimuth, Vec3(0), frame_data.frame, frame_data.frame.name~"_blade_"~b_idx.to!string, FrameType.blade);
+				auto blade_frame = new Frame(Vec3(0, 0, 1), azimuth, Vec3(0), rotor.frame, rotor.frame.name~"_blade_"~b_idx.to!string, FrameType.blade);
 
 				auto af_model = new ThinAirfoil(0.0);
-				size_t[2] extent = [0, 47];
+				size_t[2] extent = [0, elements - 1];
 
 				auto blade_airfoil = new BladeAirfoil([af_model], [extent]);
 
