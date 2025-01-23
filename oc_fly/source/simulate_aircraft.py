@@ -44,7 +44,9 @@ def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 
 	return h
 
-def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+
+	write_wake = args.ws
 
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
@@ -321,12 +323,16 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	blade_flapping = None
 	elastic_twist = None
 
-	# for rotor_idx in range(num_rotors):
-	# 	write_rotor_vtu(f"{vtu_output_path}/rotor", 1000000000, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.input_state.rotor_inputs[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
+	# for motion_lambda in vehicle.motion_lambdas:
+	# 	motion_lambda(vehicle.input_state.rotor_inputs, rotor_idx)
 	
-	#convergence_rev_multiple = 1
-	#if "convergence_rev_multiple" in computational_parameters:
-	#	convergence_rev_multiple = computational_parameters["convergence_rev_multiple"]
+	# vehicle.aircraft.root_frame.update(Mat4_identity())
+	# for rotor_idx in range(num_rotors):
+	# 	write_rotor_vtu(f"{vtu_output_path}/rotor", 1000000000, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
+
+	convergence_rev_multiple = 1
+	if "convergence_rev_multiple" in computational_parameters:
+		convergence_rev_multiple = computational_parameters["convergence_rev_multiple"]
 
 	max_l2 = 1000
 
@@ -437,11 +443,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			for rotor_idx, rotor in enumerate(vehicle.aircraft.rotors):
 				_ = basic_single_rotor_dynamics(vehicle.input_state.rotor_inputs[rotor_idx], dt)
 
-				for motion_lambda in vehicle.motion_lambdas[rotor_idx]:
-					motion_lambda(vehicle.input_state.rotor_inputs[rotor_idx].azimuth)
-					# Nitya: The value of a is taken from here!! This will plug in the current azimuth value into all those functions defined in motion_lambda
-
-					# Nitya: Where are we using these motion_lambdas?? 
+			for motion_lambda in vehicle.motion_lambdas:
+				motion_lambda(vehicle.input_state.rotor_inputs)
 
 			step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt, trackBWIevents, converged)
 
@@ -834,6 +837,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		elif observer["type"] == "sphere":
 			min_obs_dist = observer["radius"]*dist_multiplier
 			max_obs_dist = observer["radius"]*dist_multiplier
+
+		elif observer["type"] == "external_file":
+			min_obs_dist = observer["radius"]*dist_multiplier
+			max_obs_dist = observer["radius"]*dist_multiplier
+
 		elif observer["type"] == "points":
 			for x, y, z in zip(observer['x'], observer['y'], observer['z']):
 				x = x*dist_multiplier
@@ -899,7 +907,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				wopwop_motion,
 				vehicle.input_state,
 				wopwop_case_path,
-				[rotor_phases[rotor_idx]]
+				[rotor_phases[rotor_idx]],
+				args
 			)
 
 			namelists.append(namelist)
@@ -927,7 +936,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			wopwop_motion,
 			vehicle.input_state,
 			wopwop_case_path,
-			rotor_phases
+			rotor_phases,
+			args
 		)
 
 		namelists.append(namelist)
