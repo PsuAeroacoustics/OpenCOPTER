@@ -1,0 +1,121 @@
+{
+  computational_parameters: {
+    d_psi: 1.0,
+    spanwise_elements: 48,
+    //shed_history_angle: [45.0],
+    //shed_history_angle: [45.0, 45.0],
+    //shed_history_angle: [45.0, 45.0, 45.0],
+    shed_history_angle: [45.0, 45.0, 45.0, 45.0],
+    shed_release_angle: 1,
+    convergence_criteria: 1.0e-4,
+    //wake_trail_distance: [6],
+    //wake_trail_distance: [1, 1],
+    //wake_trail_distance: [1, 1, 1],
+    wake_trail_distance: [1, 1, 1, 1],
+    //trim_algo: "lympany",
+    trim_algo: "he",
+    convergence_type: "wake",
+    //r_0: [0.8],
+		//r_0: [0.8, 0.8],
+    //r_0: [0.8, 0.8, 0.8],
+    r_0: [0.8, 0.8, 0.8, 0.8],
+		a1: 1.0e-4,
+    post_conv_revolutions: 1
+  },
+  flight_conditions: [
+    {
+      name: "test",
+      aoa: -3.0,
+      density: 1.225,
+      //omegas: [ 159.12, -159.12 ],
+      // motion: [
+			// 	{
+			// 		frame: "rotor 0",
+			// 		blade_element_func: "rotation",
+			// 		omega: 100
+			// 	}
+      // ],
+
+      // motion: [
+			// 	{
+			// 		frame: "rotor 0",
+			// 		blade_element_func: "rotation",
+			// 		omega: 100
+			// 	},
+      //   {
+			// 		frame: "rotor 1",
+			// 		blade_element_func: "rotation",
+			// 		omega: -100
+			// 	}
+      // ],
+
+      // motion: [
+			// 	{
+			// 		frame: "rotor 0",
+			// 		blade_element_func: "rotation",
+			// 		omega: 100
+			// 	},
+      //   {
+			// 		frame: "rotor 1",
+			// 		blade_element_func: "rotation",
+			// 		omega: -100
+			// 	},
+      //  {
+			// 		frame: "rotor 2",
+			// 		blade_element_func: "rotation",
+			// 		omega: -100
+			// 	}
+      // ],
+
+
+      motion: [
+				{
+					frame: "rotor 0",
+					blade_element_func: "rotation",
+					omega: 100
+				},
+        {
+					frame: "rotor 1",
+					blade_element_func: "rotation",
+					omega: -100
+				},
+       {
+					frame: "rotor 2",
+					blade_element_func: "rotation",
+					omega: -100
+				},
+       {
+					frame: "rotor 3",
+					blade_element_func: "rotation",
+					omega: 100
+				}
+      ],
+
+      sos: 343,
+      //c_t: [0.004],
+      //c_t: [0.004, 0.004],
+      //c_t: [0.004, 0.004, 0.004],
+      c_t: [0.004, 0.004, 0.004, 0.004],
+      V_inf: 30.0
+    }
+  ],
+  results: {
+    inflow_slices: [
+      {
+        resolution: [8, 1536, 1024],
+        slice_start: [-1.5, -1.5, -1],
+        slice_size: [0.1, 3.0, 2.0]
+      },
+      {
+        resolution: [1536, 16, 1024],
+        slice_start: [-1.5, -0.1, -1],
+        slice_size: [3.0, 0.2, 2.0]
+      },
+      {
+        resolution: [1536, 16, 1024],
+        slice_start: [-4.5, -0.1, -1],
+        slice_size: [3.0, 0.2, 2.0]
+      }
+    ]
+  }
+}

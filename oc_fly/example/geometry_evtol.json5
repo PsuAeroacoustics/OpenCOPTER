@@ -1,0 +1,284 @@
+[
+	{
+		name: "evtol",
+		type: "aircraft",
+		children: [
+			{
+				type: "rotor",
+				name: "rotor 0",
+				radius: 1.5,
+				origin: [0, 0, 0],
+				//number_of_blades: 5,
+				axis: [0, 0, 1],
+				axis_angle_function: "constant",
+				children: [
+					{
+						type: "connection",
+						name: "blade attach 0",
+						axis: [0, 0, 1],
+						axis_angle: 0,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 1",
+						axis: [0, 0, 1],
+						axis_angle: 72,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 2",
+						axis: [0, 0, 1],
+						axis_angle: 144,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 3",
+						axis: [0, 0, 1],
+						axis_angle: 216,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 4",
+						axis: [0, 0, 1],
+						axis_angle: 288,
+						children: [
+							{ref: "blade"}
+						]
+					}
+				]
+			},
+			{
+				type: "rotor",
+				name: "rotor 1",
+				radius: 1.5,
+				origin: [3, 0, 0.25],
+				//number_of_blades: 5,
+				axis: [0, 0, 1],
+				axis_angle_function: "constant",
+				children: [
+					{
+						type: "connection",
+						name: "blade attach 0",
+						axis: [0, 0, 1],
+						axis_angle: 0,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 1",
+						axis: [0, 0, 1],
+						axis_angle: 72,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 2",
+						axis: [0, 0, 1],
+						axis_angle: 144,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 3",
+						axis: [0, 0, 1],
+						axis_angle: 216,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 4",
+						axis: [0, 0, 1],
+						axis_angle: 288,
+						children: [
+							{ref: "blade"}
+						]
+					}
+				]
+			},
+
+			{
+				type: "rotor",
+				name: "rotor 2",
+				radius: 1.5,
+				origin: [0, 3, 0.25],
+				//number_of_blades: 5,
+				axis: [0, 0, 1],
+				axis_angle_function: "constant",
+				children: [
+					{
+						type: "connection",
+						name: "blade attach 0",
+						axis: [0, 0, 1],
+						axis_angle: 0,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 1",
+						axis: [0, 0, 1],
+						axis_angle: 72,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 2",
+						axis: [0, 0, 1],
+						axis_angle: 144,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 3",
+						axis: [0, 0, 1],
+						axis_angle: 216,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 4",
+						axis: [0, 0, 1],
+						axis_angle: 288,
+						children: [
+							{ref: "blade"}
+						]
+					}
+				]
+			},
+
+
+			{
+				type: "rotor",
+				name: "rotor 3",
+				radius: 1.5,
+				origin: [3, 3, 0.25],
+				//number_of_blades: 5,
+				axis: [0, 0, 1],
+				axis_angle_function: "constant",
+				children: [
+					{
+						type: "connection",
+						name: "blade attach 0",
+						axis: [0, 0, 1],
+						axis_angle: 0,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 1",
+						axis: [0, 0, 1],
+						axis_angle: 72,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 2",
+						axis: [0, 0, 1],
+						axis_angle: 144,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 3",
+						axis: [0, 0, 1],
+						axis_angle: 216,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 4",
+						axis: [0, 0, 1],
+						axis_angle: 288,
+						children: [
+							{ref: "blade"}
+						]
+					}
+				]
+			}
+
+
+			// {
+			// 	"radius": 1.5,
+			// 	"origin": [-3, 0, 0.25],
+			// 	"number_of_blades": 2,
+			// 	"blade": {
+			// 		"r_c": 0.2,
+			// 		"AR": 5,
+			// 		"theta_tw": -12.0,
+			// 		"airfoils": [
+			// 			{
+			// 				"type": "aerodas",
+			// 				"extent": [0.2, 0.3],
+			// 				"xfoil_polar": "polars/NACA0014_1000000_polar.dat",
+			// 				"thickness": 0.14
+			// 			},
+			// 			{
+			// 				"type": "aerodas",
+			// 				"extent": [0.3, 1.0],
+			// 				"xfoil_polar": "polars/NACA0012_1000000_polar.dat",
+			// 				"thickness": 0.12
+			// 			}
+			// 		]
+			// 	}
+			// }
+		],
+		blades: [
+			{
+				type: "blade",
+				name: "blade",
+				r_c: 0.2,
+				AR: 12.5,
+				theta_tw: -12.0,
+				airfoils: [
+					// {
+					// 	type: "aerodas",
+					// 	extent: [0.2, 0.3],
+					// 	xfoil_polar: "polars/NACA0014_1000000_polar.dat",
+					// 	thickness: 0.14
+					// },
+					{
+						type: "aerodas",
+						extent: [0.2, 1.0],
+						xfoil_polar: "polars/NACA0012_1000000_polar.dat",
+						thickness: 0.12
+					}
+				]
+			}
+		]
+	}
+]

@@ -501,6 +501,10 @@ void fill_wake_v_z_component(ref PyVortexFilament filament, double[] data) {
 	return opencopter.wake.get_wake_component!"v_z"(filament, data);
 }
 
+void fill_wake_xyz_rotor_frame(ref PyRotorGeometry rotor, ref PyVortexFilament filament, double[] x, double[] y, double[] z) {
+	opencopter.wake.fill_wake_xyz_rotor_frame(rotor, filament, x, y, z);
+}
+
 string FrameType_aircraft() {
 	return opencopter.aircraft.FrameType.aircraft.to!string;
 }
@@ -1297,6 +1301,12 @@ extern(C) void PydMain() {
 		:return: List of induced velocities
 	});
 
+	def!(fill_wake_xyz_rotor_frame, void function(ref PyRotorGeometry, ref PyVortexFilament, double[], double[], double[]), Docstring!q{
+		Extract induced velocity (:math:`v_z`) acting upon the filament to a linear array.
+
+		:param votex_filament: the :class:`VortexFilament` to extract :math:`v_z` from
+		:return: List of induced velocities
+	});
 
 	def!(step, Docstring!(q{
 		Step the simulation by one timestep
