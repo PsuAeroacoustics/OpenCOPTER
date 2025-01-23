@@ -226,6 +226,10 @@ extern (C++) struct BladeStateChunk {
 	 +/
 	Chunk dC_L;
 	/++
+	 +  Spanwise lift airfoil coefficient distribution
+	 +/
+	Chunk dC_l;
+	/++
 	 +  Spanwise lift coefficient distribution time derivative
 	 +/
 	Chunk dC_L_dot;
@@ -233,6 +237,11 @@ extern (C++) struct BladeStateChunk {
 	 +  Spanwise drag coefficient distribution in AF frame
 	 +/
 	Chunk dC_D;
+	/++
+	 +  Spanwise airfoil drag coefficient distribution in AF frame
+	 +/
+	Chunk dC_d;
+	
 	Chunk dC_Mz;
 	Chunk dC_My;
 	//Chunk dC_M;

@@ -77,7 +77,7 @@
                                 children: [
 									{
 										type: "connection",
-										name: "shaft angle downward",
+										name: "shaft angle upward",
 										axis: [-1, 0, 0],
 										axis_angle: 3,
 										//axis_angle: 0,
@@ -92,7 +92,7 @@
 														name: "TR flip",
 														axis: [1, 0, 0],
 														axis_angle: 180,
-														//axis_angle: 0,
+														//axis_angle: 0.0,
 														children: [
 															{
 																type: "rotor",
@@ -106,9 +106,16 @@
 																		name: "TR blade attach 0",
 																		origin: [0, 0, 0],
 																		axis: [0, 0, 1],
-																		axis_angle: 0,
+																		axis_angle: 90,
 																		children: [
-																			{ref: "tailrotor_blade"}
+																			{
+																				type: "connection",
+																				name: "TR blade flapping 0",
+																				origin: [0, 0, 0],
+																				axis: [0, 1, 0],
+																				axis_angle: 0,
+																				children: [{ref: "tailrotor_blade"}]
+																			}
 																		]
 																	},
 																	// {
@@ -126,9 +133,16 @@
 																		name: "TR blade attach 2",
 																		origin: [0, 0, 0],
 																		axis: [0, 0, 1],
-																		axis_angle: 180,
+																		axis_angle: 270,
 																		children: [
-																			{ref: "tailrotor_blade"}
+																			{
+																				type: "connection",
+																				name: "TR blade flapping 2",
+																				origin: [0, 0, 0],
+																				axis: [0, 1, 0],
+																				axis_angle: 0,
+																				children: [{ref: "tailrotor_blade"}]
+																			}
 																		]
 																	},
 																	// {
@@ -183,14 +197,14 @@
 								// However, this is a close enough approximation
 								name: "flap hinge", 
 								origin: [0.35, 0, 0],
-								axis: [0, 1, 0],
+								axis: [0, -1, 0],
 								axis_angle_function: "fourier",
 								children: [
 									{
 										type: "connection",
 										name: "elastic twist",
 										origin: [0, 0, 0],
-										axis: [0, 1, 0],
+										axis: [1, 0, 0],
 										axis_angle_function: "fourier",
 										children: [{
 											// This will reference the blade
@@ -239,14 +253,278 @@
 							0.42,
 							1.0
 						],
+						xfoil_polar: "polars/S102_300000_polar.dat",
+						//xfoil_polar: "polars/NACA0012_1000000_polar.dat",
+						thickness: 0.15
+					}
+				]
+			}
+		],
+		parameter_file: "helinovi_params.json5",
+		cases: ["ID1", "ID2", "ID5"]
+	},
+	{
+		// Top level always to be of type 'Aircraft'
+		// Convention will have x pointing towards the rear of the vehicle,
+		// y points out the starboard side,
+		// z points up (we aren't control nerds here)
+		name: "helinovi",
+		type: "aircraft",
+		children: [
+			{
+				// Parts of type "Rotor" will recieve azimuth updates,
+				// all children will receive azimuth updates as well
+				type: "rotor",
+				name: "Main Rotor",
+				radius: 2,
+				// origin is relative to this frame of reference
+				origin: [0, 0, 0],
+				// Axis of rotation, relative to this frame
+				axis: [0, 0, 1],
+				axis_angle_function: "constant",
+				children: [
+					{
+						type: "connection",
+						name: "blade attach 0",
+						axis: [0, 0, 1],
+						axis_angle: 0,
+						children: [
+							{ref: "Coning angle"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 1",
+						axis: [0, 0, 1],
+						axis_angle: 90,
+						children: [
+							{ref: "Coning angle"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 2",
+						axis: [0, 0, 1],
+						axis_angle: 180,
+						children: [
+							{ref: "Coning angle"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 3",
+						axis: [0, 0, 1],
+						axis_angle: 270,
+						children: [
+							{ref: "Coning angle"}
+						]
+					}
+				]
+			},
+            {
+                type: "connection",
+                name: "tail boom",
+                origin: [-2.452, 0, -0.027],
+                children: [
+                    {
+                        type: "connection",
+                        name: "tail rotor mount",
+                        axis: [1, 0, 0],
+                        axis_angle: -90,
+                        children: [
+                            {
+                                type: "connection",
+                                name: "shaft angle forward",
+                                axis: [0, -1, 0],
+                                axis_angle: 4,
+								//axis_angle: 0,
+                                children: [
+									{
+										type: "connection",
+										name: "shaft angle upward",
+										axis: [-1, 0, 0],
+										axis_angle: 3,
+										//axis_angle: 0,
+										children: [
+											{
+												type: "connection",
+												name: "TR hub",
+												origin: [0, 0, 0.17],
+												children: [
+													{
+														type: "connection",
+														name: "TR flip",
+														axis: [1, 0, 0],
+														axis_angle: 180,
+														//axis_angle: 0.0,
+														children: [
+															{
+																type: "rotor",
+																name: "tail rotor",
+																radius: 0.383,
+																axis: [0, 0, 1],
+																axis_angle_function: "constant",
+																children: [
+																	{
+																		type: "connection",
+																		name: "TR blade attach 0",
+																		origin: [0, 0, 0],
+																		axis: [0, 0, 1],
+																		axis_angle: 90,
+																		children: [
+																			{
+																				type: "connection",
+																				name: "TR blade flapping 0",
+																				origin: [0, 0, 0],
+																				axis: [0, 1, 0],
+																				axis_angle: 0,
+																				children: [{ref: "tailrotor_blade_0012"}]
+																			}
+																		]
+																	},
+																	// {
+																	// 	type: "connection",
+																	// 	name: "TR blade attach 3",
+																	// 	origin: [0, 0, 0],
+																	// 	axis: [0, 0, 1],
+																	// 	axis_angle: 90,
+																	// 	children: [
+																	// 		{ref: "tailrotor_blade_0012"}
+																	// 	]
+																	// },
+																	{
+																		type: "connection",
+																		name: "TR blade attach 2",
+																		origin: [0, 0, 0],
+																		axis: [0, 0, 1],
+																		axis_angle: 270,
+																		children: [
+																			{
+																				type: "connection",
+																				name: "TR blade flapping 2",
+																				origin: [0, 0, 0],
+																				axis: [0, 1, 0],
+																				axis_angle: 0,
+																				children: [{ref: "tailrotor_blade_0012"}]
+																			}
+																		]
+																	},
+																	// {
+																	// 	type: "connection",
+																	// 	name: "TR blade attach 4",
+																	// 	origin: [0, 0, 0],
+																	// 	axis: [0, 0, 1],
+																	// 	axis_angle: 270,
+																	// 	children: [
+																	// 		{ref: "tailrotor_blade_0012"}
+																	// 	]
+																	// }
+																]
+															}
+														]
+													}
+												]
+											}
+										]
+									}
+                                ]
+                            }
+                        ]
+                    }
+                ]
+            }
+		],
+		// Define components that are used multiple times in the definition of
+		// the vehicle. they can then be referenced by name as a short hand in
+		// vehicle def
+		components: [
+			{
+				type: "connection",
+				name: "Coning angle",
+				axis: [0, -1, 0],
+				axis_angle: 2.5,
+				children: [
+					{
+						// Pitch hinge joint.
+						type: "connection",
+						name: "pitch hinge",
+						origin: [0.075, 0, 0],
+						axis: [1, 0, 0],
+						// Coefficients of the fourier series will be defined
+						// in a parameter file. associated with this by the
+						// component name
+						children: [
+							{
+								type: "connection",
+								// HART doesn't actually have a flap hinge.
+								// However, this is a close enough approximation
+								name: "flap hinge", 
+								origin: [0.35, 0, 0],
+								axis: [0, -1, 0],
+								axis_angle_function: "fourier",
+								children: [
+									{
+										type: "connection",
+										name: "elastic twist",
+										origin: [0, 0, 0],
+										axis: [1, 0, 0],
+										axis_angle_function: "fourier",
+										children: [{
+											// This will reference the blade
+											// defined below
+											ref: "hart_blade"
+										}]
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		],
+		blades: [
+			{
+				type: "blade",
+				name: "hart_blade",
+				origin: [0, 0, 0],
+				AR: 16.5,
+				theta_tw: -6.2,
+				r_c: 0.22,
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.22,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			},
+            {
+				type: "blade",
+				name: "tailrotor_blade_0012",
+				origin: [0.16, 0, 0],
+				AR: 5.18,
+				theta_tw: 0,
+				r_c: 0.42,
+				airfoils: [
+					{
+						type: "aerodas",
+						extent: [
+							0.42,
+							1.0
+						],
 						xfoil_polar: "polars/NACA0012_1000000_polar.dat",
 						thickness: 0.12
 					}
 				]
 			}
 		],
-		parameter_file: "helinovi_params.json5"
-	},
+		parameter_file: "helinovi_params.json5",
+		cases: ["ID1_ASD", "ID1_ASU"/*, "ID2_ASD", "ID2_ASU"*/]
+	}
 	// {
 	// 	// Top level always to be of type 'Aircraft'
 	// 	// Convention will have x pointing towards the rear of the vehicle,

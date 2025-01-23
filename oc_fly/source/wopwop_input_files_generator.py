@@ -37,7 +37,7 @@ def flatten_children(frame, termination_type):
 	flat_children = flat_children[1:len(flat_children)]
 	return flat_children
 
-def make_cb(frame, wopwop_motion):
+def make_cb(frame, wopwop_motion, rotor_phase):
 	new_cb = CB()
 	new_cb.Title = frame.name
 	new_cb.TranslationType = TranslationType_time_independant()
@@ -72,6 +72,9 @@ def make_cb(frame, wopwop_motion):
 			new_cb.A = [-a for a in A[1:len(A)]]
 			new_cb.B = [-b for b in B]
 
+		if rotor_phase is not None:
+			new_cb.Psi0 = rotor_phase
+
 	else:
 		new_cb.AngleType = AngleType_time_independant()
 		if not math.isnan(angle):
@@ -97,25 +100,25 @@ def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
 
 	flat_frame_list = flatten_children(blade.frame, FrameType_rotor())
 
-	cob_list = [make_cb(frame, wopwop_motion) for frame in flat_frame_list]
-	cob_list.append(make_cb(blade.frame, wopwop_motion))
+	cob_list = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list]
+	cob_list.append(make_cb(blade.frame, wopwop_motion, None))
 	blade_cntr.cobs = cob_list
 
 	return blade_cntr
 
-def build_rotor_cntr(rotor, environment_in, wopwop_motion):
+def build_rotor_cntr(rotor, environment_in, wopwop_motion, rotor_phase):
 	rotor_cntr = ContainerIn()
 	rotor_cntr.Title = rotor.frame.name + " container"
 
 	flat_frame_list = flatten_children(rotor.frame, FrameType_aircraft())
 
-	rotor_cntr.cobs = [make_cb(frame, wopwop_motion) for frame in flat_frame_list]
+	rotor_cntr.cobs = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list[:-1]] + [make_cb(flat_frame_list[-1], wopwop_motion, rotor_phase)]
 
 	rotor_cntr.children = [build_blade_cntr(rotor, blade, environment_in, wopwop_motion) for blade in rotor.blades]
 
 	return rotor_cntr
 	
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path):
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -183,7 +186,7 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	environment_in.MdotrSigmaFlag = acoustics_config["mdotr_sigma_flag"] if "mdotr_sigma_flag" in acoustics_config else False
 	environment_in.iblankSigmaFlag = acoustics_config["iblank_sigma_flag"] if "iblank_sigma_flag" in acoustics_config else False
 	
-	wopwop_aircraft.children = [build_rotor_cntr(rotor, environment_in, wopwop_motion) for rotor in rotors]
+	wopwop_aircraft.children = [build_rotor_cntr(rotor, environment_in, wopwop_motion, rotor_phases[rotor_idx]) for rotor_idx, rotor in enumerate(rotors)]
 
 	R = 1
 	num_blades = 1
