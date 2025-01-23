@@ -61,6 +61,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 	log_file.write(f'num_rotors: {num_rotors}\n')
 	num_blades = [vehicle.aircraft.rotors[rotor_idx].blades.length() for rotor_idx in range(vehicle.aircraft.rotors.length())]
 
+	# d_psi = computational_parameters['d_psi']
+
+	# dt = d_psi*(math.pi/180.0)/np.max(np.abs(omegas))
+	# iter_per_rev = 360/d_psi
+
 	d_psi = computational_parameters['d_psi']
 
 	dt = d_psi*(math.pi/180.0)/np.max(np.abs(omegas))
@@ -172,7 +177,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 
 	thetas = np.zeros((num_rotors, 2))
 	betas = np.zeros((num_rotors, max(num_blades), 2))
-
+	
 	last_thetas = np.zeros(num_rotors)
 	moment_thetas = np.zeros((num_rotors, 2*2))
 
@@ -275,7 +280,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 		piv_slices = results["piv_window"]["y"]
 		piv_window_x = results["piv_window"]["x"]
 		piv_window_z = results["piv_window"]["z"]
-
+	
 	if track_wake_element:
 		target_y_slices = results['element_trajectories']
 
@@ -421,15 +426,15 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 					+''.join([f' χ{rotor_idx}: {average_chis[rotor_idx]:.2f},' for rotor_idx in range(num_rotors)])
 					+f' combined_C_T: {average_C_Ts.sum():.5f}, max L_2: {max_l2}\n'
 				)
-				# log_file.write(f'theta: {[theta*(180.0/math.pi) for theta in get_theta(vehicle.ac_state.rotor_states[1].blade_states[0])]}\n')
-				# log_file.write(f'aoa: {[aoa*(180.0/math.pi) for aoa in get_aoa(vehicle.ac_state.rotor_states[1].blade_states[0])]}\n')
-				# log_file.write(f'aoa_eff: {[aoa*(180.0/math.pi) for aoa in get_aoa_eff(vehicle.ac_state.rotor_states[1].blade_states[0])]}\n')
-				# log_file.write(f'inflow_angle: {[aoa*(180.0/math.pi) for aoa in get_inflow_angle(vehicle.ac_state.rotor_states[1].blade_states[0])]}\n')
-				# log_file.write(f'u_p: {get_u_p(vehicle.ac_state.rotor_states[1].blade_states[0])}\n')
-				# log_file.write(f'u_t: {get_u_t(vehicle.ac_state.rotor_states[1].blade_states[0])}\n')
-				# log_file.write(f'gamma: {get_gamma(vehicle.ac_state.rotor_states[1].blade_states[0])}\n')
-				# log_file.write(f'd_gamma: {get_d_gamma(vehicle.ac_state.rotor_states[1].blade_states[0])}\n')
-				# log_file.write(f'dC_T: {get_dC_T(vehicle.ac_state.rotor_states[1].blade_states[0])}\n')
+				# log_file.write(f'theta: {[theta*(180.0/math.pi) for theta in get_theta(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'aoa: {[aoa*(180.0/math.pi) for aoa in get_aoa(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'aoa_eff: {[aoa*(180.0/math.pi) for aoa in get_aoa_eff(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'inflow_angle: {[aoa*(180.0/math.pi) for aoa in get_inflow_angle(vehicle.ac_state.rotor_states[0].blade_states[0])]}\n')
+				# log_file.write(f'u_p: {get_u_p(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'u_t: {get_u_t(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'gamma: {get_gamma(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'd_gamma: {get_d_gamma(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
+				# log_file.write(f'dC_T: {get_dC_T(vehicle.ac_state.rotor_states[0].blade_states[0])}\n')
 
 				start_time = now
 				log_file.flush()
@@ -514,18 +519,23 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 						thetas[rotor_idx,1] = thetas[rotor_idx,1] + 3.0/(math.pi*vehicle.aircraft.rotors[rotor_idx].solidity)*(c_t_bars[rotor_idx] - curr_c_ts[rotor_idx])
 
 			for rotor_idx, rotor_state in enumerate(vehicle.ac_state.rotor_states):
+				# print(f'vehicle.ac_state.rotor_states.length(): {vehicle.ac_state.rotor_states.length()}')
+				# print(f'rotor {rotor_idx}')
+				# print(f'num_blades: {num_blades[rotor_idx]}')
 				for blade_idx in range(num_blades[rotor_idx]):
 					blade_azimuth = vehicle.input_state.rotor_inputs[rotor_idx].azimuth + vehicle.aircraft.rotors[rotor_idx].blades[blade_idx].azimuth_offset
 					cos_azimuth = math.cos(blade_azimuth)
 					sin_azimuth = math.sin(blade_azimuth)
 
 					sin3_azimuth = math.cos(3.0*(blade_azimuth) - (psi_3 - math.pi))
+					#sin3_azimuth = math.cos(3.0*(blade_azimuth) - (psi_3))
+					#sin3_azimuth = math.sin(3.0*(blade_azimuth) - psi_3)
 
 					vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = thetas[rotor_idx, 1] + theta_1c[rotor_idx]*cos_azimuth + theta_1s[rotor_idx]*sin_azimuth + theta_3*sin3_azimuth
 					#print(f'trimming rotor {rotor_idx} blade {blade_idx} to {vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx]}')
 					if elastic_twist and (rotor_idx == 0):
 						#vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = thetas[rotor_idx, 1] + theta_1c[rotor_idx]*cos_azimuth + theta_1s[rotor_idx]*sin_azimuth + theta_3*sin3_azimuth
-						#vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] + elastic_twist(blade_azimuth)
+					  	#vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] + elastic_twist(blade_azimuth)
 						vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] + elastic_twist(blade_azimuth - math.pi)
 					# else:
 					# 	#vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = math.copysign(1, omegas[rotor_idx])*(thetas[rotor_idx, 1] + theta_1c[rotor_idx]*cos_azimuth + theta_1s[rotor_idx]*sin_azimuth + theta_3*sin3_azimuth)
@@ -562,8 +572,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 					for blade_idx in range(num_blades[rotor_idx]):
 						blade_azimuth = vehicle.input_state.rotor_inputs[rotor_idx].azimuth + vehicle.aircraft.rotors[rotor_idx].blades[blade_idx].azimuth_offset
 						(h, h_star) = blade_flapping(blade_azimuth - math.pi)
-
-					vehicle.input_state.rotor_inputs[rotor_idx].blade_flapping_rate[blade_idx] = h_star
+						#(h, h_star) = blade_flapping(blade_azimuth)
+						vehicle.input_state.rotor_inputs[rotor_idx].blade_flapping_rate[blade_idx] = h_star
 
 			loading_data.time = dt*acoustic_iteration
 
@@ -592,14 +602,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 
 				for rotor_idx, rotor in enumerate(vehicle.ac_state.rotor_states):
 
-					blade_idx = 2   
-					# What's the point of making blade_idx 2??
+					blade_idx = 2
 					if (rotor_idx > 0) or ((rotor_idx == 0) and (vehicle.name == "helinovi_tr")):
 						blade_idx = 0
 
 					if start_recording and not done_recording:
 						for t_idx in range(len(target_span_elements)):
-							#rotor_idx
 							dC_l = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].dC_l[target_span_element_index[rotor_idx][t_idx]]
 							dC_L = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].dC_L[target_span_element_index[rotor_idx][t_idx]]
 							aoa_eff = vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[target_span_chunk_index[rotor_idx][t_idx]].aoa_eff[target_span_element_index[rotor_idx][t_idx]]
@@ -656,7 +664,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 									wake_element_blade[rotor_idx, t_idx] = blade_idx
 
 						fill_dC_Nf(blade, z_loading)
-						# fill_dC_cf(blade, y_loading)
 
 						z_loading = -z_loading*atmo.density*math.pi*vehicle.aircraft.rotors[rotor_idx].radius**3.0*abs(omegas[rotor_idx])**2.0
 						z_loading = z_loading.astype(dtype=np.single)
@@ -759,7 +766,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 				close_loading_file(loading_files[rotor_idx][blade_idx])
 
 	log_file.write("Sim done\n")
-	
+
 	result_dictionary = {}
 
 	for rotor_idx in range(num_rotors):

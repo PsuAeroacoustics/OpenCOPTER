@@ -111,7 +111,7 @@ unittest {
 	
 	import opencopter.aircraft.geometry : BladeGeometryChunk, RotorGeometry, set_geometry_array;
 	import opencopter.config : chunk_size;
-	
+
 	writeln("Hello hp");
 	import numd.utility : linspace;
 

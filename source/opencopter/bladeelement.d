@@ -26,7 +26,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 	static import std.math;
 
 	import std.stdio : writeln;
-	
+
 	foreach(chunk_idx; 0..blade.chunks.length) {
 
 		immutable Chunk effective_azimuth = blade_state.azimuth - std.math.sgn(rotor_input.angular_velocity)*blade.chunks[chunk_idx].sweep[];
@@ -77,6 +77,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
 		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
+
 		immutable Chunk theta = (rotor_input.blade_pitches[blade_idx] + blade.chunks[chunk_idx].twist[])[]*cos_sweep[];
 		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
@@ -88,7 +89,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		immutable Chunk M_inf = dimensional_u_inf[]/atmo.speed_of_sound;
 
 		auto gamma = blade_state.circulation_model.compute_bound_circulation_band(blade_state, chunk_idx, rotor_input.angular_velocity, blade.airfoil.lift_curve_slope(chunk_idx), blade.airfoil.zero_lift_aoa(chunk_idx));
-	
+
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 		// Nitya: Blade circulation normalized here!!
@@ -99,7 +100,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		blade_state.chunks[chunk_idx].aoa_eff[] = -2.0*std.math.sgn(rotor_input.angular_velocity)*blade_state.chunks[chunk_idx].gamma[];
 		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.airfoil.lift_curve_slope(chunk_idx)[]*blade.chunks[chunk_idx].chord[]*std.math.abs(rotor_input.angular_velocity)*rotor.radius*rotor.radius);
 		blade_state.chunks[chunk_idx].aoa_eff[] += blade.airfoil.zero_lift_aoa(chunk_idx)[];
-		
+
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, M_inf);
 
 		gamma[] = -std.math.sgn(rotor_input.angular_velocity)*0.5*dimensional_u_inf[]*blade.chunks[chunk_idx].chord[]*rotor.radius*af_coefficients.C_l[];
@@ -107,6 +108,9 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 		immutable Chunk dC_D = steady_sectional_model(u_p, u_t, af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
 		
+		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[]*cos(blade_state.chunks[chunk_idx].aoa)[];
+		blade_state.chunks[chunk_idx].dC_d[] = af_coefficients.C_d[];
+
 		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[]*cos(blade_state.chunks[chunk_idx].aoa)[];
 		blade_state.chunks[chunk_idx].dC_d[] = af_coefficients.C_d[];
 
@@ -233,6 +237,7 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 	immutable time = iteration.to!double*dt;
 	
 	aircraft.root_frame.update(Mat4.identity);
+	//aircraft.root_frame.print_frame;
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 

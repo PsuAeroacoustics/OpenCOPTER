@@ -1028,7 +1028,6 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 							shed_filament.chunks[c_idx - 1].dz[$-1] = shed_filament.chunks[c_idx].z[0] - shed_filament.chunks[c_idx - 1].z[$-1];
 						}
 					}
-
 				}
 			}
 

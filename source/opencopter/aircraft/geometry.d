@@ -287,7 +287,7 @@ struct Frame {
 	void update(Mat4* parent_global_mat) {
 		update(*parent_global_mat);
 	}
-
+	
 	auto global_to_local(Vec3 global_pos) {
 		nop;
 		auto res = inverse_global_matrix*Vec4(global_pos[0], global_pos[1], global_pos[2], 1.0);
@@ -738,3 +738,4 @@ double[] get_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* 
 	}
 	return geom_array;
 }
+

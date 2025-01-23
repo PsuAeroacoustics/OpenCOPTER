@@ -255,6 +255,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 				if len(built_blades) > 1:
 					raise Exception("Rotor has multiple blades on single attachment")
 
+				#print(f"Setting azimuth offset for blade: {child_component['axis_angle']*(math.pi/180.0)}")
 				built_blades[0].azimuth_offset = child_component["axis_angle"]*(math.pi/180.0)
 
 	elif frame_type != FrameType_blade():
@@ -269,7 +270,6 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 		component_frame.name = component_frame.name + " fixed"
 		component_frame.set_frame_type("connection")
-
 		component_frame.children = [rotating_rotor_frame]
 
 		rotor = build_rotor(blades, rotating_rotor_frame, current_rotor_radius)
@@ -559,7 +559,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	print(f'num_blades: {num_blades}')
 	
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-
+	
 	a1 = 6.5e-5
 	if "a1" in computational_parameters:
 		a1 = computational_parameters['a1']
@@ -567,7 +567,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	hybrid = False
 	if "hybrid" in flight_condition:
 		hybrid = flight_condition['hybrid']
-	
+
 	if args.hybrid:
 		hybrid = True
 
@@ -606,7 +606,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	)
 	
 	if do_compute:
-		# results_dictionary = {}
+
 		for r_idx in range(num_rotors):
 			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
 			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
