@@ -210,16 +210,15 @@ version(LDC) {
 				} else {
 					version(X86_64) {
 						static if(T.length == 8) {
-							result[0..2] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[0..2]);
-							result[2..4] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[2..4]);
-							result[4..6] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[4..6]);
-							result[6..$] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[6..$]);
-
+							result[0..2] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[0..2])));
+							result[2..4] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[2..4])));
+							result[4..6] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[4..6])));
+							result[6..$] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[6..$])));
 						} else static if(T.length == 4) {
-							result[0..2] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[0..2]);
-							result[2..$] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[2..$]);
+							result[0..2] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[0..2])));
+							result[2..$] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[2..$])));
 						} else static if(T.length == 2) {
-							result[] = cast(T)Sleef_sqrtd2_sse2(cast(double2)vector);
+							result[] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector)));
 						}
 					} else {
 						foreach(idx; 0..T.length) {

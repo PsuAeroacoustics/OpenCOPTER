@@ -167,6 +167,16 @@ extern (C) {
 		core.simd.double2 Sleef_cinz_erfd2_u10sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_erfcd2_u15sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_erfcd2_u15sse2(core.simd.double2) @nogc nothrow;
+
+		@nogc nothrow double[2] unpack_simd(core.simd.double2 data) {
+			return [data.array[0],data.array[1]];
+		}
+		@nogc nothrow core.simd.double2 pack_simd(double[2] array) {
+			core.simd.double2 data;
+			data[0] = array[0];
+			data[1] = array[1];
+			return data;
+		}
 	}
 	version(D_AVX) {
 		core.simd.double2 Sleef_sind2_u35sse4(core.simd.double2) @nogc nothrow;
