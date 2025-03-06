@@ -329,6 +329,17 @@ extern (C) {
 		core.simd.double2 Sleef_cinz_erfd2_u10sse4(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_erfcd2_u15sse4(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_erfcd2_u15sse4(core.simd.double2) @nogc nothrow;
+
+		@nogc nothrow double[2] unpack_simd(core.simd.double2 data) {
+			return [data.array[0],data.array[1]];
+		}
+
+		@nogc nothrow core.simd.double2 pack_simd(double[2] array) {
+			core.simd.double2 data;
+			data[0] = array[0];
+			data[1] = array[1];
+			return data;
+		}
 	}
 
 	version(D_AVX2) {
@@ -648,6 +659,19 @@ extern (C) {
 		core.simd.double4 Sleef_finz_erfd4_u10avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_erfcd4_u15avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_finz_erfcd4_u15avx2(core.simd.double4) @nogc nothrow;
+
+		@nogc nothrow double[4] unpack_simd(core.simd.double4 data) {
+			return [data.array[0],data.array[1],data.array[2],data.array[3]];
+		}
+		
+		@nogc nothrow core.simd.double4 pack_simd(double[4] array) {
+			core.simd.double4 data;
+			data[0] = array[0];
+			data[1] = array[1];
+			data[2] = array[2];
+			data[3] = array[3];
+			return data;
+		}
 
 	}
 
@@ -1119,5 +1143,22 @@ extern (C) {
 		core.simd.double8 Sleef_erfcd8_u15avx512fnofma(core.simd.double8) @nogc nothrow;
 		core.simd.double8 Sleef_cinz_erfcd8_u15avx512fnofma(core.simd.double8) @nogc nothrow;
 
+		@nogc nothrow double[8] unpack_simd(core.simd.double8 data) {
+			return [data.array[0], data.array[1], data.array[2], data.array[3], 
+					data.array[4], data.array[5], data.array[6], data.array[7]];
+		}
+
+		@nogc nothrow core.simd.double8 pack_simd(double[8] array) {
+			core.simd.double8 data;
+			data[0] = array[0];
+			data[1] = array[1];
+			data[2] = array[2];
+			data[3] = array[3];
+			data[4] = array[4];
+			data[5] = array[5];
+			data[6] = array[6];
+			data[7] = array[7];
+			return data;
+		}
 	}
 }
