@@ -720,6 +720,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			v_x[n_idx][] += tmp_v_x[];
 			v_y[n_idx][] += tmp_v_y[];
 			v_z[n_idx][] += tmp_v_z[];
+			double dl = 0.0;
 
 			if(save_BWIinputs){
 				if((n_idx == 0) && (blade_chunk_idx == 0)) {
@@ -737,6 +738,17 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 					}
 					
 				} // I am not sure if we need gamma or circulation!
+				if(n_idx==0){
+					foreach(bwi_idx;0..Chunk.length){
+						dl = (dx[bwi_idx]*dx[bwi_idx] + dy[bwi_idx]*dy[bwi_idx] + dz[bwi_idx]*dz[bwi_idx]);
+						dl = sqrt(dl);
+						BWIinputs[i_c_idx].dl[bwi_idx] = dl;
+						/*if(bwi_idx==Chunk.length-1) {
+							debug writeln("i_c_idx:", i_c_idx, "BWIinputs[i_c_idx].dl:", BWIinputs[i_c_idx].dl);
+						}*/
+                                            
+					}
+				}
 			}
 		}		
 	}

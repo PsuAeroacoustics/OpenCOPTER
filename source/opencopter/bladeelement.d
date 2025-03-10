@@ -92,7 +92,7 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
-		// Nitya: Blade circulation normalized here!!
+		// Nitya: Blade circulation dimensionalized here!!
 
 		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
 		blade_state.chunks[chunk_idx].gamma[] = gamma[];

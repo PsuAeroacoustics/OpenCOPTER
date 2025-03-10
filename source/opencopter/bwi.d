@@ -12,8 +12,8 @@ import std.math;
 import std.container: DList ;
 import std.range;
 
-immutable size_t nPoints = 4;
-immutable double BWI_factor = 4.0; // 2.0^2 as we are comparing distance^2
+immutable size_t nPoints = 6;
+immutable double BWI_factor = 16.0; // 2.0^2 as we are comparing distance^2
 
 extern (C++) struct BWIinputsChunk {
     Chunk miss_dist;
@@ -22,6 +22,8 @@ extern (C++) struct BWIinputsChunk {
 	Chunk gamma_sec;
     size_t[chunk_size] bladeSec_idx;
     Vec3[chunk_size] r_vortex;
+    // Vec3[chunk_size] u_ind;
+    Chunk dl;
 }
 
 extern (C++) struct InteractionPoints {
@@ -33,6 +35,9 @@ extern (C++) struct InteractionPoints {
     double gamma_sec; 
     double[3] r_blade;
     double[3] r_vortex;
+    double C_d;
+    // double TKE;
+    double l;
 }
 
 extern (C++) struct TipVortexInteractionT(ArrayContainer AC){
@@ -48,7 +53,6 @@ extern (C++) struct TipVortexInteractionT(ArrayContainer AC){
 		immutable num_chunks = wake_history/chunk_size;
         
 		mixin(array_ctor_mixin!(AC, "BWIinputsChunk", "BWI_inputs", "num_chunks"));
-        debug writeln("BWI_inputs:", BWI_inputs.length);
 
         length = 0;
 	}
@@ -166,10 +170,16 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
         double[] x = get_wake_component!"x"(blade_state);
         double[] y = get_wake_component!"y"(blade_state);
         double[] z = get_wake_component!"z"(blade_state);
+        double[] C_d = get_wake_component!"dC_D"(blade_state);
+        double[] dl = get_BWIinputs!"dl"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
+        double l = 0.0;
+        //auto u_ind = get_directionVec!"u_ind"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
+        
         i_pt = 0;
         double local_min = miss_dist[0];
         foreach(idx; 0..miss_dist.length-1){
             if(idx == 0) {
+                l = 0.0;
                 if(miss_dist[idx]<miss_dist[idx+1]){
                     local_min = miss_dist[idx];
                     if((i_pt < nPoints) && (local_min < BWI_factor*r_c[idx]*r_c[idx])){
@@ -185,11 +195,14 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
                         interaction.r_blade[0] = x[bladeSec_idx[idx]]-x[bladeSec_idx[idx]-1];
                         interaction.r_blade[1] = y[bladeSec_idx[idx]]-y[bladeSec_idx[idx]-1];
                         interaction.r_blade[2] = z[bladeSec_idx[idx]]-z[bladeSec_idx[idx]-1];
+                        interaction.l = l;    
+                        interaction.C_d = sumC_d(C_d); 
                         i_pt++;
                         wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.insertBack(interaction);
                     }
                 }
             } else{
+                l = l + dl[idx-1];
                 if((miss_dist[idx]<miss_dist[idx-1]) && (miss_dist[idx]<miss_dist[idx+1])){
                     local_min = miss_dist[idx];
                     if((i_pt < nPoints) && (local_min < BWI_factor*r_c[idx]*r_c[idx])){
@@ -205,6 +218,8 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
                         interaction.r_blade[0] = x[bladeSec_idx[idx]]-x[bladeSec_idx[idx]-1];
                         interaction.r_blade[1] = y[bladeSec_idx[idx]]-y[bladeSec_idx[idx]-1];
                         interaction.r_blade[2] = z[bladeSec_idx[idx]]-z[bladeSec_idx[idx]-1]; 
+                        interaction.l = l;         
+                        interaction.C_d = sumC_d(C_d);  
                         i_pt++;
                         wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.insertBack(interaction);
                     }
@@ -236,3 +251,11 @@ Vec3[] get_directionVec(string value, BWI)(auto ref BWI VortexInteraction) {
 	} 
 	return d;
 } 
+
+double sumC_d(double[] arr) {
+    double result = 0.0;
+    foreach (elem; arr) {
+        result += elem;
+    }
+    return result;
+}

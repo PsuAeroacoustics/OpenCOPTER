@@ -416,6 +416,17 @@ double[] get_interaction_point_gamma_sec(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_components!"gamma_sec"(VortexInteraction);
 }
 
+double[] get_interaction_point_C_d(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_interaction_point_components!"C_d"(VortexInteraction);
+}
+
+double[] get_interaction_point_l(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_interaction_point_components!"l"(VortexInteraction);
+}
+/*double[] get_interaction_point_TKE(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_interaction_point_components!"TKE"(VortexInteraction);
+}*/
+
 // If we want to output the BWI stuff for the entire wake history
 
 /* 
@@ -1156,6 +1167,28 @@ extern(C) void PydMain() {
 		:return: List of blade section gamma
 	});
 
+	def!(get_interaction_point_C_d, double[] function(ref PyBWIinputs), Docstring!q{
+		Extract blade C_d at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract blade C_d
+		:return: List of blade C_d
+	});
+
+	def!(get_interaction_point_l, double[] function(ref PyBWIinputs), Docstring!q{
+		Extract vortex length at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract vortex length from
+		:return: List of vortex length
+	});
+
+	/*def!(get_interaction_point_TKE, double[] function(ref PyBWIinputs), Docstring!q{
+		Extract blade TKE at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract blade TKE
+		:return: List of blade TKE
+	});*/
+
+
 	// If we want to output the BWI stuff for the entire wake history
 	/*def!(get_BWIinputs_gamma_w, double[] function(ref PyBWIinputs), Docstring!q{
 		Extract vortex circulation component to a linear array.
@@ -1446,7 +1479,9 @@ extern(C) void PydMain() {
 		Member!("gamma_w", Docstring!q{vortex circulation}),
 		Member!("gamma_sec", Docstring!q{blade sectional gamma}),
 		Member!("r_blade", Docstring!q{vectors}),
-		Member!("r_vortex", Docstring!q{vectors})
+		Member!("r_vortex", Docstring!q{vectors}), 
+		Member!("C_d", Docstring!q{blade C_d values}),
+		Member!("l", Docstring!q{vortex length})
 	);
 
 	wrap_struct!(

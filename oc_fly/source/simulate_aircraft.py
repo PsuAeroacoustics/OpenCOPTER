@@ -271,6 +271,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 	gammaSec =[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
 	gammaVortex = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
 	r_c = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
+	C_d = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
+	l = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
+	#TKE = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
 
 	target_y_slices = []
 	piv_slices = []
@@ -684,6 +687,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 								gammaSec[blade_idx][blade_idx2][acoustic_iteration].append(get_interaction_point_gamma_sec(vehicle.wake_history.history[0].rotor_wakes[0].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
 								gammaVortex[blade_idx][blade_idx2][acoustic_iteration].append(get_interaction_point_gamma_w(vehicle.wake_history.history[0].rotor_wakes[0].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
 								r_c[blade_idx][blade_idx2][acoustic_iteration].append(get_interaction_point_r_c(vehicle.wake_history.history[0].rotor_wakes[0].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
+								C_d[blade_idx][blade_idx2][acoustic_iteration].append(get_interaction_point_C_d(vehicle.wake_history.history[0].rotor_wakes[0].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
+								l[blade_idx][blade_idx2][acoustic_iteration].append(get_interaction_point_l(vehicle.wake_history.history[0].rotor_wakes[0].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
+								#TKE[blade_idx][blade_idx2][acoustic_iteration].append(get_interaction_point_TKE(vehicle.wake_history.history[0].rotor_wakes[0].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
 
 				spanwise_element_iteration = spanwise_element_iteration + 1
 				
@@ -787,6 +793,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, args,
 		result_dictionary['r_c'] = r_c
 		result_dictionary['gamma_sec'] = gammaSec
 		result_dictionary['gamma_vortex'] = gammaVortex
+		result_dictionary['C_d'] = C_d
+		result_dictionary['l'] = l
+		#result_dictionary['TKE'] = TKE
 		result_dictionary['blade_directionVec'] = blade_directionVec
 		result_dictionary['vortex_directionVec'] = vortex_directionVec
 
