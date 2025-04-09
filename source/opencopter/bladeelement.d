@@ -127,7 +127,7 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		immutable shed_vel_dot = shed_vel_vec.dot(blade.chunks[chunk_idx].af_norm);
 		immutable shed_projected_vel = shed_vel_vec - blade.chunks[chunk_idx].af_norm*shed_vel_dot;
 
-		blade_state.chunks[chunk_idx].projected_vel = projected_vel;
+		blade_state.chunks[chunk_idx].projected_vel = /+blade.frame.global_matrix*+/projected_vel;
 
 		immutable Chunk wake_z = -projected_vel[2][];
 
@@ -144,6 +144,7 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
 		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
+
 		immutable Chunk theta = (rotor_input.blade_pitches[blade_idx] + blade.chunks[chunk_idx].twist[])[]*cos_sweep[];
 		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
@@ -313,7 +314,7 @@ void print_frame(F)(F frame, int depth = 0) {
 	import std.stdio : writeln;
 	import std.range : repeat;
 
-	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.global_matrix);
+	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.local_matrix);
 
 	foreach(ref child; frame.children) {
 		print_frame(child, depth + 1);
@@ -330,6 +331,7 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	import std.stdio : writeln;
 	
 	aircraft.root_frame.update(Mat4.identity);
+	//aircraft.root_frame.print_frame;
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 

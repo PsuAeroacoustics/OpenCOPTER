@@ -596,11 +596,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					converged_revolutions = converged_revolutions + 1
 
 			basic_aircraft_rotor_dynamics(vehicle.input_state, dt)
-			for rotor_idx, rotor in enumerate(vehicle.aircraft.rotors):
-				#_ = basic_single_rotor_dynamics(vehicle.input_state.rotor_inputs[rotor_idx], dt)
 
-				for motion_lambda in vehicle.motion_lambdas[rotor_idx]:
-					motion_lambda(vehicle.input_state.rotor_inputs[rotor_idx].azimuth)
+			for motion_lambda in vehicle.motion_lambdas:
+				motion_lambda(vehicle.input_state.rotor_inputs)
 
 			#step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt)
 			step_start = time.perf_counter_ns()
@@ -1095,6 +1093,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		elif observer["type"] == "sphere":
 			min_obs_dist = observer["radius"]*dist_multiplier
 			max_obs_dist = observer["radius"]*dist_multiplier
+
+		elif observer["type"] == "external_file":
+			min_obs_dist = observer["radius"]*dist_multiplier
+			max_obs_dist = observer["radius"]*dist_multiplier
+
 		elif observer["type"] == "points":
 			for x, y, z in zip(observer['x'], observer['y'], observer['z']):
 				x = x*dist_multiplier
@@ -1163,7 +1166,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				wopwop_motion,
 				vehicle.input_state,
 				wopwop_case_path,
-				[rotor_phases[rotor_idx]]
+				[rotor_phases[rotor_idx]],
+				args
 			)
 
 			namelists.append(namelist)
@@ -1191,7 +1195,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			wopwop_motion,
 			vehicle.input_state,
 			wopwop_case_path,
-			rotor_phases
+			rotor_phases,
+			args
 		)
 
 		namelists.append(namelist)

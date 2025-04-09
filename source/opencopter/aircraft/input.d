@@ -5,7 +5,6 @@ import opencopter.config;
 import opencopter.memory;
 
 import std.traits;
-import core.simd;
 
 template is_aircraft_input_state(A) {
 	enum bool is_aircraft_input_state = {

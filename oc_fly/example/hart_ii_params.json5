@@ -3,7 +3,7 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		shed_history_angle: [45],
-		wake_trail_distance: [5],
+		wake_trail_distance: [4],
 		shed_release_angle: 1.0,
 		convergence_criteria: 5.0e-5,
 		convergence_type: "wake",

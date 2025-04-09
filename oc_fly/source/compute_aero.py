@@ -21,13 +21,16 @@ from multiprocessing import Queue
 from traceback import print_exception
 from os import path, makedirs
 
-def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, motion_axis: Vec3, azimuth_offset: float, azimuth: float):
+def static_motion(angle, vec, frame, rotor_inputs, r_idx):
+	frame.set_rotation(vec, angle)
+
+def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, motion_axis: Vec3, azimuth_offset: float, rotor_inputs, _r_idx):
 	h = 0
 	h_star = 0
 
 	for idx in range(len(a)):
-		cos = math.cos(float(idx)*(azimuth + azimuth_offset))
-		sin = math.sin(float(idx)*(azimuth + azimuth_offset))
+		cos = math.cos(float(idx)*(rotor_inputs[_r_idx].azimuth + azimuth_offset))
+		sin = math.sin(float(idx)*(rotor_inputs[_r_idx].azimuth + azimuth_offset))
 
 		h = h + a[idx]*cos + b[idx - 1]*sin
 
@@ -36,8 +39,8 @@ def fourier_motion(a: list[float], b: list[float], dt: float, frame: Frame, moti
 
 	frame.set_rotation(motion_axis, h)
 
-def constant_motion(omega: float, dt: float, frame: Frame, motion_axis: Vec3, azimuth: float):
-	frame.set_rotation(motion_axis, azimuth)
+def constant_motion(omega: float, dt: float, frame: Frame, motion_axis: Vec3, rotor_inputs, _r_idx):
+	frame.set_rotation(motion_axis, rotor_inputs[_r_idx].azimuth)
 
 def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	airfoil_descs = blade_object['airfoils']
@@ -285,6 +288,7 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 				if len(built_blades) > 1:
 					raise Exception("Rotor has multiple blades on single attachment")
 
+				#print(f"Setting azimuth offset for blade: {child_component['axis_angle']*(math.pi/180.0)}")
 				built_blades[0].azimuth_offset = child_component["axis_angle"]*(math.pi/180.0)
 
 	elif frame_type != FrameType_blade():
@@ -294,9 +298,11 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 
 		rotating_rotor_frame = Frame(angle_axis, angle, origin, component_frame, name, frame_type)
 		rotating_rotor_frame.children = child_components
+		for child in child_components:
+			child.parent = rotating_rotor_frame
 
 		component_frame.name = component_frame.name + " fixed"
-
+		component_frame.set_frame_type("connection")
 		component_frame.children = [rotating_rotor_frame]
 
 		rotor = build_rotor(blades, rotating_rotor_frame, current_rotor_radius)
@@ -442,7 +448,6 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	rotorcraft_system = case.aircraft
 	motion_vec_dict = case.motion_vec_dict
 	trim_vec_dict = case.trim_vec_dict
-	component_dict = case.component_dict
 
 	num_rotors = rotorcraft_system.rotors.length()
 	num_wings = rotorcraft_system.wings.length()
@@ -456,7 +461,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	d_psi = computational_parameters["d_psi"]*math.pi/180.0
 	dt = d_psi/np.max(np.abs(omegas))
 
-	motion_lambdas = [[] for r_idx in range(rotorcraft_system.rotors.length())]
+	motion_lambdas = []
 	wopwop_motion = {}
 
 	#print(f'{motion_vec_dict}')
@@ -541,7 +546,6 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
-	#rotor_ratios = rotor_ratios.astype(dtype=np.int64).tolist()
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
@@ -633,7 +637,6 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
 
 	print(f'num_blades: {num_blades}')
-
 	a1 = 6.5e-5
 	if "a1" in computational_parameters:
 		a1 = computational_parameters['a1']
@@ -650,6 +653,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
 	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1, hybrid)
 	
+<<<<<<< ours
 	try:
 		vehicle = SimulatedVehicle(
 			rotorcraft_system,
@@ -777,3 +781,115 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	result_queue.put(cases_tuple)
 	result_queue.join()
+=======
+	vehicle = SimulatedVehicle(
+		rotorcraft_system,
+		rotorcraft_state,
+		rotorcraft_input_state,
+		rotorcraft_inflows,
+		rotor_wake_history,
+		motion_lambdas,
+		trim_lambdas,
+		case.name
+	)
+
+	rotorcraft_thrusts, rotorcraft_namelists, results_dictionary = simulate_aircraft.simulate_aircraft(
+		log_file,
+		vehicle,
+		atmo,
+		elements,
+		args,
+		f'{output_base}/vtu',
+		f'{output_base}/acoustics',
+		do_compute,
+		flight_condition,
+		computational_parameters,
+		observer,
+		acoustics,
+		wake_history_length,
+		results,
+		wopwop_motion
+	)
+	
+	if do_compute:
+
+		for r_idx in range(num_rotors):
+			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
+			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
+			wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
+
+			for b_idx in range(num_blades[r_idx]):
+				wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+				wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+				wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+				wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+
+			results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
+			results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
+			
+		results_dictionary["rotor_c_t"] = rotorcraft_thrusts
+		results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
+		results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
+
+		scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
+
+		if args.vtu_results:
+			if results is not None:
+				if 'inflow_slices' in results:
+					for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
+						res_x = inflow_slice["resolution"][0]
+						res_y = inflow_slice["resolution"][1]
+						res_z = inflow_slice["resolution"][2]
+
+						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+						start = Vec3(inflow_slice["slice_start"])
+
+						write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
+
+				if 'wake_slices' in results:
+					for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
+						res_x = inflow_slice["resolution"][0]
+						res_y = inflow_slice["resolution"][1]
+						res_z = inflow_slice["resolution"][2]
+
+						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+						start = Vec3(inflow_slice["slice_start"])
+
+						write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
+
+	cases = []
+	if (acoustics is not None) and (observer is not None):
+		print("Acoustics for individual rotors")
+		print(f"args.fs: {args.fs}")
+		print(f"num_rotors: {num_rotors}")
+		if (num_rotors > 1) and (args.fs is False):
+			print("Acoustics for individual rotors 1")
+			for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
+				print(f"Acoustics for individual rotor {r_idx}")
+				wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
+
+				if not path.isdir(wopwop_case_path):
+					makedirs(wopwop_case_path, exist_ok=True)
+
+				single_rotor_case = Casename()
+				single_rotor_case.caseNameFile = "case.nam"
+				single_rotor_case.globalFolderName = wopwop_case_path
+				single_rotor_case.namelist = namelist
+
+				cases.append(single_rotor_case)
+
+
+		wopwop_case_path = f'{output_base}/acoustics/full_system/'
+
+		if not path.isdir(wopwop_case_path):
+			makedirs(wopwop_case_path, exist_ok=True)
+
+		full_system_case = Casename()
+		full_system_case.caseNameFile = "case.nam"
+		full_system_case.globalFolderName = wopwop_case_path
+		full_system_case.namelist = rotorcraft_namelists[-1]
+
+		cases.append(full_system_case)
+
+	return cases
+>>>>>>> theirs
