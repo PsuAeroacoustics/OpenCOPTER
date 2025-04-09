@@ -7,7 +7,7 @@ import opencopter.liftmodels;
 import opencopter.math;
 import opencopter.memory;
 import opencopter.trim;
-import opencopter.wake;
+import opencopter.wake : WakeHistoryT, WakeT, is_wake, update_wake, compute_wake_induced_velocities, InducedVelocities;
 
 import numd.linearalgebra.matrix;
 
@@ -15,8 +15,55 @@ import std.algorithm;
 import std.array;
 import std.conv;
 import std.math;
+import std.traits;
+import std.typecons;
 
-void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, I[] wing_inflows, auto ref WIS wing_input_states, auto ref WG wings, auto ref W wake, double time, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo)
+import core.memory;
+
+struct DynamicInflowWake(RS) {
+
+	RS[] rotor_states;
+}
+
+InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, auto ref AS ac_state, size_t rotor_idx, size_t blade_idx, bool single_rotor = false, bool shed_only = false, bool tip_only = false)
+	if(isInstanceOf!(DynamicInflowWake, W))
+{
+	import std.stdio : writeln;
+	InducedVelocities ret;
+	
+	ret.v_x[] = 0.0;
+	ret.v_y[] = 0.0;
+	ret.v_z[] = 0.0;
+	
+	if(!shed_only) {
+		auto global_infow = Vector!(4, Chunk)(0);
+		foreach(i_rotor_idx, ref interacting_rotor; wake.rotor_states) {
+			auto xyz_chunk = Vector!(4, Chunk)(1);
+
+			xyz_chunk.mData[0][] = x[];
+			xyz_chunk.mData[1][] = y[];
+			xyz_chunk.mData[2][] = z[];
+
+			auto xyz_tpp = interacting_rotor.inflow_model.frame.inverse_global_matrix * xyz_chunk;
+
+			immutable Chunk lambda_i = interacting_rotor.inflow_model.inflow_at(xyz_tpp)[];
+
+			auto local_inflow = Vector!(4, Chunk)(0);
+
+			local_inflow[2][] = lambda_i[];
+			local_inflow[3][] = 0.0;
+			global_infow += interacting_rotor.inflow_model.frame.global_matrix * local_inflow;
+		}
+
+		ret.v_x[] = global_infow[0][];
+		ret.v_y[] = global_infow[1][];
+		ret.v_z[] = global_infow[2][];
+	}
+
+	return ret;
+}
+
+void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, auto ref W wake, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo)
 	if(is_blade_geometry!BG && is_blade_state!BS && is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
@@ -25,19 +72,6 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
 	static import std.math;
 
 	import std.stdio : writeln;
-
-	//immutable cos_azimuth = std.math.cos(blade_state.azimuth);
-	//immutable sin_azimuth = std.math.sin(blade_state.azimuth);
-
-	//immutable cos_beta = std.math.cos(rotor_input.blade_flapping[blade_idx]);
-	//immutable sin_beta = std.math.sin(rotor_input.blade_flapping[blade_idx]);
-
-	//immutable cos_alpha = rotor_input.cos_aoa;
-	//immutable sin_alpha = rotor_input.sin_aoa;
-
-	//immutable Chunk chunk_of_zeros = 0.0;
-
-	//Chunk plunging_correction;
 
 	foreach(chunk_idx; 0..blade.chunks.length) {
 
@@ -50,41 +84,25 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
 
 		auto shed_wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, rotor_idx, blade_idx, false, true, false);
 
-		// Chunk wing_v_z = 0.0;
-		// Chunk wing_v_y = 0.0;
-		// Chunk wing_v_x = 0.0;
 		auto wing_global_infow = Vector!(4, Chunk)(0);
-		foreach(wing_idx, wing_inflow; wing_inflows){
 
-			///immutable Chunk x_inflow = -x[]*wing_input_states[wing_idx].cos_aoa - z[]*wing_input_states[wing_idx].sin_aoa + wings[wing_idx].origin[0];
-			///immutable Chunk y_inflow = -y[] + wings[wing_idx].origin[1];
-			///immutable Chunk z_inflow = -x[]*wing_input_states[wing_idx].sin_aoa + z[]*wing_input_states[wing_idx].cos_aoa + wings[wing_idx].origin[2];
+		foreach(ref wing_state ; ac_state.wing_states) {
+
 			auto xyz_chunk = Vector!(4, Chunk)(1);
 			xyz_chunk.mData[0][] = blade_state.chunks[chunk_idx].x[];
 			xyz_chunk.mData[1][] = blade_state.chunks[chunk_idx].y[];
 			xyz_chunk.mData[2][] = blade_state.chunks[chunk_idx].z[];
 
-			auto xyz_tpp = wing_inflow.frame.inverse_global_matrix * xyz_chunk;
+			auto xyz_tpp = wing_state.inflow_model.frame.inverse_global_matrix * xyz_chunk;
 
-			//xyz_tpp /= ac.rotors[i_rotor_idx].radius;
-
-			auto wing_ind_vel = wing_inflow.compute_wing_induced_vel_on_blade(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2]);
+			auto wing_ind_vel = wing_state.inflow_model.compute_wing_induced_vel_on_blade(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2]);
 			
 			auto local_wing_inflow = Vector!(4, Chunk)(0);
 			local_wing_inflow[0][] = wing_ind_vel.v_x[];
 			local_wing_inflow[1][] = wing_ind_vel.v_y[];
 			local_wing_inflow[2][] = wing_ind_vel.v_z[];
 
-			wing_global_infow += wing_inflow.frame.global_matrix * local_wing_inflow;
-
-			//immutable aoa = wing_input_states[wing_idx].angle_of_attack;
-
-			// immutable w_cos_aoa = wing_input_states[wing_idx].cos_aoa;
-			// immutable w_sin_aoa = wing_input_states[wing_idx].sin_aoa; 
-
-			// wing_v_z[] += (wing_ind_vel.v_z[]*w_cos_aoa - wing_ind_vel.v_x[]*w_sin_aoa)/std.math.abs(rotor_input.angular_velocity); 
-			// wing_v_x[] += (-wing_ind_vel.v_z[]*w_sin_aoa - wing_ind_vel.v_x[]*w_cos_aoa)/std.math.abs(rotor_input.angular_velocity);
-			// wing_v_y[] += -wing_ind_vel.v_y[]/std.math.abs(rotor_input.angular_velocity); 
+			wing_global_infow += wing_state.inflow_model.frame.global_matrix * local_wing_inflow;
 		}
 
 		auto wake_global_vel = Vector!(4, Chunk)(0);
@@ -98,10 +116,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
 		shed_wake_global_vel[1][] = shed_wake_velocities.v_y[];
 		shed_wake_global_vel[2][] = shed_wake_velocities.v_z[];
 
-		immutable Chunk sweep_corrected_r = blade.chunks[chunk_idx].r[]*cos_sweep[];
-
-		immutable total_vel_vec = blade.frame.global_matrix.transpose() * (wake_global_vel + ac_state.freestream);
-		immutable shed_vel_vec = blade.frame.global_matrix.transpose() * shed_wake_global_vel;
+		immutable total_vel_vec = blade.frame.global_matrix.inverse.get() * (wake_global_vel + ac_state.freestream);
+		immutable shed_vel_vec = blade.frame.global_matrix.inverse.get() * shed_wake_global_vel;
 
 		blade_state.chunks[chunk_idx].blade_local_vel = total_vel_vec;
 
@@ -113,18 +129,16 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
 
 		blade_state.chunks[chunk_idx].projected_vel = projected_vel;
 
-		//wake_z[] += wing_v_z[];
-		//wake_y[] += wing_v_y[];
-		//wake_x[] += wing_v_x[];
-
 		immutable Chunk wake_z = -projected_vel[2][];
 
-		immutable Chunk u_p = (wake_z[] - shed_projected_vel[2][])/(rotor.radius*abs(rotor_input.angular_velocity));
+		immutable Chunk u_p = (wake_z[] - shed_projected_vel[2][])/(rotor.radius*abs(rotor_input.angular_velocity));//*cos_sweep[];
+
 		blade_state.chunks[chunk_idx].shed_u_p[] = -shed_projected_vel[2][]/(rotor.radius*abs(rotor_input.angular_velocity));
 		blade_state.chunks[chunk_idx].u_p[] = u_p[];
 
 		immutable Chunk mu_sin_azimuth = -rotor_state.advance_ratio*sin_azimuth[];
-		immutable Chunk u_t = sweep_corrected_r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[];
+
+		immutable Chunk u_t = (blade.chunks[chunk_idx].r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[])*cos_sweep[];
 		
 		immutable Chunk inflow_angle = atan2(u_p, u_t);
 
@@ -145,21 +159,20 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 
-		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
-		blade_state.chunks[chunk_idx].gamma[] = gamma[];
+		blade_state.chunks[chunk_idx].aoa_eff[] = -2.0*std.math.sgn(rotor_input.angular_velocity)*gamma[];
 
-		blade_state.chunks[chunk_idx].aoa_eff[] = -2.0*std.math.sgn(rotor_input.angular_velocity)*blade_state.chunks[chunk_idx].gamma[];
 		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.airfoil.lift_curve_slope(chunk_idx)[]*blade.chunks[chunk_idx].chord[]*std.math.abs(rotor_input.angular_velocity)*rotor.radius*rotor.radius);
 		blade_state.chunks[chunk_idx].aoa_eff[] += blade.airfoil.zero_lift_aoa(chunk_idx)[];
 
-		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, M_inf);
+		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa, M_inf);
 
-		gamma[] = -std.math.sgn(rotor_input.angular_velocity)*0.5*dimensional_u_inf[]*blade.chunks[chunk_idx].chord[]*rotor.radius*af_coefficients.C_l[];
+		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
+		blade_state.chunks[chunk_idx].gamma[] = gamma[];
 
 		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 		immutable Chunk dC_D = steady_sectional_model(u_p, u_t, af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
 
-		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[]*cos(blade_state.chunks[chunk_idx].aoa)[];
+		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[];
 		blade_state.chunks[chunk_idx].dC_d[] = af_coefficients.C_d[];
 
 		blade_state.chunks[chunk_idx].dC_L_dot = (dC_L[] - blade_state.chunks[chunk_idx].dC_L[])/dt;
@@ -175,8 +188,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
 		immutable Chunk dC_N = blade_state.chunks[chunk_idx].dC_L[]*cos_collective[];
 		immutable Chunk dC_c = -blade_state.chunks[chunk_idx].dC_L[]*sin_collective[];
 
-		immutable Chunk dC_T = (blade_state.chunks[chunk_idx].dC_L[]*cos_inflow[]-blade_state.chunks[chunk_idx].dC_D[]*sin_inflow[]);
-		immutable Chunk dC_Db = blade_state.chunks[chunk_idx].dC_L[]*sin_inflow[]+blade_state.chunks[chunk_idx].dC_D[]*cos_inflow[];
+		immutable Chunk dC_T = (blade_state.chunks[chunk_idx].dC_L[]*cos_inflow[] - blade_state.chunks[chunk_idx].dC_D[]*sin_inflow[]);
+		immutable Chunk dC_Db = blade_state.chunks[chunk_idx].dC_L[]*sin_inflow[] + blade_state.chunks[chunk_idx].dC_D[]*cos_inflow[];
 
 		blade_state.chunks[chunk_idx].dC_T_dot = (dC_T[] - blade_state.chunks[chunk_idx].dC_T[])/dt;
 		blade_state.chunks[chunk_idx].dC_T[] = dC_T[];
@@ -200,13 +213,13 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, WIS, WG, W)(auto ref B
  +	With a given rotor angual velocity and angular acceleration, compute the lift, torque, power of the rotor.
  +	This is intended to by wrapped in some sort of trim algo.
  +/
-void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W, I)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state,  auto ref WIS wing_input_states, auto ref WG wings, auto ref W wake, auto ref I[] wing_inflows, double C_Ti,double C_Qi, double time, double dt, size_t rotor_idx, immutable Atmosphere atmo)
+void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, auto ref RS rotor_state, auto ref RIS rotor_input, auto ref AS ac_state,  auto ref WIS wing_input_states, auto ref WG wings, auto ref W wake, double C_Ti,double C_Qi, size_t iteration, double dt, size_t rotor_idx, immutable Atmosphere atmo)
 	if(is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
 	version(GNU) pragma(inline, true);
-	
-	rotor_state.C_T = 0.0;
+
+	double C_T = 0;
 	rotor_state.C_Q = 0.0;
 	rotor_state.C_Mx = 0.0;
 	rotor_state.C_My = 0.0;
@@ -218,38 +231,82 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W, I)(auto ref RG rotor,
 		rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
 	}
 
+	auto dynWake = DynamicInflowWake!(PointerTarget!RS)(ac_state.rotor_states.data);
+
+	Chunk[] backup_CT = new Chunk[rotor.blades[0].chunks.length];
+
 	foreach(blade_idx; 0..rotor.blades.length) {
+
+		if(iteration > 0) {
+			rotor.blades[blade_idx].compute_blade_properties(
+				rotor_state.blade_states[blade_idx],
+				rotor,
+				rotor_input,
+				rotor_state,
+				ac_state,
+				dynWake,
+				dt,
+				rotor_idx,
+				blade_idx,
+				atmo
+			);
+
+			auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
+			auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
+			
+			auto global_frame_forces = rotor.blades[blade_idx].frame.global_matrix*blade_frame_forces;
+			auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
+
+			auto global_frame_moments = rotor.blades[blade_idx].frame.global_matrix*blade_frame_moments;
+			auto rotor_frame_moments = rotor.frame.parent.global_matrix.inverse.get()*global_frame_moments;
+
+			C_T += rotor_frame_forces[2];
+			rotor_state.C_Q += rotor_frame_moments[2];
+
+			rotor_state.C_Mx += rotor_frame_moments[0];
+			rotor_state.C_My += rotor_frame_moments[1];
+		}
+
+		foreach(chunk_idx, blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
+			backup_CT[chunk_idx][] = blade_chunk.dC_T[];
+		}
+
 		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
 			rotor,
 			rotor_input,
 			rotor_state,
 			ac_state,
-			wing_inflows,
-			wing_input_states,
-			wings,
 			wake,
-			time,
 			dt,
 			rotor_idx,
 			blade_idx,
 			atmo
 		);
 
-		auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
-		auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0);
-		
-		auto global_frame_forces = rotor.blades[blade_idx].frame.global_matrix*blade_frame_forces;
-		auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
+		foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
+			blade_chunk.dC_T[] = backup_CT[chunk_idx][];
+		}
 
-		auto global_frame_moments = rotor.blades[blade_idx].frame.global_matrix*blade_frame_moments;
-		auto rotor_frame_moments = rotor.frame.parent.global_matrix.inverse.get()*global_frame_moments;
+		if(iteration == 0) {
+			auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
+			auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
+			
+			auto global_frame_forces = rotor.blades[blade_idx].frame.global_matrix*blade_frame_forces;
+			auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
 
-		rotor_state.C_T += rotor_frame_forces[2];
-		rotor_state.C_Q += rotor_frame_moments[2];
-		rotor_state.C_Mx += rotor_frame_moments[0];
-		rotor_state.C_My += rotor_frame_moments[1];
+			auto global_frame_moments = rotor.blades[blade_idx].frame.global_matrix*blade_frame_moments;
+			auto rotor_frame_moments = rotor.frame.parent.global_matrix.inverse.get()*global_frame_moments;
+
+			C_T += rotor_frame_forces[2];
+			rotor_state.C_Q += rotor_frame_moments[2];
+
+			rotor_state.C_Mx += rotor_frame_moments[0];
+			rotor_state.C_My += rotor_frame_moments[1];
+		}
 	}
+
+	rotor_state.C_T = C_T;
 }
 
 void print_frame(F)(F frame, int depth = 0) {
@@ -263,7 +320,7 @@ void print_frame(F)(F frame, int depth = 0) {
 	}
 }
 
-void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt) {
+void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt) {
 	
 	import opencopter.config : chunk_size;
 
@@ -271,14 +328,8 @@ void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_s
 	import std.math : PI, cos, sin;
 	import std.numeric : findRoot;
 	import std.stdio : writeln;
-
-	immutable time = iteration.to!double*dt;
 	
 	aircraft.root_frame.update(Mat4.identity);
-
-	size_t num_rotors = aircraft.rotors.length;
-
-	auto wing_inflows = inflows[num_rotors..$];
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 
@@ -296,7 +347,7 @@ void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_s
 				immutable Chunk adjusted_r = blade.chunks[chunk_idx].r[] - blade.r_c;
 				local_blade_pos[0][] = adjusted_r[]*aircraft.rotors[rotor_idx].radius;
 				local_blade_pos[1][] = blade.chunks[chunk_idx].xi[]*aircraft.rotors[rotor_idx].radius;
-				local_blade_pos[1][] = 0;
+				local_blade_pos[2][] = 0;
 				local_blade_pos[3][] = 1;
 
 				auto global_blade_pos = blade.frame.global_matrix * local_blade_pos;
@@ -308,16 +359,6 @@ void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_s
 		}
 	}
 
-	foreach(wing_idx; 0..aircraft.wings.length){
-		ac_input_state.wing_inputs[wing_idx].cos_aoa = cos(ac_input_state.wing_inputs[wing_idx].angle_of_attack);
-		ac_input_state.wing_inputs[wing_idx].sin_aoa = sin(ac_input_state.wing_inputs[wing_idx].angle_of_attack);
-	}
-
-	foreach(wing_idx; 0..aircraft.wings.length){
-		ac_input_state.wing_inputs[wing_idx].cos_aoa = cos(ac_input_state.wing_inputs[wing_idx].angle_of_attack);
-		ac_input_state.wing_inputs[wing_idx].sin_aoa = sin(ac_input_state.wing_inputs[wing_idx].angle_of_attack);
-	}
-
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 		aircraft.rotors[rotor_idx].compute_rotor_properties(
 			ac_state.rotor_states[rotor_idx],
@@ -326,47 +367,31 @@ void step(ArrayContainer AC = ArrayContainer.None, I)(ref AircraftStateT!AC ac_s
 			ac_input_state.wing_inputs,
 			aircraft.wings,
 			wake_history[0],
-			wing_inflows,
 			ac_state.rotor_states[rotor_idx].C_T,
 			ac_state.rotor_states[rotor_idx].C_Q,
-			time,
+			iteration,
 			dt,
 			rotor_idx,
 			atmo
 		);
 	}
 
-	aircraft.update_wake(ac_state, ac_input_state, wake_history, inflows, atmo, iteration, dt);
+	aircraft.update_wake(ac_state, ac_input_state, wake_history, atmo, iteration, dt);
 
-	get_ind_vel_on_rotor(ac_state.rotor_states, aircraft.rotors, ac_input_state.rotor_inputs, aircraft.wings, ac_input_state.wing_inputs, ac_state.wing_states, inflows);
+	auto ac_forces = Vec4(0.0);
+	foreach(r_idx, ref rotor_state ; ac_state.rotor_states) {
+		rotor_state.inflow_model.update(ac_state, dt);
 
-	//foreach(inflow_idx; num_rotors..inflows.length){
-	foreach(inflow_idx; 0..inflows.length){
-		//writeln("iterting through wing update function");
-		//inflows[inflow_idx].update(ac_input_state, aircraft, inflows,ac_input_state.wing_inputs[0].freestream_velocity, 0.0, 0.0, dt);	
-		inflows[inflow_idx].update(inflows, ac_state.freestream, dt);
+		auto rotor_forces = Vec4(0.0);
+
+		rotor_forces[2] = rotor_state.C_T*atmo.density*PI*aircraft.rotors[r_idx].radius^^4.0*abs(ac_input_state.rotor_inputs[r_idx].angular_velocity)^^2.0;
+
+		auto global_rotor_forces = aircraft.rotors[r_idx].frame.global_matrix*rotor_forces;
+		ac_forces += aircraft.root_frame.global_matrix.inverse.get * global_rotor_forces;
 	}
+	ac_state.forces = ac_forces;
 
-	// foreach(rotor_idx; 0..inflows.length) {
-	// 	if(rotor_idx >= aircraft.rotors.length) {
-	// 		//writeln("Updating_wing_cirulation and lift coefficient");
-	// 		inflows[rotor_idx].update_wing_circulation();
-	// 		inflows[rotor_idx].update_wing_dC_L();
-	// 	} else {
-	// 		//writeln("adv_ratio= ", ac_state.rotor_states[rotor_idx].advance_ratio, "axial_adv_ratio= ",ac_state.rotor_states[rotor_idx].axial_advance_ratio);
-	// 		inflows[rotor_idx].update(ac_input_state, aircraft, inflows, ac_input_state.rotor_inputs[0].freestream_velocity, ac_state.rotor_states[rotor_idx].advance_ratio, ac_state.rotor_states[rotor_idx].axial_advance_ratio, dt);
-	// 	}
-	// }
-}
-
-import core.thread;
-import core.sync.barrier;
-//import core.sync.barrier;
-
-auto run(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, size_t iterations) {
-	immutable size_t cores_per_blade = 8;
-}
-
-auto process_blade(ArrayContainer AC = ArrayContainer.None)() {
-
+	foreach(ref wing_state ; ac_state.wing_states) {
+		wing_state.inflow_model.update(ac_state, dt);
+	}
 }

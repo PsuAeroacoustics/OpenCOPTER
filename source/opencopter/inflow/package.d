@@ -10,6 +10,8 @@ public import opencopter.inflow.huangpeters;
 public import opencopter.inflow.simplewing;
 public import opencopter.inflow.winginflow;
 
+import numd.linearalgebra.matrix;
+
 import std.stdio;
 import std.range;
 import std.algorithm;
@@ -24,19 +26,15 @@ alias Inflow = InflowT!(ArrayContainer.none);
 
 
 interface InflowT(ArrayContainer AC = ArrayContainer.none) {
-	//void update(ref AircraftInputStateT!(AC) ac_input , ref AircraftT!(AC) aircraft,  InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, ref AircraftStateT!(AC) ac_state, double dt);
-	//void update(AircraftInputStateT!(AC)* ac_input , AircraftT!(AC)* aircraft, InflowT!AC[] inflows, double freestream_velocity, double advance_ratio, double axial_advance_ratio, AircraftStateT!(AC)* ac_state, double dt);
-	void update(InflowT!AC[] inflows, Vec4 freestream_velocity, double dt);
-	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z, immutable Chunk x_e, double angle_of_attack);
+	void update(AircraftStateT!AC ac_state, double dt);
+	Chunk inflow_at(immutable Vector!(4, Chunk) xyz);
 	void update_wing_circulation();
 	void update_wing_dC_L();
 	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z);
-	//@nogc Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth);
-	//@nogc double wake_skew();
 	@nogc Frame* frame();
 }
 
-void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS, I)(auto ref RS rotor_states, auto ref RG rotors, auto ref RIS rotor_inputs, auto ref WG wings, auto ref WIS wing_inputs, auto ref WS wing_states, I inflows){
+void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS, I)(auto ref RS rotor_states, auto ref RG rotors, auto ref RIS rotor_inputs, auto ref WG wings, auto ref WIS wing_inputs, auto ref WS wing_states, I inflows) {
 	
    	size_t num_rotors = rotors.length; 
    	double[] v_z = new double[num_rotors];
@@ -60,7 +58,7 @@ void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS, I)(auto ref RS rotor_states, aut
        	y_rotor[] = half_rotor_radius*sin(psi_i)[] ;
        	z_rotor[] = 0.0;
 		
-       	foreach(inflow_idx,inflow; inflows){
+       	foreach(inflow_idx, inflow; inflows){
            	// if(inflow_idx != rotor_idx){
             //    	if(inflow_idx < num_rotors){
 			// 		x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0];

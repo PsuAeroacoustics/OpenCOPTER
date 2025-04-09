@@ -16,10 +16,6 @@ import std.traits;
 import std.typecons;
 import std.stdio;
 
-/+extern(C++) struct RadiusPoints {
-	double[] r;
-	size_t num_points;
-}+/
 
 double[] generate_radius_points(size_t n_sections, double root_cutout = 0.0) {
 	import std.algorithm : map;
@@ -35,20 +31,20 @@ double[] generate_radius_points(size_t n_sections, double root_cutout = 0.0) {
     }).retro.array;
 }
 
-/*double[] generate_spanwise_vortex_nodes(size_t span_n_sections) {
-	import std.algorithm : map;
-	import std.array : array;
-	import std.math : cos, PI;
-	import std.range : iota, retro;
-	// Spanwise Votex nodes
-	immutable num_points = span_n_sections%chunk_size == 0 ? span_n_sections : span_n_sections + (chunk_size - span_n_sections%chunk_size);
-	return iota(1.0,num_points + 2.0).map!((l){
-		immutable phi = (2*l-1)*PI/(2.0*(num_points.to!double + 1.0));
-		auto span_vortex_pt = 0.25*(1-cos(phi)).to!double;
-		return span_vortex_pt;
-	}).array;
-}*/
+// double[] generate_radius_points_half_cos(size_t n_sections, double root_cutout = 0.0) {
+// 	import std.algorithm : map;
+// 	import std.array : array;
+// 	import std.math : cos, PI;
+// 	import std.range : iota, retro;
 
+// 	immutable num_points = n_sections%chunk_size == 0 ? n_sections : n_sections + (chunk_size - n_sections%chunk_size);
+//     //return iota(1.0, num_points + 1.0).map!((n) {
+// 	return iota(0, 0.5*PI, 0.5*PI/num_points.to!double).map!((psi) {
+//     	//immutable psi = n*PI/(num_points.to!double + 1.0);
+//     	auto r = (1.0 - root_cutout)*(cos(psi) + 1.0).to!double + root_cutout;
+//     	return r;
+//     }).retro.array;
+// }
 
 double[] generate_spanwise_control_points(size_t span_n_sections) {
 	import std.algorithm : map;
@@ -132,21 +128,6 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_n
 		}
 	}    
 }
-
-
-/*double[] generate_chordwise_votex_nodes(size_t chord_n_sections) {
-	import std.algorithm : map;
-	import std.array : array;
-	import std.math : cos, PI;
-	import std.range : iota, retro;
-	// Spanwise Votex nodes
-	immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
-	return iota(1.0,num_points + 2.0).map!((k){
-		immutable theta = (2*k-1)*PI/(2.0*(num_points.to!double + 1.0));
-		auto chord_vortex_pt = 0.5*(1 - cos(theta)).to!double;
-		return chord_vortex_pt;
-	}).array;
-}*/
 
 double[] generate_chordwise_control_points(size_t chord_n_sections) {
 	import std.algorithm : map;
@@ -553,6 +534,8 @@ extern (C++) struct BladeGeometryChunk {
 	 +/
 	Chunk xi_p;
 
+	Chunk thickness;
+	
 	Vector!(4, Chunk) af_norm;
 }
 
@@ -707,7 +690,6 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 		this.origin = wing.origin;
 		return this;
 	}
-
 }
 
 template is_wing_part_geometry_chunk(A) {
@@ -905,7 +887,6 @@ void compute_blade_vectors(BG)(auto ref BG blade) {
 	blade.set_geometry_array!"af_norm"(af_norms);
 }
 
-//alias compute_blade_vectors_test = compute_blade_vectors!(BladeGeometry);
 
 double[] sweep_from_quarter_chord(double[] r, double[] xi) {
 	double[] sweep = new double[xi.length];

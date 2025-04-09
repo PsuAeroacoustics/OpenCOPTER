@@ -883,7 +883,8 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax2 = plt.subplot(333)
 	ax2.set_yticklabels([])
 	ax2.set_xticklabels([])
-	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/US_{plot_name}.JPG')
+	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/US_{plot_name}.JPG')
+	arr = plt.imread(f'./HART_Results/US_{plot_name}.JPG')
 
 	#plt.imshow(np.fliplr(np.flipud(np.transpose(arr, [1, 0, 2]))) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
@@ -908,7 +909,8 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax3 = plt.subplot(334)
 	#ax3.set_yticklabels([])
 	ax3.set_xticklabels([])
-	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/KU_{plot_name}.JPG')
+	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/KU_{plot_name}.JPG')
+	arr = plt.imread(f'./HART_Results/KU_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 
@@ -931,7 +933,8 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax4 = plt.subplot(335)
 	ax4.set_yticklabels([])
 	#ax4.set_xticklabels([])
-	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/Onera_{plot_name}.JPG')
+	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/Onera_{plot_name}.JPG')
+	arr = plt.imread(f'./HART_Results/Onera_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 
@@ -959,7 +962,8 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	#ax5 = plt.subplot(426)
 	ax5 = plt.subplot(336)
 	ax5.set_yticklabels([])
-	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/DLR_{plot_name}.JPG')
+	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/DLR_{plot_name}.JPG')
+	arr = plt.imread(f'./HART_Results/DLR_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	#plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
@@ -987,7 +991,8 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax6 = plt.subplot(337)
 	#ax6.set_yticklabels([])
 	
-	arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/UM_{plot_name}.JPG')
+	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/UM_{plot_name}.JPG')
+	arr = plt.imread(f'./HART_Results/UM_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	#plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
@@ -1007,7 +1012,8 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 			label.set_fontsize(font_size1)
 
 	if plot_name == "BL":
-		wopwop_results_charm = parse_wopwop_results(f'/mnt/e/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
+		#wopwop_results_charm = parse_wopwop_results(f'/mnt/e/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
+		wopwop_results_charm = parse_wopwop_results(f'/media/rrau/data_store/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
 
 		oaspl_linear = [oaspl_db.functions[2].data[0] for oaspl_db in wopwop_results_charm.oaspl_db]
 
@@ -1263,7 +1269,8 @@ def plot_acoustic_contours_cfd(plot_name: str, presentation: bool):
 def plot_acoustic_contours_charm(plot_name: str, presentation: bool):
 	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
 
-	wopwop_results_charm = parse_wopwop_results(f'/mnt/e/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
+	#wopwop_results_charm = parse_wopwop_results(f'/mnt/e/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
+	wopwop_results_charm = parse_wopwop_results(f'/media/rrau/data_store/dissertation/CHARM HART II Results/hartIIBLPSU-WOPWOP_npsi24recon', 'charm_nobpm.nam')
 
 	wopwop_results = parse_wopwop_results(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', 'case.nam')
 
@@ -1989,7 +1996,7 @@ if __name__ == "__main__":
 
 	plot_acoustic_contours_all("BL", args.p)
 	plot_acoustic_contours_all("MN", args.p)
-	plot_acoustic_contours_all("MV", args.p)
+	#plot_acoustic_contours_all("MV", args.p)
 
 	plot_acoustic_contours("BL", args.p)
 	plot_acoustic_contours_cfd("BL", args.p)
@@ -1998,13 +2005,13 @@ if __name__ == "__main__":
 	#plot_blade_twist('MN', args.p)
 	#plot_blade_twist('MV', args.p)
 
-	# plot_blade_normal_pressures('BL', args.p, blade_results_bl)
-	# plot_wake_trajectory('BL', args.p, blade_results_bl)
+	plot_blade_normal_pressures('BL', args.p, blade_results_bl)
+	plot_wake_trajectory('BL', args.p, blade_results_bl)
 	# plot_acoustic_contours("BL", args.p)
 
-	# plot_blade_normal_pressures('MN', args.p, blade_results_mn)
-	# plot_wake_trajectory('MN', args.p, blade_results_mn)
-	# plot_acoustic_contours("MN", args.p)
+	plot_blade_normal_pressures('MN', args.p, blade_results_mn)
+	plot_wake_trajectory('MN', args.p, blade_results_mn)
+	plot_acoustic_contours("MN", args.p)
 
 	# plot_blade_normal_pressures('MV', args.p, blade_results_mv)
 	# plot_wake_trajectory('MV', args.p, blade_results_mv)

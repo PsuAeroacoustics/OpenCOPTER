@@ -20,6 +20,8 @@ import argparse
 from os import path, makedirs
 from mpi4py import MPI
 
+from multiprocessing import Process, JoinableQueue, Queue
+
 def calculate_sound_power_level(oaspl_db,area):
 
 	spatial_avg_pressure = 0
@@ -70,6 +72,15 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 			omegas.append(m['omega'])
 
 	omegas = np.asarray(omegas)
+	omegas = omegas[0:radii.size]
+	for rotor_idx, omega in enumerate(omegas):
+		for blade in rotorcraft_system.rotors[rotor_idx].blades:
+			if omega < 0:
+				x = get_xi(blade)
+				x = [-_x for _x in x]
+				set_xi(blade, x)
+
+	
 	#omegas =  np.asarray([flight_condition["omegas"][r_idx] for r_idx in range(num_rotors)])
 	mus = V_inf/(np.abs(omegas)*radii)
 
@@ -274,6 +285,19 @@ def main():
 		required=False
 	)
 
+	parser.add_argument(
+		"-flight_condition",
+		type= str, 
+		required=False
+	)
+
+	parser.add_argument(
+		"-aircraft",
+		nargs="+",
+		type= str, 
+		required=False
+	)
+
 	comm = MPI.COMM_WORLD
 	rank = comm.Get_rank()
 
@@ -288,6 +312,7 @@ def main():
 	geom = []
 	if args.input_geom is not None:
 		geom_directory = path.dirname(path.realpath(args.input_geom))
+		param_directory = geom_directory
 
 		with open(args.input_geom) as geom_file:
 			geom = pyjson5.load(geom_file)
@@ -298,6 +323,7 @@ def main():
 
 		for ac in ac_list:
 			geom_directory = path.dirname(path.realpath(args.case_file))
+			param_directory = geom_directory
 
 			with open(ac) as geom_file:
 				geom = geom + pyjson5.load(geom_file)
@@ -329,11 +355,15 @@ def main():
 		input_results = param["results"] if "results" in param else None
 	
 	flat_cases = []
-	for aircraft in geom:
+	for ac_idx, aircraft in enumerate(geom):
+		aircraft = geom[ac_idx]
 		ac_param = None
 		if 'parameter_file' in aircraft:
 
-			with open(path.join(geom_directory, aircraft['parameter_file'])) as param_file:
+			param_filepath = path.join(geom_directory, aircraft['parameter_file'])
+			param_directory = path.dirname(path.realpath(param_filepath))
+
+			with open(param_filepath) as param_file:
 				ac_param = pyjson5.load(param_file)
 
 		if input_flight_conditions is not None:
@@ -356,6 +386,44 @@ def main():
 		if "cases" in aircraft:
 			flight_conditions_for_ac = list(filter(lambda x: x["name"] in aircraft["cases"], flight_conditions))
 
+		if "include" in aircraft:
+			include_files = aircraft["include"]
+			for include_filename in include_files:
+				include_filepath = path.join(geom_directory, include_filename)
+				include_directory = path.dirname(include_filepath)
+				with open(path.join(geom_directory, include_filename)) as include_file:
+					ac_include = pyjson5.load(include_file)
+					if "components" in ac_include:
+						if "components" in aircraft:
+							aircraft["components"] = aircraft["components"] + ac_include["components"]
+						else:
+							aircraft["components"] = ac_include["components"]
+
+					if "rotors" in ac_include:
+						if "rotors" in aircraft:
+							aircraft["rotors"] = aircraft["rotors"] + ac_include["rotors"]
+						else:
+							aircraft["rotors"] = ac_include["rotors"]
+
+					if "blades" in ac_include:
+
+						for blade in ac_include["blades"]:
+							for af in blade["airfoils"]:
+								if "filename" in af:
+									af["filename"] = path.join(include_directory, af["filename"])
+
+						if "blades" in aircraft:
+							aircraft["blades"] = aircraft["blades"] + ac_include["blades"]
+						else:
+							aircraft["blades"] = ac_include["blades"]
+
+						
+					if "wings" in ac_include:
+						if "wings" in aircraft:
+							aircraft["wings"] = aircraft["wings"] + ac_include["wings"]
+						else:
+							aircraft["wings"] = ac_include["wings"]
+
 		print(f"rank {rank}: {[f['name'] for f in flight_conditions_for_ac]}")
 
 		results = {}
@@ -373,7 +441,7 @@ def main():
 				observer = input_observer
 			elif 'observer_file' in flight_condition:
 				ac_observers = None
-				with open(path.join(geom_directory, flight_condition['observer_file'])) as param_file:
+				with open(path.join(param_directory, flight_condition['observer_file'])) as param_file:
 					ac_observers = pyjson5.load(param_file)
 					observer = ac_observers["observer"]
 
@@ -381,7 +449,7 @@ def main():
 				acoustics = input_acoustics
 			elif 'acoustics_file' in flight_condition:
 				ac_acoustics = None
-				with open(path.join(geom_directory, flight_condition['acoustics_file'])) as param_file:
+				with open(path.join(param_directory, flight_condition['acoustics_file'])) as param_file:
 					ac_acoustics = pyjson5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
@@ -442,6 +510,12 @@ def main():
 	
 	comm.barrier()
 
+	if args.aircraft is not None:
+		flat_cases = list(filter(lambda case: case.name in args.aircraft, flat_cases))
+
+	if args.flight_condition is not None:
+		flat_cases = list(filter(lambda case: case.condition['name'] == args.flight_condition, flat_cases))
+
 	case_slice = []
 	for case_idx in range(len(flat_cases)):
 		if case_idx*total_procs + rank < len(flat_cases):
@@ -475,60 +549,74 @@ def main():
 
 	if (prog_file_exists and lock_exists) or (not prog_file_exists and not lock_exists):
 		with open(prog_file_name, "w+") as prog_file:
-			for idx, case in enumerate(case_slice[start_idx:]):
-				flight_condition = case.condition
-				computational_parameters = case.computational_parameters
-				results = case.results
-				observer = case.observer
-				acoustics = case.acoustics
+			case_slice = case_slice[start_idx:]
 
-				aircraft = case.aircraft
-				V_inf = float(case.condition["V_inf"])
-				aoa = float(case.condition["aoa"])
-				aoa_dir = f'aoa_{aoa:.3}'
-				V_inf_dir = f'V_inf_{V_inf:.3}'
+			for idx, case in enumerate(case_slice):
+				try:
+					flight_condition = case.condition
+					computational_parameters = case.computational_parameters
+					results = case.results
+					observer = case.observer
+					acoustics = case.acoustics
 
-				state_dir = ''
-				if "c_t" in flight_condition:
-					state_dir = f'ct{"_".join([f"{c_t:.6f}" for c_t in flight_condition["c_t"]])}'
-				elif "T" in flight_condition:
-					state_dir = f'T{"_".join([f"{T:.4f}" for T in flight_condition["T"]])}'
-				else:
-					state_dir = f'theta{"_".join([f"{theta:.2f}" for theta in flight_condition["collective"]])}'
+					aircraft = case.aircraft
+					V_inf = float(case.condition["V_inf"])
+					aoa = float(case.condition["aoa"])
+					aoa_dir = f'aoa_{aoa:.3}'
+					V_inf_dir = f'V_inf_{V_inf:.3}'
 
-				if "name" in flight_condition:
-					root_path = f'./{case.aircraft.root_frame.name}/{flight_condition["name"]}'
-				else:
-					root_path = f'./{case.aircraft.root_frame.name}/{aoa_dir}/{V_inf_dir}/{state_dir}'
+					state_dir = ''
+					if "c_t" in flight_condition:
+						state_dir = f'ct{"_".join([f"{c_t:.6f}" for c_t in flight_condition["c_t"]])}'
+					elif "T" in flight_condition:
+						state_dir = f'T{"_".join([f"{T:.4f}" for T in flight_condition["T"]])}'
+					else:
+						state_dir = f'theta{"_".join([f"{theta:.2f}" for theta in flight_condition["collective"]])}'
 
-				if not path.isdir(root_path):
-					makedirs(root_path, exist_ok=True)
+					if "name" in flight_condition:
+						root_path = f'./{case.aircraft.root_frame.name}/{flight_condition["name"]}'
+					else:
+						root_path = f'./{case.aircraft.root_frame.name}/{aoa_dir}/{V_inf_dir}/{state_dir}'
 
-				log_file_name = f"{root_path}/run_{rank}.log"
-				with open(log_file_name, "w+") as log_file:
+					if not path.isdir(root_path):
+						makedirs(root_path, exist_ok=True)
 
-					log_file.write('\n')
-					log_file.write(f'Running sim with aoa: {aoa}\n')
-					log_file.write( '----------------------------------------------\n')
+					log_file_name = f"{root_path}/run_{rank}.log"
+					with open(log_file_name, "w+") as log_file:
 
-					flight_condition["V_inf"] = V_inf if args.v is None else args.v
+						log_file.write('\n')
+						log_file.write(f'Running sim with aoa: {aoa}\n')
+						log_file.write( '----------------------------------------------\n')
 
-					if args.r is not None:
-						log_file.write(f"Setting post_conv_revolutions to {args.r} due to command line override\n")
-						computational_parameters['post_conv_revolutions'] = args.r
+						flight_condition["V_inf"] = V_inf if args.v is None else args.v
 
-					log_file.write("simulating aero\n")
-					# wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, flight_condition, computational_parameters, results, observer, acoustics, case.wake_lengths, aircraft, case.motion_vec_dict, case.trim_vec_dict)
-					wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, case)
+						if args.r is not None:
+							log_file.write(f"Setting post_conv_revolutions to {args.r} due to command line override\n")
+							computational_parameters['post_conv_revolutions'] = args.r
 
-					cases = cases + wopwop_cases
+						log_file.write("simulating aero\n")
 
-					for case in wopwop_cases:
-						write_namelist(case.namelist, f'{case.globalFolderName}/{case.caseNameFile}')
+						#queue = Queue()
+						#wopwop_cases = compute_aero.compute_aero(log_file, args, f'{root_path}/', do_compute_aero, case, queue)
 
-					prog_file.seek(0)
-					prog_file.write(f'aero {idx + start_idx}')
-					prog_file.flush()
+						queue = JoinableQueue()
+						p = Process(target=compute_aero.compute_aero, args=(log_file, args, f'{root_path}/', do_compute_aero, case, queue))
+						p.start()
+						wopwop_cases = queue.get(block=True)
+						queue.task_done()
+						p.join()
+						p.kill()
+						p.close()
+						print(f'Rank {rank} finished case')
+
+						if wopwop_cases is not None:
+							cases = cases + wopwop_cases
+
+						prog_file.seek(0)
+						prog_file.write(f'aero {idx + start_idx}')
+						prog_file.flush()
+				except FloatingPointError:
+					print("Simulation failed with NaN value")
 
 			if args.acoustics:
 				print("writing acoutics to prog file")
@@ -559,11 +647,18 @@ def main():
 
 		os.remove(prog_file_name)
 	elif (acoustics is not None) and (observer is not None):
-		case_list = CaseList()
-		case_list.cases = cases
+		#real_cases = []
+		for c_idx, case in enumerate(cases):
+			real_case = Casename()
+			real_case.caseNameFile = case[0]
+			real_case.globalFolderName = case[1]
+			#real_cases.append(real_case)
 
-		#void write_caselist_custom_name(ref CaseList case_list, string directory, string caselist_filename) {
-		write_caselist_custom_name(case_list, "./", f'cases_{rank}.nam')
+			case_list = CaseList()
+			case_list.cases = [real_case]
+
+			#void write_caselist_custom_name(ref CaseList case_list, string directory, string caselist_filename) {
+			write_caselist_custom_name(case_list, "./", f'cases_{rank}_{c_idx}.nam')
 
 		
 	# wait for all other procs to finish.

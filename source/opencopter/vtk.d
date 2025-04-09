@@ -573,11 +573,11 @@ class VtkWake {
 	VtkRotorWake[] rotor_wakes;
 
 	version(Have_vtkd) {
-		private this(size_t num_rotors, size_t num_blades, size_t[] shed_length, size_t elements) {
+		private this(size_t num_rotors, size_t[] num_blades, size_t[] shed_length, size_t elements) {
 			rotor_wakes = new VtkRotorWake[num_rotors];
 
 			foreach(r_idx, ref rotor_wake; rotor_wakes) {
-				rotor_wake = new VtkRotorWake(num_blades, shed_length[r_idx], elements);
+				rotor_wake = new VtkRotorWake(num_blades[r_idx], shed_length[r_idx], elements);
 			}
 		}
 	}
@@ -665,7 +665,7 @@ VtkWingWake build_base_vtu_wing_wake(W, WLS)(auto ref W wing_geom, auto ref WLS 
 		return vtk_wing_wake;
 	} else {
 		auto vtk_wing_wake = new VtkWingWake;
-		return vtk_wing;
+		return vtk_wing_wake;
 	}
 }
 
@@ -862,10 +862,11 @@ VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 		import std.array : array;
 
 		size_t[] shed_length = wake.rotor_wakes.map!(r => r.shed_vortices[0].shed_filaments.length).array;
+		size_t[] num_blades = wake.rotor_wakes.map!(r => r.tip_vortices.length).array;
 
 		immutable elements = wake.rotor_wakes[0].shed_vortices[0].shed_filaments[0].length*chunk_size;
 		
-		auto vtk_wake = new VtkWake(wake.rotor_wakes.length, wake.rotor_wakes[0].tip_vortices.length, shed_length, elements);
+		auto vtk_wake = new VtkWake(wake.rotor_wakes.length, num_blades, shed_length, elements);
 
 		foreach(rotor_idx, rotor_wake; wake.rotor_wakes) {
 			vtkIdType last_point_id;
@@ -1125,22 +1126,24 @@ void write_inflow_vtu(I, RGA)(string filename, I[] inflows, Vec3 delta, Vec3 sta
 						node_id_map[int_pos] = ids[x_c];
 					}
 
-					auto global_inflow = Vector!(4, Chunk)(1);
+					auto global_inflow = Vector!(4, Chunk)(0);
 
 					foreach(rotor_idx, ref inflow; inflows) {
 
 						g_pos[3][] = 1;
 						
 						auto l_pos = inflow.frame.global_matrix.inverse().get() * (g_pos);
+						//auto l_pos = inflow.frame.global_matrix.transpose * (g_pos);
+						//auto l_pos = inflow.frame.global_matrix * (g_pos);
 
-						l_pos /= rotors[rotor_idx].radius;
+						immutable Chunk infl = rotors[rotor_idx].radius*omegas[rotor_idx]*inflow.inflow_at(l_pos)[];
 
-						immutable Chunk infl = rotors[rotor_idx].radius*omegas[rotor_idx]*inflow.inflow_at(l_pos[0], l_pos[1], l_pos[2], x_e, aoa)[];
-
+						//auto local_inflow = Vector!(4, Chunk)(zero, zero, infl, one.re);
 						auto local_inflow = Vector!(4, Chunk)(zero, zero, infl, zero);
 
 						local_inflow[2][] = infl[];
 						global_inflow += inflow.frame.global_matrix * local_inflow;
+						//global_inflow += inflow.frame.global_matrix.inverse.get() * local_inflow;
 					}
 
 					foreach(c_idx; 0..chunk_size) {

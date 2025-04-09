@@ -127,6 +127,7 @@ unittest {
 
 	immutable Chunk sigma_hat = chord[]/PI;
 
+	//immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
 	immutable Chunk u_squared = u_p[]*u_p[] + u_t[]*u_t[];
 
 	dC_L[] = 0.5*sigma_hat[]*u_squared[]*C_l[];

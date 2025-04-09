@@ -231,6 +231,31 @@
 			}
 		},
 		{
+			"name": "library-python312",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
+			"subConfigurations": {
+				"pyd": "python312"
+			}
+		},
+		{
+			"name": "library-python312-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python312"
+			}
+		},
+		{
 			"name": "library_huang",
 			"targetName": "opencopter_huang",
 			"targetType": "dynamicLibrary",

@@ -89,12 +89,4 @@ extern (C++) struct WingInputStateT(ArrayContainer AC) {
 	double cos_aoa;
 	double sin_aoa;
 	double freestream_velocity; // m/s
-	//double angular_velocity; // rad/s
-	//double angular_accel; // rad/s^2
-	//double azimuth; // radians
-
-	//mixin ArrayDeclMixin!(AC, double, "r_0");
-	//mixin ArrayDeclMixin!(AC, double, "blade_pitches");
-	//mixin ArrayDeclMixin!(AC, double, "blade_flapping_rate");
-	//mixin ArrayDeclMixin!(AC, double, "blade_flapping");
 }

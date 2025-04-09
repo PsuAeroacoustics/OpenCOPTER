@@ -658,23 +658,10 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 unittest {
 	auto ac = create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/test_evtol.vsp3");
 
-
-
 	print_frame(ac.root_frame);
-
 
 	import opencopter.vtk;
 	import opencopter.aircraft.state;
-
-// alias AircraftState = AircraftStateT!(ArrayContainer.none);
-
-//  struct AircraftStateT(ArrayContainer _AC) {
-// 	alias AC = _AC;
-// 	mixin ArrayDeclMixin!(AC, RotorStateT!(AC), "rotor_states");
-
-// 	Vec4 freestream;
-
-// 	this(size_t num_rotors, size_t num_blades, size_t num_elements, ref AircraftT!AC ac) {
 
 	writeln("ac.rotors[0].blades[0].chunks.length: ", ac.rotors[0].blades[0].chunks.length);
 
