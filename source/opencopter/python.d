@@ -1605,6 +1605,7 @@ extern(C) void PydMain() {
 		Member!"name",
 		Member!"children",
 		Member!"parent",
+		Member!"axis",
 		Def!(Frame.update, void function(Mat4*), PyName!"update"),
 		Def!(Frame.get_frame_type),
 		Def!(Frame.set_frame_type),

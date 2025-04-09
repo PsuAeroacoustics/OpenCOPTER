@@ -403,30 +403,52 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		
 		FrameType frame_type;
 
-		if(type_name != "Propeller") {
+		auto initial_axis = Vec3(1, 0, 0);
+
+		if(type_name == "Hinge") {
+			frame_type = FrameType.connection;
+
+			auto hinge_nodes = parm_node.parseXPath("Hinge");
+			enforce(hinge_nodes.length == 1, "Incorrect number of Hinge nodes. Expected 1 got "~hinge_nodes.length.to!string);
+			auto hinge_node = hinge_nodes[0];
+
+			auto x_hinge_rot_nodes = hinge_node.parseXPath("PrimXVecRel");
+			enforce(x_hinge_rot_nodes.length == 1, "Incorrect number of PrimXVecRel nodes. Expected 1 got "~x_hinge_rot_nodes.length.to!string);
+		
+			auto y_hinge_rot_nodes = hinge_node.parseXPath("PrimYVecRel");
+			enforce(y_hinge_rot_nodes.length == 1, "Incorrect number of PrimYVecRel nodes. Expected 1 got "~y_hinge_rot_nodes.length.to!string);
+		
+			auto z_hinge_rot_nodes = hinge_node.parseXPath("PrimZVecRel");
+			enforce(z_hinge_rot_nodes.length == 1, "Incorrect number of PrimZVecRel nodes. Expected 1 got "~z_hinge_rot_nodes.length.to!string);
+
+			initial_axis = Vec3(
+				x_hinge_rot_nodes[0].getAttribute("Value").to!double,
+				y_hinge_rot_nodes[0].getAttribute("Value").to!double,
+				z_hinge_rot_nodes[0].getAttribute("Value").to!double
+			);
+
+		} else if(type_name != "Propeller") {
 			frame_type = FrameType.connection;
 		} else {
 			frame_type = FrameType.rotor;
 		}
 
-		auto frame = new Frame(Vec3(1, 0, 0), 0, position, null, name, frame_type);
+		auto frame = new Frame(initial_axis, 0, position, null, name, frame_type);
 
 		if(frame_type == FrameType.rotor) {
-			frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
-			frame.rotate(Vec3(0, 1, 0), y_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0) - PI/2.0);
-			frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
-		} else {
-			frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
-			frame.rotate(Vec3(0, 1, 0), y_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
-			frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+			frame.rotate(Vec3(0, 1, 0), -PI/2.0);
 		}
+
+		frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+		frame.rotate(Vec3(0, 1, 0), y_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+		frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
 
 		geom_dict[geom_id] = VspFrameData(frame, parent_id, children_ids, planar_sym, sym_ancestor, geom);
 	}
 
 	auto root_components = geom_dict.byPair.filter!(a => a.value.parent_id == "NONE").assocArray;
 
-	RotorGeometryT!AC*[] build_oc_frame(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
+	RotorGeometryT!AC*[] build_oc_rotor(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
 		
 		RotorGeometryT!AC*[] rotors;
 
@@ -463,8 +485,8 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 					geom_dict[child_id].xml_node
 				);
 
-				rotors ~= build_oc_frame(child1_frame_data, frame_data, true, false);
-				rotors ~= build_oc_frame(child2_frame_data, frame_data, true, true);
+				rotors ~= build_oc_rotor(child1_frame_data, frame_data, true, false);
+				rotors ~= build_oc_rotor(child2_frame_data, frame_data, true, true);
 
 			} else {
 				writeln("geom_dict[child_id].frame.name: ", geom_dict[child_id].frame.name);
@@ -482,7 +504,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 				
 				frame_data.frame.children ~= new_frame.frame;
 
-				rotors ~= build_oc_frame(new_frame, frame_data, symmetry_applied, symmetry_parent);
+				rotors ~= build_oc_rotor(new_frame, frame_data, symmetry_applied, symmetry_parent);
 			}
 		}
 
@@ -629,17 +651,17 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			rotors ~= rotor;
 		}
 
-		writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
+		//writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
 		return rotors;
 	}
 
-	ac.root_frame = new Frame(Vec3(0, 0, 1), 0, Vec3(0, 0, 0), null, "aircraft", "connection");
+	ac.root_frame = new Frame(Vec3(0, 0, 1), 0, Vec3(0, 0, 0), null, "aircraft", "aircraft");
 
 	RotorGeometryT!AC*[] rotors;
 	foreach(comp_id, ref root_component; root_components) {
 		ac.root_frame.children ~= root_component.frame;
 		root_component.frame.parent = ac.root_frame;
-		rotors ~= build_oc_frame(&root_component, null, false, false);
+		rotors ~= build_oc_rotor(&root_component, null, false, false);
 	}
 
 	writeln("rotors.length: ", rotors.length);

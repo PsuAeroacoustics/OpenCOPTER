@@ -231,6 +231,81 @@
 			}
 		},
 		{
+			"name": "library-python311",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
+			"subConfigurations": {
+				"pyd": "python311"
+			}
+		},
+		{
+			"name": "library-python311-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python312"
+			}
+		},
+		{
+			"name": "library-python312",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
+			"subConfigurations": {
+				"pyd": "python311"
+			}
+		},
+		{
+			"name": "library-python312-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python312"
+			}
+		},
+		{
+			"name": "library-python313",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
+			"subConfigurations": {
+				"pyd": "python313"
+			}
+		},
+		{
+			"name": "library-python313-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python313"
+			}
+		},
+		{
 			"name": "library_huang",
 			"targetName": "opencopter_huang",
 			"targetType": "dynamicLibrary",

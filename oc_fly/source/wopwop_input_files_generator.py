@@ -21,10 +21,10 @@ def flatten_children(frame, termination_type):
 
 			components = _flatten_children(frame.parent, termination_type)
 
-			if (frame.parent.get_frame_type() == FrameType_rotor()):
-				components.append(frame)
-			else:
-				components.append(frame.parent)
+			#if (frame.parent.get_frame_type() == FrameType_rotor()):
+			components.append(frame)
+			#else:
+			#	components.append(frame.parent)
 				
 			return components
 
@@ -34,7 +34,7 @@ def flatten_children(frame, termination_type):
 			return frame
 		
 	flat_children = _flatten_children(frame, termination_type)
-	flat_children = flat_children[1:len(flat_children)]
+	#flat_children = flat_children[1:len(flat_children)]
 	return flat_children
 
 def make_cb(frame, wopwop_motion, rotor_phase):
@@ -100,7 +100,7 @@ def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
 
 	flat_frame_list = flatten_children(blade.frame, FrameType_rotor())
 
-	cob_list = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list]
+	cob_list = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list[:-1]]
 	cob_list.append(make_cb(blade.frame, wopwop_motion, None))
 	blade_cntr.cobs = cob_list
 
@@ -118,7 +118,7 @@ def build_rotor_cntr(rotor, environment_in, wopwop_motion, rotor_phase):
 
 	return rotor_cntr
 	
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases):
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases, args):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -257,6 +257,16 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 			observer.xLoc = observer_config["x"]
 			observer.yLoc = observer_config["y"]
 			observer.zLoc = observer_config["z"]
+
+	elif observer_config["type"] == "external_file":
+		observer.fileName = observer_config["fileName"]
+		external_observer_file = f'{args.geom_directory}/{observer.fileName}'
+		os.system(f'cp {external_observer_file} {wopwop_case_path}')  
+
+
+	if "ntMultiplier" in observer_config:
+		observer.nt = observer_config["ntMultiplier"]*nt
+
 
 	if "low_pass_cutoff" in observer_config:
 		if observer_config["cutoff_units"] == "bpf":
