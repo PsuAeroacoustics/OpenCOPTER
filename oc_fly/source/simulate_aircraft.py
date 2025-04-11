@@ -1148,6 +1148,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			if not path.isdir(wopwop_case_path):
 				makedirs(wopwop_case_path, exist_ok=True)
 
+			#def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases):			
 			namelist = wopwop_input_files_generator.generate_wopwop_namelist(
 				atmo,
 				dt,
@@ -1166,8 +1167,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				wopwop_motion,
 				vehicle.input_state,
 				wopwop_case_path,
-				[rotor_phases[rotor_idx]],
-				args
+				[rotor_phases[rotor_idx]]
 			)
 
 			namelists.append(namelist)
@@ -1195,8 +1195,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			wopwop_motion,
 			vehicle.input_state,
 			wopwop_case_path,
-			rotor_phases,
-			args
+			rotor_phases
 		)
 
 		namelists.append(namelist)

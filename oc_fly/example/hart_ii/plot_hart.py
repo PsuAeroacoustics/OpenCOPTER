@@ -1996,7 +1996,7 @@ if __name__ == "__main__":
 
 	plot_acoustic_contours_all("BL", args.p)
 	plot_acoustic_contours_all("MN", args.p)
-	#plot_acoustic_contours_all("MV", args.p)
+	plot_acoustic_contours_all("MV", args.p)
 
 	plot_acoustic_contours("BL", args.p)
 	plot_acoustic_contours_cfd("BL", args.p)
@@ -2013,6 +2013,6 @@ if __name__ == "__main__":
 	plot_wake_trajectory('MN', args.p, blade_results_mn)
 	plot_acoustic_contours("MN", args.p)
 
-	# plot_blade_normal_pressures('MV', args.p, blade_results_mv)
-	# plot_wake_trajectory('MV', args.p, blade_results_mv)
-	# plot_acoustic_contours("MV", args.p)
+	plot_blade_normal_pressures('MV', args.p, blade_results_mv)
+	plot_wake_trajectory('MV', args.p, blade_results_mv)
+	plot_acoustic_contours("MV", args.p)

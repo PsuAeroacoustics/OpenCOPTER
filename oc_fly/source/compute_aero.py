@@ -468,7 +468,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	if "motion" in flight_condition:
 		for r_idx, rotor in enumerate(rotorcraft_system.rotors):
-
+			#motion_lambdas.append([])
 			def build_motion_lambdas(parent_frame, azimuth_offset):
 				sub_motion_lambdas = []
 				for child in parent_frame.children:
@@ -477,14 +477,14 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 						if (child.name == child_motion["frame"]) or (child.name[0:-2] == child_motion["frame"]):
 							if motion_vec_dict[child.name][1] == "fourier":
 								print(f"Adding fourier motion lambda for rotor {child.name}")
-								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
+								motion_lambda = lambda a, cos=child_motion["cos"], sin=child_motion["sin"], dt=dt, frame=child, vec=motion_vec_dict[child.name][0], azimuth_offset=azimuth_offset, _r_idx = r_idx: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a, _r_idx)
 
 								wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
 							elif motion_vec_dict[child.name][1] == "constant":
 								print(f"Adding constant motion lambda for rotor {child.name}")
 								omega = motion["omega"]
-								motion_lambda = lambda a, omega=omega, dt=dt, frame=child, vec=motion_vec_dict[rotor_frame.name][0]: constant_motion(omega, dt, frame, vec, a)
+								motion_lambda = lambda a, omega=omega, dt=dt, frame=child, vec=motion_vec_dict[rotor_frame.name][0], _r_idx=r_idx: constant_motion(omega, dt, frame, vec, a, _r_idx)
 								wopwop_motion[child.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[child.name][0]}
 
 							sub_motion_lambdas.append(deepcopy(motion_lambda))
@@ -501,19 +501,21 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 					if motion_vec_dict[rotor_frame.name][1] == "fourier":
 						print(f"Adding fourier motion lambda for rotor {rotor_frame.name}")
 						#motion_lambda = lambda a: fourier_motion(motion["cos"], motion["sin"], dt, rotor.frame, motion_vec_dict[rotor_frame.name][0], 0, a)
-						motion_lambda = lambda a, cos=motion["cos"], sin=motion["sin"], dt=dt, frame=rotor_frame, vec=motion_vec_dict[rotor_frame.name][0], azimuth_offset=azimuth_offset: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a)
+						motion_lambda = lambda a, cos=motion["cos"], sin=motion["sin"], dt=dt, frame=rotor_frame, vec=motion_vec_dict[rotor_frame.name][0], azimuth_offset=azimuth_offset, _r_idx = r_idx: fourier_motion(cos, sin, dt, frame, vec, azimuth_offset, a, _r_idx)
 						wopwop_motion[rotor_frame.name] = {"type": "fourier", "A": motion["cos"], "B": motion["sin"], "vector": motion_vec_dict[rotor_frame.name][0]}
 
 					elif motion_vec_dict[rotor_frame.name][1] == "constant":
 						print(f"Adding constant motion lambda for rotor {rotor_frame.name}")
 						omega = motion["omega"]
-						motion_lambda = lambda a, omega=omega, dt=dt, frame=rotor.frame, vec=motion_vec_dict[rotor_frame.name][0]: constant_motion(omega, dt, frame, vec, a)
+						motion_lambda = lambda a, omega=omega, dt=dt, frame=rotor.frame, vec=motion_vec_dict[rotor_frame.name][0], _r_idx = r_idx: constant_motion(omega, dt, frame, vec, a, _r_idx)
 						wopwop_motion[rotor_frame.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[rotor_frame.name][0]}
 
-					motion_lambdas[r_idx].append(deepcopy(motion_lambda))
+					#motion_lambdas[r_idx].append(deepcopy(motion_lambda))
+					motion_lambdas.append(deepcopy(motion_lambda))
 
 			for b_idx, attach_frame in enumerate(rotor_frame.children):
-				motion_lambdas[r_idx] = motion_lambdas[r_idx] + build_motion_lambdas(attach_frame, rotor.blades[b_idx].azimuth_offset)
+				#motion_lambdas[r_idx] = motion_lambdas[r_idx] + build_motion_lambdas(attach_frame, rotor.blades[b_idx].azimuth_offset)
+				motion_lambdas = motion_lambdas + build_motion_lambdas(attach_frame, rotor.blades[b_idx].azimuth_offset)
 
 	trim_lambdas = []
 
@@ -653,7 +655,6 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
 	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1, hybrid)
 	
-<<<<<<< ours
 	try:
 		vehicle = SimulatedVehicle(
 			rotorcraft_system,
@@ -781,115 +782,3 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	result_queue.put(cases_tuple)
 	result_queue.join()
-=======
-	vehicle = SimulatedVehicle(
-		rotorcraft_system,
-		rotorcraft_state,
-		rotorcraft_input_state,
-		rotorcraft_inflows,
-		rotor_wake_history,
-		motion_lambdas,
-		trim_lambdas,
-		case.name
-	)
-
-	rotorcraft_thrusts, rotorcraft_namelists, results_dictionary = simulate_aircraft.simulate_aircraft(
-		log_file,
-		vehicle,
-		atmo,
-		elements,
-		args,
-		f'{output_base}/vtu',
-		f'{output_base}/acoustics',
-		do_compute,
-		flight_condition,
-		computational_parameters,
-		observer,
-		acoustics,
-		wake_history_length,
-		results,
-		wopwop_motion
-	)
-	
-	if do_compute:
-
-		for r_idx in range(num_rotors):
-			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
-			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
-			wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
-
-			for b_idx in range(num_blades[r_idx]):
-				wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-
-			results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
-			results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
-			
-		results_dictionary["rotor_c_t"] = rotorcraft_thrusts
-		results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
-		results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
-
-		scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
-
-		if args.vtu_results:
-			if results is not None:
-				if 'inflow_slices' in results:
-					for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
-						res_x = inflow_slice["resolution"][0]
-						res_y = inflow_slice["resolution"][1]
-						res_z = inflow_slice["resolution"][2]
-
-						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-						start = Vec3(inflow_slice["slice_start"])
-
-						write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
-
-				if 'wake_slices' in results:
-					for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
-						res_x = inflow_slice["resolution"][0]
-						res_y = inflow_slice["resolution"][1]
-						res_z = inflow_slice["resolution"][2]
-
-						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-						start = Vec3(inflow_slice["slice_start"])
-
-						write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
-
-	cases = []
-	if (acoustics is not None) and (observer is not None):
-		print("Acoustics for individual rotors")
-		print(f"args.fs: {args.fs}")
-		print(f"num_rotors: {num_rotors}")
-		if (num_rotors > 1) and (args.fs is False):
-			print("Acoustics for individual rotors 1")
-			for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
-				print(f"Acoustics for individual rotor {r_idx}")
-				wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
-
-				if not path.isdir(wopwop_case_path):
-					makedirs(wopwop_case_path, exist_ok=True)
-
-				single_rotor_case = Casename()
-				single_rotor_case.caseNameFile = "case.nam"
-				single_rotor_case.globalFolderName = wopwop_case_path
-				single_rotor_case.namelist = namelist
-
-				cases.append(single_rotor_case)
-
-
-		wopwop_case_path = f'{output_base}/acoustics/full_system/'
-
-		if not path.isdir(wopwop_case_path):
-			makedirs(wopwop_case_path, exist_ok=True)
-
-		full_system_case = Casename()
-		full_system_case.caseNameFile = "case.nam"
-		full_system_case.globalFolderName = wopwop_case_path
-		full_system_case.namelist = rotorcraft_namelists[-1]
-
-		cases.append(full_system_case)
-
-	return cases
->>>>>>> theirs
