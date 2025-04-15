@@ -1389,15 +1389,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 			contraction_array[z_idx] = sqrt(v_0_v_z);
 		}
 
-		Chunk z_zero = zero;
-		//foreach(z_idx, ref z_chunk; contraction_z_array) {
-		double average_v_z = compute_inflow_average_at_z(z_zero)[0];
-		//immutable Chunk v_0_v_z = (v_inf + v_0)/(v_inf + v_z[]);
-		//contraction_array[z_idx] = sqrt(v_0_v_z);
-		//}
-
-		//writeln("average_inflow = ", average_inflow, " average_v_z = ", average_v_z);
-
 		global_inverse = local_frame.global_matrix.inverse.get;
 		if (advance_ratio > 0) {
 			immutable local_freestream = global_inverse*ac_state.freestream;
