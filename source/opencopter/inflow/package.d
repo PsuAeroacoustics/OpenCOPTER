@@ -28,8 +28,8 @@ alias Inflow = InflowT!(ArrayContainer.none);
 interface InflowT(ArrayContainer AC = ArrayContainer.none) {
 	void update(AircraftStateT!AC ac_state, double dt);
 	Chunk inflow_at(immutable Vector!(4, Chunk) xyz);
-	void update_wing_circulation();
-	void update_wing_dC_L();
+	void update_wing_circulation(WingStateT!AC wing_state);
+	void update_wing_dC_L(WingStateT!AC wing_state);
 	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z);
 	@nogc Frame* frame();
 }

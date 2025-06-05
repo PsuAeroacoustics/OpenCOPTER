@@ -184,6 +184,10 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
     //auto span_vr_nodes_left = generate_spanwise_vortex_nodes(_spanwise_chunks*chunk_size);
     auto chord_vr_nodes = generate_chordwise_votex_nodes(_chordwise_nodes);
 
+    writeln("chord_vr_nodes = ", chord_vr_nodes);
+    writeln("chord = ", wing_geometry.wing_parts[0].chunks[0].chord[]);
+    writeln("Le_sweep = ", wing_geometry.wing_parts[0].le_sweep_angle);
+
     if(wing_geometry.wing_parts.length == 1){
 		string side = wing_geometry.wing_parts[0].loc;
 		if(side == Location.left){
@@ -290,6 +294,9 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
         y_a[1..$] = chunk_i.y[0..$-1];
         z_a[1..$] = chunk_i.z[0..$-1];
 
+        //writeln("chunk_i.x = ", chunk_i.x);
+        //writeln("chunk_i.train_end = ", chunk_i.trail_end);
+
         if(i_c_idx == 0){
             x_a[0] = x_a[1] - ((x_a[2]-x_a[1])/(y_a[2]-y_a[1]))*y_a[1];
             y_a[0] = 0;
@@ -303,15 +310,15 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
 
             x_d[0] = wing_filament_chunks[i_c_idx-1].trail_end[$-1];
         }
-        /*
-        writeln("x_a = ", x_a);
-        writeln("x_b = ", x_b);
-        writeln("y_a = ", y_a);
-        writeln("y_b = ", y_b);
-        writeln("z_a = ", z_a);
-        writeln("z_b = ", z_b);
-        writeln("x_d = ", x_d);
-        writeln("x_c = ", x_c);*/
+        
+        //debug writeln("x_a = ", x_a);
+        //debug writeln("x_b = ", x_b);
+        //debug writeln("y_a = ", y_a);
+        //debug writeln("y_b = ", y_b);
+        //debug writeln("z_a = ", z_a);
+        //debug writeln("z_b = ", z_b);
+        //debug writeln("x_d = ", x_d);
+        //debug writeln("x_c = ", x_c);
 
         x_amb = x_a[] - x_b[];
         y_amb = y_a[] - y_b[];
@@ -324,7 +331,7 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
 
         foreach(n_idx; 0..chunk_size){
             x_1ma[] = x[n_idx] - x_a[];
-            //writeln("x_1ma = ", x_1ma);
+            //debug writeln("x_1ma = ", x_1ma);
             y_1ma[] = y[n_idx] - y_a[];
             z_1ma[] = z[n_idx] - z_a[];
 
@@ -333,18 +340,19 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
             z_1mb[] = z[n_idx] - z_b[];
 
             x_1md[] = x[n_idx] - x_d[];
-            //writeln("x_1md = ", x_1md);
+            //debug writeln("x_1md = ", x_1md);
             x_1mc[] = x[n_idx] - x_c[];
 
-            //writeln("y_1ma = ", y_1ma);
-            //writeln("y_1mb = ", y_1mb);
+            //debug writeln("y_1ma = ", y_1ma);
+            //debug writeln("y_1mb = ", y_1mb);
             //induced velocity due to bound vortex AB
             immutable Chunk fac2_t1_den_square = x_1ma[]*x_1ma[] + y_1ma[]*y_1ma[] + z_1ma[]*z_1ma[];
             immutable Chunk fac2_t2_den_square = x_1mb[]*x_1mb[] + y_1mb[]*y_1mb[] + z_1mb[]*z_1mb[];
             immutable Chunk fac2_t1_den = sqrt(fac2_t1_den_square);
             immutable Chunk fac2_t2_den = sqrt(fac2_t2_den_square);
-            //writeln("fac2_t1_den : ", fac2_t1_den[]);
-            //writeln("fac2_t2_den : ", fac2_t2_den[]);
+            
+            //debug writeln("fac2_t1_den : ", fac2_t1_den[]);
+            //debug writeln("fac2_t2_den : ", fac2_t2_den[]);
             immutable Chunk fac2_t1 = -(x_amb[]*x_1ma[] + y_amb[]*y_1ma[] + z_amb[]*z_1ma[])/fac2_t1_den[];
             immutable Chunk fac2_t2 = -(x_amb[]*x_1mb[] + y_amb[]*y_1mb[] + z_amb[]*z_1mb[])/fac2_t2_den[];
             immutable Chunk fac2_ab = fac2_t1[] - fac2_t2[];
@@ -353,32 +361,41 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
             immutable Chunk AB_cross_mag_2 = (x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[])*(x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[]);
             immutable Chunk AB_cross_mag_3 = (x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[])*(x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[]);
             immutable Chunk AB_cross_mag_suare = AB_cross_mag_1[] + AB_cross_mag_2[] + AB_cross_mag_3[];
-            //writeln("AB_cross_mag_1 : ", AB_cross_mag_1);
-            //writeln("AB_cross_mag_2 : ", AB_cross_mag_2);
-            //writeln("AB_cross_mag_3 : ", AB_cross_mag_3);
+            
+            //debug writeln("AB_cross_mag_1 : ", AB_cross_mag_1);
+            //debug writeln("AB_cross_mag_2 : ", AB_cross_mag_2);
+            //debug writeln("AB_cross_mag_3 : ", AB_cross_mag_3);
 
             immutable Chunk AB_cross_x = (y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[])/AB_cross_mag_suare[];
             immutable Chunk AB_cross_y = -(x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[])/AB_cross_mag_suare[];
             immutable Chunk AB_cross_z = (x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[])/AB_cross_mag_suare[];
-            //writeln("AB_cross_mag_x : ", AB_cross_x);
-            //writeln("AB_cross_mag_y : ", AB_cross_y);
-            //writeln("AB_cross_mag_z : ", AB_cross_z);
+            
+            //debug writeln("AB_cross_mag_x : ", AB_cross_x);
+            //debug writeln("AB_cross_mag_y : ", AB_cross_y);
+            //debug writeln("AB_cross_mag_z : ", AB_cross_z);
 
             immutable Chunk AB_v_x = AB_cross_x[]*fac2_ab[];
             immutable Chunk AB_v_y = AB_cross_y[]*fac2_ab[];
             immutable Chunk AB_v_z = AB_cross_z[]*fac2_ab[];
+            
+            //debug writeln("AB_v_x = ", AB_v_x);
+            //debug writeln("AB_v_y = ", AB_v_y);
+            //debug writeln("AB_v_z = ", AB_v_z);
 
             //induced velocity due to vortex AD
             immutable Chunk AD_fac2_t1_den_square = x_1md[]*x_1md[] + y_1ma[]*y_1ma[] + z_1ma[]*z_1ma[];
             immutable Chunk AD_fac2_t2_den_square = x_1ma[]*x_1ma[] + y_1ma[]*y_1ma[] + z_1ma[]*z_1ma[];
             immutable Chunk AD_fac2_t1_den = sqrt(AD_fac2_t1_den_square);
             immutable Chunk AD_fac2_t2_den = sqrt(AD_fac2_t2_den_square);
-            //writeln("point_idx : ", n_idx,"\tAD_fac2_t1_den : ", AD_fac2_t1_den[]);
-            //writeln("point_idx : ", n_idx,"\tAD_fac2_t2_den : ", AD_fac2_t2_den[]);
+            
+            //debug writeln("point_idx : ", n_idx,"\tAD_fac2_t1_den : ", AD_fac2_t1_den[]);
+            //debug writeln("point_idx : ", n_idx,"\tAD_fac2_t2_den : ", AD_fac2_t2_den[]);
+            
             immutable Chunk AD_fac2_t1 = -(x_1md[])/AD_fac2_t1_den[];
             immutable Chunk AD_fac2_t2 = x_1ma[]/AD_fac2_t2_den[];
             immutable Chunk AD_fac2 = x_dma[]*(AD_fac2_t1[] + AD_fac2_t2[]);
-            //writeln("point_idx : ", n_idx, "\tAD_fac2_t1 : ", AD_fac2_t1, "\tAD_fac_2_t2 : ", AD_fac2_t2);
+            
+            //debug writeln("point_idx : ", n_idx, "\tAD_fac2_t1 : ", AD_fac2_t1, "\tAD_fac_2_t2 : ", AD_fac2_t2);
 
             immutable Chunk AD_fac1_den = (z_1ma[]*z_1ma[] + y_1ma[]*y_1ma[])*x_dma[];
             immutable Chunk AD_cross_y = z_1ma[]/AD_fac1_den[];

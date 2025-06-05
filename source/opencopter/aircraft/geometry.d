@@ -483,7 +483,6 @@ extern (C++) struct RotorGeometryT(ArrayContainer AC) {
 
 	this(size_t num_blades, Vec3 origin, double radius, double solidity) {
 		mixin(array_ctor_mixin!(AC, "BladeGeometryT!(AC)", "blades", "num_blades"));
-
 		this.origin = origin;
 		this.radius = radius;
 		this.solidity = solidity;
@@ -698,6 +697,8 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	Vec3 origin;
 	double wing_span;
 
+	Frame* frame;
+
 	this(size_t num_parts, Vec3 origin, double wing_span) {
 		mixin(array_ctor_mixin!(AC, "WingPartGeometryT!(AC)", "wing_parts", "num_parts"));
 		this.origin = origin;
@@ -706,18 +707,21 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	ref typeof(this) opAssign(typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.frame = wing.frame;
 		return this;
 	}
 
 	ref typeof(this) opAssign(ref typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.frame = wing.frame;
 		return this;
 	}
 
 	ref typeof(this) opAssign(typeof(this)* wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.frame = wing.frame;
 		return this;
 	}
 }
@@ -803,6 +807,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 	double wing_span;
 	Location loc;
 
+	Frame* frame;
 	//BladeAirfoil airfoil;
 
 	this(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, Location loc) {
@@ -838,6 +843,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
 		this.loc = loc;
+		//this.frame = wing_part.frame;
 		return this;
 	}
 
@@ -853,6 +859,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
 		this.loc = loc;
+		//this.frame = wing_part.frame;
 		return this;
 	}
 
@@ -868,6 +875,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
 		this.loc = loc;
+		//this.frame = wing_part.frame;
 		return this;
 	}
 }
@@ -1055,6 +1063,21 @@ double[] get_geometry_array(string value, ArrayContainer AC)(BladeGeometryT!AC* 
 }
 
 void set_geometry_array(string value, ArrayContainer AC)(ref WingPartGeometryT!AC wing_part, double[] data) {
+
+	foreach(c_idx, ref chunk; wing_part.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = data.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
+	}
+}
+
+
+void set_geometry_array(string value, ArrayContainer AC)(WingPartGeometryT!AC* wing_part, double[] data) {
 
 	foreach(c_idx, ref chunk; wing_part.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;

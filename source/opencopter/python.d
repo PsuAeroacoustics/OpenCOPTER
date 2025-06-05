@@ -97,8 +97,8 @@ class Inflow {
 	void update(PyAircraftState* ac_state, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) { assert(0); }
 	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) { assert(0); }
-	void update_wing_circulation() { assert(0); }
-	void update_wing_dC_L() { assert(0); }
+	void update_wing_circulation(PyWingState* wing_state) { assert(0); }
+	void update_wing_dC_L(PyWingState* wing_state) { assert(0); }
 	IV compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z) { assert(0); }
 	double wake_skew() { assert(0); }
 	Frame* frame() { assert(0); }
@@ -159,8 +159,8 @@ class HuangPeters : Inflow {
 class WingInflow: Inflow{
 	private WI wing_inflow;
 
-	this(PyWingGeometry* _wing, PyWingState* _wing_state, PyWingInputState* _wing_inputs, PyWingLiftSurf* _wing_lift_surf) {
-		wing_inflow = new WI(_wing, _wing_state, _wing_inputs, _wing_lift_surf);
+	this(PyWingGeometry* _wing, PyWingInputState* _wing_inputs, PyWingLiftSurf* _wing_lift_surf) {
+		wing_inflow = new WI(_wing, _wing_inputs, _wing_lift_surf);
 	}
 
 	override void update(PyAircraftState* ac_state, double dt) {
@@ -185,12 +185,12 @@ class WingInflow: Inflow{
 		return wing_inflow.compute_wing_induced_vel_on_blade(x, y, z);
 	}
 
-	override void update_wing_circulation(){
-		wing_inflow.update_wing_circulation();
+	override void update_wing_circulation(PyWingState* wing_state){
+		wing_inflow.update_wing_circulation(*wing_state);
 	}
 
-	override void update_wing_dC_L(){
-		wing_inflow.update_wing_dC_L();
+	override void update_wing_dC_L(PyWingState* wing_state){
+		wing_inflow.update_wing_dC_L(*wing_state);
 	}
 
 	override Inflow_D get_wrapped_inflow(){
@@ -578,8 +578,8 @@ opencopter.vtk.VtkWing build_base_vtu_wing(PyWingGeometry* wing){
 	return opencopter.vtk.build_base_vtu_wing(wing);
 }
 
-void write_wing_vtu(string base_filename, size_t iteration, size_t wing_idx, opencopter.vtk.VtkWing wing, PyWingState* wing_state, PyWingInputState wing_input){
-	opencopter.vtk.write_wing_vtu(base_filename, iteration, wing_idx, wing, wing_state, wing_input);
+void write_wing_vtu(string base_filename, size_t iteration, size_t wing_idx, opencopter.vtk.VtkWing wing, PyWingState* wing_state, PyWingGeometry* wing_geom){
+	opencopter.vtk.write_wing_vtu(base_filename, iteration, wing_idx, wing, wing_state, wing_geom);
 }
 
 opencopter.vtk.VtkWake build_base_vtu_wake(PyWake* wake) {
@@ -1720,6 +1720,10 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWingInputState,
 		PyName!("WingInputState"),
+		Member!("angle_of_attack", Docstring!q{The angle of atack of the wing in radians}),
+		Member!("cos_aoa", Docstring!q{The cosine of angle of attack of the wing}),
+		Member!("sin_aoa", Docstring!q{The sine of angle of attack of the wing}),
+		Member!("freestream_velocity", Docstring!q{Free stream velocity in :math:`mathrm{m/s}`}),
 	);
 
 	wrap_struct!(
@@ -1855,7 +1859,8 @@ extern(C) void PydMain() {
 
 		Member!("wing_parts", Docstring!q{An array of :class:`WingPartGeometry`, one for each part of the wing}),
 		Member!("origin", Docstring!q{The global origin of the wing. This is where root leading edge of the wing is located.}),
-		Member!("wing_span", Docstring!q{Span of the wing})
+		Member!("wing_span", Docstring!q{Span of the wing}),
+		Member!"frame"
 	);
 
 	wrap_struct!(
@@ -2079,7 +2084,7 @@ extern(C) void PydMain() {
 
 	wrap_class!(
 		WingInflow,
-		Init!(PyWingGeometry*, PyWingState*, PyWingInputState*, PyWingLiftSurf*),
+		Init!(PyWingGeometry*, PyWingInputState*, PyWingLiftSurf*),
 		Docstring!q{
 			This class instantiates a wing inflow model for a single wing.
 			One of these will be needed for each wing in the aircraft.
