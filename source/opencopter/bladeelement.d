@@ -147,10 +147,18 @@ extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto r
 	// Nitya, 09.14
 	
 	if(converged && trackBWIevents){
+		auto normal = Vector!(4, Chunk)(0);
+		normal[2][] = 1;
+		auto updated_normal = blade.frame.global_matrix * normal;
+		double[3] normalVec;
+		normalVec[0] = updated_normal[0][0];
+		normalVec[1] = updated_normal[1][0];
+		normalVec[2] = updated_normal[2][0];
+		//double[] r = get_geometry_array!"r"(blade);
 		foreach (i_blade_idx; 0..rotor.blades.length) {
 			wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();	
 		} 
-		calculate_BWI_points(wake, blade_state, rotor_idx, blade_idx);
+		calculate_BWI_points(wake, blade_state, rotor_idx, blade_idx, blade, normalVec);
 	}
 }
 
@@ -287,6 +295,14 @@ void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_s
 	
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 		inflows[rotor_idx].update(ac_state.rotor_states[rotor_idx].C_T, ac_input_state.rotor_inputs[rotor_idx], ac_state.rotor_states[rotor_idx], ac_state.rotor_states[rotor_idx].advance_ratio, ac_state.rotor_states[rotor_idx].axial_advance_ratio, &ac_state, dt);
+
+		foreach(blade_idx, ref blade; aircraft.rotors[rotor_idx].blades) {
+			foreach(chunk_idx, ref state_chunk; ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks) {
+				state_chunk.x_old[] = state_chunk.x[];
+				state_chunk.y_old[] = state_chunk.y[];
+				state_chunk.z_old[] = state_chunk.z[];
+			}
+		}
 	}
 }
 

@@ -16,6 +16,7 @@ import std.math;
 import std.stdio;
 import std.traits;
 import std.typecons;
+import std.stdio : writeln;
 
 extern (C++) struct FilamentChunk {
 	Chunk x;
@@ -451,7 +452,7 @@ immutable Chunk one_over_four_pi = 1.0/(4.0*PI);
 
 import std.parallelism;
 
-InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunks, immutable Chunk x, immutable Chunk y, immutable Chunk z, size_t chunk_offset, auto ref BWI BWIinputs, size_t blade_chunk_idx = 0, bool save_BWIinputs = false) {
+InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunks, immutable Chunk x, immutable Chunk y, immutable Chunk z, size_t chunk_offset, auto ref BWI BWIinputs, immutable Chunk x_old, immutable Chunk y_old, immutable Chunk z_old, size_t blade_chunk_idx = 0, bool save_BWIinputs = false) {
 
 	InducedVelocities ret;
 	// Nitya: I think I have to have a tuple or new struct defined for outputting the things I need
@@ -463,7 +464,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		v_y[n_idx][] = 0;
 		v_z[n_idx][] = 0;
 	}
-
+	debug writeln("chunks.length:", chunks.length);
 	foreach(i_c_idx, ref chunk_i; chunks[chunk_offset..$]) {
 
 		i_c_idx += chunk_offset;
@@ -721,6 +722,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			v_y[n_idx][] += tmp_v_y[];
 			v_z[n_idx][] += tmp_v_z[];
 			double dl = 0.0;
+			double dx_b, dy_b, dz_b;
 
 			if(save_BWIinputs){
 				if((n_idx == 0) && (blade_chunk_idx == 0)) {
@@ -734,6 +736,11 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 							BWIinputs[i_c_idx].gamma_w[bwi_idx] = gamma[bwi_idx];
 							BWIinputs[i_c_idx].r_c_ave[bwi_idx] = r_c_ave[bwi_idx];
 							BWIinputs[i_c_idx].r_vortex[bwi_idx] = Vec3(dx[bwi_idx], dy[bwi_idx], dz[bwi_idx]);
+							dx_b = x[n_idx] - x_old[n_idx];
+							dy_b = y[n_idx] - y_old[n_idx];
+							dz_b = z[n_idx] - z_old[n_idx];
+							// BWIinputs[i_c_idx].r_blade_v[bwi_idx] = Vec3(dx_b, dy_b, dz_b);
+							BWIinputs[i_c_idx].pos_v[bwi_idx] = Vec3(x_a[bwi_idx], y_a[bwi_idx], z_a[bwi_idx]);
 						}
 					}
 					
@@ -781,11 +788,14 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 	import std.stdio : writeln;
 
 	immutable chunk_offset = 0;
+	Chunk x_old = 0.0;
+	Chunk y_old = 0.0;
+	Chunk z_old = 0.0;
 
 	if(single_rotor) {
 		foreach(i_blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length) {
 
-			auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, false);
+			auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
 			ret.v_x[] += ind_vel.v_x[];
 			ret.v_y[] += ind_vel.v_y[];
 			ret.v_z[] += ind_vel.v_z[];
@@ -796,7 +806,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 			foreach(i_blade_idx; 0..ac_state.rotor_states[i_rotor_idx].blade_states.length) {
 
 				if((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx))) {
-					auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, false);
+					auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
 					ret_shed.v_x[] += ind_vel.v_x[];
 					ret_shed.v_y[] += ind_vel.v_y[];
 					ret_shed.v_z[] += ind_vel.v_z[];
@@ -805,7 +815,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 				if(!tip_only) {
 					foreach(fil_idx, ref shed_filament; wake.rotor_wakes[i_rotor_idx].shed_vortices[i_blade_idx].shed_filaments) {
 						
-						auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, false);
+						auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
 						ret_shed.v_x[] += ind_vel.v_x[];
 						ret_shed.v_y[] += ind_vel.v_y[];
 						ret_shed.v_z[] += ind_vel.v_z[];
@@ -817,7 +827,10 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 		if(!shed_only) {
 			foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
 				foreach(i_blade_idx; 0..i_rotor.blade_states.length) {
-					auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, blade_chunk_idx, trackBWIevents);
+					x_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].x_old;
+					y_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].y_old;
+					z_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].z_old;
+					auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
 					ret.v_x[] += ind_vel.v_x[];
 					ret.v_y[] += ind_vel.v_y[];
 					ret.v_z[] += ind_vel.v_z[];

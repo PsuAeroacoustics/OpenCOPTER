@@ -280,6 +280,11 @@ extern (C++) struct BladeStateChunk {
 	Vector!(4, Chunk) projected_vel;
 
 	Vector!(4, Chunk) blade_local_vel;
+
+	Chunk x_old;
+	Chunk y_old;
+	Chunk z_old;
+
 }
 
 template is_blade_state(A) {

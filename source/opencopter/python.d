@@ -396,12 +396,24 @@ double[][] get_interaction_point_r_blade(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_directionVec!("r_blade")(VortexInteraction);
 }
 
+double[][] get_interaction_point_r_blade_v(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_interaction_point_directionVec!("r_blade_v")(VortexInteraction);
+}
+
+double[][] get_interaction_point_blade_normal(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_interaction_point_directionVec!("normal")(VortexInteraction);
+}
+
 double[][] get_interaction_point_r_vortex(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_directionVec!("r_vortex")(VortexInteraction);
 }
 
 double[] get_interaction_point_gamma_w(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_components!"gamma_w"(VortexInteraction);
+}
+
+double[] get_interaction_point_secLen(ref PyBWIinputs VortexInteraction) {
+ 	return opencopter.bwi.get_interaction_point_components!"secLen"(VortexInteraction);
 }
 
 double[] get_interaction_point_r_c(ref PyBWIinputs VortexInteraction) {
@@ -1132,6 +1144,21 @@ extern(C) void PydMain() {
 		:return: List of the direction vector of blade segment
 	});
 
+	def!(get_interaction_point_r_blade_v, double[][] function(ref PyBWIinputs), Docstring!q{
+		Extract the direction vector of blade segment at the point of interaction in the inflow direction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the direction vector from
+		:return: List of the direction vector of blade segment
+	});
+
+	def!(get_interaction_point_blade_normal, double[][] function(ref PyBWIinputs), Docstring!q{
+		Extract the direction vector of blade segment at the point of interaction in the inflow direction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the direction vector from
+		:return: List of the direction vector of blade segment
+	});
+
+
 	def!(get_interaction_point_r_vortex, double[][] function(ref PyBWIinputs), Docstring!q{
 		Extract the direction vector of the vortex segment at the point of interaction to a linear array.
 
@@ -1151,6 +1178,13 @@ extern(C) void PydMain() {
 
 		:param BWI_input: the :class:`TipVortexInteraction` to extract vortex gamma from
 		:return: List of vortex gamma
+	});
+
+	def!(get_interaction_point_secLen, double[] function(ref PyBWIinputs), Docstring!q{
+		Extract section length point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract section length from
+		:return: List of secLen
 	});
 
 	def!(get_interaction_point_r_c, double[] function(ref PyBWIinputs), Docstring!q{
@@ -1478,10 +1512,13 @@ extern(C) void PydMain() {
 		Member!("r_c", Docstring!q{vortex core radius}),
 		Member!("gamma_w", Docstring!q{vortex circulation}),
 		Member!("gamma_sec", Docstring!q{blade sectional gamma}),
+		Member!("secLen", Docstring!q{blade sectional length}),
 		Member!("r_blade", Docstring!q{vectors}),
 		Member!("r_vortex", Docstring!q{vectors}), 
+		Member!("r_blade_v", Docstring!q{vectors}), 
 		Member!("C_d", Docstring!q{blade C_d values}),
-		Member!("l", Docstring!q{vortex length})
+		Member!("l", Docstring!q{vortex length}),
+		Member!("normal", Docstring!q{vectors})
 	);
 
 	wrap_struct!(

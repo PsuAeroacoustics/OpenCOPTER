@@ -11,9 +11,10 @@ import opencopter.aircraft;
 import std.math;
 import std.container: DList ;
 import std.range;
+import std.stdio : writeln;
 
 immutable size_t nPoints = 6;
-immutable double BWI_factor = 16.0; // 2.0^2 as we are comparing distance^2
+immutable double BWI_factor = 9.0; // 2.0^2 as we are comparing distance^2
 
 extern (C++) struct BWIinputsChunk {
     Chunk miss_dist;
@@ -22,6 +23,7 @@ extern (C++) struct BWIinputsChunk {
 	Chunk gamma_sec;
     size_t[chunk_size] bladeSec_idx;
     Vec3[chunk_size] r_vortex;
+    Vec3[chunk_size] pos_v;
     // Vec3[chunk_size] u_ind;
     Chunk dl;
 }
@@ -35,13 +37,16 @@ extern (C++) struct InteractionPoints {
     double gamma_sec; 
     double[3] r_blade;
     double[3] r_vortex;
+    double[3] r_blade_v;
+    double secLen;
     double C_d;
     // double TKE;
     double l;
+    double[3] normal; 
 }
 
 extern (C++) struct TipVortexInteractionT(ArrayContainer AC){
-    import std.stdio : writeln;
+    
     mixin ArrayDeclMixin!(AC, BWIinputsChunk, "BWI_inputs");
 
     auto interaction_pts = DList!InteractionPoints();
@@ -148,7 +153,7 @@ double[][] get_interaction_point_directionVec(string value, BWI)(auto ref BWI Vo
 }
 
 
-void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size_t rotor_idx, size_t blade_idx){
+void calculate_BWI_points (W, BS, BG)(auto ref W wake, auto ref BS blade_state, size_t rotor_idx, size_t blade_idx, auto ref BG bladeGeom, double[3] normalVec){
     // What we need
     // 1. Wake: x, y, z 
     // 2. r_c and miss distance
@@ -159,6 +164,14 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
     double[] r_c;
     size_t i_pt=0;
     InteractionPoints interaction;
+    double[] C_d = get_wake_component!"dC_D"(blade_state);
+    double[] r = get_wake_component!"r"(bladeGeom);
+    double[] x = get_wake_component!"x"(blade_state);
+    double[] y = get_wake_component!"y"(blade_state);
+    double[] z = get_wake_component!"z"(blade_state);
+    debug writeln("x:", x);
+    debug writeln("y:", y);
+    debug writeln("z:", z);
 
     foreach (i_blade_idx; 0..wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length){
         miss_dist = get_BWIinputs!"miss_dist"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
@@ -166,11 +179,10 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
         auto bladeSec_idx = get_blade_sec_idx!"bladeSec_idx"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
         auto gamma_w = get_BWIinputs!"gamma_w"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]); 
         auto r_vortex = get_directionVec!"r_vortex"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
+        auto r_b = get_directionVec!"pos_v"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
         double[] gamma = get_wake_component!"gamma"(blade_state);
-        double[] x = get_wake_component!"x"(blade_state);
-        double[] y = get_wake_component!"y"(blade_state);
-        double[] z = get_wake_component!"z"(blade_state);
-        double[] C_d = get_wake_component!"dC_D"(blade_state);
+        
+        
         double[] dl = get_BWIinputs!"dl"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
         double l = 0.0;
         //auto u_ind = get_directionVec!"u_ind"(wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx]);
@@ -195,8 +207,19 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
                         interaction.r_blade[0] = x[bladeSec_idx[idx]]-x[bladeSec_idx[idx]-1];
                         interaction.r_blade[1] = y[bladeSec_idx[idx]]-y[bladeSec_idx[idx]-1];
                         interaction.r_blade[2] = z[bladeSec_idx[idx]]-z[bladeSec_idx[idx]-1];
+                        interaction.r_blade_v[0] = r_b[idx][0]-x[bladeSec_idx[idx]];
+                        interaction.r_blade_v[1] = r_b[idx][1]-y[bladeSec_idx[idx]];
+                        interaction.r_blade_v[2] = r_b[idx][2]-z[bladeSec_idx[idx]]; 
+                        interaction.secLen = (x[bladeSec_idx[idx]]-x[0])*(x[bladeSec_idx[idx]]-x[0])+(y[bladeSec_idx[idx]]-y[0])*(y[bladeSec_idx[idx]]-y[0])+(z[bladeSec_idx[idx]]-z[0])*(z[bladeSec_idx[idx]]-z[0]);
                         interaction.l = l;    
-                        interaction.C_d = sumC_d(C_d); 
+                        if(bladeSec_idx[idx]==0){
+                            interaction.C_d = C_d[0]/(r[1]-r[0]);
+                        } else{
+                            double dr = r[bladeSec_idx[idx]]-r[bladeSec_idx[idx]-1];
+                            interaction.C_d = 0.5*(C_d[bladeSec_idx[idx]]+C_d[bladeSec_idx[idx]-1])/dr;
+                        }
+                        //interaction.C_d = sumC_d(C_d); 
+                        interaction.normal = normalVec;
                         i_pt++;
                         wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.insertBack(interaction);
                     }
@@ -218,8 +241,19 @@ void calculate_BWI_points (W, BS)(auto ref W wake, auto ref BS blade_state, size
                         interaction.r_blade[0] = x[bladeSec_idx[idx]]-x[bladeSec_idx[idx]-1];
                         interaction.r_blade[1] = y[bladeSec_idx[idx]]-y[bladeSec_idx[idx]-1];
                         interaction.r_blade[2] = z[bladeSec_idx[idx]]-z[bladeSec_idx[idx]-1]; 
-                        interaction.l = l;         
-                        interaction.C_d = sumC_d(C_d);  
+                        interaction.r_blade_v[0] = r_b[idx][0]-x[bladeSec_idx[idx]];
+                        interaction.r_blade_v[1] = r_b[idx][1]-y[bladeSec_idx[idx]];
+                        interaction.r_blade_v[2] = r_b[idx][2]-z[bladeSec_idx[idx]]; 
+                        interaction.secLen = (x[bladeSec_idx[idx]]-x[0])*(x[bladeSec_idx[idx]]-x[0])+(y[bladeSec_idx[idx]]-y[0])*(y[bladeSec_idx[idx]]-y[0])+(z[bladeSec_idx[idx]]-z[0])*(z[bladeSec_idx[idx]]-z[0]);
+                        interaction.l = l;        
+                        if(bladeSec_idx[idx]==0){
+                            interaction.C_d = C_d[0]/(r[1]-r[0]);
+                        } else{
+                            double dr = r[bladeSec_idx[idx]]-r[bladeSec_idx[idx]-1];
+                            interaction.C_d = 0.5*(C_d[bladeSec_idx[idx]]+C_d[bladeSec_idx[idx]-1])/dr;
+                        } 
+                        //interaction.C_d = sumC_d(C_d);  
+                        interaction.normal = normalVec;
                         i_pt++;
                         wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.insertBack(interaction);
                     }
