@@ -16,6 +16,8 @@ import std.conv : to;
 import std.exception : enforce;
 import std.traits;
 
+import std.stdio;
+
 alias AircraftTimehistory = AircraftTimehistoryT!(ArrayContainer.none);
 struct AircraftTimehistoryT(ArrayContainer AC) {
 
@@ -79,10 +81,13 @@ struct AircraftStateT(ArrayContainer _AC) {
 
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		writeln("rotor state defined");
 		mixin(array_ctor_mixin!(AC, "WingStateT!(AC)", "wing_states", "num_wings"));
+		writeln("wing state defined");
 		foreach(i, ref rotor_state; rotor_states) {
 			rotor_state = RotorStateT!AC(num_blades, num_chunks, ac.rotors[i], rotor_inflows[i], direction[i]);
 		}
+		writeln("rotor state defined");
 		foreach(j, ref wing_state; wing_states) {
 			wing_state = WingStateT!(AC)(num_wing_parts, num_span_nodes, num_chord_nodes, ac.wings[j], wing_inflows[j]);
 		}
@@ -93,10 +98,13 @@ struct AircraftStateT(ArrayContainer _AC) {
 
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		writeln("rotor state defined");
 		mixin(array_ctor_mixin!(AC, "WingStateT!(AC)", "wing_states", "num_wings"));
+		writeln("wing state defined");
 		foreach(i, ref rotor_state; rotor_states) {
 			rotor_state = RotorStateT!AC(num_blades, num_chunks, ac.rotors[i], rotor_inflows[i], direction[i]);
 		}
+		writeln("rotor state defined");
 		foreach(j, ref wing_state; wing_states) {
 			wing_state = WingStateT!(AC)(num_wing_parts, num_span_nodes, num_chord_nodes, ac.wings[j], wing_inflows[j]);
 		}
@@ -107,10 +115,13 @@ struct AircraftStateT(ArrayContainer _AC) {
 
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		writeln("rotor state defined");
 		mixin(array_ctor_mixin!(AC, "WingStateT!(AC)", "wing_states", "num_wings"));
+		writeln("wing state defined");
 		foreach(i, ref rotor_state; rotor_states) {
 			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i], rotor_inflows[i], direction[i]);
 		}
+		writeln("rotor state defined");
 		foreach(j, ref wing_state; wing_states) {
 			wing_state = WingStateT!(AC)(num_wing_parts[j], num_span_nodes, num_chord_nodes, ac.wings[j], wing_inflows[j]);
 		}
@@ -121,10 +132,13 @@ struct AircraftStateT(ArrayContainer _AC) {
 
 		immutable num_chunks = actual_num_elements/chunk_size;
 		mixin(array_ctor_mixin!(AC, "RotorStateT!(AC)", "rotor_states", "num_rotors"));
+		writeln("rotor state defined");
 		mixin(array_ctor_mixin!(AC, "WingStateT!(AC)", "wing_states", "num_wings"));
+		writeln("wing state defined");
 		foreach(i, ref rotor_state; rotor_states) {
 			rotor_state = RotorStateT!AC(num_blades[i], num_chunks, ac.rotors[i], rotor_inflows[i], direction[i]);
 		}
+		writeln("rotor state defined");
 		foreach(j, ref wing_state; wing_states) {
 			wing_state = WingStateT!(AC)(num_wing_parts[j], num_span_nodes, num_chord_nodes, ac.wings[j], wing_inflows[j]);
 		}
@@ -132,18 +146,21 @@ struct AircraftStateT(ArrayContainer _AC) {
 
 	ref typeof(this) opAssign(typeof(this) ac) {
 		this.rotor_states = ac.rotor_states;
+		writeln("rotor state defined");
 		this.wing_states = ac.wing_states;
 		return this;
 	}
 
 	ref typeof(this) opAssign(ref typeof(this) ac) {
 		this.rotor_states = ac.rotor_states;
+		writeln("rotor state defined");
 		this.wing_states = ac.wing_states;
 		return this;
 	}
 
 	ref typeof(this) opAssign(typeof(this)* ac) {
 		this.rotor_states = ac.rotor_states;
+		writeln("rotor state defined");
 		this.wing_states = ac.wing_states;
 		return this;
 	}
@@ -177,11 +194,13 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 
 	this(size_t num_blades, size_t num_chunks, ref RotorGeometryT!AC rotor, InflowT!AC _inflow_model, double direction) {
 		mixin(array_ctor_mixin!(AC, "BladeStateT!(AC)", "blade_states", "num_blades"));
+		
 		inflow_model = _inflow_model;
 		C_T = 0;
 		foreach(i, ref blade_state; blade_states) {
 			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i], rotor.radius, direction);
 		}
+		writeln("blade state defined");
 	}
 
 	this(size_t num_blades, size_t num_chunks, RotorGeometryT!AC* rotor, InflowT!AC _inflow_model, double direction) {
@@ -190,6 +209,7 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 		foreach(i, ref blade_state; blade_states) {
 			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i], rotor.radius, direction);
 		}
+		writeln("blade state defined");
 		C_T = 0;
 	}
 
@@ -373,6 +393,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "BladeStateChunk", "chunks", "num_chunks"));
 
 		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, blade, radius, direction);
+		writeln("circulation model defined");
 		foreach(ref chunk; chunks) {
 			chunk.aoa_eff[] = 0;
 			chunk.dC_L[] = 0;
@@ -393,6 +414,7 @@ extern (C++) struct BladeStateT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "BladeStateChunk", "chunks", "num_chunks"));
 
 		circulation_model = new WeissingerL!AC(num_chunks*chunk_size, *blade, radius, direction);
+		writeln("circulation model defined");
 		foreach(ref chunk; chunks) {
 			chunk.aoa_eff[] = 0;
 			chunk.dC_L[] = 0;
@@ -496,6 +518,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		foreach(i, ref part_state; wing_part_states) {
 			part_state = WingPartStateT!AC(span_elements, chordwise_nodes, wing.wing_parts[i]);
 		}
+		writeln("wing part state defined");
 	}
 
 	this(size_t num_wing_parts, size_t span_elements, size_t chordwise_nodes, WingGeometryT!AC* wing, InflowT!AC _inflow_model) {
@@ -504,6 +527,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		foreach(i, ref part_state; wing_part_states) {
 			part_state = WingPartStateT!AC(span_elements, chordwise_nodes, wing.wing_parts[i]);
 		}
+		writeln("wing part state defined");
 	}
 
 	@nogc ~this() {
@@ -515,6 +539,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		import std.stdio : writeln;
 		//debug writeln("BladeGeometryT opAssign");
 		this.wing_part_states = wing.wing_part_states;
+		this.inflow_model = wing.inflow_model;
 		this.C_L = wing.C_L;
 		return this;
 	}
@@ -523,6 +548,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		import std.stdio : writeln;
 		//debug writeln("BladeGeometryT opAssign");
 		this.wing_part_states = wing.wing_part_states;
+		this.inflow_model = wing.inflow_model;
 		this.C_L = wing.C_L;
 		return this;
 	}
@@ -531,6 +557,7 @@ extern (C++) struct WingStateT(ArrayContainer AC) {
 		import std.stdio : writeln;
 		//debug writeln("BladeGeometryT opAssign");
 		this.wing_part_states = wing.wing_part_states;
+		this.inflow_model = wing.inflow_model;
 		this.C_L = wing.C_L;
 		return this;
 	}
@@ -615,6 +642,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "WingPartStateChunk", "chunks", "span_chunks"));
 		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"));
 		circulation_model = new VortexLatticeT!AC(span_chunks*chunk_size, chord_ctrl_pt, wing_part);
+		writeln("Circulation model for the wing initialized");
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			//chunk.dC_T[] = 0;
@@ -640,6 +668,7 @@ extern (C++) struct WingPartStateT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "WingPartStateChunk", "chunks", "span_chunks"));
 		mixin(array_ctor_mixin!(AC, "WingPartCtrlPointStateChunk", "ctrl_chunks", "ctrl_pt_chunks"));
 		circulation_model = new VortexLatticeT!AC(span_chunks*chunk_size, chord_ctrl_pt, *wing_part);
+		writeln("Circulation model for the wing initialized");
 		foreach(ref chunk; chunks) {
 			chunk.dC_L[] = 0;
 			//chunk.dC_T[] = 0;

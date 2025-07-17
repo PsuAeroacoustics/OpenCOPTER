@@ -41,13 +41,13 @@ if __name__ == "__main__":
     num_blade_elements = 48
     
     num_rotors = 1
-    num_blades = [1]
+    num_blades = [2]
     rotor_R = 0.8255
     
     theta_75 = 9.0*(math.pi/180.0)
     
     density = 1.125
-    omega = 207.345
+    omega = np.asarray([207.345])
     blade_AR = 12.99
     sos = 343
     
@@ -55,10 +55,16 @@ if __name__ == "__main__":
     theta_tw_1 = -13.0*(math.pi/180)
     
     d_psi = 1.0 # degrees
-    dt = d_psi*(math.pi/180.0)/abs(omega)
+    dt = d_psi*(math.pi/180.0)/abs(omega[0])
     
-    shed_history_angle = 45.0
-    shed_history = round(shed_history_angle/d_psi)
+    max_omega = np.max(np.abs(omega))
+    rotor_ratios = np.round(max_omega/np.abs(omega))
+
+    shed_history_angle = np.asarray([45])
+    shed_history = np.round(shed_history_angle/d_psi).astype(dtype=np.int64).tolist()
+    release_ratio = np.round(rotor_ratios*2/(d_psi*np.pi/180.0)).astype(dtype=np.int64).tolist()
+    #print("release ratio type = ", dtype(release_ratio))
+    hybrid = False
     
     #d_azimuth = 2.0*math.pi/num_blades[0]
     d_azimuth = math.pi/4
@@ -77,7 +83,7 @@ if __name__ == "__main__":
     C_l_alpha = 2.0*math.pi*np.ones(elements)
     sweep = np.zeros(elements)
 
-    atmo = Atmosphere(1.125, 18.03e-6)
+    atmo = Atmosphere(1.125, 18.03e-6, 341.7)
     
     extent = [[0,num_blade_elements-1]]
     airfoil = [ThinAirfoil(0.0401)]
@@ -108,7 +114,8 @@ if __name__ == "__main__":
             num_elements = elements,
             azimuth_offset = b_idx*d_azimuth,
             average_chord = rotor_R*np.sum(c)/len(c),
-            airfoil = blade_airfoil
+            airfoil = blade_airfoil,
+            r_c = 0
         )
         
         set_r(blade, r)
@@ -185,20 +192,20 @@ if __name__ == "__main__":
     
     print("Freestream vel: ", freestream_velocity, "m/s")
     
-    wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history)
+    wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, hybrid)
     
     ac_input_state = AircraftInputState(num_rotors, num_blades, num_wings)
     
     for r_idx in range(num_rotors):
-        ac_input_state.rotor_inputs[r_idx].angle_of_attack = rotor_aoa
-        ac_input_state.rotor_inputs[r_idx].cos_aoa = math.cos(ac_input_state.rotor_inputs[0].angle_of_attack)
-        ac_input_state.rotor_inputs[r_idx].sin_aoa = math.sin(ac_input_state.rotor_inputs[0].angle_of_attack)
-        ac_input_state.rotor_inputs[r_idx].angular_velocity = omega
+        #ac_input_state.rotor_inputs[r_idx].angle_of_attack = rotor_aoa
+        #ac_input_state.rotor_inputs[r_idx].cos_aoa = math.cos(ac_input_state.rotor_inputs[0].angle_of_attack)
+        #ac_input_state.rotor_inputs[r_idx].sin_aoa = math.sin(ac_input_state.rotor_inputs[0].angle_of_attack)
+        ac_input_state.rotor_inputs[r_idx].angular_velocity = omega[r_idx]
         ac_input_state.rotor_inputs[r_idx].angular_accel = 0
         ac_input_state.rotor_inputs[r_idx].azimuth = 0
-        ac_input_state.rotor_inputs[r_idx].freestream_velocity = freestream_velocity
-        ac_state.rotor_states[r_idx].advance_ratio = ac_input_state.rotor_inputs[0].freestream_velocity * ac_input_state.rotor_inputs[0].cos_aoa / abs(ac_input_state.rotor_inputs[0].angular_velocity * aircraft.rotors[0].radius)
-        ac_state.rotor_states[r_idx].axial_advance_ratio = ac_input_state.rotor_inputs[0].freestream_velocity * ac_input_state.rotor_inputs[0].sin_aoa / abs(ac_input_state.rotor_inputs[0].angular_velocity * aircraft.rotors[0].radius)
+        #ac_input_state.rotor_inputs[r_idx].freestream_velocity = freestream_velocity
+        #ac_state.rotor_states[r_idx].advance_ratio = ac_input_state.rotor_inputs[0].freestream_velocity * ac_input_state.rotor_inputs[0].cos_aoa / abs(ac_input_state.rotor_inputs[0].angular_velocity * aircraft.rotors[0].radius)
+        #ac_state.rotor_states[r_idx].axial_advance_ratio = ac_input_state.rotor_inputs[0].freestream_velocity * ac_input_state.rotor_inputs[0].sin_aoa / abs(ac_input_state.rotor_inputs[0].angular_velocity * aircraft.rotors[0].radius)
         for b_idx in range(num_blades[0]):
             ac_input_state.rotor_inputs[r_idx].r_0[b_idx] = 0.1*aircraft.rotors[0].blades[b_idx].average_chord
             ac_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
@@ -229,10 +236,13 @@ if __name__ == "__main__":
         r_0 = ac_input_state.rotor_inputs[0].r_0[b_idx]
         print("r_0: ", ac_input_state.rotor_inputs[0].r_0)
     
-    rotor_inflows = [HuangPeters(4, 2, aircraft.rotors[r_idx], ac_state.rotor_states[r_idx], ac_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
-    wing_inflows = [WingInflow(aircraft.wings[w_idx], ac_state.wing_states[w_idx], ac_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
+    rotor_inflows = [HuangPeters(4, 2, aircraft.rotors[r_idx], ac_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+    wing_inflows = [WingInflow(aircraft.wings[w_idx], ac_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
     
     inflows = rotor_inflows + wing_inflows
+
+    rotorcraft_state = CreateAircraftState(num_rotors, num_blades, elements, num_wings, num_wing_parts, span_elements, chord_elements, rotorcraft_system, rotor_inflows, wing_inflows, [math.copysign(1.0, omega) for omega in omegas])
+    rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
     
     print("inflow length = ", len(inflows))
     

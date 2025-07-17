@@ -73,6 +73,12 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 
 	import std.stdio : writeln;
 
+	debug writeln("SOS: ", atmo.speed_of_sound);
+	debug writeln("density: ", atmo.density);
+	debug writeln("dynamic_viscosity: ", atmo.dynamic_viscosity);
+
+	debug writeln("rotor state frame name: ", rotor_state.inflow_model.frame.name);
+
 	foreach(chunk_idx; 0..blade.chunks.length) {
 
 		immutable Chunk effective_azimuth = blade_state.azimuth - std.math.sgn(rotor_input.angular_velocity)*blade.chunks[chunk_idx].sweep[];
@@ -92,17 +98,23 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 			xyz_chunk.mData[0][] = blade_state.chunks[chunk_idx].x[];
 			xyz_chunk.mData[1][] = blade_state.chunks[chunk_idx].y[];
 			xyz_chunk.mData[2][] = blade_state.chunks[chunk_idx].z[];
+			debug writeln("/n assigned xyz_chunk: x = ",blade_state.chunks[chunk_idx].x[]);
 
+			debug writeln("wing state inflow frame name: ", wing_state.inflow_model.frame);
+			
 			auto xyz_tpp = wing_state.inflow_model.frame.inverse_global_matrix * xyz_chunk;
+			debug writeln("converted xyz to wing coordinates:", xyz_tpp);
 
 			auto wing_ind_vel = wing_state.inflow_model.compute_wing_induced_vel_on_blade(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2]);
-			
+			debug writeln("wing induced velocity calculated, V = ", wing_ind_vel);
+
 			auto local_wing_inflow = Vector!(4, Chunk)(0);
 			local_wing_inflow[0][] = wing_ind_vel.v_x[];
 			local_wing_inflow[1][] = wing_ind_vel.v_y[];
 			local_wing_inflow[2][] = wing_ind_vel.v_z[];
 
 			wing_global_infow += wing_state.inflow_model.frame.global_matrix * local_wing_inflow;
+			debug writeln("wing inflow in the global coordinates is calculated to be,", wing_global_infow);
 		}
 
 		auto wake_global_vel = Vector!(4, Chunk)(0);
@@ -112,9 +124,23 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		wake_global_vel[1][] = wake_velocities.v_y[] + wing_global_infow[1][];
 		wake_global_vel[2][] = wake_velocities.v_z[] + wing_global_infow[2][];
 
+		/*writeln("wake_velocities: ");
+		writeln("\tv_x = ", wake_velocities.v_x[]);
+		writeln("\tv_y = ", wake_velocities.v_y[]);
+		writeln("\tv_z = ", wake_velocities.v_z[]);
+		writeln("wing global inflow: ");
+		writeln("\tv_x = ", wing_global_infow[0][]);
+		writeln("\tv_y = ", wing_global_infow[1][]);
+		writeln("\tv_z = ", wing_global_infow[2][]);*/
+
 		shed_wake_global_vel[0][] = shed_wake_velocities.v_x[];
 		shed_wake_global_vel[1][] = shed_wake_velocities.v_y[];
 		shed_wake_global_vel[2][] = shed_wake_velocities.v_z[];
+
+		/*writeln("shed wake velocities: ");
+		writeln("\tv_x = ", shed_wake_velocities.v_x[]);
+		writeln("\tv_y = ", shed_wake_velocities.v_x[]);
+		writeln("\tv_z = ", shed_wake_velocities.v_x[]);*/
 
 		immutable total_vel_vec = blade.frame.global_matrix.inverse.get() * (wake_global_vel + ac_state.freestream);
 		immutable shed_vel_vec = blade.frame.global_matrix.inverse.get() * shed_wake_global_vel;
@@ -155,8 +181,10 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		immutable Chunk dimensional_u_inf = u_inf[] * rotor.radius * abs(rotor_input.angular_velocity);
 		immutable Chunk M_inf = dimensional_u_inf[]/atmo.speed_of_sound;
 
+		//writeln("blade sec u_squared = ", u_squared);
 		auto gamma = blade_state.circulation_model.compute_bound_circulation_band(blade_state, chunk_idx, rotor_input.angular_velocity, blade.airfoil.lift_curve_slope(chunk_idx), blade.airfoil.zero_lift_aoa(chunk_idx));
 
+		//writeln("balde gamma = ", gamma);
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 
@@ -210,6 +238,9 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 	blade_state.C_T = integrate_trapaziodal!"dC_T"(blade_state, blade);
 	blade_state.C_Mz = integrate_trapaziodal!"dC_Mz"(blade_state, blade);
 	blade_state.C_My = integrate_trapaziodal!"dC_My"(blade_state, blade);
+
+	//writeln("blade C_T = ", blade_state.C_T);
+
 }
 
 /++
@@ -230,6 +261,9 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	import std.math : cos, sin, abs;
 	import std.stdio : writeln;
 
+	debug writeln("wing geometry frame: ", wings[0].frame);
+	debug writeln("wing geometry frame: ", wings[0].frame.name);
+
 	foreach(blade_idx; 0..rotor.blades.length) {
 		rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
 	}
@@ -241,6 +275,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	foreach(blade_idx; 0..rotor.blades.length) {
 
 		if(iteration > 0) {
+			//writeln("\n blade properites for blade ", blade_idx);
 			rotor.blades[blade_idx].compute_blade_properties(
 				rotor_state.blade_states[blade_idx],
 				rotor,
@@ -253,6 +288,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 				blade_idx,
 				atmo
 			);
+			//writeln("blade state calculation done \n");
 
 			auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
 			auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
@@ -266,6 +302,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			C_T += rotor_frame_forces[2];
 			rotor_state.C_Q += rotor_frame_moments[2];
 
+			
 			rotor_state.C_Mx += rotor_frame_moments[0];
 			rotor_state.C_My += rotor_frame_moments[1];
 		}
@@ -278,6 +315,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			blade_chunk.aoa_eff[] = blade_chunk.aoa[];
 		}
 
+		//writeln("\n blade properites for blade ", blade_idx);
 		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
 			rotor,
@@ -290,6 +328,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			blade_idx,
 			atmo
 		);
+		//writeln("blade state calculation done \n");
 
 		foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
 			blade_chunk.dC_T[] = backup_CT[chunk_idx][];
@@ -314,6 +353,8 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	}
 
 	rotor_state.C_T = C_T;
+
+	//writeln("rotor_C_T = ", rotor_state.C_T);
 }
 
 void print_frame(F)(F frame, int depth = 0) {
@@ -368,10 +409,11 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	}
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
+		//writeln("rotor properties for rotor ", rotor_idx);
 		aircraft.rotors[rotor_idx].compute_rotor_properties(
 			ac_state.rotor_states[rotor_idx],
 			ac_input_state.rotor_inputs[rotor_idx],
-			ac_state,			
+			ac_state,
 			ac_input_state.wing_inputs,
 			aircraft.wings,
 			wake_history[0],
@@ -384,8 +426,11 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 		);
 	}
 
+	debug writeln("\n rotor properties computed");
 	aircraft.update_wake(ac_state, ac_input_state, wake_history, atmo, iteration, dt);
 
+
+	debug writeln("aircraft wake updated");
 	auto ac_forces = Vec4(0.0);
 	foreach(r_idx, ref rotor_state ; ac_state.rotor_states) {
 		rotor_state.inflow_model.update(ac_state, dt);
@@ -397,9 +442,11 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 		auto global_rotor_forces = aircraft.rotors[r_idx].frame.global_matrix*rotor_forces;
 		ac_forces += aircraft.root_frame.global_matrix.inverse.get * global_rotor_forces;
 	}
+	debug writeln("\n rotor inflows updated");
 	ac_state.forces = ac_forces;
 
 	foreach(ref wing_state ; ac_state.wing_states) {
 		wing_state.inflow_model.update(ac_state, dt);
 	}
+	debug writeln("\n wing inflows updated");
 }

@@ -58,6 +58,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		makedirs(vtu_output_path, exist_ok=True)
 
 	num_rotors = vehicle.input_state.rotor_inputs.length()
+	num_wings = vehicle.input_state.wing_inputs.length()
+	print("\n num_wings = ", num_wings, "\n")
 
 	omegas = np.asarray([vehicle.input_state.rotor_inputs[rotor_idx].angular_velocity for rotor_idx in range(num_rotors)])
 
@@ -78,7 +80,22 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 	vtk_rotors = [build_base_vtu_rotor(vehicle.aircraft.rotors[rotor_idx]) for rotor_idx in range(num_rotors)]
 	vtk_wake = build_base_vtu_wake(vehicle.wake_history.history[0])
+	vtk_wing = [build_base_vtu_wing(vehicle.aircraft.wings[w_idx]) for w_idx in range(num_wings)]
 
+	for rotor_idx in range(num_rotors):
+		print("writing rotor and wake vtu")
+		origin = vehicle.aircraft.rotors[rotor_idx].frame.global_position()
+		print(f'{vehicle.aircraft.rotors[rotor_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		write_rotor_vtu(f"{vtu_output_path}/rotor", 0, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
+		#write_wake_vtu(f"{vtu_output_path}/wake", acoustic_iteration, vtk_wake, vehicle.wake_history.history[0])
+					
+	for wing_idx in range(num_wings):
+		print("writing wing vtu")
+		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
+		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		write_wing_vtu(f"{vtu_output_path}/wing", 0, wing_idx, vtk_wing[wing_idx], vehicle.ac_state.wing_states[wing_idx], vehicle.aircraft.wings[wing_idx])
+
+	
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))
 	C_T_len = np.round(2.0*math.pi/(dt*np.abs(omegas))).astype(dtype=np.int64)
 
@@ -489,8 +506,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 		while not sim_done:
 
+			#print("iteration = ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				max_l2 = 1000
+				print("rev = ", iteration/iter_per_rev)
+				print("going into check convergence")
 				#log_file.write(f'checking convergence itr: {iteration}, convergence_rev_multiple*iter_per_rev: {convergence_rev_multiple*iter_per_rev}\n')
 				for rotor_idx in range(num_rotors):
 					if convergence_type == 'wake':
@@ -521,15 +541,17 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 						last_C_T[rotor_idx] = average_C_T_arrays[rotor_idx][iteration % C_T_len[rotor_idx]]
 						last_C_Mx[rotor_idx] = average_C_Mx_arrays[rotor_idx][iteration % C_T_len[rotor_idx]]
 						last_C_My[rotor_idx] = average_C_My_arrays[rotor_idx][iteration % C_T_len[rotor_idx]]
-					elif  convergence_type == 'run_for':
-						if iteration/iter_per_rev == flight_condition['run_for']:
-							converged = True
 
 				if (max_l2 is not None) and (max_l2 <= computational_parameters["convergence_criteria"]) and (iteration > (wake_trail_iterations + 2*iter_per_rev)):
 					if not converged:
 						log_file.write(f"Simulation reached convergence criteria: {max_l2}\n")
 
 					converged = True
+
+			if  convergence_type == 'run_for':
+				if iteration/iter_per_rev == flight_condition['run_for']:
+					converged = True
+					print("converged = ", converged)
 
 			#if iteration % 1 == 0:
 			if iteration % iter_per_rev == 0:
@@ -598,6 +620,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 				start_time = now
 				log_file.flush()
+				
+			#if iteration > 1:
+				#sim_done = True
+				#print("Simulated one revolution, exiting")
+
 
 				if converged and not sim_done:
 					if converged_revolutions >= post_conv_revolutions:
@@ -832,10 +859,16 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			loading_data.time = dt*acoustic_iteration
 
 			if converged:
-				if write_wake and (converged_revolutions >= (post_conv_revolutions - 1)):
+				print("converged revolutions = ", converged_revolutions, "\t post conv revs = ", post_conv_revolutions)
+				if write_wake: # and (converged_revolutions >= (post_conv_revolutions - 1)):
 					for rotor_idx in range(num_rotors):
+						print("writing rotor and wake vtu")
 						write_rotor_vtu(f"{vtu_output_path}/rotor", acoustic_iteration, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
 						write_wake_vtu(f"{vtu_output_path}/wake", acoustic_iteration, vtk_wake, vehicle.wake_history.history[0])
+					
+					for wing_idx in range(num_wings):
+						print("writing wing vtu")
+						write_wing_vtu(f"{vtu_output_path}/wing", acoustic_iteration, wing_idx, vtk_wing[wing_idx], vehicle.ac_state.wing_states[wing_idx], vehicle.aircraft.wings[wing_idx])
 
 				if (spanwise_element_iteration >= convergence_rev_multiple*iter_per_rev) and start_recording:
 					done_recording = True
@@ -930,13 +963,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 									wake_element_found[rotor_idx][t_idx] = True
 									wake_element_blade[rotor_idx, t_idx] = blade_idx
 
-						fill_dC_Nf(blade, z_loading)
+						fill_dC_Nf(blade, z_loading.astype(np.float32))
 						fill_dC_cf(blade, x_loading)
 
 						z_loading = -z_loading*atmo.density*math.pi*radii[rotor_idx]**3.0*abs(omegas[rotor_idx])**2.0
 						#x_loading = -x_loading*atmo.density*math.pi*radii[rotor_idx]**3.0*abs(omegas[rotor_idx])**2.0
 
-						loading_data.set_z_loading_array(z_loading)
+						loading_data.set_z_loading_array(z_loading.astype(np.float32))
 						loading_data.set_y_loading_array(y_loading)
 						loading_data.set_x_loading_array(x_loading)
 						append_loading_data(loading_files[rotor_idx][blade_idx], loading_data)
@@ -947,7 +980,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 						u = abs(omegas[rotor_idx])*radii[rotor_idx]*np.sqrt(u_t**2.0 + u_p_array**2.0)
 
-						append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
+						#append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
 
 				spanwise_element_iteration = spanwise_element_iteration + 1
 

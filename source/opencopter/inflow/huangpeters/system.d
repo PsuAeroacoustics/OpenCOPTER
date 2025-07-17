@@ -1473,11 +1473,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return k_bar;
 	}
 
-	void update_wing_circulation(){
+	void update_wing_circulation(WingStateT!AC wing_state){
 		
 	}
 
-	void update_wing_dC_L(){
+	void update_wing_dC_L(WingStateT!AC wing_state){
 		
 	}
 

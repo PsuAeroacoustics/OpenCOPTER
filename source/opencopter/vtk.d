@@ -196,7 +196,7 @@ class VtkWing {
 	}
 }
 
-void write_wing_vtu(WS, WIS)(string base_filename, size_t iteration, size_t wing_idx, ref VtkWing wing, auto ref WS wing_state, auto ref WIS wing_input){
+void write_wing_vtu(WS, W)(string base_filename, size_t iteration, size_t wing_idx, ref VtkWing wing, auto ref WS wing_state, auto ref W wing_geom){
 
 	version(Have_vtkd) {
 		writeln("writing wing vtu");
@@ -205,24 +205,30 @@ void write_wing_vtu(WS, WIS)(string base_filename, size_t iteration, size_t wing
 
 		auto wing_writer = vtkXMLUnstructuredGridWriter.New;
 
-		auto aoa_rotation =
+		/*auto aoa_rotation =
 			Mat3(
 				-std.math.cos(wing_input.angle_of_attack /++ flip_angle+/), 0, -std.math.sin(wing_input.angle_of_attack/+ + flip_angle+/),
 				0, -1, 0,
 				-std.math.sin(wing_input.angle_of_attack /++ flip_angle+/), 0, std.math.cos(wing_input.angle_of_attack /++ flip_angle+/)
-			);
+			);*/
 		
 		wing.grid.SetPoints(wing.points);
 
 		foreach(wp_idx, wing_part; wing_state.wing_part_states) {
 			foreach(pi; wing.base_points[wp_idx].byKeyValue){
 				vtkIdType id = pi.key;
-				Vec3 point = pi.value;
+				//Vec3 point = pi.value;
 				auto origin = wing.origin;
 
+				/* this part should be taken care of in the frame transformation
 				auto aoa_rot = aoa_rotation*point ;
 				auto final_p = aoa_rot + origin;
 				writeln("final_p = ", final_p);
+				*/
+
+				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0);
+
+				auto final_p = wing_geom.frame.global_matrix * point;
 
 				wing.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
 			}	
@@ -254,73 +260,6 @@ void write_wing_vtu(WS, WIS)(string base_filename, size_t iteration, size_t wing
 		wing_writer.Write;
 	}
 }
-
-void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t rotor_idx, ref VtkRotor rotor, auto ref RS rotor_state, auto ref RG rotor_geom) {
-	version(Have_vtkd) {
-		immutable elements = rotor_state.blade_states[0].chunks.length*chunk_size;
-
-		auto rotor_writer = vtkXMLUnstructuredGridWriter.New;
-
-		rotor.grid.SetPoints(rotor.points);
-
-		foreach(blade_idx, blade; rotor_state.blade_states) {
-			foreach(pi; rotor.base_points[blade_idx].byKeyValue) {
-				vtkIdType id = pi.key;
-				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0/rotor_geom.radius)*rotor_geom.radius;
-
-				auto final_p = rotor_geom.blades[blade_idx].frame.global_matrix * point;
-				
-				rotor.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
-			}
-
-			foreach(radial_idx, loop; rotor.r_to_point_map[blade_idx*elements..elements*(blade_idx + 1)]) {
-
-				auto chunk_idx = radial_idx/chunk_size;
-				auto inner_idx = radial_idx%chunk_size;
-
-				auto af_norm = rotor_geom.blades[blade_idx].frame.global_matrix*rotor_geom.blades[blade_idx].chunks[chunk_idx].af_norm;
-
-				auto blade_local_vel = blade.chunks[chunk_idx].blade_local_vel;
-				auto projected_vel = blade.chunks[chunk_idx].projected_vel;
-
-				foreach(l_idx, id; loop) {
-					rotor.loads.SetTuple1(id, blade.chunks[chunk_idx].dC_L[inner_idx]);
-					rotor.dC_T.SetTuple1(id, blade.chunks[chunk_idx].dC_T[inner_idx]);
-					rotor.dC_Q.SetTuple1(id, blade.chunks[chunk_idx].dC_Q[inner_idx]);
-					rotor.dC_D.SetTuple1(id, blade.chunks[chunk_idx].dC_D[inner_idx]);
-					rotor.dC_L_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_L_dot[inner_idx]);
-					rotor.dC_T_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_T_dot[inner_idx]);
-					rotor.dC_N.SetTuple1(id, blade.chunks[chunk_idx].dC_N[inner_idx]);
-					rotor.dC_c.SetTuple1(id, blade.chunks[chunk_idx].dC_c[inner_idx]);
-					rotor.u_p.SetTuple1(id, blade.chunks[chunk_idx].u_p[inner_idx]);
-					rotor.shed_u_p.SetTuple1(id, blade.chunks[chunk_idx].shed_u_p[inner_idx]);
-					rotor.u_t.SetTuple1(id, blade.chunks[chunk_idx].u_t[inner_idx]);
-					rotor.aoa.SetTuple1(id, blade.chunks[chunk_idx].aoa[inner_idx]*(180.0/PI));
-					rotor.aoa_eff.SetTuple1(id, blade.chunks[chunk_idx].aoa_eff[inner_idx]*(180.0/PI));
-					rotor.inflow_angle.SetTuple1(id, blade.chunks[chunk_idx].inflow_angle[inner_idx]*(180.0/PI));
-					rotor.gamma.SetTuple1(id, blade.chunks[chunk_idx].gamma[inner_idx]);
-					rotor.d_gamma.SetTuple1(id, blade.chunks[chunk_idx].d_gamma[inner_idx]);
-					rotor.theta.SetTuple1(id, blade.chunks[chunk_idx].theta[inner_idx]*(180.0/PI));
-					rotor.af_norm.SetTuple3(id, af_norm[0][inner_idx], af_norm[1][inner_idx], af_norm[2][inner_idx]);
-
-					rotor.blade_local_vel.SetTuple3(id, blade_local_vel[0][inner_idx], blade_local_vel[1][inner_idx], blade_local_vel[2][inner_idx]);
-					rotor.projected_vel.SetTuple3(id, projected_vel[0][inner_idx], projected_vel[1][inner_idx], projected_vel[2][inner_idx]);
-
-				}
-			}
-		}
-
-		import std.string : toStringz;
-
-		auto filename = base_filename~"_"~rotor_idx.to!string~"_"~iteration.to!string~".vtu";
-
-		rotor_writer.SetFileName(filename.toStringz);
-		rotor_writer.SetInputData(rotor.grid);
-		rotor_writer.Write;
-	}
-}
-
-alias Mat3 = Matrix!(3, 3, double);
 
 VtkWing build_base_vtu_wing(WG)(auto ref WG wing_geo) {
 	version(Have_vtkd) {
@@ -415,6 +354,75 @@ VtkWing build_base_vtu_wing(WG)(auto ref WG wing_geo) {
 		return vtk_wing;
 	}
 }
+
+void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t rotor_idx, ref VtkRotor rotor, auto ref RS rotor_state, auto ref RG rotor_geom) {
+	version(Have_vtkd) {
+		immutable elements = rotor_state.blade_states[0].chunks.length*chunk_size;
+
+		auto rotor_writer = vtkXMLUnstructuredGridWriter.New;
+
+		rotor.grid.SetPoints(rotor.points);
+
+		foreach(blade_idx, blade; rotor_state.blade_states) {
+			foreach(pi; rotor.base_points[blade_idx].byKeyValue) {
+				vtkIdType id = pi.key;
+				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0/rotor_geom.radius)*rotor_geom.radius;
+
+				auto final_p = rotor_geom.blades[blade_idx].frame.global_matrix * point;
+				
+				rotor.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
+			}
+
+			foreach(radial_idx, loop; rotor.r_to_point_map[blade_idx*elements..elements*(blade_idx + 1)]) {
+
+				auto chunk_idx = radial_idx/chunk_size;
+				auto inner_idx = radial_idx%chunk_size;
+
+				auto af_norm = rotor_geom.blades[blade_idx].frame.global_matrix*rotor_geom.blades[blade_idx].chunks[chunk_idx].af_norm;
+
+				auto blade_local_vel = blade.chunks[chunk_idx].blade_local_vel;
+				auto projected_vel = blade.chunks[chunk_idx].projected_vel;
+
+				foreach(l_idx, id; loop) {
+					rotor.loads.SetTuple1(id, blade.chunks[chunk_idx].dC_L[inner_idx]);
+					rotor.dC_T.SetTuple1(id, blade.chunks[chunk_idx].dC_T[inner_idx]);
+					rotor.dC_Q.SetTuple1(id, blade.chunks[chunk_idx].dC_Q[inner_idx]);
+					rotor.dC_D.SetTuple1(id, blade.chunks[chunk_idx].dC_D[inner_idx]);
+					rotor.dC_L_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_L_dot[inner_idx]);
+					rotor.dC_T_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_T_dot[inner_idx]);
+					rotor.dC_N.SetTuple1(id, blade.chunks[chunk_idx].dC_N[inner_idx]);
+					rotor.dC_c.SetTuple1(id, blade.chunks[chunk_idx].dC_c[inner_idx]);
+					rotor.u_p.SetTuple1(id, blade.chunks[chunk_idx].u_p[inner_idx]);
+					rotor.shed_u_p.SetTuple1(id, blade.chunks[chunk_idx].shed_u_p[inner_idx]);
+					rotor.u_t.SetTuple1(id, blade.chunks[chunk_idx].u_t[inner_idx]);
+					rotor.aoa.SetTuple1(id, blade.chunks[chunk_idx].aoa[inner_idx]*(180.0/PI));
+					rotor.aoa_eff.SetTuple1(id, blade.chunks[chunk_idx].aoa_eff[inner_idx]*(180.0/PI));
+					rotor.inflow_angle.SetTuple1(id, blade.chunks[chunk_idx].inflow_angle[inner_idx]*(180.0/PI));
+					rotor.gamma.SetTuple1(id, blade.chunks[chunk_idx].gamma[inner_idx]);
+					rotor.d_gamma.SetTuple1(id, blade.chunks[chunk_idx].d_gamma[inner_idx]);
+					rotor.theta.SetTuple1(id, blade.chunks[chunk_idx].theta[inner_idx]*(180.0/PI));
+					rotor.af_norm.SetTuple3(id, af_norm[0][inner_idx], af_norm[1][inner_idx], af_norm[2][inner_idx]);
+
+					rotor.blade_local_vel.SetTuple3(id, blade_local_vel[0][inner_idx], blade_local_vel[1][inner_idx], blade_local_vel[2][inner_idx]);
+					rotor.projected_vel.SetTuple3(id, projected_vel[0][inner_idx], projected_vel[1][inner_idx], projected_vel[2][inner_idx]);
+
+				}
+			}
+		}
+
+		import std.string : toStringz;
+
+		auto filename = base_filename~"_"~rotor_idx.to!string~"_"~iteration.to!string~".vtu";
+
+		rotor_writer.SetFileName(filename.toStringz);
+		rotor_writer.SetInputData(rotor.grid);
+		rotor_writer.Write;
+	}
+}
+
+alias Mat3 = Matrix!(3, 3, double);
+
+
 
 VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 	version(Have_vtkd) {

@@ -68,12 +68,15 @@ struct WeissingerL(ArrayContainer AC) {
 		immutable integration_elements = elements;
 
 		auto influence = allocate_dense(elements, elements);
+		//writeln("influence matrix initialized");
 		double[][] _influence_inv = allocate_dense(elements, elements);
+
+		//writeln("defined influence_inv");
 
 		immutable m = integration_elements;
 		immutable psi_vs = iota(1.0*PI/(m + 1.0), m*PI/(m + 1.0), 1.0*PI/(m + 1.0)).retro.array;
 		immutable y_array = psi_vs.map!(psi_mu => cos(psi_mu)).array;
-
+		//writeln("going into nested for loop");
 		foreach(ch1; 0..chunks) {
 			foreach(c1; 0..chunk_size) {
 				immutable v = ch1*chunk_size + c1;
@@ -86,7 +89,7 @@ struct WeissingerL(ArrayContainer AC) {
 				immutable psi_v = psi_vs[v];
 
 				immutable local_aspect = blade.blade_length/(2.0*true_chord);
-
+				//writeln("going into internal nested for loop");
 				foreach(ch2; 0..chunks) {
 					foreach(c2; 0..chunk_size) {
 						immutable n = ch2*chunk_size + c2;
@@ -134,6 +137,8 @@ struct WeissingerL(ArrayContainer AC) {
 
 							return p;
 						}).array;
+
+						//writeln("returned P");
 						immutable Psum = Ps.sum;
 						immutable second = 1.0/(4.0*(M + 1.0))*(
 							0.5*(P0 + Pend) + Psum //tehehehehehe
@@ -209,6 +214,8 @@ struct WeissingerL(ArrayContainer AC) {
 				influence_inv[r][ch][] = _influence_inv[r][ch*chunk_size..ch*chunk_size+chunk_size];
 			}
 		}
+		
+		//writeln("calculated influence_inv matrix");
 	}
 
 	Chunk compute_bound_circulation_band(BS)(auto ref BS blade_state, size_t chunk_idx, double direction_multiplier, Chunk Cl_alpha, Chunk alpha_zero) {
