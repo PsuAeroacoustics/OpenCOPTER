@@ -787,10 +787,10 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	if presentation:
 		label_font = label_font_present
 
-	fig = plt.figure(figsize=(10, 10))
+	fig = plt.figure(figsize=(7, 11))
 	#fig = plt.figure()
 	#fig.tight_layout()
-	plt.subplots_adjust(wspace=-0.5)
+	#plt.subplots_adjust(wspace=0.1)
 	#ax0 = plt.subplot(421)
 	ax0 = plt.subplot(331)
 	ax0.set_xticklabels([])
@@ -1049,7 +1049,7 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 			else:
 				label.set_fontsize(font_size1)
 
-	cax = fig.add_axes([0.8, 0.08, 0.02, 0.8])
+	cax = fig.add_axes([0.93, 0.08, 0.02, 0.8])
 	cb = fig.colorbar(plt1, cax, orientation='vertical')#, label='BVI SPL [dB]', **label_font)
 	cb.set_label('BVI SPL [dB]', labelpad=20, **label_font)
 
@@ -1998,21 +1998,42 @@ if __name__ == "__main__":
 	plot_acoustic_contours_all("MN", args.p)
 	plot_acoustic_contours_all("MV", args.p)
 
-	plot_acoustic_contours("BL", args.p)
-	plot_acoustic_contours_cfd("BL", args.p)
-	plot_acoustic_contours_charm("BL", args.p)
-	#plot_blade_twist('BL', args.p)
-	#plot_blade_twist('MN', args.p)
-	#plot_blade_twist('MV', args.p)
-
-	plot_blade_normal_pressures('BL', args.p, blade_results_bl)
-	plot_wake_trajectory('BL', args.p, blade_results_bl)
 	# plot_acoustic_contours("BL", args.p)
+	# plot_acoustic_contours_cfd("BL", args.p)
+	# plot_acoustic_contours_charm("BL", args.p)
+	# #plot_blade_twist('BL', args.p)
+	# #plot_blade_twist('MN', args.p)
+	# #plot_blade_twist('MV', args.p)
 
-	plot_blade_normal_pressures('MN', args.p, blade_results_mn)
-	plot_wake_trajectory('MN', args.p, blade_results_mn)
-	plot_acoustic_contours("MN", args.p)
+	# plot_blade_normal_pressures('BL', args.p, blade_results_bl)
+	# plot_wake_trajectory('BL', args.p, blade_results_bl)
+	# # plot_acoustic_contours("BL", args.p)
 
-	plot_blade_normal_pressures('MV', args.p, blade_results_mv)
-	plot_wake_trajectory('MV', args.p, blade_results_mv)
-	plot_acoustic_contours("MV", args.p)
+	# plot_blade_normal_pressures('MN', args.p, blade_results_mn)
+	# plot_wake_trajectory('MN', args.p, blade_results_mn)
+	# plot_acoustic_contours("MN", args.p)
+
+	# plot_blade_normal_pressures('MV', args.p, blade_results_mv)
+	# plot_wake_trajectory('MV', args.p, blade_results_mv)
+	# plot_acoustic_contours("MV", args.p)
+
+	# theta_bl = blade_results_bl['collective_pitch_array'].mean()*(180.0/math.pi)
+	# theta_1s_bl = blade_results_bl['sin_pitch_array'].mean()*(180.0/math.pi)
+	# theta_1c_bl = blade_results_bl['cos_pitch_array'].mean()*(180.0/math.pi)
+
+	# theta_mn = blade_results_mn['collective_pitch_array'].mean()*(180.0/math.pi)
+	# theta_1s_mn = blade_results_mn['sin_pitch_array'].mean()*(180.0/math.pi)
+	# theta_1c_mn = blade_results_mn['cos_pitch_array'].mean()*(180.0/math.pi)
+
+	# theta_mv = blade_results_mv['collective_pitch_array'].mean()*(180.0/math.pi)
+	# theta_1s_mv = blade_results_mv['sin_pitch_array'].mean()*(180.0/math.pi)
+	# theta_1c_mv = blade_results_mv['cos_pitch_array'].mean()*(180.0/math.pi)
+
+	# print("Baseline:")
+	# print(f'theta: {theta_bl:.2f}\t theta_1c: {theta_1c_bl:.2f}\t theta_1s {theta_1s_bl:.2f}')
+
+	# print("Minimum Noise:")
+	# print(f'theta: {theta_mn:.2f}\t theta_1c: {theta_1c_mn:.2f}\t theta_1s {theta_1s_mn:.2f}')
+
+	# print("Minimum Vibration:")
+	# print(f'theta: {theta_mv:.2f}\t theta_1c: {theta_1c_mv:.2f}\t theta_1s {theta_1s_mv:.2f}')
