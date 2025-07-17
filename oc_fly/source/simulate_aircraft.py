@@ -40,7 +40,6 @@ def flapping_at_azimuth(a: list[float], b: list[float], w: float, azimuth: float
 
 def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 	h = 0
-	#h_star = 0
 
 	for idx in range(len(a)):
 		cos = math.cos(float(idx)*azimuth)
@@ -509,8 +508,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			#print("iteration = ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				max_l2 = 1000
-				print("rev = ", iteration/iter_per_rev)
-				print("going into check convergence")
+
 				#log_file.write(f'checking convergence itr: {iteration}, convergence_rev_multiple*iter_per_rev: {convergence_rev_multiple*iter_per_rev}\n')
 				for rotor_idx in range(num_rotors):
 					if convergence_type == 'wake':
@@ -859,8 +857,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			loading_data.time = dt*acoustic_iteration
 
 			if converged:
-				print("converged revolutions = ", converged_revolutions, "\t post conv revs = ", post_conv_revolutions)
-				if write_wake: # and (converged_revolutions >= (post_conv_revolutions - 1)):
+
+				if write_wake and (converged_revolutions >= (post_conv_revolutions - 1)):
 					for rotor_idx in range(num_rotors):
 						print("writing rotor and wake vtu")
 						write_rotor_vtu(f"{vtu_output_path}/rotor", acoustic_iteration, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
@@ -980,7 +978,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 						u = abs(omegas[rotor_idx])*radii[rotor_idx]*np.sqrt(u_t**2.0 + u_p_array**2.0)
 
-						#append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
+						append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
 
 				spanwise_element_iteration = spanwise_element_iteration + 1
 
