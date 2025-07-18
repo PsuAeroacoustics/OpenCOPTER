@@ -17,7 +17,8 @@ import scipy.io
 from scipy.interpolate import interp1d
 from scipy.misc import derivative
 import numpy as np
-
+from multiprocessing import Queue
+from traceback import print_exception
 from os import path, makedirs
 
 def static_motion(angle, vec, frame, rotor_inputs, r_idx):
@@ -42,8 +43,6 @@ def constant_motion(omega: float, dt: float, frame: Frame, motion_axis: Vec3, ro
 	frame.set_rotation(motion_axis, rotor_inputs[_r_idx].azimuth)
 
 def build_blade(blade_object, requested_elements, geom_directory, R, frame):
-
-	theta_tw_1 = blade_object['theta_tw']
 	airfoil_descs = blade_object['airfoils']
 	r_c = 0
 	if "r_c" in blade_object:
@@ -51,13 +50,14 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 
 	r = generate_radius_points(requested_elements, r_c)
 
-	#print(f'r = {r}')
 	elements = len(r)
 
 	non_dim_length = 1.0 - r_c
 	
 	airfoils = []
 	extents = []
+	af_thickness = []
+	af_r = []
 	for airfoil_desc in airfoil_descs:
 		type = airfoil_desc['type']
 		extent = [0, 0]
@@ -65,10 +65,11 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		airfoil = None
 		if type == 'aerodas':
 			airfoil = create_aerodas_from_xfoil_polar(path.join(geom_directory, airfoil_desc['xfoil_polar']), airfoil_desc['thickness'])
-		elif type == 'thinaf':
+		elif type == 'thinaf': # ;)
 			airfoil = ThinAirfoil(0)
 		elif type == "C81":
-			airfoil = load_c81_file(path.join(geom_directory, airfoil_desc['filename']))
+			#airfoil = load_c81_file(path.join(geom_directory, airfoil_desc['filename']))
+			airfoil = load_c81_file(airfoil_desc['filename'])
 		else:
 			print(f"Unsupported airfoil type: {type}. Defaulting to ThinAirfoil theory")
 			airfoil = ThinAirfoil(0)
@@ -79,6 +80,13 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 
 		extents.append(extent)
 		airfoils.append(airfoil)
+		af_thickness.append(airfoil_desc['thickness'])
+		af_r.append(0.5*(extent[0] + extent[1]))
+
+	if len(af_r) == 1:
+		af_r.append(af_r[0])
+		af_thickness.append(af_thickness[0])
+		
 
 	blade_airfoil = BladeAirfoil(airfoils, extents)
 
@@ -89,7 +97,10 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	linear_c = None
 	if 'x' in blade_object:
 		linear_x = blade_object['x']
-		linear_r = np.linspace(r_c, 1.0, len(linear_x))
+		if 'r' in blade_object:
+			linear_r = blade_object['r']
+		else:
+			linear_r = np.linspace(r_c, 1.0, len(linear_x))
 		f_x = interp1d(linear_r, linear_x)
 		x = f_x(r)
 
@@ -116,9 +127,24 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		f_c = interp1d(linear_r, linear_c)
 		c = f_c(r)
 
+	if "twist" in blade_object:
+		linear_twist = blade_object["twist"]
+
+		if linear_r is None:
+			linear_x = np.zeros(len(linear_twist))
+			linear_r = np.linspace(r_c, 1.0, len(linear_twist))
+
+		f_twist = interp1d(linear_r, linear_twist)
+		twist = f_twist(r)*(math.pi/180.0)
+	else:
+		theta_tw_1 = blade_object['theta_tw']
+		twist = np.asarray([(_r - 0.75)*theta_tw_1*(1/(1 - r_c))*(math.pi/180.0) for _r in generate_radius_points(requested_elements, r_c)])
+
 	x_over_c = np.asarray(linear_x)/np.asarray(linear_c)
 	
 	f_x_over_c = interp1d(linear_r, x_over_c, bounds_error=False, fill_value='extrapolate')
+
+	f_thickness = interp1d(af_r, af_thickness, bounds_error=False, fill_value='extrapolate')
 
 	linear_x_over_c_p = [derivative(f_x_over_c, _r, 1.0e-12) for _r in linear_r[3:-3]]
 
@@ -126,7 +152,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 
 	xp = f_x_over_c_p(r)
 
-	twist = np.asarray([(_r - 0.75)*theta_tw_1*(1/(1 - r_c))*(math.pi/180.0) for _r in generate_radius_points(requested_elements, r_c)])
+	thickness = f_thickness(r)
 
 	# Build the geom of the blades
 	blade = BladeGeometry(
@@ -148,6 +174,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	set_twist(blade, twist)
 	set_chord(blade, c)
 	set_sweep(blade, sweep)
+	set_thickness(blade, thickness)
 
 	compute_blade_vectors(blade)
 
@@ -165,13 +192,18 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	
 	return blade
 
-def build_component(component_json, parent_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref):
-	# Nitya: What is did_dref for? Just for making sure that everything has an unique name!
 
+#def build_component(component_json, parent_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref):
+def build_component(component_json, parent_frame, components_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref):
+
+	# Nitya: What is did_dref for? Just for making sure that everything has an unique name!
+	
+	wings = []
 	rotors = []
 	blades = []
 
 	# Dereference component if needed
+	#did_deref = False
 	if "ref" in component_json:
 		did_deref = True
 		referenced_component_name = component_json["ref"]
@@ -180,14 +212,6 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 			component_json = components_ref_dict[referenced_component_name]["obj"]
 			ref_count = components_ref_dict[referenced_component_name]["ref_count"]
 			components_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
-		elif referenced_component_name in rotor_ref_dict:
-			component_json = rotor_ref_dict[referenced_component_name]["obj"]
-			ref_count = rotor_ref_dict[referenced_component_name]["ref_count"]
-			rotor_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
-		elif referenced_component_name in blade_ref_dict:
-			component_json = blade_ref_dict[referenced_component_name]["obj"]
-			ref_count = blade_ref_dict[referenced_component_name]["ref_count"]
-			blade_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
 
 	name = component_json["name"]
 	frame_type = component_json["type"]
@@ -198,7 +222,7 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 	actual_name = name
 	if did_deref:
-		actual_name = name + " " + str(ref_count)
+		actual_name = name + "_" + str(ref_count)
 
 	components_dict[actual_name] = {
 		"name": actual_name,
@@ -212,19 +236,19 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 		trim_axis_dict[actual_name] = angle_axis
 
 	if motion is not None:
-		matched_motions = list(filter(lambda x: x["frame"] == name, motion))
 		# Nitya: lambda is an anonymous function. For each element in the list, it's going to call the function lambda and add those to a new list and return that 
-		
+
+		matched_motions = list(filter(lambda x: x["frame"] == name, motion))
+		matched_motions = matched_motions + list(filter(lambda x: x["frame"] == actual_name, motion))
+
 		if len(matched_motions) > 0:
-			#print(f'matched_motions: {matched_motions}')
 			if "axis_angle_function" not in component_json:
 				raise Exception(f"No motion function defined for frame {name}")
-
+			
 			motion_axis_dict[actual_name] = (angle_axis, component_json["axis_angle_function"])
-			#print(f'motion_axis_dict: {motion_axis_dict}')
 
 	if did_deref:
-		name = component_json["name"] + " " + str(ref_count)
+		name = component_json["name"] + "_" + str(ref_count)
 
 	component_frame = Frame(angle_axis, angle, origin, parent_frame, name, frame_type)
 	# Nitya: Frame- opencopter/aircraft/geometry.d
@@ -244,10 +268,12 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 	if "children" in component_json:
 		for child_component in component_json["children"]:
-			built_components, built_rotors, built_blades = build_component(child_component, component_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref)
+			#built_components, built_rotors, built_blades, built_wings = build_component(child_component, component_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref)
+			built_components, built_rotors, built_blades, built_wings = build_component(child_component, component_frame, components_ref_dict, components_dict, current_rotor_radius, requested_elements, geom_directory, motion_axis_dict, motion, trim_frame_name, trim_axis_dict, ref_count, did_deref)
 
 			rotors = rotors + built_rotors
 			blades = blades + built_blades
+			wings = wings + built_wings
 
 			child_components.append(built_components)
 
@@ -255,7 +281,6 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 				if len(built_blades) > 1:
 					raise Exception("Rotor has multiple blades on single attachment")
 
-				#print(f"Setting azimuth offset for blade: {child_component['axis_angle']*(math.pi/180.0)}")
 				built_blades[0].azimuth_offset = child_component["axis_angle"]*(math.pi/180.0)
 
 	elif frame_type != FrameType_blade():
@@ -278,12 +303,30 @@ def build_component(component_json, parent_frame, components_ref_dict, rotor_ref
 
 		blades = []
 
+	elif frame_type == FrameType_wing():
+		wing = build_wing(component_frame)
+		wings.append(wing)
+
 	else:
 		component_frame.children = child_components
 
 
-	return component_frame, rotors, blades
+	return component_frame, rotors, blades, wings
 
+def build_wing(num_wing_parts, frame, num_span_elements, num_chord_elements, wing_span):
+	
+	wing = WingGeometry(
+		num_wing_parts,
+		origin = Vec3([0.0, 0.0, 0.0]),
+		wing_span = wing_span
+	)
+
+	wing.frame = frame
+
+	print("\n wing frame name: ", wing.frame.name)
+
+	return wing
+	
 def build_rotor(blades, frame, radius):
 
 	rotor = RotorGeometry(
@@ -318,16 +361,38 @@ def count_rotors(component, rotor_ref_dict):
 
 	return num_rotors
 
+def count_wings(component, wing_ref_dict):
+	num_wings = 0
+
+	if "type" in component:
+		if "wing" == component["type"]:
+			num_wings = 1
+
+	if "ref" in component:
+		referenced_component_name = component["ref"]
+		if referenced_component_name in wing_ref_dict:
+			if "children" in wing_ref_dict[referenced_component_name]:
+				for child in wing_ref_dict[referenced_component_name]["children"]:
+					num_wings = num_wings + count_wings(child) + 1
+	else:
+		if "children" in component:
+			for child in component["children"]:
+				num_wings = num_wings + count_wings(child, wing_ref_dict)
+
+	return num_wings
+
 def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_frame_name):
 	print("building aircraft")
 
 	components_ref_dict = {}
-	blade_ref_dict = {}
-	rotor_ref_dict = {}  # Initialize an empty dictionary to hold rotor references
+	# blade_ref_dict = {}
+	# rotor_ref_dict = {}
+	# wing_ref_dict = {}
 	components_dict = {}
 	if "blades" in geometry:
 		for blade_obj in geometry['blades']:
-			blade_ref_dict[blade_obj["name"]] = {"obj": blade_obj, "ref_count": 0}
+			#blade_ref_dict[blade_obj["name"]] = {"obj": blade_obj, "ref_count": 0}
+			components_ref_dict[blade_obj["name"]] = {"obj": blade_obj, "ref_count": 0}
 
 	if "components" in geometry:
 		for component_obj in geometry["components"]:
@@ -335,22 +400,36 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 
 	if "rotors" in geometry:
 		for rotor_obj in geometry["rotors"]:
-			rotor_ref_dict[rotor_obj["name"]] = {"obj": rotor_obj, "ref_count": 0}
+			#rotor_ref_dict[rotor_obj["name"]] = {"obj": rotor_obj, "ref_count": 0}
+			components_ref_dict[rotor_obj["name"]] = {"obj": rotor_obj, "ref_count": 0}
+
+	if "wings" in geometry:
+		for wing_obj in geometry["wings"]:
+			#wing_ref_dict[wing_obj["name"]] = {"obj": wing_obj, "ref_count": 0}
+			components_ref_dict[wing_obj["name"]] = {"obj": wing_obj, "ref_count": 0}
 
 	num_rotors = 0
 	for child in geometry["children"]:
-		num_rotors = count_rotors(child, rotor_ref_dict) + num_rotors
+		#num_rotors = count_rotors(child, rotor_ref_dict) + num_rotors
+		num_rotors = count_rotors(child, components_ref_dict) + num_rotors
 
-	aircraft = Aircraft(num_rotors)  # from opencopter/aircrat/geometry.d?
+	num_wings = 0
+	for child in geometry["children"]:
+		#num_wings = count_wings(child, rotor_ref_dict) + num_wings
+		num_wings = count_wings(child, components_ref_dict) + num_wings
+
+	aircraft = Aircraft(num_rotors, num_wings)
 
 	motion_dict = {}
 	trim_axis_dict = {}
 
-	root_frame, rotors, _ = build_component(geometry, aircraft.root_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, None, requested_elements, geom_directory, motion_dict, motion, trim_frame_name, trim_axis_dict, 0, False)
-	# Nitya: filled here - motion_dict, trim_axis_dict, components_dict
+	#root_frame, rotors, _, wings = build_component(geometry, aircraft.root_frame, components_ref_dict, rotor_ref_dict, blade_ref_dict, components_dict, None, requested_elements, geom_directory, motion_dict, motion, trim_frame_name, trim_axis_dict, 0, False)
+	root_frame, rotors, _, wings = build_component(geometry, aircraft.root_frame, components_ref_dict, components_dict, None, requested_elements, geom_directory, motion_dict, motion, trim_frame_name, trim_axis_dict, 0, False)
 
 	aircraft.rotors = rotors
-
+	aircraft.wings = wings
+	
+	#print("num_wing_parts: ", wings[0].wing_parts[0].len())
 	aircraft.root_frame.name = root_frame.name
 	aircraft.root_frame.children = root_frame.children
 	aircraft.root_frame.set_frame_type(FrameType_aircraft())
@@ -359,9 +438,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 
 	return aircraft, motion_dict, trim_axis_dict, components_dict
 
-
-
-def compute_aero(log_file, args, output_base, do_compute, case):
+def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	flight_condition = case.condition
 	computational_parameters = case.computational_parameters
@@ -374,6 +451,8 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	trim_vec_dict = case.trim_vec_dict
 
 	num_rotors = rotorcraft_system.rotors.length()
+	num_wings = rotorcraft_system.wings.length()
+	print("number of wings: ", num_wings)
 
 	omegas = []
 	for m in flight_condition['motion']:
@@ -405,14 +484,18 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 			return (False, None)
 			
 		def get_rotor(rotor_frame):
+			print(f'looking for rotor frame {rotor_frame}')
 			for r_idx, rotor in enumerate(rotorcraft_system.rotors):
+				print("rotor ", r_idx, "\tframe = ", rotor.frame )
 				if rotor_frame == rotor.frame:
 					return (rotor, r_idx)
 				
 		def build_motion_lambdas(parent_frame, rotor, azimuth_offset, r_idx):
 			sub_motion_lambdas = []
 
+			#print("parant frame type = ", parent_frame.get_frame_type())
 			for child in parent_frame.children:
+				#print("child frame type = ", child.get_frame_type())
 				if (child.get_frame_type() == FrameType_rotor()):
 					(rotor, r_idx) = get_rotor(child)
 					log_file.write(f"Rotor {child.name} is rotor {r_idx}\n")	
@@ -450,7 +533,7 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 			return sub_motion_lambdas
 
 		motion_lambdas = build_motion_lambdas(rotorcraft_system.root_frame, None, 0, 0)
-
+	
 	trim_lambdas = []
 
 	def build_trim_lambda(in_frame):
@@ -512,27 +595,29 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	log_file.write(f'wake_history_length: {wake_history_length}\n') # this must be a list of integers
 
 	num_blades = [rotor.blades.length() for rotor in rotorcraft_system.rotors]
+	num_wing_parts = [wing.wing_parts.length() for wing in rotorcraft_system.wings]
+	print("num_wing_parts: ", num_wing_parts)
 
 	r = generate_radius_points(requested_elements)
 	elements = len(r)
 	log_file.write(f"requested_elements: {requested_elements}, actual elements:  {elements}\n")
 
-	# AircraftState is the top level container for holding the current
-	# aerodynamic state of the tandem_system. It breaks down into rotors
-	# the the individual blades. There is a series of functions provided
-	# to turn internal state data into a linear array.
-	rotorcraft_state = None
-	if do_compute:
-		rotorcraft_state = AircraftState(num_rotors, num_blades, elements, rotorcraft_system)
-		rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
-		# Nitya: figure out maybe later, why this needs to have 4 elements?
+	span_elements = 8
+	chord_elements = 4
+
+	if "span_elements" in computational_parameters:
+		span_elements = computational_parameters["span_elements"]
+		span_chunks = int(span_elements/chunk_size())
+
+	if "chord_elements" in computational_parameters:
+		chord_elements = computational_parameters["chord_elements"]
 
 	log_file.write(f"Freestream vel: {flight_condition['V_inf']} m/s\n")
 
 	# Create and setup the input state. This would be the
 	# sort of input a dynamics simulator might feed into
 	# the aero model.
-	rotorcraft_input_state = AircraftInputState(num_rotors, num_blades)
+	rotorcraft_input_state = AircraftInputState(num_rotors, num_blades, num_wings)
 
 	rotorcraft_system.root_frame.rotate(Vec3([0, 1, 0]), flight_condition["aoa"]*(math.pi/180.0))
 
@@ -554,12 +639,52 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 			rotorcraft_input_state.rotor_inputs[r_idx].r_0[b_idx] = r_0*rotorcraft_system.rotors[r_idx].blades[b_idx].average_chord/rotorcraft_system.rotors[r_idx].radius
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping[b_idx] = 0
 			rotorcraft_input_state.rotor_inputs[r_idx].blade_flapping_rate[b_idx] = 0
-			rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
+			if 'collective_groups' in flight_condition:
+				collective_idx = [idx for idx, x in enumerate(flight_condition['collective_groups']) if r_idx in x][0]
+				rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[collective_idx]
+			else:
+				rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
+	
+	if num_wings > 0:
+		rotorcraft_input_state.wing_inputs[0].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
+		rotorcraft_input_state.wing_inputs[0].freestream_velocity = flight_condition['V_inf']
+	
+	#set_circulation_to_zero(wing_lift_surface)
+
+	#for wp_idx in range(num_wing_parts[0]):
+
+	#print("wing_circulation = ", wing_lift_surface.wing_part_lift_surf[0].spanwise_filaments[0].chunks[0].gamma)
+
+	print("wing vortex geometry is set")
+	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+	wing_inflows = []
+	
+	###
+	# initialize the wing lifting surface and wing inflow here// check if span and chord nodes are different for that
+	###
+	if num_wings > 0:
+		wing_part_lift_surf = WingPartLiftingSurf(span_elements, chord_elements)
+		wing_lift_surface = WingLiftSurf(num_wing_parts[0])
+
+		wing_lift_surface.wing_part_lift_surf[wp_idx] = wing_part_lift_surf
+		
+		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[0], span_chunks, chord_elements)
+		
+		wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
+	
+	print("instantiated inflows")
+	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+
+	# AircraftState is the top level container for holding the current
+	# aerodynamic state of the tandem_system. It breaks down into rotors
+	# the the individual blades. There is a series of functions provided
+	# to turn internal state data into a linear array.
+	rotorcraft_state = None
+	if do_compute:
+		rotorcraft_state = CreateAircraftState(num_rotors, num_blades, elements, num_wings, num_wing_parts, span_elements, chord_elements, rotorcraft_system, rotorcraft_inflows, wing_inflows, [math.copysign(1.0, omega) for omega in omegas])
+		rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
 
 	print(f'num_blades: {num_blades}')
-	
-	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], dt) for r_idx in range(num_rotors)]
-	
 	a1 = 6.5e-5
 	if "a1" in computational_parameters:
 		a1 = computational_parameters['a1']
@@ -576,113 +701,130 @@ def compute_aero(log_file, args, output_base, do_compute, case):
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
 	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1, hybrid)
 	
-	vehicle = SimulatedVehicle(
-		rotorcraft_system,
-		rotorcraft_state,
-		rotorcraft_input_state,
-		rotorcraft_inflows,
-		rotor_wake_history,
-		motion_lambdas,
-		trim_lambdas,
-		case.name
-	)
+	try:
+		vehicle = SimulatedVehicle(
+			rotorcraft_system,
+			rotorcraft_state,
+			rotorcraft_input_state,
+			rotorcraft_inflows,
+			rotor_wake_history,
+			motion_lambdas,
+			trim_lambdas,
+			case.name
+		)
 
-	rotorcraft_thrusts, rotorcraft_namelists, results_dictionary = simulate_aircraft.simulate_aircraft(
-		log_file,
-		vehicle,
-		atmo,
-		elements,
-		args,
-		f'{output_base}/vtu',
-		f'{output_base}/acoustics',
-		do_compute,
-		flight_condition,
-		computational_parameters,
-		observer,
-		acoustics,
-		wake_history_length,
-		results,
-		wopwop_motion
-	)
-	
-	if do_compute:
+		rotorcraft_thrusts, rotorcraft_namelists, results_dictionary = simulate_aircraft.simulate_aircraft(
+			log_file,
+			vehicle,
+			atmo,
+			elements,
+			args.ws,
+			output_base,
+			f'{output_base}/vtu',
+			f'{output_base}/acoustics',
+			do_compute,
+			flight_condition,
+			computational_parameters,
+			observer,
+			acoustics,
+			wake_history_length,
+			results,
+			wopwop_motion
+		)
 
-		for r_idx in range(num_rotors):
-			actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
-			wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
-			wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
+		if do_compute:
+			# results_dictionary = {}
+			for r_idx in range(num_rotors):
+				actual_wake_history = wake_history_length[r_idx] if wake_history_length[r_idx]%chunk_size() == 0 else wake_history_length[r_idx] + (chunk_size() - wake_history_length[r_idx]%chunk_size())
+				wake_trajectories = np.zeros((num_blades[r_idx], 3, actual_wake_history))
+				wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
 
-			for b_idx in range(num_blades[r_idx]):
-				wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-				wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+				for b_idx in range(num_blades[r_idx]):
+					wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+					wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+					wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+					wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
 
-			results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
-			results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
-						
-		results_dictionary["rotor_c_t"] = rotorcraft_thrusts
-		results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
-		results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
+				results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
+				results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
+				
+			results_dictionary["rotor_c_t"] = rotorcraft_thrusts
+			results_dictionary["rotor_collectives"] = [rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[0] for r_idx in range(num_rotors)]
+			results_dictionary["rotor_chis"] = [rotorcraft_inflows[r_idx].wake_skew() for r_idx in range(num_rotors)]
 
-		scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
+			scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
 
-		if args.vtu_results:
-			if results is not None:
-				if 'inflow_slices' in results:
-					for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
-						res_x = inflow_slice["resolution"][0]
-						res_y = inflow_slice["resolution"][1]
-						res_z = inflow_slice["resolution"][2]
+			if args.vtu_results:
+				if results is not None:
+					if 'inflow_slices' in results:
+						for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
+							res_x = inflow_slice["resolution"][0]
+							res_y = inflow_slice["resolution"][1]
+							res_z = inflow_slice["resolution"][2]
 
-						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-						start = Vec3(inflow_slice["slice_start"])
+							deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+							start = Vec3(inflow_slice["slice_start"])
 
-						write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
+							#aoa =  vehicle.input_state.rotor_inputs[0].angle_of_attack
+							#write_inflow_vtu(f"{vtu_output_path}/../inflow_model_slice_    .vtu", vehicle.inflows, deltas, start, res_x, res_y, res_z, 0, omegas[0], vehicle.aircraft.rotors)
+							write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
 
-				if 'wake_slices' in results:
-					for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
-						res_x = inflow_slice["resolution"][0]
-						res_y = inflow_slice["resolution"][1]
-						res_z = inflow_slice["resolution"][2]
+					if 'wake_slices' in results:
+						for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
+							res_x = inflow_slice["resolution"][0]
+							res_y = inflow_slice["resolution"][1]
+							res_z = inflow_slice["resolution"][2]
 
-						deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-						start = Vec3(inflow_slice["slice_start"])
+							deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+							start = Vec3(inflow_slice["slice_start"])
 
-						write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
+							write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
 
-	cases = []
-	if (acoustics is not None) and (observer is not None):
-		print("Acoustics for individual rotors")
-		print(f"args.fs: {args.fs}")
-		print(f"num_rotors: {num_rotors}")
-		if (num_rotors > 1) and (args.fs is False):
-			print("Acoustics for individual rotors 1")
-			for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
-				print(f"Acoustics for individual rotor {r_idx}")
-				wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
+		cases = []
+		if (acoustics is not None) and (observer is not None):
+			print("Acoustics for individual rotors")
+			print(f"args.fs: {args.fs}")
+			print(f"num_rotors: {num_rotors}")
+			if (num_rotors > 1) and (args.fs is False):
+				print("Acoustics for individual rotors 1")
+				for r_idx, namelist in enumerate(rotorcraft_namelists[0:num_rotors]):
+					print(f"Acoustics for individual rotor {r_idx}")
+					wopwop_case_path = f'{output_base}/acoustics/rotor_{r_idx}/'
 
-				if not path.isdir(wopwop_case_path):
-					makedirs(wopwop_case_path, exist_ok=True)
+					if not path.isdir(wopwop_case_path):
+						makedirs(wopwop_case_path, exist_ok=True)
 
-				single_rotor_case = Casename()
-				single_rotor_case.caseNameFile = "case.nam"
-				single_rotor_case.globalFolderName = wopwop_case_path
-				single_rotor_case.namelist = namelist
+					single_rotor_case = Casename()
+					single_rotor_case.caseNameFile = "case.nam"
+					single_rotor_case.globalFolderName = wopwop_case_path
+					single_rotor_case.namelist = namelist
 
-				cases.append(single_rotor_case)
+					cases.append(single_rotor_case)
 
 
-		wopwop_case_path = f'{output_base}/acoustics/full_system/'
+			wopwop_case_path = f'{output_base}/acoustics/full_system/'
 
-		if not path.isdir(wopwop_case_path):
-			makedirs(wopwop_case_path, exist_ok=True)
+			if not path.isdir(wopwop_case_path):
+				makedirs(wopwop_case_path, exist_ok=True)
 
-		full_system_case = Casename()
-		full_system_case.caseNameFile = "case.nam"
-		full_system_case.globalFolderName = wopwop_case_path
-		full_system_case.namelist = rotorcraft_namelists[-1]
+			full_system_case = Casename()
+			full_system_case.caseNameFile = "case.nam"
+			full_system_case.globalFolderName = wopwop_case_path
+			full_system_case.namelist = rotorcraft_namelists[-1]
 
-		cases.append(full_system_case)
+			cases.append(full_system_case)
 
-	return cases
+		cases_tuple = [(case.caseNameFile, case.globalFolderName) for case in cases]
+		for case in cases:
+			write_namelist(case.namelist, f'{case.globalFolderName}/{case.caseNameFile}')
+
+	except FloatingPointError as e:
+		print(f"Simulation failed with floating point error: {e}")
+		cases_tuple = None
+	except Exception as e:
+		print(f"Simulation failed with error: {e}")
+		print(print_exception(e))
+		cases_tuple = None
+
+	result_queue.put(cases_tuple)
+	result_queue.join()

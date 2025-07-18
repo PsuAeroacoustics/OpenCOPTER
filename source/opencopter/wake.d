@@ -139,12 +139,13 @@ extern(C++) struct RotorWakeT(ArrayContainer AC) {
 
 template is_wake(A) {
 	enum bool is_wake = {
+		return true;
 		// Nitya: isInstanceOf(S, T) check if template T is an instance of S 
-		static if(isPointer!(A)) {
-			return isInstanceOf!(WakeT, PointerTarget!A);
-		} else {
-			return isInstanceOf!(WakeT, A);
-		}
+		// static if(isPointer!(A)) {
+		// 	return isInstanceOf!(WakeT, PointerTarget!A);
+		// } else {
+		// 	return isInstanceOf!(WakeT, A);
+		// }
 	}();
 }
 
@@ -583,6 +584,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			}
 
 			if(x_bp1[n_idx].isNaN || x_ap1[n_idx].isNaN) {
+				gamma[n_idx] = 0;
 				r_cp1[n_idx] = 0.001;
 
 				x_ap1[n_idx] = 101;
@@ -626,16 +628,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		immutable Chunk dx_p1 = (x_bp1[] - x_ap1[]);
 		immutable Chunk dy_p1 = (y_bp1[] - y_ap1[]);
 		immutable Chunk dz_p1 = (z_bp1[] - z_ap1[]);
-
-		// Chunk dl1 = (dx[]*dx[] + dy[]*dy[] + dz[]*dz[]);
-		// Chunk dl2 = (dx_m1[]*dx_m1[] + dy_m1[]*dy_m1[] + dz_m1[]*dz_m1[]);
-		// Chunk dl3 = (dx_p1[]*dx_p1[] + dy_p1[]*dy_p1[] + dz_p1[]*dz_p1[]);
-
-		// dl1 = sqrt(dl1);
-		// dl2 = sqrt(dl2);
-		// dl3 = sqrt(dl3);
-
-		//immutable Chunk dl = (1.0/3.0)*(dl1[] + dl2[] + dl3[]);
 
 		// Perform Biot-savart calc for each passed in point.
 		foreach(n_idx; 0..Chunk.length) {
@@ -692,6 +684,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 
 			immutable Chunk unorm = 1.0/(miss_dist[] + r_c_ave[]*r_c_ave[]);
+			//immutable Chunk unorm = 1.0/(miss_dist2[] + r_c[]*r_c[]);
 			//immutable Chunk unorm = 1.0/(miss_dist[] + r_c[]*r_c[]);
 			immutable Chunk norm = sqrt(unorm)[]*unorm[];
 
@@ -705,6 +698,9 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			immutable Chunk tmp_v_x = random_mult_by_one[]*circulation[]*x_cross[];
 			immutable Chunk tmp_v_y = random_mult_by_one[]*circulation[]*y_cross[];
 			immutable Chunk tmp_v_z = random_mult_by_one[]*circulation[]*z_cross[];
+			// immutable Chunk tmp_v_x = random_mult_by_one[]*circulation[]*x_cross2[];
+			// immutable Chunk tmp_v_y = random_mult_by_one[]*circulation[]*y_cross2[];
+			// immutable Chunk tmp_v_z = random_mult_by_one[]*circulation[]*z_cross2[];
 
 			Chunk dx_p, dy_p, dz_p;
 
@@ -770,7 +766,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 }
 
 InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, auto ref AS ac_state, size_t rotor_idx, size_t blade_idx, size_t blade_chunk_idx = 0, bool single_rotor = false, bool shed_only = false, bool tip_only = false, bool trackBWIevents = false)
-	if(is_wake!W && is_aircraft_state!AS)
+	if((isInstanceOf!(WakeT, W) || (isPointer!W && isInstanceOf!(WakeT, PointerTarget!W))) && is_aircraft_state!AS)
 {
 	static import std.math;
 
@@ -876,8 +872,7 @@ void smooth_wake_component(string component, VF)(auto ref VF filament, double[] 
 	set_wake_component!component(filament, smooth_buffer);
 }
 
-// Nitya: WHere am I updating wake??
-void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, ref AircraftStateT!AC ac_state, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, I[] inflows, immutable Atmosphere atmo, size_t time_step, double dt) {
+void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, ref AircraftStateT!AC ac_state, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t time_step, double dt) {
 
 	static import std.math;
 	import std.stdio : writeln;
@@ -888,11 +883,18 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 	foreach(rotor_idx, ref rotor; ac_state.rotor_states) {
 
 		immutable double r_c = ac.rotors[rotor_idx].blades[0].r_c;
-		immutable Vec4 inboard_factor = Vec4(1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/4.0, 0, 0, 1.0/ac.rotors[rotor_idx].radius)*ac.rotors[rotor_idx].radius;
 
 		immutable Vec4 freestream = ac_state.freestream;
 		
 		foreach(blade_idx, ref blade; rotor.blade_states) {
+
+			immutable Vec4 inboard_factor =
+			Vec4(
+				1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/4.0,
+				ac.rotors[rotor_idx].blades[blade_idx].chunks[$-1].xi[$-1],
+				0,
+				1.0/ac.rotors[rotor_idx].radius
+			)*ac.rotors[rotor_idx].radius;
 
 			static if(AC == ArrayContainer.none) {
 				auto current_tip_filament = &wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[blade_idx];
@@ -956,25 +958,23 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 						auto global_infow = Vector!(4, Chunk)(0);
 
-						foreach(i_rotor_idx, ref inflow; inflows) {
+						foreach(i_rotor_idx, ref interacting_rotor; ac_state.rotor_states) {
 							auto xyz_chunk = Vector!(4, Chunk)(1);
+
 							xyz_chunk.mData[0][] = chunk.x[];
 							xyz_chunk.mData[1][] = chunk.y[];
 							xyz_chunk.mData[2][] = chunk.z[];
 
-							auto xyz_tpp = inflow.inverse_global_frame * xyz_chunk;
+							auto xyz_tpp = interacting_rotor.inflow_model.frame.inverse_global_matrix * xyz_chunk;
 
-							xyz_tpp /= ac.rotors[i_rotor_idx].radius;
-
-							immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
-
-							immutable Chunk lambda_i = ac.rotors[i_rotor_idx].radius*i_omega*inflows[i_rotor_idx].inflow_at(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2], chunk.x_e, 0)[];
+							immutable Chunk lambda_i = interacting_rotor.inflow_model.inflow_at(xyz_tpp)[];
 
 							auto local_inflow = Vector!(4, Chunk)(0);
 
 							local_inflow[2][] = lambda_i[];
+							local_inflow[3][] = 0.0;
 
-							global_infow += inflow.frame.global_matrix * local_inflow;
+							global_infow += interacting_rotor.inflow_model.frame.global_matrix * local_inflow;
 						}
 
 						immutable Chunk v_x = freestream[0] + global_infow[0][];
@@ -1013,25 +1013,21 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 						auto global_infow = Vector!(4, Chunk)(0);
 
-						foreach(i_rotor_idx, ref inflow; inflows) {
+						foreach(i_rotor_idx, ref interacting_rotor; ac_state.rotor_states) {
 							auto xyz_chunk = Vector!(4, Chunk)(1);
 							xyz_chunk.mData[0][] = chunk.x[];
 							xyz_chunk.mData[1][] = chunk.y[];
 							xyz_chunk.mData[2][] = chunk.z[];
 
-							auto xyz_tpp = inflow.inverse_global_frame * xyz_chunk;
+							auto xyz_tpp = interacting_rotor.inflow_model.frame.inverse_global_matrix * xyz_chunk;
 
-							xyz_tpp /= ac.rotors[i_rotor_idx].radius;
-
-							immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
-
-							immutable Chunk lambda_i = ac.rotors[i_rotor_idx].radius*i_omega*inflows[i_rotor_idx].inflow_at(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2], chunk.x_e, 0)[];
+							immutable Chunk lambda_i = interacting_rotor.inflow_model.inflow_at(xyz_tpp)[];
 
 							auto local_inflow = Vector!(4, Chunk)(0);
 
 							local_inflow[2][] = lambda_i[];
-
-							global_infow += inflow.frame.global_matrix * local_inflow;
+							local_inflow[3][] = 0.0;
+							global_infow += interacting_rotor.inflow_model.frame.global_matrix * local_inflow;
 						}
 
 						immutable Chunk v_x = freestream[0] + global_infow[0][];
@@ -1062,15 +1058,26 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 				.chunks.length();
 
 			double max_gamma = 0;
+			int idx = 0;
+			int f_idx = 0;
 			foreach(ref c; ac_state
 				.rotor_states[rotor_idx]
 				.blade_states[blade_idx]
 				.chunks[num_chunks/3..$-1]) {
+
 				foreach(ref g; c.gamma) {
 					if(abs(g) > abs(max_gamma)) {
 						max_gamma = g;
+						f_idx = idx;
 					}
+					idx++;
 				}
+			}
+
+			immutable num_els = current_tip_filament.chunks.length*chunk_size.to!double;
+			double average_gamma = 0;
+			foreach(chunk; current_tip_filament.chunks) {
+				average_gamma += (1.0/num_els)*chunk.gamma.sum;
 			}
 
 			current_tip_filament.chunks[0].y[0] = y;
@@ -1087,8 +1094,7 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 				auto global_infow = Vector!(4, Chunk)(0);
 
-				foreach(i_rotor_idx, ref inflow; inflows) {
-					
+				foreach(i_rotor_idx, ref interacting_rotor; ac_state.rotor_states) {
 					if((i_rotor_idx == 0) && (rotor_idx == 1) && wake_history.hybrid) {
 					 	auto wake_velocities = wake_history.history[1].compute_wake_induced_velocities(chunk.x, chunk.y, chunk.z, ac_state, i_rotor_idx, blade_idx, 0, true, false, false, false);
 						global_infow[0][] += wake_velocities.v_x[];
@@ -1096,25 +1102,22 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 						global_infow[2][] += wake_velocities.v_z[];
 					} else {
 						auto xyz_chunk = Vector!(4, Chunk)(1);
+
 						xyz_chunk.mData[0][] = chunk.x[];
 						xyz_chunk.mData[1][] = chunk.y[];
 						xyz_chunk.mData[2][] = chunk.z[];
 
-						auto xyz_tpp = inflow.inverse_global_frame * xyz_chunk;
+						auto xyz_tpp = interacting_rotor.inflow_model.frame.inverse_global_matrix * xyz_chunk;
 
-						xyz_tpp /= ac.rotors[i_rotor_idx].radius;
-
-						immutable i_omega = std.math.abs(ac_input_state.rotor_inputs[i_rotor_idx].angular_velocity);
-
-						immutable Chunk lambda_i = ac.rotors[i_rotor_idx].radius*i_omega*inflow.inflow_at(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2], chunk.x_e, 0)[];
-					
+						immutable Chunk lambda_i = interacting_rotor.inflow_model.inflow_at(xyz_tpp)[];
+						
 						auto local_inflow = Vector!(4, Chunk)(0);
 
 						local_inflow[2][] = lambda_i[];
-						local_inflow[3][] = 1.0;
 
-						auto g = inflow.frame.global_matrix * local_inflow;
-						global_infow += g;
+						local_inflow[3][] = 0.0;
+
+						global_infow += interacting_rotor.inflow_model.frame.global_matrix * local_inflow;
 					}
 				}
 
@@ -1132,7 +1135,6 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 				current_tip_filament.chunks[c_idx].v_z[1..$] = v_z[0..$-1];
 				current_tip_filament.chunks[c_idx].x_e[1..$] = chunk.x_e[0..$-1];
 				current_tip_filament.chunks[c_idx].gamma[1..$] = chunk.gamma[0..$-1];
-				//current_tip_filament.chunks[c_idx].l_0[1..$] = chunk.l_0[0..$-1];
 
 				current_tip_filament.chunks[c_idx].dx[0..$-1] = current_tip_filament.chunks[c_idx].x[0..$-1] - current_tip_filament.chunks[c_idx].x[1..$];
 				current_tip_filament.chunks[c_idx].dy[0..$-1] = current_tip_filament.chunks[c_idx].y[0..$-1] - current_tip_filament.chunks[c_idx].y[1..$];
@@ -1147,7 +1149,6 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 
 				immutable Chunk Rev = current_tip_filament.chunks[c_idx].gamma[]/atmo.kinematic_viscosity;
 
-				//immutable Chunk tmp_phi = chunk.phi[] + dt*1.0/(abs(omega)*(2 - current_tip_filament.chunks[c_idx].l_0[]/l[])[])[];
 				immutable Chunk tmp_phi = chunk.phi[] + dt*(current_tip_filament.chunks[c_idx].l_0[]/l[])*abs(omega);
 				// Nitya: eq. 62
 
@@ -1177,7 +1178,6 @@ void update_wake(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac
 					current_tip_filament.chunks[c_idx + 1].v_z[0] = v_z[$-1];
 					current_tip_filament.chunks[c_idx + 1].x_e[0] = chunk.x_e[$-1];
 					current_tip_filament.chunks[c_idx + 1].gamma[0] = chunk.gamma[$-1];
-					//current_tip_filament.chunks[c_idx + 1].l_0[0] = chunk.l_0[$-1];
 					current_tip_filament.chunks[c_idx + 1].l_0[0] = l[$-1];
 					current_tip_filament.chunks[c_idx + 1].r_0[0] = chunk.r_0[$-1];
 					current_tip_filament.chunks[c_idx + 1].phi[0] = tmp_phi[$-1];

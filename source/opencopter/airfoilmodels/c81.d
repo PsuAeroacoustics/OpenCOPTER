@@ -152,9 +152,9 @@ class C81: AirfoilModel {
 
         import std.numeric : findRoot;
 
-        auto f = (double a) => CL.interpolation(a, 0.0);
+        auto f = (double a) => CL.interpolation(a, 0.1);
 
-        zla = findRoot(f, -10*(PI/180.0), 10*(PI/180.0));
+        zla = findRoot(f, -20*(PI/180.0), 10*(PI/180.0));
     }
 
     override double lift_curve_slope() {
@@ -192,7 +192,7 @@ class C81: AirfoilModel {
 
 auto load_c81_file(string filename) {
     /*reads airfoil tabel from C81 formatted File*/
-    bool multilinedata;
+    bool multilinedata = false;
     auto file = File(filename, "r");
     debug writeln("file loaded");
     auto blade_param = to!(double[])(split(file.readln));
@@ -225,12 +225,14 @@ auto load_c81_file(string filename) {
     debug writeln("nmach_m: ", nmach_m, " naoa_M: ", naoa_M);
 
     // lift
-    if (nmach_l > 9)
-    {
-        multilinedata = true;
-    }
+    // if (nmach_l > 9)
+    // {
+    //     multilinedata = true;
+    // }
     // read mach number
     double[] mach_l = to!(double[])(split(file.readln));
+    multilinedata = mach_l.length < nmach_l;
+
     if (multilinedata)
     {
         mach_l = (mach_l ~ to!(double[])(split(file.readln)));
@@ -243,6 +245,7 @@ auto load_c81_file(string filename) {
     {
         double[] line = split(file.readln).map!(x => to!double(x)).array;
         if (multilinedata)
+        //if (line.length < (nmach_l + 1))
         {
             line = (line ~ split(file.readln).map!(x => to!double(x)).array);
         }
@@ -251,16 +254,17 @@ auto load_c81_file(string filename) {
     }
     //writeln(naoa_L);
     //writeln(CL[38][0..$]);
-    multilinedata = false;
+    //multilinedata = false;
     debug writeln("Read the Cl data successfully");
     debug writeln("aoa table: \n ", aoa_L);
     // Drag
-    if (nmach_d > 9)
-    {
-        multilinedata = true;
-    }
+    // if (nmach_d > 9)
+    // {
+    //     multilinedata = true;
+    // }
     // read mach number
     double[] mach_d = to!(double[])(split(file.readln));
+    multilinedata = mach_d.length < nmach_d;
     if (multilinedata)
     {
         mach_d = (mach_d ~ to!(double[])(split(file.readln)));
@@ -272,6 +276,7 @@ auto load_c81_file(string filename) {
     {
         double[] line = to!(double[])(split(file.readln));
         if (multilinedata)
+        //if (line.length < (nmach_d + 1))
         {
             line = (line ~ to!(double[])(split(file.readln)));
         }
@@ -284,13 +289,14 @@ auto load_c81_file(string filename) {
 
     debug writeln("Read the Cd data successfully");
     // Moment
-    if (nmach_m > 9)
-    {
-        debug writeln("Moment is multiline");
-        multilinedata = true;
-    }
+    // if (nmach_m > 9)
+    // {
+    //     debug writeln("Moment is multiline");
+    //     multilinedata = true;
+    // }
     // read mach number
     double[] mach_m = to!(double[])(split(file.readln));
+    multilinedata = mach_m.length < nmach_m;
     if (multilinedata)
     {
         mach_m = (mach_m ~ to!(double[])(split(file.readln)));
@@ -301,7 +307,8 @@ auto load_c81_file(string filename) {
     for (int i = 0; i < naoa_M; i++)
     {
         double[] line = to!(double[])(split(file.readln));
-        if (multilinedata)
+        if(multilinedata)
+        //if (line.length < (nmach_m + 1))
         {
             line = (line ~ to!(double[])(split(file.readln)));
         }
