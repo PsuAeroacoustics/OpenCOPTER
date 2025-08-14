@@ -1018,6 +1018,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 						fill_u_pf(blade, u_p_array)
 
 						u = abs(omegas[rotor_idx])*radii[rotor_idx]*np.sqrt(u_t**2.0 + u_p_array**2.0)
+						u = u.astype(dtype=np.single)
 
 						append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
 
