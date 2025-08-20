@@ -172,6 +172,19 @@ extern(C++) struct WingLiftSurfT(ArrayContainer AC){
 	}
 }
 
+void print_wing_vortex_nodes(WLS)(auto ref WLS wing_lifting_surf, size_t _spanwise_chunks){
+    foreach(wp_idx, ref wp_lift_surf; wing_lifting_surf.wing_part_lift_surf){
+        foreach(sf_idx, ref spanwise_filament; wp_lift_surf.spanwise_filaments){
+            foreach(c_idx;0.._spanwise_chunks){
+                writeln("sf_idx =", sf_idx);
+                writeln("filament x = ", spanwise_filament.chunks[c_idx].x);
+                writeln("filament y = ", spanwise_filament.chunks[c_idx].y);
+                writeln("filament z = ", spanwise_filament.chunks[c_idx].z);
+            }
+        }
+    }
+}
+
 void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref WG wing_geometry, size_t _spanwise_chunks, size_t _chordwise_nodes){
     
     import std.math : cos,tan, PI;
@@ -239,8 +252,13 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
                 }    
             }
         }
+
+        print_wing_vortex_nodes(wing_lifting_surf, _spanwise_chunks);
     }
 }
+
+
+
 
 void set_circulation_to_zero(WLS)(auto ref WLS wing_lifting_surf){
 
@@ -653,7 +671,7 @@ struct VortexLatticeT(ArrayContainer AC) {
 				influence_inv[r][ch][] = _influence_inv[r][ch*chunk_size..ch*chunk_size+chunk_size];
 			}
 		}
-        //writeln("inf = ", influence);
+        debug writeln("inf_inv= ", influence_inv);
     }
 
     void compute_d_gamma_coefficients(WLS,WS)(auto ref WLS wing_lift_surface, auto ref WS wing_part_state, size_t wp_idx, size_t span_chunk_idx, size_t chord_node_idx, immutable Chunk u){ 

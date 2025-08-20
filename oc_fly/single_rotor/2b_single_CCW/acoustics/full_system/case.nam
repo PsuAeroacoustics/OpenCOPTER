@@ -1,0 +1,283 @@
+&EnvironmentIn
+	nbObserverContainers = 1
+	nbSourceContainers = 1
+	pressureFolderName = 'pressure/'
+	SPLFolderName = 'spl/'
+	sigmaFolderName = 'sigma/'
+	debugLevel = 12
+	ASCIIOutputFlag = .false.
+	OASPLdBFlag = .true.
+	OASPLdBAFlag = .true.
+	spectrumFlag = .true.
+	SPLdBFlag = .true.
+	SPLdBAFlag = .true.
+	pressureGradient1AFlag = .false.
+	acousticPressureFlag = .true.
+	thicknessNoiseFlag = .false.
+	loadingNoiseFlag = .true.
+	totalNoiseFlag = .true.
+	sigmaFlag = .true.
+	loadingNoiseSigmaFlag = .true.
+	thicknessNoiseSigmaFlag = .true.
+	totalNoiseSigmaFlag = .true.
+	normalSigmaFlag = .true.
+	machSigmaFlag = .false.
+	observerSigmaFlag = .true.
+	velocitySigmaFlag = .false.
+	accelerationSigmaFlag = .false.
+	densitySigmaFlag = .false.
+	momentumSigmaFlag = .false.
+	pressureSigmaFlag = .false.
+	loadingSigmaFlag = .true.
+	areaSigmaFlag = .true.
+	MdotrSigmaFlag = .false.
+	iblankSigmaFlag = .false.
+	broadbandFlag = .false.
+/
+&EnvironmentConstants
+	rho = 1.2055
+	c = 341.7
+	nu = 1.803e-05
+/
+&ObserverIn
+	Title = 'Mic array'
+	nt = 723
+	tMin = 0.0131743
+	tMax = 0.0762993
+	nbBase = 1
+	fileName = '../data/observers.dat'
+	nbFreqRanges = 3
+/
+&CB
+	Title = 'Forward Velocity'
+	TranslationType = 'KnownFunction'
+	AH = 0, 0, 0
+	VH = -32.9, 0, 0
+	Y0 = 0, 0, 0
+/
+&RangeIn
+	Title = 'BVI_spectrum_1'
+	minFrequency = 763.944
+	maxFrequency = 5092.96
+/
+&RangeIn
+	Title = 'BVI_spectrum_2'
+	minFrequency = 636.62
+	maxFrequency = 5092.96
+/
+&RangeIn
+	Title = 'Full_spectrum'
+	minFrequency = 63.662
+/
+&ContainerIn
+	Title = 'single_rotor container'
+	nbContainer = 4
+	dTau = 8.72665e-05
+	tauMax = 0.0629191
+	nbBase = 3
+/
+&CB
+	Title = 'Forward Velocity'
+	TranslationType = 'KnownFunction'
+	AH = 0, 0, 0
+	VH = -32.9, 0, 0
+	Y0 = 0, 0, 0
+/
+&CB
+	Title = 'Frame Change'
+	AxisType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 0, 0, 1
+	AngleValue = 3.14159
+/
+&CB
+	Title = 'Aircraft aoa'
+	AxisType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 0, 1, 0
+	AngleValue = -0
+/
+&ContainerIn
+	Title = 'blade_0 container'
+	patchGeometryFile = '../data/Rotor_0_blade_0_geometry.dat'
+	patchLoadingFile = '../data/Rotor_0_blade_0_loading.dat'
+	BPMNoiseFlag = .false.
+	nbBase = 4
+/
+&CB
+	Title = 'Rotor_0 fixed'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&CB
+	Title = 'Rotor_0'
+	Rotation = .true.
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'KnownFunction'
+	Omega = 200
+	Psi0 = 0.0174533
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+/
+&CB
+	Title = 'blade attach 0'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	Psi0 = -3.14159
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&CB
+	Title = 'blade_0'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 1, 0, 0
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&ContainerIn
+	Title = 'blade_1 container'
+	patchGeometryFile = '../data/Rotor_0_blade_1_geometry.dat'
+	patchLoadingFile = '../data/Rotor_0_blade_1_loading.dat'
+	BPMNoiseFlag = .false.
+	nbBase = 4
+/
+&CB
+	Title = 'Rotor_0 fixed'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&CB
+	Title = 'Rotor_0'
+	Rotation = .true.
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'KnownFunction'
+	Omega = 200
+	Psi0 = 0.0174533
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+/
+&CB
+	Title = 'blade attach 1'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	Psi0 = -1.5708
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 1.5708
+/
+&CB
+	Title = 'blade_1'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 1, 0, 0
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&ContainerIn
+	Title = 'blade_2 container'
+	patchGeometryFile = '../data/Rotor_0_blade_2_geometry.dat'
+	patchLoadingFile = '../data/Rotor_0_blade_2_loading.dat'
+	BPMNoiseFlag = .false.
+	nbBase = 4
+/
+&CB
+	Title = 'Rotor_0 fixed'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&CB
+	Title = 'Rotor_0'
+	Rotation = .true.
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'KnownFunction'
+	Omega = 200
+	Psi0 = 0.0174533
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+/
+&CB
+	Title = 'blade attach 2'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	Psi0 = 0
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 3.14159
+/
+&CB
+	Title = 'blade_2'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 1, 0, 0
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&ContainerIn
+	Title = 'blade_3 container'
+	patchGeometryFile = '../data/Rotor_0_blade_3_geometry.dat'
+	patchLoadingFile = '../data/Rotor_0_blade_3_loading.dat'
+	BPMNoiseFlag = .false.
+	nbBase = 4
+/
+&CB
+	Title = 'Rotor_0 fixed'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/
+&CB
+	Title = 'Rotor_0'
+	Rotation = .true.
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'KnownFunction'
+	Omega = 200
+	Psi0 = 0.0174533
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+/
+&CB
+	Title = 'blade attach 3'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	Psi0 = 1.5708
+	AxisValue = 0, 0, 1
+	TranslationValue = 0, 0, 0
+	AngleValue = 4.71239
+/
+&CB
+	Title = 'blade_3'
+	AxisType = 'TimeIndependent'
+	TranslationType = 'TimeIndependent'
+	AngleType = 'TimeIndependent'
+	AxisValue = 1, 0, 0
+	TranslationValue = 0, 0, 0
+	AngleValue = 0
+/

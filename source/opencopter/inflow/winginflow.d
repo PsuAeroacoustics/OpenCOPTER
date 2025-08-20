@@ -56,9 +56,10 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
     this(WG* _wing, WIS* _wing_input, WLS* _wing_lift_surf){
 
-        _wing.frame.parent.children ~= new Frame(Vec3(1, 0, 0), PI, Vec3(0, 0, 0.0), _wing.frame.parent, _wing.frame.parent.name ~ " inflow", "connection");
+        _wing.frame.parent.children ~= new Frame(Vec3(1, 0, 0), 0, Vec3(0, 0, 0), _wing.frame.parent, _wing.frame.parent.name ~ " inflow", "connection");
 		local_frame = _wing.frame.parent.children[$-1];
-		local_frame.local_matrix[1, 1] *= -1.0;
+        writeln("local_frame local mat = ", local_frame.local_matrix, "\tglobal mat = ", local_frame.global_matrix);
+		//local_frame.local_matrix[1, 1] *= -1.0;
 
         wing = _wing;
         //wing_state = _wing_state;
@@ -89,19 +90,35 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         }
     }
     
-    void update(AircraftStateT!AC ac_state, double dt) {
+    void update(AircraftStateT!AC ac_state, double dt){
 
         auto wing_state = ac_state.wing_states[].filter!(WS => WS.inflow_model.frame == this.frame).front;
         
         immutable num_span_chunks = wing_state.wing_part_states[0].chunks.length;
         immutable num_chord_pt =  wing_state.wing_part_states[0].ctrl_chunks.length/num_span_chunks;
+        
+        /*foreach(wp_idx, wp; wing_state.wing_part_states){
+            foreach(ctrl_ch_idx, ctrl_chunk; wp.ctrl_chunks){
+                writeln("wp_idx = ", wp_idx, "chunk_idx = ", ctrl_ch_idx, "\tu_t = ", ctrl_chunk.ctrl_pt_ut[]);
+                writeln("wp_idx = ", wp_idx, "chunk_idx = ", ctrl_ch_idx, "\tu_p = ", ctrl_chunk.ctrl_pt_up[]);
+                writeln("wp_idx = ", wp_idx, "chunk_idx = ", ctrl_ch_idx, "\taoa = ", ctrl_chunk.ctrl_pt_aoa[]);
+            }
+        }*/
+        /*foreach(wp_idx, wp_surf; wing_lift_surf.wing_part_lift_surf){
+            foreach(fl_idx, filament; wp_surf.spanwise_filaments){
+                foreach(ch_idx, chunk; filament.chunks){
+                    writeln("\nwp_idx = ", wp_idx, "\tfl_idx = ", fl_idx, "\tch_idx = ", ch_idx, "\tA_kl = ", chunk.A_kl[]);
+                    writeln("\tgamma = ", chunk.gamma[]);
+                }
+            }
+        }*/
 
-        auto combined_inflow = Vector!(4, Chunk)(0.0);
 
         Chunk wing_aoa = wing_input.angle_of_attack;     
         debug writeln("going into for loop");
         foreach(wp_idx, wing_part; wing.wing_parts){
-            foreach(ch_idx,ctrl_chunk; wing_part.ctrl_chunks) {
+            auto combined_inflow = Vector!(4, Chunk)(0.0);
+            foreach(ch_idx,ctrl_chunk; wing_part.ctrl_chunks){
                 auto ctrl_xyz = Vector!(4, Chunk)(1.0);
                 ctrl_xyz[0][] = ctrl_chunk.ctrl_pt_x[];
                 ctrl_xyz[1][] = ctrl_chunk.ctrl_pt_y[];
@@ -111,7 +128,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                 //writeln("ctrl_chunk:", "\ty = ",  ctrl_chunk.ctrl_pt_y[]);
                 //writeln("ctrl_chunk:", "\tz = ",  ctrl_chunk.ctrl_pt_z[]);
 
-                foreach(if_idx, ref rotor; ac_state.rotor_states) {
+                foreach(rotor_idx, ref rotor; ac_state.rotor_states) {
                     auto xyz_tpp = local_frame.inverse_global_matrix * ctrl_xyz;
 
                     immutable Chunk rotor_induced = rotor.inflow_model.inflow_at(xyz_tpp);
@@ -123,7 +140,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                     combined_inflow += rotor.inflow_model.frame.global_matrix * local_inflow;
                 }
                 //writeln("rotor inflows calculated", combined_inflow);
-                foreach(if_idx, ref wing; ac_state.wing_states) {
+                foreach(if_idx, ref wing; ac_state.wing_states){
                     if(wing.inflow_model != this) {
                         auto xyz_tpp = local_frame.inverse_global_matrix * ctrl_xyz;
 
@@ -134,6 +151,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                         local_inflow[2][] = wing_induced[];
 
                         combined_inflow += wing.inflow_model.frame.global_matrix * local_inflow;
+                        writeln("going into wing_inflow");
                     }
                 }
                 //writeln("wing inflows calculated", combined_inflow);
@@ -141,19 +159,31 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                 combined_inflow[0][] += ac_state.freestream[0];
                 combined_inflow[1][] += ac_state.freestream[1];
                 combined_inflow[2][] += ac_state.freestream[2];
+                
+                /*writeln("\n ctrl_chunk_idx = ", ch_idx, "ctrl_chunk = ", ctrl_chunk);
+                writeln("combined_inflow_x = ", combined_inflow[0]);
+                writeln("combined_inflow_y = ", combined_inflow[1]);
+                writeln("combined_inflow_z = ", combined_inflow[2]);*/
 
-                immutable Vector!(4, Chunk) wing_local_inflow = local_frame.global_matrix*combined_inflow;
+                immutable Vector!(4, Chunk) wing_local_inflow = local_frame.global_matrix.inverse.get()*combined_inflow;
+
+                /*writeln("wing_local_inflow_x = ", wing_local_inflow[0]);
+                writeln("wing_local_inflow_y = ", wing_local_inflow[1]);
+                writeln("wing_local_inflow_z = ", wing_local_inflow[2]);*/
+
 
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_up[] = wing_local_inflow[2][];
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_ut[] = wing_local_inflow[0][];
                 //writeln("wp_idx = ", wp_idx, "\twing control point ut = ",wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_ut[]);
 
                 immutable wing_inflow_angle = atan2(wing_local_inflow[2], wing_local_inflow[0]);
+                
 
                 immutable Chunk effective_aoa = wing_aoa[] + wing_inflow_angle[];
                 
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_aoa[] = ctrl_chunk.camber[] - effective_aoa[];
                 //writeln("camber = ", ctrl_chunk.camber, "effective aoa = ", effective_aoa);
+                combined_inflow = Vector!(4, Chunk)(0.0);
             }
         }
         debug writeln("going into update_wing_circulation");

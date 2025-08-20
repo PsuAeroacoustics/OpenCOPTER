@@ -35,6 +35,16 @@ struct WakeFile {
 	}
 }
 
+/*struct AC_components {
+	RotorGeometryT!AC*[] rotors;
+	WingGeometryT!AC*[] wings;
+
+	this(RotorGeometryT!AC*[] rotors, WingGeometryT!AC*[] wings ){
+		this.rotors = rotors;
+		this.wings = wings;
+	}
+}*/
+
 auto start_wake_timehistory_file(AG, AIS)(string filename, double dt, auto ref AG aircraft_geometry, auto ref AIS aircraft_input_state, size_t wake_history_length, size_t shed_filaments, double aoa, size_t elements) {
 	auto wake_file = WakeFile(filename, wake_history_length, elements);
 
@@ -118,6 +128,7 @@ enum PlanarSymetry {
 
 immutable Mat4[PlanarSymetry] symmetry_mats;
 immutable InterpMap interp_map;
+immutable Vec3[PlanarSymetry] symmetry_translations;
 shared static this() {
 	symmetry_mats = [
 		PlanarSymetry.xy: Mat4(
@@ -135,6 +146,12 @@ shared static this() {
 			0, 1, 0, 0,
 			0, 0, 1, 0,
 			0, 0, 0, 1)
+	];
+
+	symmetry_translations = [
+		PlanarSymetry.xy: Vec3(1,1,-1),
+		PlanarSymetry.xz: Vec3(1,-1,1),
+		PlanarSymetry.yz: Vec3(-1,1,1)
 	];
 
 	interp_map[CurveType.linear] = &linear;
@@ -277,6 +294,18 @@ double[] linear(double[] control_points, double[] control_values, double[] radia
 double[] cubic_bezier_approx(double[], double[], double[]) {
 	enforce(false, "Approximate cubic bezier not supported by OpenCOPTER");
 	return new double[0];
+}
+
+
+void print_frame(F)(F frame, int depth = 0) {
+	import std.stdio : writeln;
+	import std.range : repeat;
+
+	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.local_matrix, "\t global matrix: ", frame.global_matrix);
+
+	foreach(ref child; frame.children) {
+		print_frame(child, depth + 1);
+	}
 }
 
 AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t elements = 48, size_t span_elements = 8, size_t chord_elements = 4) {
@@ -432,15 +461,23 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			writeln("wing position: ", position);
 		} else if(type_name != "Propeller" && type_name != "Wing") {
 			frame_type = FrameType.connection;
+			writeln("connection position: ", position);
 		} else {
 			frame_type = FrameType.rotor;
 			writeln("rotor position: ", position);
 		}
 
 		auto frame = new Frame(initial_axis, 0, position, null, name, frame_type);
+		if(frame_type == FrameType.wing){
+			writeln("frame_local_matrix = ", frame.local_matrix);
+		}
+
+		if(frame_type == FrameType.rotor){
+			writeln("rotor_local_matrix = ", frame.local_matrix);
+		}
 
 		if(frame_type == FrameType.rotor) {
-			frame.rotate(Vec3(0, 1, 0), -PI/2.0);
+			frame.rotate(Vec3(0, 1, 0), -PI/2.0); // why is this rotation here for the rotor?
 		}
 
 		/*if(frame_type == FrameType.wing) {
@@ -471,12 +508,24 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 		foreach(child_id; frame_data.child_ids) {
 			writeln("\tGoing into__foreach(child_id; frame_data.child_ids)__loop ");
+			if ((frame_data.frame.frame_type == FrameType.wing) && (frame_data.symmetry != PlanarSymetry.none)){
+				writeln("changeing wing symmetry to none");
+				frame_data.symmetry = PlanarSymetry.none;
+			}
 			if((frame_data.symmetry != PlanarSymetry.none) && !symmetry_applied) {
 				auto frame = geom_dict[child_id].frame;
 
 				auto sym_frame = new Frame(frame.axis, frame.angle, frame.local_position, frame.parent, frame.name~"_symmetry", frame.frame_type);
-				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
-
+				//auto sym_parent_frame_loc = Vec3(sym_frame.local_matrix[0,3], sym_frame.local_matrix[1,3], sym_frame.local_matrix[2,3]);
+				/*if(frame_data.symmetry == PlanarSymetry.xy){
+					sym_frame.translate(Vec3(0, 0, -2*sym_frame.local_matrix[2,3]));
+				}else if(frame_data.symmetry == PlanarSymetry.xz){
+					sym_frame.translate(Vec3(0, -2*sym_frame.local_matrix[1,3], 0));
+				}else if(frame_data.symmetry == PlanarSymetry.yz){
+					sym_frame.translate(Vec3(-2*sym_frame.local_matrix[0,3],0,0));
+				}*/
+				//writeln("sym_frame_loc = ", sym_frame_loc);
+				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;  /// the rotor or component is a symmetry of its symmetry paranet, but the coordinate system should be oriented exaxtly same as the symmetry parent
 				frame_data.frame.children ~= [frame, sym_frame];
 
 				auto child1_frame_data = new VspFrameData(
@@ -688,13 +737,18 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		}
 		writeln("past 1st if statement");
 
+		
 		foreach(child_id; frame_data.child_ids) {
 			writeln("Going into__foreach(child_id; frame_data.child_ids)__loop ");
+			if ((frame_data.frame.frame_type == FrameType.wing) && (frame_data.symmetry != PlanarSymetry.none)){
+				writeln("changeing wing symmetry to none");
+				frame_data.symmetry = PlanarSymetry.none;
+			}
 			if((frame_data.symmetry != PlanarSymetry.none) && !symmetry_applied) {
 				auto frame = geom_dict[child_id].frame;
-
+					
 				auto sym_frame = new Frame(frame.axis, frame.angle, frame.local_position, frame.parent, frame.name~"symmetry", frame.frame_type);
-				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
+				//sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
 
 				//frame_data.frame.children ~= [frame, sym_frame];
 
@@ -742,6 +796,373 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			}
 		}
 
+		/*foreach(child_id; frame_data.child_ids) {
+				wings ~= build_oc_wing(&geom_dict[child_id]);
+		}*/
+		if(frame_data.frame.frame_type == FrameType.wing) {
+			// read full wing properties
+
+			double camber = 0.0;
+			//writeln("xml_node: ", frame_data.xml_node.parseXPath("WingGeom/ParmContainer/WingGeom/TotalSpan"));
+			auto total_wing_span = frame_data.xml_node.parseXPath("ParmContainer/WingGeom/TotalSpan")[0].getAttribute("Value").to!double;
+			auto total_projected_span = frame_data.xml_node.parseXPath("ParmContainer/WingGeom/TotalProjectedSpan")[0].getAttribute("Value").to!double;
+			auto total_AR = frame_data.xml_node.parseXPath("ParmContainer/WingGeom/TotalAR")[0].getAttribute("Value").to!double;
+			auto total_area = frame_data.xml_node.parseXPath("ParmContainer/WingGeom/TotalArea")[0].getAttribute("Value").to!double;
+
+			writeln("total_wing_span = ", total_wing_span, "\t total_AR = ", total_AR, "\t total_area = ", total_area);
+
+			// add wingparts
+
+			auto x_sec_array = frame_data.xml_node.parseXPath("WingGeom/XSecSurf/XSec");
+			size_t num_wing_parts = 2*(x_sec_array.length - 1);
+
+			auto wing = new WingGeometryT!AC(
+				num_wing_parts,
+				Vec3(0.0,0.0,0.0),
+				total_wing_span
+			);
+
+			/*auto fixed_frame = frame_data.frame;
+			auto wing_name = fixed_frame.name;
+			writeln("wing_name: ", wing_name, "global position = ", fixed_frame.global_position());
+			
+			fixed_frame.name = fixed_frame.name~"fixed";
+			fixed_frame.frame_type = FrameType.connection;
+			wing.frame = new Frame(Vec3(1, 0, 0), 0, Vec3(0), fixed_frame, wing_name, FrameType.wing);
+
+			fixed_frame.children ~= wing.frame;*/
+			//writeln("frame_data.frame.local_position: ", frame_data.frame.local_position);
+			//writeln("frame_data.frame.global_position: ", frame_data.frame.global_position);
+			//wing.frame = new Frame(frame_data.frame.axis, 0, frame_data.frame.local_position, frame_data.frame.parent, frame_data.frame.name, FrameType.wing);
+			//writeln("wing frame name: ", wing.frame.name, "\tparent name: ", wing.frame.parent.name, "\t global position: ",wing.frame.global_position());
+
+			//frame_data.frame.parent.children ~= wing.frame;
+			wing.frame = frame_data.frame;
+			writeln("wing_parent = ", wing.frame.parent.name);
+
+			writeln("wing.frame.local_matrix = ", wing.frame.local_matrix, "\t wing.frame.global matrix = ", wing.frame.global_matrix);
+			writeln("printing global position = ", wing.frame.global_position());
+			auto wing_part_y_disct = generate_spanwise_control_points(span_elements);
+			
+			
+			writeln("pass : if(frame_data.frame.frame_type == FrameType.wing), entering for loop");
+			foreach(sec_idx, section; x_sec_array) {
+				//right now reading only one section of the wing. later will be extedned to multisection wing
+				if(sec_idx > 0 && sec_idx<2){
+					writeln("reading all the values");
+
+
+					writeln("span_elements: ", span_elements, "chord_nodes: ", chord_elements);
+					
+					// problem here!! its not passing this part
+					auto avg_chord = section.parseXPath("ParmContainer/XSec/Avg_Chord")[0].getAttribute("Value").to!double;
+					writeln("avg_chord: ", avg_chord);
+					auto root_chord = section.parseXPath("ParmContainer/XSec/Root_Chord")[0].getAttribute("Value").to!double;
+					writeln("root_chord: ", root_chord);
+					auto tip_chord = section.parseXPath("ParmContainer/XSec/Tip_Chord")[0].getAttribute("Value").to!double;
+					writeln("tip_chord: ", tip_chord);
+					auto sweep = section.parseXPath("ParmContainer/XSec/Sweep")[0].getAttribute("Value").to!double;
+					writeln("sweep: ", sweep);
+					auto sweep_location = section.parseXPath("ParmContainer/XSec/Sweep_Location")[0].getAttribute("Value").to!double;
+					writeln("sweep_location: ", sweep_location);
+					auto wing_part_span = section.parseXPath("ParmContainer/XSec/Span")[0].getAttribute("Value").to!double;					
+					writeln("wing_part_span: ", wing_part_span);
+
+					auto LE_sweep = x_sec_array[sec_idx-1].parseXPath("ParmContainer/XSec/OutLESweep")[0].getAttribute("Value").to!double;
+					auto TE_sweep = x_sec_array[sec_idx-1].parseXPath("ParmContainer/XSec/OutTESweep")[0].getAttribute("Value").to!double;
+
+					writeln("LE_sweep: ", LE_sweep);
+					writeln("TE_sweep: ", TE_sweep);
+
+					camber = section.parseXPath("XSec/XSecCurve/ParmContainer/XSecCurve/Camber")[0].getAttribute("Value").to!double;
+					writeln("camber: ", camber);
+
+					Vec3 wing_root_origin = Vec3(0.0,0.0,0.0);
+
+					auto lambda = tip_chord/root_chord;
+
+					double[] chord_dist = wing_part_y_disct.map!(y => root_chord * (1 - (1- lambda)*2.0* y)).array;
+					double[] sweep_dist = wing_part_y_disct.map!(y => sweep).array;
+					double[] twist_dist = wing_part_y_disct.map!(y => 0.0).array;
+
+					writeln("chord = ", chord_dist);
+					writeln("sweep = ", sweep_dist);
+					writeln("twist = ", twist_dist);
+					
+					auto loc = Location.left;
+
+					wing.wing_parts[0] = WingPartGeometryT!AC(
+						span_elements,
+						chord_elements,
+						wing_root_origin,
+						avg_chord,
+						root_chord,
+						tip_chord,
+						LE_sweep,
+						TE_sweep,
+						wing_part_span,
+						loc
+					);
+
+					loc = Location.right;
+					wing.wing_parts[1] = WingPartGeometryT!AC(
+						span_elements,
+						chord_elements,
+						wing_root_origin,
+						avg_chord,
+						root_chord,
+						tip_chord,
+						LE_sweep,
+						TE_sweep,
+						wing_part_span,
+						loc
+					);
+
+					foreach(wp_idx; 0..num_wing_parts){
+						wing.wing_parts[wp_idx].set_geometry_array!"chord"(chord_dist);
+						wing.wing_parts[wp_idx].set_geometry_array!"sweep"(sweep_dist);
+						wing.wing_parts[wp_idx].set_geometry_array!"twist"(twist_dist);
+					}
+
+					writeln("done reading the value of one wing");
+				}
+				writeln("Pass: Searched all wing parts");
+				
+			}
+			
+			writeln("Wing section lenght = ", wing.wing_parts.length);
+			set_wing_ctrl_pt_geometry(wing, span_elements, chord_elements, camber);
+
+			wings ~= wing;
+		}
+		writeln("about to return wing object");
+		return wings;
+	}
+
+	/*
+	AC_components build_oc_components(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
+		
+		RotorGeometryT!AC*[] rotors;
+		WingGeometryT!AC*[] wings;
+
+		//auto ac_components = AC_components(rotors, wings);
+
+		writeln("\n Going into build_oc_rotor");
+		if(parent_frame_data != null) {
+			writeln("\tSetting ", parent_frame_data.frame.name, " parent to ", frame_data.frame.name);
+			frame_data.frame.parent = parent_frame_data.frame;
+			writeln("\tparent_frame_data.frame.children: ", parent_frame_data.frame.children);
+		}
+		writeln("\tpast 1st if statement");
+
+		foreach(child_id; frame_data.child_ids) {
+			writeln("\tGoing into__foreach(child_id; frame_data.child_ids)__loop ");
+			if((frame_data.symmetry != PlanarSymetry.none) && !symmetry_applied) {
+				auto frame = geom_dict[child_id].frame;
+
+				auto sym_frame = new Frame(frame.axis, frame.angle, frame.local_position, frame.parent, frame.name~"_symmetry", frame.frame_type);
+				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
+
+				frame_data.frame.children ~= [frame, sym_frame];
+
+				auto child1_frame_data = new VspFrameData(
+					geom_dict[child_id].frame,
+					geom_dict[child_id].parent_id,
+					geom_dict[child_id].child_ids,
+					geom_dict[child_id].symmetry,
+					geom_dict[child_id].symmetry_parent,
+					geom_dict[child_id].xml_node
+				);
+
+				auto child2_frame_data = new VspFrameData(
+					sym_frame,
+					geom_dict[child_id].parent_id,
+					geom_dict[child_id].child_ids,
+					geom_dict[child_id].symmetry,
+					geom_dict[child_id].symmetry_parent,
+					geom_dict[child_id].xml_node
+				);
+				
+				writeln("\twent into symmetry check: rotor");
+				AC_components child1_components = build_oc_components(child1_frame_data, frame_data, true, false);
+				AC_components child2_components = build_oc_components(child2_frame_data, frame_data, true, true);
+				rotors ~= child1_components.rotors;
+				rotors ~= child2_components.rotors;
+				wings  ~= child1_components.wings;
+				wings  ~= child2_components.wings;
+				
+				writeln("\tpass symmetry check: rotor");
+
+			} else {
+				writeln("\tgeom_dict[child_id].frame.name: ", geom_dict[child_id].frame.name);
+				
+				string postfix = symmetry_parent ? "_symmetry" : "";
+
+				auto new_frame = new VspFrameData(
+					new Frame(geom_dict[child_id].frame, geom_dict[child_id].frame.name~postfix),
+					geom_dict[child_id].parent_id,
+					geom_dict[child_id].child_ids,
+					geom_dict[child_id].symmetry,
+					geom_dict[child_id].symmetry_parent,
+					geom_dict[child_id].xml_node
+				);
+				
+				frame_data.frame.children ~= new_frame.frame;
+				
+
+				writeln("\tpass symmetry check: else: rotor");
+				AC_components child_components = build_oc_components(new_frame, frame_data, symmetry_applied, symmetry_parent);
+				rotors ~= child_components.rotors;
+				wings  ~= child_components.wings;
+				
+			}
+		}
+
+		if(frame_data.frame.frame_type == FrameType.rotor) {
+			// add blades
+			auto num_blades = frame_data.xml_node.parseXPath("ParmContainer/Design/NumBlade")[0].getAttribute("Value").to!double.to!size_t;
+			auto R = 0.5*frame_data.xml_node.parseXPath("ParmContainer/Design/Diameter")[0].getAttribute("Value").to!double;
+			auto c_ave = frame_data.xml_node.parseXPath("ParmContainer/Design/Chord")[0].getAttribute("Value").to!double;
+			auto solidity = frame_data.xml_node.parseXPath("ParmContainer/Design/Solidity")[0].getAttribute("Value").to!double;
+
+			auto r_c = frame_data.xml_node.parseXPath("PropellerGeom/Chord/ParmContainer/Chord/r_0")[0].getAttribute("Value").to!double;
+			auto r = generate_radius_points(elements, r_c);
+
+			auto chord_curve_points = frame_data.xml_node.parseXPath("PropellerGeom/Chord/PCurve/NumPts")[0].getCData().to!double.to!size_t;
+			auto chord_curve_type = frame_data.xml_node.parseXPath("PropellerGeom/Chord/ParmContainer/Chord/CrvType")[0].getAttribute("Value").to!double.to!int.to!CurveType;
+
+			double[] chord_values = 
+				iota(0, chord_curve_points).
+				map!(a => frame_data.xml_node.parseXPath("PropellerGeom/Chord/ParmContainer/Chord/crd_"~a.to!string)[0].getAttribute("Value").to!double).
+				array;
+
+			double[] chord_points = 
+				iota(0, chord_curve_points).
+				map!(a => frame_data.xml_node.parseXPath("PropellerGeom/Chord/ParmContainer/Chord/r_"~a.to!string)[0].getAttribute("Value").to!double).
+				array;
+
+			double[] chord = interp_map[chord_curve_type](chord_points, chord_values, r);
+
+			auto twist_curve_points = frame_data.xml_node.parseXPath("PropellerGeom/Twist/PCurve/NumPts")[0].getCData().to!double.to!size_t;
+			auto twist_curve_type = frame_data.xml_node.parseXPath("PropellerGeom/Twist/ParmContainer/Twist/CrvType")[0].getAttribute("Value").to!double.to!int.to!CurveType;
+
+			double[] twist_values = 
+				iota(0, twist_curve_points).
+				map!(a => frame_data.xml_node.parseXPath("PropellerGeom/Twist/ParmContainer/Twist/tw_"~a.to!string)[0].getAttribute("Value").to!double*(PI/180.0).to!double).
+				array;
+
+			double[] twist_points = 
+				iota(0, twist_curve_points).
+				map!(a => frame_data.xml_node.parseXPath("PropellerGeom/Twist/ParmContainer/Twist/r_"~a.to!string)[0].getAttribute("Value").to!double).
+				array;
+
+			double[] twist = interp_map[twist_curve_type](twist_points, twist_values, r);
+
+			auto sweep_curve_points = frame_data.xml_node.parseXPath("PropellerGeom/Sweep/PCurve/NumPts")[0].getCData().to!double.to!size_t;
+			auto sweep_curve_type = frame_data.xml_node.parseXPath("PropellerGeom/Sweep/ParmContainer/Sweep/CrvType")[0].getAttribute("Value").to!double.to!int.to!CurveType;
+
+			double[] sweep_values = 
+				iota(0, sweep_curve_points).
+				map!(a => -frame_data.xml_node.parseXPath("PropellerGeom/Sweep/ParmContainer/Sweep/sw_"~a.to!string)[0].getAttribute("Value").to!double*(PI/180.0).to!double).
+				array;
+
+			double[] sweep_points = 
+				iota(0, sweep_curve_points).
+				map!(a => frame_data.xml_node.parseXPath("PropellerGeom/Sweep/ParmContainer/Sweep/r_"~a.to!string)[0].getAttribute("Value").to!double).
+				array;
+
+			double[] sweep = interp_map[sweep_curve_type](sweep_points, sweep_values, r);
+			double[] xi_p = sweep.map!(s => tan(s)).array;
+			debug writeln("r = ", r, ";");
+			debug writeln("xi_p = ", xi_p, ";");
+			debug writeln("sweep = ", sweep, ";");
+			debug writeln("twist = ", twist, ";");
+			debug writeln("chord = ", chord, ";");
+
+			double[] r_edges = new double[elements + 1];
+
+			r_edges[0] = r_c;
+
+			foreach(r_idx; 0..elements) {
+				immutable d = r[r_idx] - r_edges[r_idx];
+				r_edges[r_idx + 1] = r[r_idx] + d;
+			}
+
+			double[] r_delta = iota(0, elements).map!(i => r_edges[i + 1] - r_edges[i]).array;
+
+			double[] xi = new double[elements];
+
+			xi[] = r_delta[]*xi_p[];
+			foreach(x_idx, ref x; xi) {
+				if(x_idx == 0) {
+					x = 0;//xi_p[x_idx]*r_delta[x_idx];
+				} else {
+					x = xi_p[x_idx]*(r[x_idx] - r[x_idx - 1]) + xi[x_idx - 1];
+				}
+				// auto tmp = new double[x_idx];
+				// tmp[] = r_delta[0..x_idx]*xi_p[0..x_idx];
+				// x = sum(tmp);
+			}
+
+			debug writeln("xi = ", xi, ";");
+
+			auto rotor = new RotorGeometryT!AC(
+				num_blades,
+				Vec3(0),
+				R,
+				solidity
+			);
+
+			auto fixed_frame = frame_data.frame;
+			auto rotor_name = fixed_frame.name;
+			fixed_frame.name = fixed_frame.name~"_fixed";
+			fixed_frame.frame_type = FrameType.connection;
+			rotor.frame = new Frame(Vec3(1, 0, 0), 0, Vec3(0), fixed_frame, rotor_name, FrameType.rotor);
+
+			writeln("rotor frame name: ", rotor.frame.name, "\tparent name: ", rotor.frame.parent.name, "\t global position: ",fixed_frame.global_position());
+
+			fixed_frame.children ~= rotor.frame;
+
+			foreach(b_idx; 0..num_blades) {
+				double azimuth = (b_idx.to!double/num_blades.to!double)*2.0*PI;
+
+				auto blade_frame = new Frame(Vec3(0, 0, 1), azimuth, Vec3(0), rotor.frame, rotor.frame.name~"_blade_"~b_idx.to!string, FrameType.blade);
+
+				auto af_model = new ThinAirfoil(0.0);
+				size_t[2] extent = [0, elements - 1];
+
+				auto blade_airfoil = new BladeAirfoil([af_model], [extent]);
+
+				rotor.blades[b_idx] = BladeGeometryT!AC(
+					elements,
+					azimuth,
+					c_ave,
+					blade_airfoil,
+					0
+				);
+
+				rotor.blades[b_idx].frame = blade_frame;
+
+				rotor.blades[b_idx].set_geometry_array!"r"(r);
+				rotor.blades[b_idx].set_geometry_array!"twist"(twist);
+				rotor.blades[b_idx].set_geometry_array!"chord"(chord);
+				rotor.blades[b_idx].set_geometry_array!"sweep"(sweep);
+				rotor.blades[b_idx].set_geometry_array!"xi"(xi);
+				rotor.blades[b_idx].set_geometry_array!"xi_p"(xi_p);
+				rotor.blades[b_idx].blade_length = R*(1.0 - r_c);
+				compute_blade_vectors(rotor.blades[b_idx]);
+				
+				writeln("blade_geom.chunks.length: ", rotor.blades[b_idx].chunks.length);
+
+				writeln("rotor.blades[b_idx].chunks.length: ", rotor.blades[b_idx].chunks.length);
+
+				rotor.frame.children.length++;
+				rotor.frame.children[$-1] = blade_frame;
+			}
+
+			rotors ~= rotor;
+		}
+
 		if(frame_data.frame.frame_type == FrameType.wing) {
 			// read full wing properties
 
@@ -773,7 +1194,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			fixed_frame.frame_type = FrameType.connection;
 			wing.frame = new Frame(Vec3(1, 0, 0), 0, Vec3(0), fixed_frame, wing_name, FrameType.wing);
 
-			fixed_frame.children ~= wing.frame;*/
+			fixed_frame.children ~= wing.frame;
 			//writeln("frame_data.frame.local_position: ", frame_data.frame.local_position);
 			//writeln("frame_data.frame.global_position: ", frame_data.frame.global_position);
 			wing.frame = new Frame(frame_data.frame.axis, 0, frame_data.frame.local_position, frame_data.frame.parent, frame_data.frame.name, FrameType.wing);
@@ -873,10 +1294,11 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 			wings ~= wing;
 		}
-		writeln("about to return wing object");
-		return wings;
-	}
 
+		return AC_components(rotors, wings);
+		
+	}*/
+	
 	ac.root_frame = new Frame(Vec3(0, 0, 1), 0, Vec3(0, 0, 0), null, "aircraft", "aircraft");
 
 	RotorGeometryT!AC*[] rotors;
@@ -887,33 +1309,49 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		root_component.frame.parent = ac.root_frame;
 			
 		rotors ~= build_oc_rotor(&root_component, null, false, false);
-
-		foreach(child; root_component.frame.children){
-			writeln("\nroot component children = ", child.name);
-		}
-		
 		wings ~= build_oc_wing(&root_component, null, false, false);
+		
 	}
 
 	writeln("wings.length: ", wings.length);
-	writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
-	writeln("wing frame: ", wings[0].frame.name);
+	if (wings.length > 0){
+		writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
+		writeln("wing frame: ", wings[0].frame.name);
+	}
 	writeln("rotors.length: ", rotors.length);
 	writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
 
 	ac.rotors = new RotorGeometryT!AC[rotors.length];
 	ac.wings = new WingGeometryT!AC[wings.length];
 
-	foreach(r_idx; 0..rotors.length) {
-		ac.rotors[r_idx] = *rotors[r_idx];
-	}
-
 	foreach(w_idx; 0..wings.length) {
 		ac.wings[w_idx] = *wings[w_idx];
+		ac.wings[w_idx].frame.global_matrix = ac.wings[w_idx].frame.local_matrix;
+		//writeln("w_idx = ",w_idx);
+		//writeln("local_mat = ", ac.wings[w_idx].frame.local_matrix);
+		//writeln("global_mat = ", ac.wings[w_idx].frame.global_matrix);
 	}
+
+	foreach(r_idx; 0..rotors.length) {
+		ac.rotors[r_idx] = *rotors[r_idx];
+		//writeln("rotor_idx = ",r_idx);
+		//writeln("local_mat = ", ac.rotors[r_idx].frame.local_matrix);
+		//writeln("global_mat = ", ac.rotors[r_idx].frame.global_matrix);
+	}
+
+	ac.root_frame.print_frame();
 
 	ac.root_frame.update(Mat4.identity);
 
+	ac.root_frame.print_frame();
+
+	foreach(r_idx; 0..rotors.length) {
+		writeln("rotor_idx = ", r_idx, "\tglobal_mat = ", ac.rotors[r_idx].frame.global_matrix, "type = ", ac.rotors[r_idx].frame.frame_type);
+	}
+
+	foreach(w_idx; 0..wings.length) {
+		writeln("wing_idx = ", w_idx, "\tglobal_mat = ", ac.wings[w_idx].frame.global_matrix, "type = ", ac.wings[w_idx].frame.frame_type);
+	}
 	return ac;
 }
 

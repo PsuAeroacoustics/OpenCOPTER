@@ -238,6 +238,7 @@ struct Frame {
 	Vec3 axis;
 	double angle;
 
+	// for setting up a child frame based on axis, angle and axis
 	this(Vec3 _axis, double _angle, Vec3 translation, Frame* _parent, string _name, string _frame_type) {
 		parent = _parent;
 		name = _name;
@@ -388,6 +389,12 @@ struct Frame {
 		global_matrix = parent_global_mat*local_matrix;
 		inverse_global_matrix = global_matrix.inverse.get;
 
+		/*if(parent_global_mat[0,3] == 0 && parent_global_mat[1,3] == 0 && parent_global_mat[2,3] == 0){
+			writeln("\n");
+			writeln("parent global_mat = ", parent_global_mat);
+			writeln("local_mat = ",local_matrix);
+			writeln("global_mat = ", global_matrix);
+		}*/
 		foreach(ref child; children){
 			child.update(global_matrix);
 		}
@@ -430,7 +437,7 @@ extern(C++) struct AircraftT(ArrayContainer AC) {
 	this(size_t num_rotors , size_t num_wings) {		
 		mixin(array_ctor_mixin!(AC, "RotorGeometryT!AC", "rotors", "num_rotors"));
 
-		root_frame = new Frame(Vec3(0, 0, 1), PI, Vec3(0, 0, 0), null, "aircraft", "connection");
+		root_frame = new Frame(Vec3(0, 0, 1), PI, Vec3(0, 0, 0), null, "aircraft", "connection");  // I think the rotation of 180 degrees about z axis is to put root frame in x-back, y-starboard, and z-up
 		mixin(array_ctor_mixin!(AC, "WingGeometryT!AC", "wings", "num_wings"));
 	}
 

@@ -95,15 +95,16 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	linear_x = None
 	linear_r = None
 	linear_c = None
-	if 'x' in blade_object:
-		linear_x = blade_object['x']
-		if 'r' in blade_object:
-			linear_r = blade_object['r']
+	if "x" in blade_object:
+		linear_x = blade_object["x"]
+		if "r" in blade_object:
+			linear_r = blade_object["r"]
 		else:
 			linear_r = np.linspace(r_c, 1.0, len(linear_x))
 		f_x = interp1d(linear_r, linear_x)
 		x = f_x(r)
-
+		linear_r = None
+		
 	c = None
 	if "AR" in blade_object:
 		AR = blade_object["AR"]
@@ -153,6 +154,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 	xp = f_x_over_c_p(r)
 
 	thickness = f_thickness(r)
+	print("chord = ", c)
 
 	# Build the geom of the blades
 	blade = BladeGeometry(
@@ -313,7 +315,9 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 		blades = []
 
 	elif frame_type == FrameType_wing():
-		wing = build_wing(component_frame)
+		num_wing_parts = component_json["num_wing_parts"]
+		wing_span = component_json["AR"]
+		wing = build_wing(num_wing_parts, component_frame, 8, 4,wing_span)
 		wings.append(wing)
 
 	else:
@@ -438,7 +442,7 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 	aircraft.rotors = rotors
 	aircraft.wings = wings
 	
-	print("num_wing_parts: ", wings[0].wing_parts[0].len())
+	#print("num_wing_parts: ", wings[0].wing_parts[0].len())
 	aircraft.root_frame.name = root_frame.name
 	aircraft.root_frame.children = root_frame.children
 	aircraft.root_frame.set_frame_type(FrameType_aircraft())
@@ -474,6 +478,17 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	motion_lambdas = []
 	wopwop_motion = {}
+
+	def print_frame_tree(frame, prefix="", is_last=True):
+		connector = "└── " if is_last else "├── "
+		print(prefix + connector + frame.name + "__type__", frame.get_frame_type())
+		
+		new_prefix = prefix + ("    " if is_last else "│   ")
+		count = len(frame.children)
+		for i, child in enumerate(frame.children):
+			print_frame_tree(child, new_prefix, i == count - 1)
+
+	print_frame_tree(rotorcraft_system.root_frame)
 
 	if "motion" in flight_condition:
 		def ends_with_blade(frame):
@@ -654,30 +669,33 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			else:
 				rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 	
-	rotorcraft_input_state.wing_inputs[0].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
-	rotorcraft_input_state.wing_inputs[0].freestream_velocity = flight_condition['V_inf']
+	#wing_lift_surface = []
+
+	for w_idx in range(num_wings):
+		rotorcraft_input_state.wing_inputs[w_idx].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
+		rotorcraft_input_state.wing_inputs[w_idx].freestream_velocity = flight_condition['V_inf']
 	
 	###
 	# initialize the wing lifting surface and wing inflow here// check if span and chord nodes are different for that
 	###
 
 
-	wing_lift_surface = WingLiftSurf(num_wing_parts[0])
+		wing_lift_surface = WingLiftSurf(num_wing_parts[w_idx])
 
 	#set_circulation_to_zero(wing_lift_surface)
 
-	for wp_idx in range(num_wing_parts[0]):
-		wing_part_lift_surf = WingPartLiftingSurf(span_elements, chord_elements)
-		wing_lift_surface.wing_part_lift_surf[wp_idx] = wing_part_lift_surf
+		for wp_idx in range(num_wing_parts[w_idx]):
+			wing_part_lift_surf = WingPartLiftingSurf(span_elements, chord_elements)
+			wing_lift_surface.wing_part_lift_surf[wp_idx] = wing_part_lift_surf
 
 	#print("wing_circulation = ", wing_lift_surface.wing_part_lift_surf[0].spanwise_filaments[0].chunks[0].gamma)
 
-	set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[0], span_chunks, chord_elements)
-
-	print("wing vortex geometry is set")
+		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[w_idx], span_chunks, chord_elements)
+		
+		print("wing vortex geometry is set")
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
-	
+	print(len(wing_inflows))
 	print("instantiated inflows")
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 
@@ -690,6 +708,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		rotorcraft_state = CreateAircraftState(num_rotors, num_blades, elements, num_wings, num_wing_parts, span_elements, chord_elements, rotorcraft_system, rotorcraft_inflows, wing_inflows, [math.copysign(1.0, omega) for omega in omegas])
 		rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
 
+	print("number of wing states: ", rotorcraft_state.wing_states.length())
 	print(f'num_blades: {num_blades}')
 	a1 = 6.5e-5
 	if "a1" in computational_parameters:

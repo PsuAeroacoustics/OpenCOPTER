@@ -1,0 +1,33 @@
+
+Running sim with aoa: 0.0
+----------------------------------------------
+simulating aero
+Adding static motion lambda for frame WingGeom
+Rotor LiftRotor is rotor 0
+Adding constant motion lambda for frame LiftRotor. Part of rotor 0
+Adding static motion lambda for frame HingeGeom
+Rotor CruiseProp is rotor 1
+Adding constant motion lambda for frame CruiseProp. Part of rotor 1
+Rotor LiftRotor_symmetry is rotor 2
+Adding constant motion lambda for frame LiftRotor_symmetry. Part of rotor 2
+Adding static motion lambda for frame HingeGeom_symmetry
+Rotor CruiseProp_symmetry is rotor 3
+Adding constant motion lambda for frame CruiseProp_symmetry. Part of rotor 3
+Adding static motion lambda for frame WingGeom
+mus: [0.03571429 0.03571429 0.03571429 0.03571429]
+omegas: [ 200 -200 -200  200]
+wake_history_revs: [16 16 16 16]
+wake_history_length: [5400, 5400, 5400, 5400]
+requested_elements: 48, actual elements:  48
+Freestream vel: 5.0 m/s
+wake_history_length: [5400, 5400, 5400, 5400]
+num_rotors: 4
+post_conv_revolutions: 2
+Performing simulation
+0.00362: rotor rev: 0.000,0.00000:  C_T0: 0.0000, C_T1: 0.0000, C_T2: 0.0000, C_T3: 0.0000, T0: 0.0000, T1: 0.0000, T2: 0.0000, T3: 0.0000, P0: 0.0000, P1: 0.0000, P2: 0.0000, P3: 0.0000, Mx_0: 0.0000, Mx_1: 0.0000, Mx_2: 0.0000, Mx_3: 0.0000, My_0: 0.0000, My_1: 0.0000, My_2: 0.0000, My_3: 0.0000, θ0: 0.0000, θ1: 0.0000, θ2: 0.0000, θ3: 0.0000, θmin0: 0.0000, θmin1: 0.0000, θmin2: 0.0000, θmin3: 0.0000, θmax0: 0.0000, θmax1: 0.0000, θmax2: 0.0000, θmax3: 0.0000, θRMS0: 0.0000, θRMS1: 0.0000, θRMS2: 0.0000, θRMS3: 0.0000, χ0: 0.00, χ1: 0.00, χ2: 0.00, χ3: 0.00, combined_C_T: 0.00000, max L_2: 1000
+194.97312: rotor rev: 1.000,194.56955:  C_T0: 0.0102, C_T1: 0.0101, C_T2: 0.0101, C_T3: 0.0101, T0: 369.9285, T1: 367.3291, T2: 368.8016, T3: 366.3871, P0: -15783.9286, P1: -1341.0277, P2: -206.6771, P3: 2881.3568, Mx_0: 397.3165, Mx_1: 112.5845, Mx_2: -85.1947, Mx_3: 3.1490, My_0: -67.6392, My_1: -22.1241, My_2: 88.1083, My_3: -19.3860, θ0: -10.9530, θ1: -5.5376, θ2: -7.1448, θ3: -2.3604, θmin0: -16.6220, θmin1: -7.6129, θmin2: -16.6874, θmin3: -7.5420, θmax0: 10.0084, θmax1: 3.0000, θmax2: 8.3303, θmax3: 3.1373, θRMS0: 11.0994, θRMS1: 5.6585, θRMS2: 7.4011, θRMS3: 2.8743, χ0: 16.69, χ1: 6.53, χ2: 16.53, χ3: 6.52, combined_C_T: 0.04048, max L_2: 1000
+253.47952: rotor rev: 2.000,253.01126:  C_T0: 0.0100, C_T1: 0.0100, C_T2: 0.0100, C_T3: 0.0100, T0: 362.5886, T1: 363.3298, T2: 362.9284, T3: 363.0874, P0: -66426.7412, P1: -4550.0772, P2: -2850.2770, P3: 2196.9580, Mx_0: 602.9737, Mx_1: 222.7008, Mx_2: -69.7248, Mx_3: 107.6292, My_0: -318.1547, My_1: -58.6190, My_2: 208.4984, My_3: -7.2533, θ0: -11.6355, θ1: -6.0696, θ2: -9.2736, θ3: -3.8637, θmin0: -13.4409, θmin1: -7.5919, θmin2: -10.8746, θmin3: -4.6347, θmax0: -9.1443, θmax1: -4.8749, θmax2: -6.8469, θmax3: -2.2200, θRMS0: 11.6846, θRMS1: 6.0985, θRMS2: 9.3256, θRMS3: 3.9142, χ0: 27.90, χ1: 9.24, χ2: 25.51, χ3: 9.21, combined_C_T: 0.03992, max L_2: 1000
+
+Running sim with aoa: 0.0
+----------------------------------------------
+simulating aero

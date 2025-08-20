@@ -1,0 +1,21 @@
+
+Running sim with aoa: 0.0
+----------------------------------------------
+simulating aero
+Rotor Rotor_0 is rotor 0
+Adding constant motion lambda for frame Rotor_0. Part of rotor 0
+mus: [0.10966667]
+omegas: [-200]
+wake_history_revs: [1]
+wake_history_length: [360]
+requested_elements: 48, actual elements:  48
+Freestream vel: 32.9 m/s
+wake_history_length: [360]
+num_rotors: 1
+post_conv_revolutions: 2
+Performing simulation
+0.00343: rotor rev: 0.000,0.00000:  C_T0: 0.0000, T0: 0.0000, P0: 0.0000, Mx_0: 0.0000, My_0: 0.0000, θ0: 0.0000, θmin0: 0.0000, θmax0: 0.0000, θRMS0: 0.0000, χ0: 0.00, combined_C_T: 0.00000, max L_2: 1000
+
+Running sim with aoa: 0.0
+----------------------------------------------
+simulating aero

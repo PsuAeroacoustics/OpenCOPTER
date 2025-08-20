@@ -1,0 +1,80 @@
+{
+	computational_parameters: {
+		d_psi: 1.0,
+		spanwise_elements: 48,
+		span_elements: 8,
+		chord_elements: 4,
+		shed_history_angle: [45],
+		shed_release_angle: 2,
+
+		convergence_criteria: 1.0e-3,
+		post_conv_revolutions: 2,
+		//wake_trail_distance: [4, 4, 4, 4],
+		wake_trail_distance: [0],
+		// convergence_criteria: 1.0e-1,
+		// post_conv_revolutions: 1,
+		// wake_trail_distance: [1, 1],
+
+		trim_algo: "lympany",
+		convergence_type: "wake",
+		convergence_rotor: 0,
+		convergence_rev_multiple: 1,
+		r_0: [0.9],
+		a1: 1.0e-5,
+	},
+	results: {
+        inflow_slices: [
+			{
+				resolution: [256, 256, 101],
+				slice_start: [-2.5, -2.5, -1.0],
+				slice_size: [5, 5, 2.0]
+			}
+		],
+		wake_slices: [
+			{
+				resolution: [456, 152, 80],
+				slice_start: [-3.0, -3.0, -1],
+				slice_size: [18, 6, 3]
+			}
+		],
+		spanwise_time_series: [
+			0.87
+		],
+	},
+	flight_conditions: [
+		{
+			name: "FF_32p9_thin_af",
+			aoa: 0,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.01
+			],
+            // Mx: [
+            //     -63.3,
+            //     0
+            // ],
+            // My: [
+            //     268.8,
+            //     0
+            // ],
+			V_inf: 32.9,
+			observer_file: "helinovi_observers_climb.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			run_for: 4.0,
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			//trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "Rotor_0",
+					blade_element_func: "rotation",
+					omega: -200
+				}
+			],
+			hybrid: false,
+		}
+	]
+}

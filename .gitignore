@@ -30,3 +30,7 @@ oc_fly/example/hart_ii/*.pdf
 oc_fly/example/helinovi/*.pdf
 *.svg
 .DS_Store
+oc_fly/rotor_wing
+oc_fly/singe_rotor
+oc_fly/test_evtol_without_wing
+oc_fly/test_evtol_wo_symmetry

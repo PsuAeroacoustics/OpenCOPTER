@@ -4,7 +4,8 @@
 		// Convention will have x pointing towards the rear of the vehicle,
 		// y points out the starboard side,
 		// z points up (we aren't control nerds here)
-		name: "test_evtol",
-		vsp: "test_evtol.vsp3",
+		name: "test_evtol_no_symmetry",
+		vsp: "test_evtol_no_symm.vsp3",
+		//vsp: "test_evtol_wo_symmetry.vsp3",
 	}
 ]

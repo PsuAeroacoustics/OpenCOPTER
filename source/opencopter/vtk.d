@@ -637,11 +637,16 @@ VtkWingWake build_base_vtu_wing_wake(W, WLS)(auto ref W wing_geom, auto ref WLS 
 		foreach(wp_idx, ref wing_part_ls ; wing_lift_surf.wing_part_lift_surf) {
 			foreach(fl_idx, fil; wing_part_ls.spanwise_filaments){
 				foreach(ch_idx, chunk; fil.chunks){
+					writeln("fil.chunks_idx = ", ch_idx, "\tx = ", chunk.x);
+					writeln("fil.chunks_idx = ", ch_idx, "\ty = ", chunk.y);
+					writeln("fil.chunks_idx = ", ch_idx, "\tz = ", chunk.z);
 					foreach(c_idx; 0..chunk_size){
 						double twist = wing_geom.wing_parts[wp_idx].chunks[ch_idx].twist[c_idx];
 						double xp0 = chunk.x[c_idx];
 						double y0 = chunk.y[c_idx];
 						double zp0 = chunk.z[c_idx];
+
+						
 
 						double x0 = xp0*std.math.cos(twist) + zp0*std.math.sin(twist);
 						double z0 = -xp0*std.math.sin(twist) + zp0*std.math.cos(twist);
@@ -650,7 +655,7 @@ VtkWingWake build_base_vtu_wing_wake(W, WLS)(auto ref W wing_geom, auto ref WLS 
 						auto id0 = vtk_wing_wake.filament_points.InsertNextPoint(p0[0], p0[1], p0[2]);
 
 						vtk_wing_wake.base_points[wp_idx][id0] = p0;
-						vtk_wing_wake.basepoint_ids[wp_idx][ch_idx][fl_idx] = id0;
+						vtk_wing_wake.basepoint_ids[wp_idx][fl_idx][ch_idx] = id0;
 					}
 				}
 			}
@@ -698,12 +703,19 @@ void write_wing_wake_vtu(WG, WLS, WIS)(string base_filename, size_t iteration, s
 		foreach(wp_idx, wing_part_ls; wing_lift_surf.wing_part_lift_surf){
 			foreach(pi; wing_wake.base_points[wp_idx].byKeyValue){
 				vtkIdType id = pi.key;
-				Vec3 point = pi.value;
+				//Vec3 point = pi.value;
 				auto origin = wing_geom.origin;
 
-				auto aoa_rot = aoa_rotation*point;
+				/*auto aoa_rot = aoa_rotation*point;
 				auto final_p =  aoa_rot + origin;
-				writeln("final_p = ", final_p);
+				writeln("final_p = ", final_p);*/
+
+				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0);
+				writeln("\nwp_idx =", wp_idx);
+				writeln("local_x = ", point[0], "\tlocal_y = ", point[1], "\tlocal_z = ", point[2]);
+
+				auto final_p = wing_geom.frame.global_matrix * point;
+				writeln("global_x = ", final_p[0], "\tglobal_y = ", final_p[1], "\tglobal_z = ", final_p[2]);
 
 				wing_wake.filament_points.SetPoint(id, final_p[0], final_p[1], final_p[2]);				
 			}

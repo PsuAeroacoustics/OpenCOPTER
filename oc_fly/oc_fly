@@ -105,6 +105,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 	
 	#omegas =  np.asarray([flight_condition["omegas"][r_idx] for r_idx in range(num_rotors)])
+	print("size of omega = ", omegas.size, "\t size of radii = ", radii.size)
 	mus = V_inf/(np.abs(omegas)*radii)
 
 	d_psi = computational_parameters["d_psi"]*math.pi/180.0

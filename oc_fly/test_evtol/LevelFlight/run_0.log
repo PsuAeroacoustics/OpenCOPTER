@@ -1,0 +1,19 @@
+
+Running sim with aoa: 0.0
+----------------------------------------------
+simulating aero
+mus: [0.235 0.235 0.235 0.235]
+omegas: [ 200 -200 -200  200]
+wake_history_revs: [2 2 2 2]
+wake_history_length: [720, 720, 720, 720]
+requested_elements: 48, actual elements:  48
+Freestream vel: 32.9 m/s
+wake_history_length: [720, 720, 720, 720]
+num_rotors: 4
+post_conv_revolutions: 2
+Performing simulation
+0.00211: rotor rev: 0.000,0.00000:  C_T0: 0.0000, C_T1: 0.0000, C_T2: 0.0000, C_T3: 0.0000, T0: 0.0000, T1: 0.0000, T2: 0.0000, T3: 0.0000, P0: 0.0000, P1: 0.0000, P2: 0.0000, P3: 0.0000, Mx_0: 0.0000, Mx_1: 0.0000, Mx_2: 0.0000, Mx_3: 0.0000, My_0: 0.0000, My_1: 0.0000, My_2: 0.0000, My_3: 0.0000, θ0: 0.0000, θ1: 0.0000, θ2: 0.0000, θ3: 0.0000, θmin0: 0.0000, θmin1: 0.0000, θmin2: 0.0000, θmin3: 0.0000, θmax0: 0.0000, θmax1: 0.0000, θmax2: 0.0000, θmax3: 0.0000, θRMS0: 0.0000, θRMS1: 0.0000, θRMS2: 0.0000, θRMS3: 0.0000, χ0: 0.00, χ1: 0.00, χ2: 0.00, χ3: 0.00, combined_C_T: 0.00000, max L_2: 1000
+
+Running sim with aoa: 0.0
+----------------------------------------------
+simulating aero

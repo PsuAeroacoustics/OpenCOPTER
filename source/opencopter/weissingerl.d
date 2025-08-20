@@ -214,7 +214,7 @@ struct WeissingerL(ArrayContainer AC) {
 				influence_inv[r][ch][] = _influence_inv[r][ch*chunk_size..ch*chunk_size+chunk_size];
 			}
 		}
-		
+		//writeln("influence_inv = ", influence_inv);
 		//writeln("calculated influence_inv matrix");
 	}
 
@@ -222,16 +222,15 @@ struct WeissingerL(ArrayContainer AC) {
 		Chunk gamma = 0;
 		import std.stdio : writeln;
 
-
 		foreach(c1; 0..chunk_size) {
 			immutable r = chunk_idx*chunk_size + c1;
 			foreach(ch, ref inf; influence_inv[r]) {
 				Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
 				
 				gamma[c1] += tmp.sum;
-			}
-
-			gamma[c1] *= -sgn(direction_multiplier);
+				
+			}				
+			gamma[c1] *= -sgn(direction_multiplier); //initially it was -sign(direction_multiplier) (why is this neend though??)
 		}
 		return gamma;
 	}
