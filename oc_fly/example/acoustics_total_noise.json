@@ -15,9 +15,6 @@
 		"thickness_noise_flag": false,
 		"loading_noise_flag": true,
 		"total_noise_flag": true,
-		// "thickness_noise_flag": false,
-		// "loading_noise_flag": true,
-		// "total_noise_flag": false,
 		"sigma_flag": true,
 		"loading_noise_sigma_flag": true,
 		"thickness_noise_sigma_flag": true,
@@ -33,6 +30,7 @@
 		"loading_sigma_flag": true,
 		"area_sigma_flag": true,
 		"mdotr_sigma_flag": false,
-		"iblank_sigma_flag": false
+		"iblank_sigma_flag": false,
+		"BWI_flag": true
 	}
 }
