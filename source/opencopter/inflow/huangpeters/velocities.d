@@ -17,6 +17,7 @@ import std.math;
 import std.range;
 import std.stdio;
 
+// Nitya: What arw these different velocities?? (Eq. 3-6)
 package auto compute_velocities_nh(ArrayContainer AC, T)(HuangPetersInflowT!AC infl, T[] coefficients, T[] coeffiecients_sin, immutable ElipticalCoords coords) {
 
 	Chunk V = 0;

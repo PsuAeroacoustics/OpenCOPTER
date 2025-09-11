@@ -1,0 +1,109 @@
+{
+	"name": "wing_sim_test",
+	"dependencies": {
+		"opencopter": {"path": "../"},
+		"matplotlib-d": {"path": "../../../matplotlib-d"}
+	},
+	"configurations": [
+		{
+			"name": "wing_sim_test",
+			"targetName": "wing_sim_test",
+			"targetType": "executable",
+			"sourceFiles": ["wing_sim_test.d"]
+		}
+	],
+	"subConfigurations": {
+		"opencopter": "library"
+	},
+	"buildTypes": {
+		"debug": {
+			"buildOptions": ["debugMode", "debugInfo"]
+		},
+		"debug-openmpi": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"versions": ["openmpi"]
+		},
+		"debug-native": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"dflags": ["-mcpu=native"]
+		},
+		"debug-native-openmpi": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"versions": ["openmpi"],
+			"dflags": ["-mcpu=native"]
+		},
+		"debug-native-512": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-mattr=-prefer-256-bit,prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		},
+		"release": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-native": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-native-openmpi": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"buildRequirements": ["allowWarnings"],
+			"dflags-dmd": ["-mcpu=native"],
+			"dflags-ldc": ["-mcpu=native", "-linkonce-templates"],
+			"dflags-gdc": ["-march=native", "-mtune=native", "-O3", "-flto"],
+			"lflags-posix": ["-L/usr/lib/x86_64-linux-gnu/openmpi/lib"],
+			"lflags-gdc": ["-flto"],
+			"versions": ["openmpi"]
+		},
+		"release-generic-avx2": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=generic", "-mattr=+avx2"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-generic-avx512f": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=generic", "-mattr=+avx512f"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		},
+		"release-native-512": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags-dmd": ["-mcpu=native"],
+			"dflags-gdc": ["-march=native", "-mtune=native", "-mavx512f"],
+			"dflags-ldc": ["-mcpu=native", "-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		},
+		"release-native-openmpi-512": {
+			"buildOptions": ["releaseMode", "inline", "optimize"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F", "openmpi"]
+		},
+		"release-native-dbinf": {
+			"buildOptions": ["releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates"]
+		},
+		"release-native-openmpi-dbinf": {
+			"buildOptions": ["releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates"],
+			"lflags": ["-export-dynamic"],
+			"versions": ["openmpi"]
+		},
+		"release-native-dbinf-512": {
+			"buildOptions": ["releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F"]
+		},
+		"release-native-openmpi-dbinf-512": {
+			"buildOptions": ["releaseMode", "inline", "optimize", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"versions": ["AVX_512F", "openmpi"]
+		}
+    }
+}

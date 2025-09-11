@@ -2,6 +2,8 @@
 	computational_parameters: {
 		d_psi: 1.0,
 		spanwise_elements: 48,
+		span_elements: 8,
+		chord_elements: 4,
 		shed_history_angle: [45, 45, 45, 45],
 		shed_release_angle: 2,
 
@@ -14,7 +16,7 @@
 		// wake_trail_distance: [1, 1],
 
 		trim_algo: "lympany",
-		convergence_type: "wake",
+		convergence_type: "run_for",
 		convergence_rotor: 0,
 		convergence_rev_multiple: 1,
 		r_0: [0.9, 0.9, 0.9, 0.9],
@@ -22,7 +24,7 @@
 	},
 	flight_conditions: [
 		{
-			name: "LevelFlight",
+			name: "ff_90_deg_tilt_5_mps",
 			aoa: 0,
 			density: 1.2055,
 			sos: 341.7,
@@ -40,9 +42,10 @@
             //     268.8,
             //     0
             // ],
-			V_inf: 32.9,
+			V_inf: 5.0,
 			observer_file: "helinovi_observers_climb.json5",
 			acoustics_file: "acoustics_total_noise.json",
+			run_for: 2.0,
 			// Indicates that this frame is used to trim the rotor.
 			// Will use the provided axis as the trim axis.
 			// If an axis angle function has been also specified, then
@@ -72,12 +75,17 @@
 				{
 					frame: "HingeGeom",
 					axis_angle_function: "static",
-					angle: 30
+					angle: 90
 				},
 				{
 					frame: "HingeGeom_symmetry",
 					axis_angle_function: "static",
-					angle: 30
+					angle: 90
+				},
+				{
+					frame: "WingGeom",
+					axis_angle_function: "static",
+					angle: 0
 				}
 			],
 			hybrid: false,

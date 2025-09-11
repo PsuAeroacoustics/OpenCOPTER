@@ -84,8 +84,11 @@ def make_cb(frame, wopwop_motion, rotor_phase):
 	
 	return new_cb
 
-def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
+def build_blade_cntr(rotor, rotor_idx, blade, blade_idx, environment_in, wopwop_motion, include_broadband, include_bwi):
 	blade_cntr = ContainerIn()
+
+	blade_cntr.BPMNoiseFlag = include_broadband
+	blade_cntr.BWINoiseFlag = include_bwi
 
 	blade_cntr.Title = blade.frame.name + " container"
 
@@ -104,21 +107,67 @@ def build_blade_cntr(rotor, blade, environment_in, wopwop_motion):
 	cob_list.append(make_cb(blade.frame, wopwop_motion, None))
 	blade_cntr.cobs = cob_list
 
+	if include_broadband:
+		c = get_chord(blade)
+		blade_bpm = BPMIn()
+		blade_bpm.BPMNoiseFile = f"../data/blade_{rotor_idx}_{blade_idx}_bpm.dat"
+		blade_bpm.nSect = len(c)
+		blade_bpm.uniformBlade = UniformType_uniform()
+		blade_bpm.sectChordFlag = BPMFlagType_file_value()
+		blade_bpm.sectLengthFlag = BPMFlagType_file_value()
+		#blade_bpm.TEThicknessFlag = BPMFlagType_file_value()
+		blade_bpm.TEThickness = 0.005
+		blade_bpm.TEThicknessFlag = BPMFlagType_user_value()
+		blade_bpm.TEflowAngleFlag = BPMFlagType_file_value()
+		blade_bpm.TipLCS = 2.0*math.pi
+		blade_bpm.SectAOAFlag = BPMFlagType_file_value()
+		blade_bpm.UFlag = BPMFlagType_file_value()
+		blade_bpm.BLtrip = TripType_hard_trip()
+		blade_bpm.LBLVSnoise = False
+		blade_bpm.TBLTEnoise = True
+		blade_bpm.bluntNoise = False
+		blade_bpm.bladeTipNoise = False
+		blade_bpm.DirectivityFlag = True
+
+		blade_cntr.bpm_in = blade_bpm
+
+	if include_bwi:
+		c = get_chord(blade)
+		blade_bwi = BWIIn()
+		blade_bwi.BWINoiseFile = f"../data/blade_{rotor_idx}_{blade_idx}_bwi.dat"
+		blade_bwi.nSect = len(c)
+		blade_bwi.uniformBlade = UniformType_uniform()
+		blade_bwi.sectChordFlag = BPMFlagType_file_value()
+		blade_bwi.sectLengthFlag = BPMFlagType_compute()
+		blade_bwi.UFlag = BPMFlagType_compute()
+		
+		blade_cntr.bwi_in = blade_bwi
+	
 	return blade_cntr
 
-def build_rotor_cntr(rotor, environment_in, wopwop_motion, rotor_phase):
-	rotor_cntr = ContainerIn()
-	rotor_cntr.Title = rotor.frame.name + " container"
+def build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phase, include_broadband, include_bwi):
+	# rotor_cntr = ContainerIn()
+	# rotor_cntr.Title = rotor.frame.name + " container"
 
+	# flat_frame_list = flatten_children(rotor.frame, FrameType_aircraft())
+
+	# rotor_cntr.cobs = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list[:-1]] + [make_cb(flat_frame_list[-1], wopwop_motion, rotor_phase)]
+
+	# rotor_cntr.children = 
 	flat_frame_list = flatten_children(rotor.frame, FrameType_aircraft())
+	rotor_cobs = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list[:-1]] + [make_cb(flat_frame_list[-1], wopwop_motion, rotor_phase)]
+	blade_containers = [build_blade_cntr(rotor, rotor_idx, blade, blade_idx, environment_in, wopwop_motion, include_broadband, include_bwi) for blade_idx, blade in enumerate(rotor.blades)]
 
-	rotor_cntr.cobs = [make_cb(frame, wopwop_motion, None) for frame in flat_frame_list[:-1]] + [make_cb(flat_frame_list[-1], wopwop_motion, rotor_phase)]
+	for blade_container in blade_containers:
+		new_blade_cobs = rotor_cobs + blade_container.cobs
+		blade_container.cobs = new_blade_cobs
 
-	rotor_cntr.children = [build_blade_cntr(rotor, blade, environment_in, wopwop_motion) for blade in rotor.blades]
+	return blade_containers
 
-	return rotor_cntr
-	
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases, args):
+def flatten(xss):
+	return [x for xs in xss for x in xs]
+
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -185,8 +234,10 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	environment_in.areaSigmaFlag = acoustics_config["area_sigma_flag"] if "area_sigma_flag" in acoustics_config else False
 	environment_in.MdotrSigmaFlag = acoustics_config["mdotr_sigma_flag"] if "mdotr_sigma_flag" in acoustics_config else False
 	environment_in.iblankSigmaFlag = acoustics_config["iblank_sigma_flag"] if "iblank_sigma_flag" in acoustics_config else False
-	
-	wopwop_aircraft.children = [build_rotor_cntr(rotor, environment_in, wopwop_motion, rotor_phases[rotor_idx]) for rotor_idx, rotor in enumerate(rotors)]
+	environment_in.broadbandFlag = acoustics_config["broadband_flag"] if "broadband_flag" in acoustics_config else False
+	environment_in.BWINoiseFlag = acoustics_config["BWI_flag"] if "BWI_flag" in acoustics_config else False
+
+	wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, environment_in.BWINoiseFlag) for rotor_idx, rotor in enumerate(rotors)])
 
 	R = 1
 	num_blades = 1
@@ -316,22 +367,33 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 
 	return namelist
 
-
-def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_thickness):
+def write_wopwop_geometry(airfoil_xsection, output_path, rotor, blade, include_thickness, omega):
 	print("Building wopwop geometry")
 
 	R = rotor.radius
 	r = get_r(blade)
+	x = get_xi(blade)
+
 	r = [_r - blade.r_c for _r in r]
-	twist = get_twist(blade)
+
+	if omega > 0:
+		twist = get_twist(blade)
+	else:
+		twist = [-t for t in get_twist(blade)]
+
 	real_chord = [c*R*(1.0 - blade.r_c) for c in get_chord(blade)]
+	thickness = get_thickness(blade)
+
+	if omega > 0:
+		airfoil_xsection = [[0.5-p[0], -p[1]] for p in airfoil_xsection]
 
 	#real_chord = (R/AR)*np.ones(len(r))
-	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, R, real_chord)
+	blade_geom = generate_simple_constant_blade_geom(airfoil_xsection, r, twist, R, real_chord, thickness, x)
 	lifting_line_geom = GeometryData(num_nodes = len(r))
 
 	lifting_line_geom.set_x_nodes([R*_r for _r in r])
-	lifting_line_geom.set_y_nodes(np.zeros(len(r), dtype=np.single))
+	lifting_line_geom.set_y_nodes(x)
+	#lifting_line_geom.set_y_nodes(np.zeros(len(r), dtype=np.single))
 	lifting_line_geom.set_z_nodes(np.zeros(len(r), dtype=np.single))
 
 	lifting_line_geom.set_x_normals(np.zeros(len(r), dtype=np.single))
@@ -433,3 +495,18 @@ def build_wopwop_loading(rotor, blade, iterations, airfoil_xsection, output_path
 	blade_name = blade.frame.name.replace(' ', '_').replace('\t', '_').replace('\n', '_')
 	loading_file = create_loading_file(loading, f"{output_path}/{rotor_name}_{blade_name}_loading.dat")
 	return loading_file
+
+def build_wopwop_bpm(rotor_idx, blade_idx, iterations, bpm_file_header, chord, section_length, output_path):
+	bpm_file = AperiodicBPMFile(bpm_file_header, iterations)
+
+	te_thickness = 0.05*np.ones(chord.shape, dtype=np.single)
+	te_flow_angle = 0.0*np.ones(chord.shape, dtype=np.single)
+
+	bpm_file_handle = create_aperiodic_bpm_file(bpm_file, f"{output_path}/blade_{rotor_idx}_{blade_idx}_bpm.dat", chord, section_length, te_thickness, te_flow_angle)
+	return bpm_file_handle
+
+def build_wopwop_bwi(rotor_idx, blade_idx, iterations, bwi_file_header, chord, section_length, output_path):
+	bwi_file = AperiodicBWIFile(bwi_file_header, iterations)
+
+	bwi_file_handle = create_aperiodic_bwi_file(bwi_file, f"{output_path}/blade_{rotor_idx}_{blade_idx}_bwi.dat", chord, section_length)
+	return bwi_file_handle

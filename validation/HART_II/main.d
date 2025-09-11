@@ -501,8 +501,8 @@ int main(string[] args) {
 
 	string output_dir = "wopwop_cases";
 
-	double AR = 16.5;
-	double sos = 343;
+	double AR = 16.5;   // Aspect Ratio?
+	double sos = 343;   // Speed of Sound
 	double density = 1.125;
 	double omega = 109.12;
 
@@ -517,7 +517,7 @@ int main(string[] args) {
 	bool plot = false;
 	bool save = false;
 	
-	double theta_75 = 3;
+	double theta_75 = 3;   // twist at 0.75?
 
 	float tMin = 1.1;
 
@@ -651,6 +651,8 @@ int main(string[] args) {
 
 	immutable double d_azimuth = (2.0*PI)/num_blades;
 
+
+	// Nitya: I am not sure what's happening here!!
 	CB aircraft_cob = {
 		Title: "Forward Velocity",
 		TranslationType: TranslationType.known_function,
@@ -879,6 +881,8 @@ int main(string[] args) {
 
 	namelist.write_namelist(namelist_filename);
 
+	// Nitya: FROM WOPWOPD, I GUESS?
+
 	auto geometry_file = create_geometry_file(geometry, full_output_dir.buildPath(geom_filename));
 	geometry_file.append_geometry_data(blade_geom, 0);
 	geometry_file.append_geometry_data(lifting_line_geometry_data, 1);
@@ -975,12 +979,12 @@ int main(string[] args) {
 	auto start_time = s.peek;
 	auto total_start_time = start_time;
 
-	double[] U_p = new double[elements];
-	double[] U_t = new double[elements];
+	double[] U_p = new double[elements];  // perpendicular component
+	double[] U_t = new double[elements];  // tangential component
 	double[] c_l = new double[elements];
 	double[] alpha = new double[elements];
 	double[] gamma = new double[elements];
-	double[] d_gamma = new double[elements];
+	double[] d_gamma = new double[elements];  // Nitya: WHAT'S THIS?
 
 	double label_font_size = 13;
 	double tick_font_size = 12;
@@ -1047,6 +1051,8 @@ int main(string[] args) {
 		average_C_My = average_C_My_array.sum/C_T_len.to!double;
 		average_C_Mx = average_C_Mx_array.sum/C_T_len.to!double;
 
+		// Nitya: WHY EVERY 100 ITERATIONS?
+
 		if(i % 100 == 0) {
 
 			//get_state_array!"aoa"(ac_timehistory.aircraft_history[0].rotor_states[0].blade_states[0], alpha);
@@ -1055,7 +1061,7 @@ int main(string[] args) {
 			auto now = s.peek;
 
 			write(i, ", ");
-			write("𝜓: ", input_state.rotor_inputs[0].azimuth, ", ");
+			write("𝜓: ", input_state.rotor_inputs[0].azimuth, ", "); // Nitya: HOW DO YOU WRITE THIS?
 			write("χ_1: ", inflows[0].wake_skew*(180.0/PI));
 			write(", v_z_1: ", inflows[0].get_average_inflow, "; ");
 			write(", C_T: ", average_C_T, "; ");
@@ -1076,6 +1082,8 @@ int main(string[] args) {
 		// can/should be coupled in here.
 		foreach(r_idx, ref rotor; input_state.rotor_inputs) {
 			rotor.azimuth += rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
+
+			// Nitya: theta = omega*t + 0.5alpha*t^2 ??
 
 			// Keep the azimuth between 0 and 2*PI so we don't
 			// lose fp precicion as the sim marches in time and
@@ -1098,6 +1106,7 @@ int main(string[] args) {
 		}
 
 		step(ac_timehistory.aircraft_history[0], aircraft, input_state, inflows, wake_history, atmo, i, dt);
+		// Nitya: WHERE DOES THIS FUNCTION COME FROM??
 
 		loading_data.time = i.to!double*dt;
 		foreach(r_idx, ref rotor; ac_timehistory.aircraft_history[0].rotor_states[0..1]) {
@@ -1152,7 +1161,7 @@ int main(string[] args) {
 			}
 		}
 
-		
+		// Nitya: WHY THIS CONDITION??
 		if(i >= (iterations - 360)) {
 			if((i % 5) == 0) {
 				//Chunk x_e = 0;
@@ -1211,7 +1220,7 @@ int main(string[] args) {
 	//auto ends = Vec3(2, 2, 2);
 	//auto deltas = Vec3((ends[0] - starts[0])/num_x, (ends[1] - starts[1])/num_y, (ends[2] - starts[2])/num_z);
 
-	x_res = 2048;
+	x_res = 2048; // Nitya:??
 	y_res = 2048;
 	z_res = 2048;
 	x_mesh = linspace(x_min, x_max, x_res);
@@ -1361,6 +1370,8 @@ int main(string[] args) {
 			foreach(z_idx, _z_m; z_mesh) {
 				foreach(x_idx, _x_m; x_mesh.chunks(chunk_size).enumerate) {
 
+					// Nitya: WHAT IS x_m and x_rel?
+
 					immutable Chunk x_rel = _x_m[] - origins[r_idx][0];
 					immutable Chunk y_rel = y_slice[] - origins[r_idx][1];
 					//immutable Chunk z_rel = _z_m - origins[r_idx][2];
@@ -1372,7 +1383,7 @@ int main(string[] args) {
 					immutable Chunk z_m = -_z_m;
 					auto infl = inflows[r_idx].inflow_at(x_m, y_rel, z_m, x_e, 0);
 
-					max_infl = (max_infl~infl[]).map!(a => abs(a)).maxElement;
+					max_infl = (max_infl~infl[]).map!(a => abs(a)).maxElement;  // Nitya: I DON'T UNDERSTAND WHAT MAP() DOES EXACTLY!!
 
 					inflow_xz[z_idx][x_idx*chunk_size..x_idx*chunk_size + chunk_size] += infl[];
 				}
@@ -1392,6 +1403,7 @@ int main(string[] args) {
 					//immutable Chunk z_m = -x_rel[]*sin(aoa) - z_rel[]*cos(aoa);
 
 					immutable Chunk infl = inflows[r_idx].inflow_at(x_m, y_rel, z_slice, x_e, 0)[]/+*cos(aoa).to!double+/;
+					// Nitya: WHAT'S WITH THE COMMENT AT THE END??
 
 					max_infl = (max_infl~infl[]).map!(a => abs(a)).maxElement;
 
@@ -1429,7 +1441,8 @@ int main(string[] args) {
 		plt.contourf(x_mesh, z_mesh, inflow_xz, ["levels": levels], ["cmap": "bwr"]);
 		plt.colorbar;
 		//if(save) plt.savefig("vert_xz.png", ["dpi": 500]);
-
+		
+		// Nitya: IS IT ALL COMMENTED AFER THIS TILL ln 1514??
 		/+
 		max_dim_1 = -double.infinity;
 		min_dim_1 = double.infinity;
@@ -1669,6 +1682,9 @@ int main(string[] args) {
 
 		auto cos_alpha = cos(aoa);
 		auto sin_alpha = sin(aoa);
+
+		// Nitya: I think we should have some comments about each blocks 
+		//        I can't understand what p_idx is
 
 		foreach(p_idx, psi; psis) {
 			auto cos_azimuth = cos(psi/+*(PI/180)+/);

@@ -252,7 +252,7 @@
 				"pyd": { "path": "./dependencies/pyd" }
 			},
 			"subConfigurations": {
-				"pyd": "python312"
+				"pyd": "python311"
 			}
 		},
 		{
@@ -265,7 +265,7 @@
 				"vtkd": { "path": "./dependencies/vtkd" }
 			},
 			"subConfigurations": {
-				"pyd": "python311"
+				"pyd": "python312"
 			}
 		},
 		{
