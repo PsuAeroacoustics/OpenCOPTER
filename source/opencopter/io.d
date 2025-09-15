@@ -471,6 +471,10 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 		foreach(child_id; frame_data.child_ids) {
 			writeln("\tGoing into__foreach(child_id; frame_data.child_ids)__loop ");
+			/*if ((frame_data.frame.frame_type == FrameType.wing) && (frame_data.symmetry != PlanarSymetry.none)){
+				writeln("changeing wing symmetry to none");
+				frame_data.symmetry = PlanarSymetry.none;
+			}*/
 			if((frame_data.symmetry != PlanarSymetry.none) && !symmetry_applied) {
 				auto frame = geom_dict[child_id].frame;
 
@@ -690,6 +694,10 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 		foreach(child_id; frame_data.child_ids) {
 			writeln("Going into__foreach(child_id; frame_data.child_ids)__loop ");
+			/*if ((frame_data.frame.frame_type == FrameType.wing) && (frame_data.symmetry != PlanarSymetry.none)){
+				writeln("changeing wing symmetry to none");
+				frame_data.symmetry = PlanarSymetry.none;
+			}*/
 			if((frame_data.symmetry != PlanarSymetry.none) && !symmetry_applied) {
 				auto frame = geom_dict[child_id].frame;
 
@@ -892,12 +900,12 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			writeln("\nroot component children = ", child.name);
 		}
 		
-		wings ~= build_oc_wing(&root_component, null, false, false);
+		//wings ~= build_oc_wing(&root_component, null, false, false);
 	}
 
-	writeln("wings.length: ", wings.length);
-	writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
-	writeln("wing frame: ", wings[0].frame.name);
+	//writeln("wings.length: ", wings.length);
+	//writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
+	//writeln("wing frame: ", wings[0].frame.name);
 	writeln("rotors.length: ", rotors.length);
 	writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
 

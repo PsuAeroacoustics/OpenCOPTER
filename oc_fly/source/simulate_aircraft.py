@@ -568,7 +568,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			#print("iteration = ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				max_l2 = 1000
-
+				print("rev = ", iteration/iter_per_rev)
 				#log_file.write(f'checking convergence itr: {iteration}, convergence_rev_multiple*iter_per_rev: {convergence_rev_multiple*iter_per_rev}\n')
 				for rotor_idx in range(num_rotors):
 					if convergence_type == 'wake':
