@@ -443,10 +443,6 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			frame.rotate(Vec3(0, 1, 0), -PI/2.0);
 		}
 
-		/*if(frame_type == FrameType.wing) {
-			frame.rotate(Vec3(0, 1, 0), -PI/2.0);
-		}*/
-
 		frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
 		frame.rotate(Vec3(0, 1, 0), y_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
 		frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
@@ -459,7 +455,6 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 	RotorGeometryT!AC*[] build_oc_rotor(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
 		
 		RotorGeometryT!AC*[] rotors;
-		//WingGeometryT!AC*[] wings;
 
 		writeln("\n Going into build_oc_rotor");
 		if(parent_frame_data != null) {
@@ -671,7 +666,6 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			rotors ~= rotor;
 		}
 
-		//writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
 		return rotors;
 	}
 
@@ -695,8 +689,6 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 				auto sym_frame = new Frame(frame.axis, frame.angle, frame.local_position, frame.parent, frame.name~"symmetry", frame.frame_type);
 				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
-
-				//frame_data.frame.children ~= [frame, sym_frame];
 
 				auto child1_frame_data = new VspFrameData(
 					geom_dict[child_id].frame,
@@ -735,8 +727,6 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 					geom_dict[child_id].xml_node
 				);
 
-				//frame_data.frame.children ~= new_frame.frame;
-
 				wings ~= build_oc_wing(new_frame, frame_data, symmetry_applied, symmetry_parent);
 				writeln("pass symmetry check: else");
 			}
@@ -764,18 +754,6 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 				Vec3(0.0,0.0,0.0),
 				total_wing_span
 			);
-
-			/*auto fixed_frame = frame_data.frame;
-			auto wing_name = fixed_frame.name;
-			writeln("wing_name: ", wing_name, "global position = ", fixed_frame.global_position());
-			
-			fixed_frame.name = fixed_frame.name~"fixed";
-			fixed_frame.frame_type = FrameType.connection;
-			wing.frame = new Frame(Vec3(1, 0, 0), 0, Vec3(0), fixed_frame, wing_name, FrameType.wing);
-
-			fixed_frame.children ~= wing.frame;*/
-			//writeln("frame_data.frame.local_position: ", frame_data.frame.local_position);
-			//writeln("frame_data.frame.global_position: ", frame_data.frame.global_position);
 			wing.frame = new Frame(frame_data.frame.axis, 0, frame_data.frame.local_position, frame_data.frame.parent, frame_data.frame.name, FrameType.wing);
 			writeln("wing frame name: ", wing.frame.name, "\tparent name: ", wing.frame.parent.name, "\t global position: ",wing.frame.global_position());
 
@@ -891,13 +869,8 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		foreach(child; root_component.frame.children){
 			writeln("\nroot component children = ", child.name);
 		}
-		
-		wings ~= build_oc_wing(&root_component, null, false, false);
 	}
 
-	writeln("wings.length: ", wings.length);
-	writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
-	writeln("wing frame: ", wings[0].frame.name);
 	writeln("rotors.length: ", rotors.length);
 	writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
 
