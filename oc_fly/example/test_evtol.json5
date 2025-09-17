@@ -5,6 +5,6 @@
 		// y points out the starboard side,
 		// z points up (we aren't control nerds here)
 		name: "test_evtol",
-		vsp: "test_evtol.vsp3",
+		vsp: "test_evtol_no_symm.vsp3",
 	}
 ]

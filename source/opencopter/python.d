@@ -67,8 +67,9 @@ void basic_aircraft_rotor_dynamics(PyAircraftInputState* ac_input, double dt) {
 		// Keep the azimuth between 0 and 2*PI so we don't
 		// lose fp precicion as the sim marches in time and
 		// the azimuth grows unbounded.
-		if(rotor.azimuth > 2.0*PI) {
-			rotor.azimuth = fmod(abs(rotor.azimuth), 2.0*PI);
+		rotor.azimuth = fmod(rotor.azimuth, 2.0*PI);
+		if(rotor.azimuth < 0.0){
+			rotor.azimuth += 2.0*PI;
 		}
 	}
 }

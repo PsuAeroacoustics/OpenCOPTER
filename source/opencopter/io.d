@@ -279,6 +279,17 @@ double[] cubic_bezier_approx(double[], double[], double[]) {
 	return new double[0];
 }
 
+void print_frame(F)(F frame, int depth = 0) {
+	import std.stdio : writeln;
+	import std.range : repeat;
+
+	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.local_matrix, "\t global matrix: ", frame.global_matrix);
+
+	foreach(ref child; frame.children) {
+		print_frame(child, depth + 1);
+	}
+}
+
 AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t elements = 48, size_t span_elements = 8, size_t chord_elements = 4) {
 
 	AircraftT!AC ac;
@@ -466,6 +477,10 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 		foreach(child_id; frame_data.child_ids) {
 			writeln("\tGoing into__foreach(child_id; frame_data.child_ids)__loop ");
+			if ((frame_data.frame.frame_type == FrameType.wing) && (frame_data.symmetry != PlanarSymetry.none)){
+				writeln("changeing wing symmetry to none");
+				frame_data.symmetry = PlanarSymetry.none;
+			}
 			if((frame_data.symmetry != PlanarSymetry.none) && !symmetry_applied) {
 				auto frame = geom_dict[child_id].frame;
 
