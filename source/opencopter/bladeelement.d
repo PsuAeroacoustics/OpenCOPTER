@@ -163,7 +163,7 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		blade_state.chunks[chunk_idx].shed_u_p[] = -shed_projected_vel[2][]/(rotor.radius*abs(rotor_input.angular_velocity));
 		blade_state.chunks[chunk_idx].u_p[] = u_p[];
 
-		immutable Chunk mu_sin_azimuth = -rotor_state.advance_ratio*sin_azimuth[];
+		immutable Chunk mu_sin_azimuth = rotor_state.advance_ratio*sin_azimuth[];
 
 		immutable Chunk u_t = (blade.chunks[chunk_idx].r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[])*cos_sweep[];
 		
@@ -277,6 +277,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	rotor_state.C_Q = 0.0;
 	rotor_state.C_Mx = 0.0;
 	rotor_state.C_My = 0.0;
+	bool calc_dynamic_inflow_wake = false;
 
 	import std.math : cos, sin, abs;
 	import std.stdio : writeln;
@@ -295,7 +296,8 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 
 	foreach(blade_idx; 0..rotor.blades.length) {
 
-		if(iteration > 0) {
+		if(calc_dynamic_inflow_wake){
+			if(iteration > 0) {
 			//writeln("\n blade properites for blade ", blade_idx);
 			rotor.blades[blade_idx].compute_blade_properties(
 				rotor_state.blade_states[blade_idx],
@@ -328,18 +330,18 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			
 			rotor_state.C_Mx += rotor_frame_moments[0];
 			rotor_state.C_My += rotor_frame_moments[1];
-		}
+			}
 
-		foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
-			backup_CT[chunk_idx][] = blade_chunk.dC_T[];
-			blade_chunk.dynamic_u_p[] = blade_chunk.u_p[];
-			blade_chunk.dynamic_dC_Db_induced[] = blade_chunk.dC_Db_induced[];
-			blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
-			blade_chunk.aoa_eff[] = blade_chunk.aoa[];
-		}
-
-		//writeln("\n blade properites for blade ", blade_idx);
-		rotor.blades[blade_idx].compute_blade_properties(
+			foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
+				backup_CT[chunk_idx][] = blade_chunk.dC_T[];
+				blade_chunk.dynamic_u_p[] = blade_chunk.u_p[];
+				blade_chunk.dynamic_dC_Db_induced[] = blade_chunk.dC_Db_induced[];
+				blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
+				blade_chunk.aoa_eff[] = blade_chunk.aoa[];
+			}
+		}else{
+			//writeln("\n blade properites for blade ", blade_idx);
+			rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
 			rotor,
 			rotor_input,
@@ -352,14 +354,13 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			atmo, 
 			trackBWIevents,
 			converged
-		);
-		//writeln("blade state calculation done \n");
+			);
+			//writeln("blade state calculation done \n");
 
-		foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
-			blade_chunk.dC_T[] = backup_CT[chunk_idx][];
-		}
+			/*foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
+				blade_chunk.dC_T[] = backup_CT[chunk_idx][];
+			}*/
 
-		if(iteration == 0) {
 			auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
 			auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
 			
@@ -375,6 +376,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			rotor_state.C_Mx += rotor_frame_moments[0];
 			rotor_state.C_My += rotor_frame_moments[1];
 		}
+		
 	}
 
 	rotor_state.C_T = C_T;
@@ -386,7 +388,7 @@ void print_frame(F)(F frame, int depth = 0) {
 	import std.stdio : writeln;
 	import std.range : repeat;
 
-	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.local_matrix);
+	writeln("\t".repeat(depth).join, " ", frame.name, ": ", frame.local_matrix, "global_matrix = ", frame.global_matrix);
 
 	foreach(ref child; frame.children) {
 		print_frame(child, depth + 1);
