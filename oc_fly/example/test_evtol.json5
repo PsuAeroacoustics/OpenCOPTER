@@ -6,5 +6,6 @@
 		// z points up (we aren't control nerds here)
 		name: "test_evtol",
 		vsp: "test_evtol.vsp3",
+		parameter_file: "test_evtol_params.json5"
 	}
 ]

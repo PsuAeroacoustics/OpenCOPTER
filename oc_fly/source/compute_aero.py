@@ -516,8 +516,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 							wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
 						elif motion_vec_dict[child.name][1] == "constant":
-							log_file.write(f"Adding constant motion lambda for frame {child.name}. Part of rotor {r_idx}\n")
 							omega = child_motion["omega"]
+							log_file.write(f"Adding constant motion lambda for frame {child.name}. Part of rotor {r_idx}. omega = {omega}, vector = {motion_vec_dict[child.name][0][0]}, {motion_vec_dict[child.name][0][1]}, {motion_vec_dict[child.name][0][2]}\n")
 							motion_lambda = lambda rotor_inputs, _r_idx=r_idx, _omega=omega, dt=dt, frame=child, vec=motion_vec_dict[child.name][0]: constant_motion(_omega, dt, frame, vec, rotor_inputs, _r_idx)
 							wopwop_motion[child.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[child.name][0]}
 
@@ -649,9 +649,9 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		rotorcraft_input_state.wing_inputs[w_idx].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
 		rotorcraft_input_state.wing_inputs[w_idx].freestream_velocity = flight_condition['V_inf']
 	
-	###
-	# initialize the wing lifting surface and wing inflow here// check if span and chord nodes are different for that
-	###
+		###
+		# initialize the wing lifting surface and wing inflow here// check if span and chord nodes are different for that
+		###
 
 
 		wing_lift_surface = WingLiftSurf(num_wing_parts[w_idx])
@@ -729,7 +729,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			acoustics,
 			wake_history_length,
 			results,
-			wopwop_motion
+			wopwop_motion,
+			args.geom_directory
 		)
 
 		if do_compute:

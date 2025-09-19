@@ -49,7 +49,7 @@ def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 
 	return h
 
-def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, output_base, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, output_base, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion, geom_directory):
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
 
@@ -672,8 +672,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 			for motion_lambda in vehicle.motion_lambdas:
 				motion_lambda(vehicle.input_state.rotor_inputs)
-
-			
 
 			step_start = time.perf_counter_ns()
 
@@ -1523,7 +1521,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				wopwop_motion,
 				vehicle.input_state,
 				wopwop_case_path,
-				[rotor_phases[rotor_idx]]
+				[rotor_phases[rotor_idx]],
+				geom_directory
 			)
 
 			namelists.append(namelist)
@@ -1551,7 +1550,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			wopwop_motion,
 			vehicle.input_state,
 			wopwop_case_path,
-			rotor_phases
+			rotor_phases,
+			geom_directory
 		)
 
 		namelists.append(namelist)
