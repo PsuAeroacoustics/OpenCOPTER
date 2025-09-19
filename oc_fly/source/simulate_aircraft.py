@@ -49,7 +49,7 @@ def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 
 	return h
 
-def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, output_base, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write_wake, output_base, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion, geom_directory):
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
 
@@ -80,20 +80,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	vtk_rotors = [build_base_vtu_rotor(vehicle.aircraft.rotors[rotor_idx]) for rotor_idx in range(num_rotors)]
 	vtk_wake = build_base_vtu_wake(vehicle.wake_history.history[0])
 	vtk_wing = [build_base_vtu_wing(vehicle.aircraft.wings[w_idx]) for w_idx in range(num_wings)]
-
-	for rotor_idx in range(num_rotors):
-		print("writing rotor and wake vtu")
-		origin = vehicle.aircraft.rotors[rotor_idx].frame.global_position()
-		print(f'{vehicle.aircraft.rotors[rotor_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
-		write_rotor_vtu(f"{vtu_output_path}/rotor", 0, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
-		#write_wake_vtu(f"{vtu_output_path}/wake", acoustic_iteration, vtk_wake, vehicle.wake_history.history[0])
-					
-	for wing_idx in range(num_wings):
-		print("writing wing vtu")
-		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
-		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
-		write_wing_vtu(f"{vtu_output_path}/wing", 0, wing_idx, vtk_wing[wing_idx], vehicle.ac_state.wing_states[wing_idx], vehicle.aircraft.wings[wing_idx])
-
 	
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))
 	C_T_len = np.round(2.0*math.pi/(dt*np.abs(omegas))).astype(dtype=np.int64)
@@ -565,11 +551,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 		while not sim_done:
 
-			#print("iteration = ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				max_l2 = 1000
-
-				#log_file.write(f'checking convergence itr: {iteration}, convergence_rev_multiple*iter_per_rev: {convergence_rev_multiple*iter_per_rev}\n')
 				for rotor_idx in range(num_rotors):
 					if convergence_type == 'wake':
 						wake_points = []
@@ -678,11 +661,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 				start_time = now
 				log_file.flush()
-				
-			#if iteration > 1:
-				#sim_done = True
-				#print("Simulated one revolution, exiting")
-
 
 				if converged and not sim_done:
 					if converged_revolutions >= post_conv_revolutions:
@@ -695,10 +673,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			for motion_lambda in vehicle.motion_lambdas:
 				motion_lambda(vehicle.input_state.rotor_inputs)
 
-			
-			#step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt)
 			step_start = time.perf_counter_ns()
-			#step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.inflows, vehicle.wake_history, atmo, iteration, dt, trackBWIevents, converged)
+
 			step(vehicle.ac_state, vehicle.aircraft, vehicle.input_state, vehicle.wake_history, atmo, iteration, dt, trackBWIevents, converged)
 			average_step = average_step + (time.perf_counter_ns() - step_start)
 
@@ -780,8 +756,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			if trim_mode == TRIM_MODE_SHARED_COLLECTIVE:
 				for trim_group in range(num_trim_groups):
 					curr_forces[trim_group] = average_Fs[collective_force_components[trim_group]]/trim_norms[trim_group]
-
-			#if trim and (iteration > 2*iter_per_rev):
+					
 			if trim:
 				for trim_group_idx in range(num_trim_groups):
 					if trim_mode == TRIM_MODE_RPM:
@@ -1546,7 +1521,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				wopwop_motion,
 				vehicle.input_state,
 				wopwop_case_path,
-				[rotor_phases[rotor_idx]]
+				[rotor_phases[rotor_idx]],
+				geom_directory
 			)
 
 			namelists.append(namelist)
@@ -1574,7 +1550,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			wopwop_motion,
 			vehicle.input_state,
 			wopwop_case_path,
-			rotor_phases
+			rotor_phases,
+			geom_directory
 		)
 
 		namelists.append(namelist)

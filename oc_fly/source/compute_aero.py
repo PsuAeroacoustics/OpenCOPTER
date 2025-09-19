@@ -516,8 +516,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 							wopwop_motion[child.name] = {"type": "fourier", "A": child_motion["cos"], "B": child_motion["sin"], "vector": motion_vec_dict[child.name][0]}
 
 						elif motion_vec_dict[child.name][1] == "constant":
-							log_file.write(f"Adding constant motion lambda for frame {child.name}. Part of rotor {r_idx}\n")
 							omega = child_motion["omega"]
+							log_file.write(f"Adding constant motion lambda for frame {child.name}. Part of rotor {r_idx}. omega = {omega}, vector = {motion_vec_dict[child.name][0][0]}, {motion_vec_dict[child.name][0][1]}, {motion_vec_dict[child.name][0][2]}\n")
 							motion_lambda = lambda rotor_inputs, _r_idx=r_idx, _omega=omega, dt=dt, frame=child, vec=motion_vec_dict[child.name][0]: constant_motion(_omega, dt, frame, vec, rotor_inputs, _r_idx)
 							wopwop_motion[child.name] = {"type": "constant", "omega": omega, "vector": motion_vec_dict[child.name][0]}
 
@@ -645,34 +645,34 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			else:
 				rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 	
-	if num_wings > 0:
-		rotorcraft_input_state.wing_inputs[0].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
-		rotorcraft_input_state.wing_inputs[0].freestream_velocity = flight_condition['V_inf']
+	for w_idx in range(num_wings):
+		rotorcraft_input_state.wing_inputs[w_idx].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
+		rotorcraft_input_state.wing_inputs[w_idx].freestream_velocity = flight_condition['V_inf']
 	
+		###
+		# initialize the wing lifting surface and wing inflow here// check if span and chord nodes are different for that
+		###
+
+
+		wing_lift_surface = WingLiftSurf(num_wing_parts[w_idx])
+
 	#set_circulation_to_zero(wing_lift_surface)
 
-	#for wp_idx in range(num_wing_parts[0]):
+		for wp_idx in range(num_wing_parts[w_idx]):
+			wing_part_lift_surf = WingPartLiftingSurf(span_elements, chord_elements)
+			wing_lift_surface.wing_part_lift_surf[wp_idx] = wing_part_lift_surf
 
 	#print("wing_circulation = ", wing_lift_surface.wing_part_lift_surf[0].spanwise_filaments[0].chunks[0].gamma)
 
-	print("wing vortex geometry is set")
+		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[w_idx], span_chunks, chord_elements)
+		
+		print("wing vortex geometry is set")
 	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
-	wing_inflows = []
-	
-	###
-	# initialize the wing lifting surface and wing inflow here// check if span and chord nodes are different for that
-	###
-	if num_wings > 0:
-		wing_part_lift_surf = WingPartLiftingSurf(span_elements, chord_elements)
-		wing_lift_surface = WingLiftSurf(num_wing_parts[0])
-
-		wing_lift_surface.wing_part_lift_surf[wp_idx] = wing_part_lift_surf
-		
-		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[0], span_chunks, chord_elements)
-		
-		wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
-	
+	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
+	#print(len(wing_inflows))
 	print("instantiated inflows")
+
+
 	#rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 
 	# AircraftState is the top level container for holding the current
@@ -729,7 +729,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			acoustics,
 			wake_history_length,
 			results,
-			wopwop_motion
+			wopwop_motion,
+			args.geom_directory
 		)
 
 		if do_compute:

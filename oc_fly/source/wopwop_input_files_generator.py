@@ -167,7 +167,7 @@ def build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phas
 def flatten(xss):
 	return [x for xs in xss for x in xs]
 
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases):
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases, geom_directory):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -311,7 +311,7 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 
 	elif observer_config["type"] == "external_file":
 		observer.fileName = observer_config["fileName"]
-		external_observer_file = f'{args.geom_directory}/{observer.fileName}'
+		external_observer_file = f'{geom_directory}/{observer.fileName}'
 		os.system(f'cp {external_observer_file} {wopwop_case_path}')  
 
 

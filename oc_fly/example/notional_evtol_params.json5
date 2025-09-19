@@ -1,0 +1,95 @@
+{
+	computational_parameters: {
+		d_psi: 1.0,
+		spanwise_elements: 48,
+		shed_history_angle: [45, 45, 45, 45],
+		//wake_trail_distance: [0, 0, 0, 0, 0, 0, 0, 0, 0],
+		wake_trail_distance: [5, 5, 1, 1],
+		shed_release_angle: 1.0,
+		//convergence_criteria: 1.0,
+		convergence_criteria: 1.0e-3,
+		trim_algo: "lympany",
+		convergence_type: "trim",
+		r_0: [1.0, 1.0, 1.0, 1.0],
+		a1: 1.0e-5,
+        post_conv_revolutions: 20
+		//post_conv_revolutions: 1
+	},
+	flight_conditions: [
+		{
+			name: "take_off",
+			aoa: -9.5,
+			density: 1.2055,
+			sos: 341.7,
+			T: [37000],
+			// Trim in a shared collective mode. We define
+			// collective groups that share the same collective value.
+			// The collective force_components defines which ac force
+			// component that collective group should trim to.
+			trim_mode: "shared_collective",
+            // An array that contains arrays of the rotor indices that
+            // map to a trim group. Here all rotors are mapped to one trim
+            // group
+			collective_groups: [[0, 1, 2, 3]],
+            // The force component to trim against. 2 is the z axis, so thrust
+            // This is in the aircraft frame
+			collective_force_components: [2],
+			V_inf: 20.6,
+			observer_file: "hart_ii_observers.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			trim_frame: "lifter_pitch_hinge",
+			motion: [
+				{
+					frame: "notional_lifter_0",
+					blade_element_func: "rotation",
+					omega: 124.511789
+				},
+				{
+					frame: "notional_lifter_1",
+					blade_element_func: "rotation",
+					omega: -128.595859
+				},
+				{
+					frame: "notional_lifter_2",
+					blade_element_func: "rotation",
+					omega: -127.234502325
+				},
+				{
+					frame: "notional_lifter_3",
+					blade_element_func: "rotation",
+					omega: 127.65338134
+				},
+                {
+					frame: "lifter_0_tilt_hinge",
+					axis_angle_function: "static",
+					angle: 30
+				},
+                				{
+					frame: "lifter_1_tilt_hinge",
+					axis_angle_function: "static",
+					angle: 30
+				}
+			]
+		}
+	],
+	results: {
+		inflow_slices: [
+			{
+				resolution: [256, 256, 101],
+				slice_start: [2.5, 1.2, 0.15],
+				slice_size: [4, 1.2, 3.0]
+			}
+		],
+		// wake_slices: [
+		// 	{
+		// 		resolution: [456, 152, 80],
+		// 		slice_start: [-3.0, -3.0, -1],
+		// 		slice_size: [18, 6, 3]
+		// 	}
+		// ],
+	}
+}
