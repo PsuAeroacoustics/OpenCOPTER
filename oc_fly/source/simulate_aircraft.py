@@ -1329,7 +1329,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		for rotor_idx in range(num_rotors):
 			for blade_idx in range(num_blades[rotor_idx]):
 				close_loading_file(loading_files[rotor_idx][blade_idx])
-				close_bwi_file(bwi_files[rotor_idx][blade_idx])
+				if(trackBWIevents):
+					close_bwi_file(bwi_files[rotor_idx][blade_idx])
 
 	log_file.write("Sim done\n")
 
