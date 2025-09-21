@@ -373,7 +373,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		enforce(z_rel_rot_nodes.length == 1, "Incorrect number of Z_Rel_Rotation nodes. Expected 1 got "~z_rel_rot_nodes.length.to!string);
 
 		auto position = Vec3(
-			x_rel_loc_nodes[0].getAttribute("Value").to!double,
+			-x_rel_loc_nodes[0].getAttribute("Value").to!double,
 			y_rel_loc_nodes[0].getAttribute("Value").to!double,
 			z_rel_loc_nodes[0].getAttribute("Value").to!double
 		);
@@ -439,13 +439,17 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 		auto frame = new Frame(initial_axis, 0, position, null, name, frame_type);
 
-		if(frame_type == FrameType.rotor) {
-			frame.rotate(Vec3(0, 1, 0), -PI/2.0);
-		}
+		debug writeln(name, ": z rot = ", x_rel_rot_nodes[0].getAttribute("Value").to!double, " y rot = ", y_rel_rot_nodes[0].getAttribute("Value").to!double, " z rot = ", z_rel_rot_nodes[0].getAttribute("Value").to!double);
 
-		frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
-		frame.rotate(Vec3(0, 1, 0), y_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
-		frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+		if(frame_type == FrameType.rotor) {
+			frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+			frame.rotate(Vec3(0, 1, 0), -(y_rel_rot_nodes[0].getAttribute("Value").to!double - 90)*(PI/180.0));
+			frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+		} else {
+			frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+			frame.rotate(Vec3(0, 1, 0), -y_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+			frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
+		}
 
 		geom_dict[geom_id] = VspFrameData(frame, parent_id, children_ids, planar_sym, sym_ancestor, geom);
 	}
@@ -470,7 +474,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 				auto frame = geom_dict[child_id].frame;
 
 				auto sym_frame = new Frame(frame.axis, frame.angle, frame.local_position, frame.parent, frame.name~"_symmetry", frame.frame_type);
-				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
+				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*frame.local_matrix;
 
 				frame_data.frame.children ~= [frame, sym_frame];
 
@@ -525,7 +529,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 			// add blades
 			auto num_blades = frame_data.xml_node.parseXPath("ParmContainer/Design/NumBlade")[0].getAttribute("Value").to!double.to!size_t;
 			auto R = 0.5*frame_data.xml_node.parseXPath("ParmContainer/Design/Diameter")[0].getAttribute("Value").to!double;
-			auto c_ave = frame_data.xml_node.parseXPath("ParmContainer/Design/Chord")[0].getAttribute("Value").to!double;
+			auto c_ave = frame_data.xml_node.parseXPath("ParmContainer/Design/Chord")[0].getAttribute("Value").to!double*R;
 			auto solidity = frame_data.xml_node.parseXPath("ParmContainer/Design/Solidity")[0].getAttribute("Value").to!double;
 
 			auto r_c = frame_data.xml_node.parseXPath("PropellerGeom/Chord/ParmContainer/Chord/r_0")[0].getAttribute("Value").to!double;
@@ -688,7 +692,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 				auto frame = geom_dict[child_id].frame;
 
 				auto sym_frame = new Frame(frame.axis, frame.angle, frame.local_position, frame.parent, frame.name~"symmetry", frame.frame_type);
-				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*sym_frame.local_matrix;
+				sym_frame.local_matrix = symmetry_mats[frame_data.symmetry]*frame.local_matrix;
 
 				auto child1_frame_data = new VspFrameData(
 					geom_dict[child_id].frame,
@@ -855,7 +859,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		return wings;
 	}
 
-	ac.root_frame = new Frame(Vec3(0, 0, 1), 0, Vec3(0, 0, 0), null, "aircraft", "aircraft");
+	ac.root_frame = new Frame(Vec3(0, 0, 1), PI, Vec3(0, 0, 0), null, "aircraft", "aircraft");
 
 	RotorGeometryT!AC*[] rotors;
 	WingGeometryT!AC*[] wings;

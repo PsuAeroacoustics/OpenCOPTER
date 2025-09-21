@@ -7,10 +7,10 @@
 		shed_history_angle: [45, 45, 45, 45],
 		shed_release_angle: 2,
 
-		convergence_criteria: 1.0e-1,
+		convergence_criteria: 1.0e-2,
 		post_conv_revolutions: 2,
-		//wake_trail_distance: [4, 4, 4, 4],
-		wake_trail_distance: [0, 0, 0, 0],
+		wake_trail_distance: [4, 4, 4, 4],
+		//wake_trail_distance: [0, 0, 0, 0],
 		// convergence_criteria: 1.0e-1,
 		// post_conv_revolutions: 1,
 		// wake_trail_distance: [1, 1],
@@ -42,7 +42,7 @@
             //     268.8,
             //     0
             // ],
-			V_inf: 5.0,
+			V_inf: 25.0,
 			observer_file: "helinovi_observers_climb.json5",
 			acoustics_file: "acoustics_total_noise.json",
 			run_for: 0.0,
@@ -60,12 +60,12 @@
 				{
 					frame: "LiftRotor_symmetry",
 					blade_element_func: "rotation",
-					omega: -200
+					omega: 200
 				},
 				{
 					frame: "CruiseProp",
 					blade_element_func: "rotation",
-					omega: -200
+					omega: 200
 				},
                 {
 					frame: "CruiseProp_symmetry",
@@ -75,12 +75,12 @@
 				{
 					frame: "HingeGeom",
 					axis_angle_function: "static",
-					angle: 30
+					angle: -60
 				},
 				{
 					frame: "HingeGeom_symmetry",
 					axis_angle_function: "static",
-					angle: 30
+					angle: -60
 				},
 				{
 					frame: "WingGeom",
