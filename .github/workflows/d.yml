@@ -16,7 +16,7 @@ permissions:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
     - uses: actions/checkout@v3
@@ -30,6 +30,7 @@ jobs:
         compiler: ldc-1.28.1
     - name: Install Dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
         wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
         echo Extracting sleef tarball
