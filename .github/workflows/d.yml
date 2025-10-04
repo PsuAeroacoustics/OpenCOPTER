@@ -41,10 +41,10 @@ jobs:
         cd $dir
         git clone git@github.com:OpenWopwop/wopwop3.git
         cd wopwop3
-        git checkout BRRC_BWI
+        git checkout BRRC_BWI_gfortran_fix
         mkdir build
         cd build
-        cmake ../ -DCMAKE_BUILD_TYPE=Release -DPARALLEL=1 -DUseLTO=1 -DNATIVE=1
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DPARALLEL=1 -DBUFFERSTD=OFF -DNATIVE=1 -DUseLTO=1 -DFPMODEL=strict -DCMAKE_Fortran_FLAGS="-ffree-line-length-none -Wno-line-truncation"
         make
 
         # Sleef fetch and build
@@ -73,3 +73,7 @@ jobs:
         ls -alh
         cd oc_fly/example
         mpirun -n 3 ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs
+
+        mpirun -n 4 ../../wopwop3/build/wopwop3 cases_0_0.nam
+        mpirun -n 4 ../../wopwop3/build/wopwop3 cases_1_0.nam
+        mpirun -n 4 ../../wopwop3/build/wopwop3 cases_2_0.nam
