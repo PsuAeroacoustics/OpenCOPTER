@@ -40,6 +40,7 @@ jobs:
         # wopwop fetch and build
         cd $dir
         git clone git@github.com:OpenWopwop/wopwop3.git
+        cd wopwop3
         git checkout BRRC_BWI
         mkdir build
         cd build
