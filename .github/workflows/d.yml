@@ -70,10 +70,10 @@ jobs:
     - name: 'Validate HART II'
       run: |
         # Run HART II validation case
-        ls -alh
+        ls -alh ../
         cd oc_fly/example
-        mpirun -n 3 ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs
+        ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs
 
-        mpirun -n 4 ../../wopwop3/build/wopwop3 cases_0_0.nam
-        mpirun -n 4 ../../wopwop3/build/wopwop3 cases_1_0.nam
-        mpirun -n 4 ../../wopwop3/build/wopwop3 cases_2_0.nam
+        ../../wopwop3/build/wopwop3 cases_0_0.nam
+        ../../wopwop3/build/wopwop3 cases_0_1.nam
+        ../../wopwop3/build/wopwop3 cases_0_2.nam
