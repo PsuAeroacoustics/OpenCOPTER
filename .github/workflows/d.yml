@@ -74,6 +74,10 @@ jobs:
         cd oc_fly/example
         ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs
 
+        mkdir -p ./hart_ii/BL/acoustics/full_system/octaveFilterSP/spl
+        mkdir -p ./hart_ii/MN/acoustics/full_system/octaveFilterSP/spl
+        mkdir -p ./hart_ii/MV/acoustics/full_system/octaveFilterSP/spl
+
         ../../wopwop3/build/wopwop3 cases_0_0.nam
         ../../wopwop3/build/wopwop3 cases_0_1.nam
         ../../wopwop3/build/wopwop3 cases_0_2.nam
