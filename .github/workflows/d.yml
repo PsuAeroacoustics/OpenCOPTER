@@ -22,16 +22,32 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
     - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
       with:
         compiler: ldc-1.28.1
     - name: Install Dependencies
       run: |
+        eval `ssh-agent -s`
+        ssh-add - <<< '${{ secrets.ACTIONS_KEY }}'
+
+        dir=$(pwd)
         sudo apt-get update
-        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
+        sudo apt-get install -y gfortran libfftw3-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev libopenmpi-dev
+        sudo apt-get install -y python3-scipy python3-numpy python3-mpi4py
+        pip3 install pyjson5
+
+        # wopwop fetch and build
+        cd $dir
+        git clone git@github.com:OpenWopwop/wopwop3.git
+        git checkout BRRC_BWI
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DPARALLEL=1 -DUseLTO=1 -DNATIVE=1
+        make
+
+        # Sleef fetch and build
+        cd $dir
         wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
         echo Extracting sleef tarball
         tar xf 3.5.1.tar.gz
@@ -39,10 +55,20 @@ jobs:
         mkdir build
         cd build
         cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
-        make
+        make > /dev/null 2>&1
         sudo make install
         
     - name: 'Build'
       run: |
         # Build the project, with its main file included, without unittests
         dub build -c library-python310-novtk -b release --compiler=$DC
+        cd oc_fly/dependencies/wopwopd
+        dub build -c library-python310 -b release --compiler=$DC
+        cd -
+
+    - name: 'Validate HART II'
+      run: |
+        # Run HART II validation case
+        ls -alh
+        cd oc_fly/example
+        mpirun -n 3 ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs
