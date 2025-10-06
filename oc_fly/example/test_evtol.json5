@@ -6,6 +6,36 @@
 		// z points up (we aren't control nerds here)
 		name: "test_evtol",
 		vsp: "test_evtol.vsp3",
-		parameter_file: "test_evtol_params.json5"
+		parameter_file: "test_evtol_params.json5",
+		airfoil_definition: [
+			{
+				rotor: "LiftRotor",
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.2,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			},
+			{
+				rotor: "CruiseProp",
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.2,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			}
+		]
 	}
 ]

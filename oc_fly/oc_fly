@@ -15,6 +15,7 @@ from libwopwopd import *
 from source import compute_aero
 from source import compute_acoustics
 import numpy as np
+from scipy.interpolate import interp1d
 import math
 import argparse
 from os import path, makedirs
@@ -70,13 +71,61 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 				if motion_frame is not None:
 					motion_vec_dict[motion_frame.name] = (motion_frame.axis, motion["axis_angle_function"])
 
-		# for rotor in rotorcraft_system.rotors:
-		# 	rotor_name = rotor.frame.name
-		# 	print(f'rotor name: {rotor_name}')
-		# 	matched_motions = list(filter(lambda x: x["frame"] == rotor_name, motion))
-		# 	if len(matched_motions) > 0:
+		if "airfoil_definition" in aircraft:
+			airfoil_definitions = aircraft["airfoil_definition"]
+			for airfoil_def in airfoil_definitions:
+				matched_rotors = list(filter(lambda x: (airfoil_def["rotor"] == x.frame.name) or (airfoil_def["rotor"]+"_symmetry" == x.frame.name), rotorcraft_system.rotors))
+				if len(matched_rotors) > 0:
+					for rotor in matched_rotors:
+						for blade in rotor.blades:
+							r = get_r(blade)
+							airfoils = []
+							extents = []
+							af_thickness = []
+							af_r = []
 
-		# 		motion_vec_dict[rotor_name] = (Vec3([0, 0, 1]), "constant")
+							elements = len(r)
+							
+							r_c = r[0]
+							non_dim_length = 1.0 - r_c
+
+							for airfoil_desc in airfoil_def["airfoils"]:
+								
+								type = airfoil_desc['type']
+								extent = [0, 0]
+								af_extent = airfoil_desc['extent']
+								airfoil = None
+								if type == 'aerodas':
+									airfoil = create_aerodas_from_xfoil_polar(path.join(geom_directory, airfoil_desc['xfoil_polar']), airfoil_desc['thickness'])
+								elif type == 'thinaf': # ;)
+									airfoil = ThinAirfoil(0)
+								elif type == "C81":
+									airfoil = load_c81_file(airfoil_desc['filename'])
+								else:
+									print(f"Unsupported airfoil type: {type}. Defaulting to ThinAirfoil theory")
+									airfoil = ThinAirfoil(0)
+
+								extent[0] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[0] - r_c)/non_dim_length) - 1.0))*elements))
+								extent[1] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[1] - r_c)/non_dim_length) - 1.0))*elements)) - 1
+
+								extents.append(extent)
+								airfoils.append(airfoil)
+								af_thickness.append(airfoil_desc['thickness'])
+								af_r.append(0.5*(extent[0] + extent[1]))
+
+							if len(af_r) == 1:
+								af_r.append(af_r[0])
+								af_thickness.append(af_thickness[0])
+								
+							blade_airfoil = BladeAirfoil(airfoils, extents)
+
+							f_thickness = interp1d(af_r, af_thickness, bounds_error=False, fill_value='extrapolate')
+
+							
+							thickness = f_thickness(r)
+							
+							set_thickness(blade, thickness)
+							blade.airfoil = blade_airfoil
 
 	else:
 		rotorcraft_system, motion_vec_dict, trim_vec_dict, component_dict = compute_aero.build_aircraft(aircraft, computational_parameters['spanwise_elements'], geom_directory, motions, flight_condition["trim_frame"] if "trim_frame" in flight_condition else None)
@@ -89,11 +138,17 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	V_inf = flight_condition["V_inf"]
 	wake_dists = np.zeros(num_rotors)
 	
-	omegas = []
+	omegas_with_frame_name = []
 	for m in motions:
 		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
-			omegas.append(m['omega'])
+			omegas_with_frame_name.append((m['frame'], m['omega']))
 
+	omegas = []
+	for rotor in rotorcraft_system.rotors:
+		matched_frames = list(filter(lambda x: x[0] == rotor.frame.name, omegas_with_frame_name))
+		if len(matched_frames) > 0:
+			omegas.append(matched_frames[0][1])
+		 
 	omegas = np.asarray(omegas)
 	omegas = omegas[0:radii.size]
 	for rotor_idx, omega in enumerate(omegas):
