@@ -1002,7 +1002,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 									wake_element_found[rotor_idx][t_idx] = True
 									wake_element_blade[rotor_idx, t_idx] = blade_idx
 
-						fill_dC_Nf(blade, z_loading.astype(np.float32))
+						#fill_dC_Nf(blade, z_loading.astype(np.float32))
+						z_loading = z_loading.astype(np.float32)
+
+						fill_dC_Nf(blade, z_loading)
 						fill_dC_cf(blade, x_loading)
 
 						z_loading = -z_loading*atmo.density*math.pi*radii[rotor_idx]**3.0*abs(omegas[rotor_idx])**2.0
@@ -1053,7 +1056,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								if len(wake_idx[blade_idx][blade_idx2][acoustic_iteration])>1:
 									print('change the logic')
 								size = len(wake_idx[blade_idx][blade_idx2][acoustic_iteration][0])
-								print('size:', size)
+								#print('size:', size)
 								for i in range (0,size):
 									if wake_idx[blade_idx][blade_idx2][acoustic_iteration][0][i] > 2:
 										interaction[blade_idx2].blade_idx.extend([blade_idx])
@@ -1196,7 +1199,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 									else:
 										perpInteraction_perBlade[blade_idxx].a0.append(r_c_values[i]) 
 										perpInteraction_perBlade[blade_idxx].b_e.append(r_c_values[i])
-										print('here')
+										
 										# value = r_c_values[i]**2 - missDist2[i]**2
 										# if value > 0:
 										# 	perpInteraction_perBlade[blade_idxx].b_e.append(value)
@@ -1225,15 +1228,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 							L0_full = perpInteraction_perBlade[blade_idxx].L0
 							b_e_full = perpInteraction_perBlade[blade_idxx].b_e
 							Uref_full = perpInteraction_perBlade[blade_idxx].Uref
-							print('len(ID):',len(ID_full))
-							print('b_e_full:',len(b_e_full))
 							
 							filtered_indices = [i for i, id_val in enumerate(ID_full) if id_val != 1]
 							nInteractions = len(filtered_indices)
 
 							if nInteractions > 0:
 								ID = [ID_full[i] for i in filtered_indices]
-								print('ID:', ID)
 								psi = [psi_full[i] for i in filtered_indices]
 								sec_idx = [sec_idx_full[i] for i in filtered_indices]
 								wake_angle = [wake_angle_full[i] for i in filtered_indices]
@@ -1241,8 +1241,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								vortex_len = [vortex_len_full[i] for i in filtered_indices]
 								L0 = [L0_full[i] for i in filtered_indices]
 								b_e = [b_e_full[i] for i in filtered_indices]
-								print('b_e:',len(b_e))
-								print('filtered_indices:', filtered_indices)
 								Uref = [Uref_full[i] for i in filtered_indices]
 
 							append_bwi_data(bwi_files[rotor_idx][blade_idxx], loading_data.time, nInteractions, ID, psi, sec_idx, wake_angle, missDist2, vortex_len, L0, b_e, Uref)		
