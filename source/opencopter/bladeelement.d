@@ -276,6 +276,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		blade_state.chunks[chunk_idx].dC_T_dot = (dC_T[] - blade_state.chunks[chunk_idx].dC_T[])/dt;
 		blade_state.chunks[chunk_idx].dC_T[] = dC_T[];
 		blade_state.chunks[chunk_idx].dC_Db[] = dC_Db[];
+		blade_state.chunks[chunk_idx].dC_Db_induced[] = blade_state.chunks[chunk_idx].dC_L[]*sin_inflow[];
+		blade_state.chunks[chunk_idx].dC_Db_profile[] = blade_state.chunks[chunk_idx].dC_D[]*cos_inflow[];
 		blade_state.chunks[chunk_idx].dC_N[] = dC_N[];
 		blade_state.chunks[chunk_idx].dC_c[] = dC_c[];
 

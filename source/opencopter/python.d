@@ -371,6 +371,14 @@ void fill_dC_Db(ref PyBladeState blade, double[] data) {
 	return blade.get_state_array!"dC_Db"(data);
 }
 
+void fill_dynamic_dC_Db_profile(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dynamic_dC_Db_profile"(data);
+}
+
+void fill_dynamic_dC_Db_induced(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dynamic_dC_Db_induced"(data);
+}
+
 void fill_dC_Dbf(ref PyBladeState blade, float[] data) {
 	return blade.get_state_array!"dC_Db"(data);
 }
@@ -427,6 +435,10 @@ void fill_aoad(ref PyBladeState blade, double[] data) {
 	return blade.get_state_array!"aoa"(data);
 }
 
+void fill_aoa_effd(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"aoa_eff"(data);
+}
+
 void fill_aoaf(ref PyBladeState blade, float[] data) {
 	return blade.get_state_array!"aoa"(data);
 }
@@ -447,12 +459,24 @@ void fill_u_pf(ref PyBladeState blade, float[] data) {
 	return blade.get_state_array!"u_p"(data);
 }
 
+void fill_dynamic_u_pd(ref PyBladeState blade, double[] data) {
+	return blade.get_state_array!"dynamic_u_p"(data);
+}
+
+void fill_dynamic_u_pf(ref PyBladeState blade, float[] data) {
+	return blade.get_state_array!"dynamic_u_p"(data);
+}
+
 double[] get_gamma(ref PyBladeState blade) {
 	return blade.get_state_array!"gamma";
 }
 
 double[] get_u_p(ref PyBladeState blade) {
 	return blade.get_state_array!"u_p";
+}
+
+double[] get_dynamic_u_p(ref PyBladeState blade) {
+	return blade.get_state_array!"dynamic_u_p";
 }
 
 double[] get_u_t(ref PyBladeState blade) {
@@ -1137,6 +1161,21 @@ extern(C) void PydMain() {
 		:return: List of spanwise :math:`dC_Db` values
 	});
 
+
+	def!(fill_dynamic_dC_Db_profile, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Db` from
+		:return: List of spanwise :math:`dC_Db` values
+	});
+
+	def!(fill_dynamic_dC_Db_induced, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise chord wise force coefficient to a linear array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_Db` from
+		:return: List of spanwise :math:`dC_Db` values
+	});
+
 	def!(fill_dC_Dbf, void function(ref PyBladeState, float[]), Docstring!q{
 		Extract blade spanwise chord wise force coefficient to a linear array.
 
@@ -1229,6 +1268,13 @@ extern(C) void PydMain() {
 		:param data: numpy slice to fill with :math:`dC_T` values
 	});
 
+	def!(fill_aoa_effd, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise angle of attack to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
 	def!(fill_aoaf, void function(ref PyBladeState, float[]), Docstring!q{
 		Extract blade spanwise angle of attack to a linear single precision floating point array.
 
@@ -1259,6 +1305,20 @@ extern(C) void PydMain() {
 
 	def!(fill_u_pf, void function(ref PyBladeState, float[]), Docstring!q{
 		Extract blade spanwise perpendicular velocity component to a linear single precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_dynamic_u_pd, void function(ref PyBladeState, double[]), Docstring!q{
+		Extract blade spanwise perpendicular velocity component to a linear double precision floating point array.
+
+		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
+		:param data: numpy slice to fill with :math:`dC_T` values
+	});
+
+	def!(fill_dynamic_u_pf, void function(ref PyBladeState, float[]), Docstring!q{
+		Extract blade spanwise perpendicular velocity component to a linear double precision floating point array.
 
 		:param blade_state: the :class:`BladeState` to extract the spanwise :math:`dC_T` from
 		:param data: numpy slice to fill with :math:`dC_T` values

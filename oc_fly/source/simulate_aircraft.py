@@ -40,7 +40,6 @@ def flapping_at_azimuth(a: list[float], b: list[float], w: float, azimuth: float
 
 def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 	h = 0
-	#h_star = 0
 
 	for idx in range(len(a)):
 		cos = math.cos(float(idx)*azimuth)
@@ -404,6 +403,16 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 	elastic_twist_array = np.zeros((num_rotors, max(num_blades), int(round(post_conv_revolutions*iter_per_rev)) + 1))
 	blade_twist_array = np.zeros((num_rotors, max(num_blades), int(round(post_conv_revolutions*iter_per_rev)) + 1))
 	blade_twist_azimuth = np.zeros((num_rotors, max(num_blades), int(round(post_conv_revolutions*iter_per_rev)) + 1))
+
+	temp_u_p = np.zeros(elements)
+	temp_dC_T = np.zeros(elements)
+	temp_buffer = np.zeros(elements)
+	blade_inflow_distribution = np.zeros((num_rotors, max(num_blades), elements))
+	blade_loading_distribution = np.zeros((num_rotors, max(num_blades), elements))
+
+	blade_induced_drag_distribution = np.zeros((num_rotors, max(num_blades), elements))
+	blade_profile_drag_distribution = np.zeros((num_rotors, max(num_blades), elements))
+	blade_dynamic_aoa_distribution = np.zeros((num_rotors, max(num_blades), elements))
 
 	target_y_slices = []
 	piv_slices = []
@@ -868,9 +877,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 			loading_data.time = dt*acoustic_iteration
 
 			if converged:
-				#print("converged revolutions = ", converged_revolutions, "\t post conv revs = ", post_conv_revolutions)
-				if write_wake: # and (converged_revolutions >= (post_conv_revolutions - 1)):
-					print("writing vtu files")
+
+				if write_wake and (converged_revolutions >= (post_conv_revolutions - 1)):
 					for rotor_idx in range(num_rotors):
 						#print("writing rotor and wake vtu")
 						write_rotor_vtu(f"{vtu_output_path}/rotor", acoustic_iteration, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
@@ -964,10 +972,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 
 						sin3_azimuth = math.cos(3.0*(blade_azimuth) - (psi_3 - math.pi))
 
-						collective_pitch_array[rotor_idx, acoustic_iteration] = get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
+						collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]#get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
 						#collective_pitch_array[rotor_idx, acoustic_iteration] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] # thetas[rotor_idx, 1]
-						sin_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1s[rotor_idx]*sin_azimuth
-						cos_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1c[rotor_idx]*cos_azimuth
+						sin_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1s[rotor_idx]
+						cos_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1c[rotor_idx]
 						hhc_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_3*sin3_azimuth
 
 						blade_twist_azimuth[rotor_idx, blade_idx, acoustic_iteration] = acoustic_iteration*d_psi[rotor_idx]
@@ -976,6 +984,23 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 
 						blade_twist_array[rotor_idx, blade_idx, acoustic_iteration] = get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
 						#blade_twist_array[rotor_idx, blade_idx, acoustic_iteration] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx]
+
+						#if (blade_azimuth < (0.5*math.pi + 0.75*(math.pi/180.0))) and (blade_azimuth > (0.5*math.pi - 0.75*(math.pi/180.0))):
+						if (blade_azimuth < (1.5*math.pi + 0.75*(math.pi/180.0))) and (blade_azimuth > (1.5*math.pi - 0.75*(math.pi/180.0))):
+							fill_dynamic_u_pd(vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx], temp_buffer)
+							blade_inflow_distribution[rotor_idx, blade_idx, :] = temp_buffer
+
+							fill_dC_Td(vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx], temp_buffer)
+							blade_loading_distribution[rotor_idx, blade_idx, :] = temp_buffer
+
+							fill_dynamic_dC_Db_profile(vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx], temp_buffer)
+							blade_profile_drag_distribution[rotor_idx, blade_idx, :] = temp_buffer
+
+							fill_dynamic_dC_Db_induced(vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx], temp_buffer)
+							blade_induced_drag_distribution[rotor_idx, blade_idx, :] = temp_buffer
+
+							fill_aoa_effd(vehicle.ac_state.rotor_states[rotor_idx].blade_states[blade_idx], temp_buffer)
+							blade_dynamic_aoa_distribution[rotor_idx, blade_idx, :] = temp_buffer
 
 						if blade_flapping is not None:
 							(h, h_star) = blade_flapping(blade_azimuth - math.pi)
@@ -1009,7 +1034,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 
 						u = abs(omegas[rotor_idx])*radii[rotor_idx]*np.sqrt(u_t_array**2.0 + u_p_array**2.0)
 
-						#append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
+						append_bpm_data(bpm_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
 
 				spanwise_element_iteration = spanwise_element_iteration + 1
 
@@ -1165,6 +1190,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 		result_dictionary["average_powers"] = average_Qs
 		result_dictionary["average_torques"] = [average_Qs[rotor_idx]/abs(omegas[rotor_idx]) for rotor_idx in range(num_rotors)]
 		result_dictionary["rotor_phases"] = rotor_phases
+
+		result_dictionary["blade_inflow_distribution"] = blade_inflow_distribution
+		result_dictionary["blade_loading_distribution"] = blade_loading_distribution
+
+		result_dictionary["blade_induced_drag_distribution"] = blade_induced_drag_distribution
+		result_dictionary["blade_profile_drag_distribution"] = blade_profile_drag_distribution
+		result_dictionary["blade_dynamic_aoa_distribution"] = blade_dynamic_aoa_distribution
 
 	namelists = []
 

@@ -50,7 +50,6 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 
 	r = generate_radius_points(requested_elements, r_c)
 
-	#print(f'r = {r}')
 	elements = len(r)
 
 	non_dim_length = 1.0 - r_c
@@ -66,7 +65,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		airfoil = None
 		if type == 'aerodas':
 			airfoil = create_aerodas_from_xfoil_polar(path.join(geom_directory, airfoil_desc['xfoil_polar']), airfoil_desc['thickness'])
-		elif type == 'thinaf':
+		elif type == 'thinaf': # ;)
 			airfoil = ThinAirfoil(0)
 		elif type == "C81":
 			#airfoil = load_c81_file(path.join(geom_directory, airfoil_desc['filename']))
@@ -212,18 +211,6 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 			component_json = components_ref_dict[referenced_component_name]["obj"]
 			ref_count = components_ref_dict[referenced_component_name]["ref_count"]
 			components_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
-		# elif referenced_component_name in rotor_ref_dict:
-		# 	component_json = rotor_ref_dict[referenced_component_name]["obj"]
-		# 	ref_count = rotor_ref_dict[referenced_component_name]["ref_count"]
-		# 	rotor_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
-		# elif referenced_component_name in blade_ref_dict:
-		# 	component_json = blade_ref_dict[referenced_component_name]["obj"]
-		# 	ref_count = blade_ref_dict[referenced_component_name]["ref_count"]
-		# 	blade_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
-		# elif referenced_component_name in wing_ref_dict:
-		# 	component_json = blade_ref_dict[referenced_component_name]["obj"]
-		# 	ref_count = blade_ref_dict[referenced_component_name]["ref_count"]
-		# 	blade_ref_dict[referenced_component_name]["ref_count"] = ref_count + 1
 
 	name = component_json["name"]
 	frame_type = component_json["type"]
@@ -251,12 +238,10 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 		matched_motions = matched_motions + list(filter(lambda x: x["frame"] == actual_name, motion))
 
 		if len(matched_motions) > 0:
-			#print(f'matched_motions: {matched_motions}')
 			if "axis_angle_function" not in component_json:
 				raise Exception(f"No motion function defined for frame {name}")
 			
 			motion_axis_dict[actual_name] = (angle_axis, component_json["axis_angle_function"])
-			#print(f'motion_axis_dict: {motion_axis_dict}')
 
 	if did_deref:
 		name = component_json["name"] + "_" + str(ref_count)
@@ -291,7 +276,6 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 				if len(built_blades) > 1:
 					raise Exception("Rotor has multiple blades on single attachment")
 
-				#print(f"Setting azimuth offset for blade: {child_component['axis_angle']*(math.pi/180.0)}")
 				built_blades[0].azimuth_offset = child_component["axis_angle"]*(math.pi/180.0)
 
 	elif frame_type != FrameType_blade():
@@ -336,7 +320,7 @@ def build_wing(num_wing_parts, frame, num_span_elements, num_chord_elements, win
 
 	wing.frame = frame
 
-	print("\n wing frame name: ", wing.frame.name )
+	print("\n wing frame name: ", wing.frame.name)
 
 	return wing
 	
@@ -518,9 +502,9 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		def build_motion_lambdas(parent_frame, rotor, azimuth_offset, r_idx):
 			sub_motion_lambdas = []
 
-			print("parant frame type = ", parent_frame.get_frame_type())
+			#print("parant frame type = ", parent_frame.get_frame_type())
 			for child in parent_frame.children:
-				print("child frame type = ", child.get_frame_type())
+				#print("child frame type = ", child.get_frame_type())
 				if (child.get_frame_type() == FrameType_rotor()):
 					(rotor, r_idx) = get_rotor(child)
 					log_file.write(f"Rotor {child.name} is rotor {r_idx}\n")	

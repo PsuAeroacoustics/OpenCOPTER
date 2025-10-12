@@ -274,6 +274,22 @@ extern (C++) struct BladeStateChunk {
 	 +/
 	Chunk dC_Db;
 	/++
+	 +  Spanwise drag coefficient distribution in blade frame
+	 +/
+	Chunk dC_Db_induced;
+	/++
+	 +  Spanwise drag coefficient distribution in blade frame
+	 +/
+	Chunk dC_Db_profile;
+	/++
+	 +  Spanwise drag coefficient distribution in blade frame
+	 +/
+	Chunk dynamic_dC_Db_induced;
+	/++
+	 +  Spanwise drag coefficient distribution in blade frame
+	 +/
+	Chunk dynamic_dC_Db_profile;
+	/++
 	 +  Spanwise sectional normal force coefficient distribution
 	 +/
 	Chunk dC_N;
@@ -314,6 +330,7 @@ extern (C++) struct BladeStateChunk {
 	Chunk dC_My;
 	//Chunk dC_M;
 	Chunk u_p;
+	Chunk dynamic_u_p;
 	Chunk shed_u_p;
 	Chunk u_t;
 	/++
