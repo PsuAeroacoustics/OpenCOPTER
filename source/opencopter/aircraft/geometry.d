@@ -136,8 +136,8 @@ double[] generate_chordwise_control_points(size_t chord_n_sections) {
 	import std.range : iota, retro;
 	// Spanwise Votex nodes
 	immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
-	return iota(1.0,num_points + 2.0).map!((i){
-		immutable theta = i*PI/(num_points.to!double + 1.0);
+	return iota(1.0,num_points + 1.0).map!((i){
+		immutable theta = i*PI/(num_points.to!double);
 		auto chord_ctrl_pt = 0.5*(1 - cos(theta)).to!double;
 		return chord_ctrl_pt;
 	}).array;
@@ -752,13 +752,10 @@ extern (C++) struct WingPartGeometryChunk {
 	 +   Chord distribution
 	 +/
 	Chunk chord;
-	//Chunk span_vortex_pt;
-
-	//Chunk span_ctrl_pt;
 	/++
-	 +   Radial distribution
+	 +   span_locations
 	 +/
-	//Chunk r;
+	Chunk y_span;
 	/++
 	 +  Radial sectional airfoil lift curve slope
 	 +/
@@ -785,7 +782,7 @@ extern (C++) struct WingPartCtrlPointChunk {
 }
 
 template is_wing_part_geometry(A) {
-	enum bool is_wing_geometry = {
+	enum bool is_wing_part_geometry = {
 		static if(isPointer!(A)) {
 			return isInstanceOf!(WingPartGeometryT, PointerTarget!A);
 		} else {

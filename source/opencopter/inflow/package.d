@@ -26,7 +26,7 @@ alias Inflow = InflowT!(ArrayContainer.none);
 
 
 interface InflowT(ArrayContainer AC = ArrayContainer.none) {
-	void update(AircraftStateT!AC ac_state, double dt);
+	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt);
 	Chunk inflow_at(immutable Vector!(4, Chunk) xyz);
 	void update_wing_circulation(WingStateT!AC wing_state);
 	void update_wing_dC_L(WingStateT!AC wing_state);

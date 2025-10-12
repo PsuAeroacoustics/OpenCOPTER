@@ -91,9 +91,9 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 
 
 		auto wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, rotor_idx, blade_idx, false, false, true);
-
+		
 		auto shed_wake_velocities = wake.compute_wake_induced_velocities(blade_state.chunks[chunk_idx].x, blade_state.chunks[chunk_idx].y, blade_state.chunks[chunk_idx].z, ac_state, rotor_idx, blade_idx, false, true, false);
-
+		
 		auto wing_global_inflow = Vector!(4, Chunk)(0);
 		debug writeln("wing_global_inflow_init = ", wing_global_inflow);
 
@@ -105,10 +105,12 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 			xyz_chunk.mData[1][] = blade_state.chunks[chunk_idx].y[];
 			xyz_chunk.mData[2][] = blade_state.chunks[chunk_idx].z[];
 			debug writeln("/n assigned xyz_chunk: x = ",blade_state.chunks[chunk_idx].x[], xyz_chunk.mData[0][]);
+			debug writeln("/n assigned xyz_chunk: y = ",blade_state.chunks[chunk_idx].y[], xyz_chunk.mData[1][]);
+			debug writeln("/n assigned xyz_chunk: z = ",blade_state.chunks[chunk_idx].z[], xyz_chunk.mData[2][]);
 
 			debug writeln("wing state inflow frame name: ", wing_state.inflow_model.frame);
-			
-			auto xyz_tpp = wing_state.inflow_model.frame.inverse_global_matrix * xyz_chunk;
+			debug writeln("wing global matrix: ", wing_state.inflow_model.frame.global_matrix.inverse.get());
+			auto xyz_tpp = wing_state.inflow_model.frame.global_matrix.inverse.get() * xyz_chunk;
 			debug writeln("converted xyz to wing coordinates:", xyz_tpp);
 
 			auto wing_ind_vel = wing_state.inflow_model.compute_wing_induced_vel_on_blade(xyz_tpp[0], xyz_tpp[1], xyz_tpp[2]);
@@ -142,9 +144,9 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		writeln("\tv_y = ", wake_velocities.v_y[]);
 		writeln("\tv_z = ", wake_velocities.v_z[]);
 		writeln("wing global inflow: ");
-		writeln("\tv_x = ", wing_global_infow[0][]);
-		writeln("\tv_y = ", wing_global_infow[1][]);
-		writeln("\tv_z = ", wing_global_infow[2][]);*/
+		writeln("\tv_x = ", wing_global_inflow[0][]);
+		writeln("\tv_y = ", wing_global_inflow[1][]);
+		writeln("\tv_z = ", wing_global_inflow[2][]);*/
 
 		shed_wake_global_vel[0][] = shed_wake_velocities.v_x[];
 		shed_wake_global_vel[1][] = shed_wake_velocities.v_y[];
@@ -163,6 +165,10 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		immutable vel_dot = total_vel_vec.dot(blade.chunks[chunk_idx].af_norm);
 		immutable projected_vel = total_vel_vec - blade.chunks[chunk_idx].af_norm*vel_dot;
 
+		/*writeln("blade sec vel = ", total_vel_vec);
+		writeln("blade sec vel dot = ", vel_dot);
+		writeln("af_norm = ", blade.chunks[chunk_idx].af_norm);*/
+
 		immutable shed_vel_dot = shed_vel_vec.dot(blade.chunks[chunk_idx].af_norm);
 		immutable shed_projected_vel = shed_vel_vec - blade.chunks[chunk_idx].af_norm*shed_vel_dot;
 
@@ -172,6 +178,10 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 
 		immutable Chunk u_p = (wake_z[] - shed_projected_vel[2][])/(rotor.radius*abs(rotor_input.angular_velocity));//*cos_sweep[];
 
+		/*writeln("wake_z = ", wake_z);
+		writeln("shed_projected_vel_z = ", shed_projected_vel[2][]);
+		writeln("omega =", rotor_input.angular_velocity);
+		writeln("rotor radius = ", rotor.radius);*/
 		
 		
 		blade_state.chunks[chunk_idx].shed_u_p[] = -shed_projected_vel[2][]/(rotor.radius*abs(rotor_input.angular_velocity));
@@ -185,6 +195,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)(auto ref BG blade, aut
 		immutable Chunk wake_z_non_dim = wake_z[]/(rotor.radius*abs(rotor_input.angular_velocity));
 		immutable Chunk u_t_mu = std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[]* cos_sweep[];
 		
+		//writeln("u_t = ", u_t);
+		//writeln("u_p = ", u_p);
 		/*foreach(c_idx; 0..chunk_size){
 			//writeln("r = ", blade.chunks[chunk_idx].r[c_idx] );
 			if(chunk_idx == 5 && c_idx == 0){
@@ -473,7 +485,7 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	debug writeln("aircraft wake updated");
 	auto ac_forces = Vec4(0.0);
 	foreach(r_idx, ref rotor_state ; ac_state.rotor_states) {
-		rotor_state.inflow_model.update(ac_state, dt);
+		rotor_state.inflow_model.update(ac_state, *wake_history[0],  dt);
 
 		auto rotor_forces = Vec4(0.0);
 
@@ -487,7 +499,7 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 
 	foreach(ref wing_state ; ac_state.wing_states) {
 		//writeln("Updating wing inflow");
-		wing_state.inflow_model.update(ac_state, dt);
+		wing_state.inflow_model.update(ac_state, *wake_history[0], dt);
 	}
 	debug writeln("\n wing inflows updated");
 }

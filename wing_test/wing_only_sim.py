@@ -103,6 +103,8 @@ if __name__ == "__main__":
             for c1 in range(chunk_size()):
                 wing_part_state.ctrl_chunks.ctrl_pt_aoa[c1] = alpha
                 wing_part_state.ctrl_chunks.ctrl_pt_u_t[c1] = freestream_vel
+
+    
     
 
                 

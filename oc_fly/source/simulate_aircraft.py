@@ -50,7 +50,7 @@ def elastic_twist_at_azimuth(a: list[float], b: list[float], azimuth: float):
 
 	return h
 
-def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, write_wake, output_base, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion):
+def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, write_wake, output_base, vtu_output_path, wopwop_output_path, do_compute, flight_condition, computational_parameters, observer, acoustics, wake_lengths, results, wopwop_motion,wing_lift_surf):
 	if not path.isdir(wopwop_output_path):
 		makedirs(wopwop_output_path, exist_ok=True)
 
@@ -448,6 +448,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 		chord_pts = vehicle.aircraft.wings[0].wing_parts[0].ctrl_chunks.len()/span_chunks
 		wing_up = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
 		wing_ut = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_gamma = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_A_kl = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_dC_L = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_span_dist = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_CL = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(convergence_rev_multiple*iter_per_rev)))
 
 	actual_wake_history = [wake_lengths[r_idx] if wake_lengths[r_idx]%chunk_size() == 0 else wake_lengths[r_idx] + (chunk_size() - wake_lengths[r_idx]%chunk_size()) for r_idx in range(num_rotors)]
 	#wake_trajectory_timehistories = [np.zeros((int((post_conv_revolutions + 1)*iter_per_rev), num_blades[r_idx], 3, actual_wake_history[r_idx])) for r_idx in range(num_rotors)]
@@ -511,13 +516,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
 
 		while not sim_done:
-			#print("Lift_rotor_(right)_azimuth = ", vehicle.input_state.rotor_inputs[0].azimuth*(180.0/math.pi))
-			#print("Lift_rotor_symmerty_(left)_azimuth = ", vehicle.input_state.rotor_inputs[1].azimuth*(180.0/math.pi))
-
 			#print("iteration = ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				max_l2 = 1000
-				print("rev = ", iteration/iter_per_rev)
 				#print("going into check convergence")
 				#log_file.write(f'checking convergence itr: {iteration}, convergence_rev_multiple*iter_per_rev: {convergence_rev_multiple*iter_per_rev}\n')
 				for rotor_idx in range(num_rotors):
@@ -898,9 +899,24 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 								#print("c_idx = ", c_idx)
 								wp_up = wp_state.ctrl_chunks[chord_idx].ctrl_pt_up[span_idx]
 								wp_ut = wp_state.ctrl_chunks[chord_idx].ctrl_pt_ut[span_idx]
-								
+								gamma = wing_lift_surf.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[0].gamma[span_idx]
+								A_kl = wing_lift_surf.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[0].A_kl[span_idx]
+
 								wing_up[wp_idx, span_idx, chord_idx, spanwise_element_iteration] = wp_up
 								wing_ut[wp_idx, span_idx, chord_idx, spanwise_element_iteration] = wp_ut
+								wing_gamma[wp_idx, span_idx, chord_idx, spanwise_element_iteration] = gamma
+								wing_A_kl[wp_idx, span_idx, chord_idx, spanwise_element_iteration] = A_kl
+						
+						for span_ch_idx in range(span_chunks):
+							for ch_idx in range(chunk_size()):
+								wp_d_CL = wp_state.chunks[span_ch_idx].dC_L[ch_idx]
+								wp_span_dist = vehicle.aircraft.wings[0].wing_parts[wp_idx].chunks[span_ch_idx].y_span[ch_idx]
+								span_idx = span_ch_idx*chunk_size() + ch_idx
+								wing_part_dC_L[wp_idx, span_idx, spanwise_element_iteration] = wp_d_CL
+								wing_part_span_dist[wp_idx, span_idx, spanwise_element_iteration] = wp_span_dist
+
+						#print("wing_CL = ", vehicle.ac_state.wing_states[0].C_L)
+						wing_part_CL[wp_idx, spanwise_element_iteration] = vehicle.ac_state.wing_states[0].C_L
 
 				for rotor_idx, rotor in enumerate(vehicle.ac_state.rotor_states):
 
@@ -934,7 +950,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 							span_element_gamma[rotor_idx, t_idx, spanwise_element_iteration] = gamma
 							span_element_azimuth[rotor_idx, spanwise_element_iteration] = spanwise_element_iteration*d_psi[rotor_idx]
 							span_element_r[rotor_idx, spanwise_element_iteration] = radius
-						#spanwise_element_iteration[rotor_idx] = spanwise_element_iteration[rotor_idx] + 1
+							#spanwise_element_iteration[rotor_idx] = spanwise_element_iteration[rotor_idx] + 1
 
 
 
@@ -1109,6 +1125,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle,  atmo, elements, writ
 		if num_wings != 0:
 			result_dictionary["wing_Up"] = wing_up
 			result_dictionary["wing_Ut"] = wing_ut
+			result_dictionary["wing_Gamma"] = wing_gamma
+			result_dictionary["wing_A_kl"] = wing_A_kl
+			result_dictionary["wing_part_dC_l"]= wing_part_dC_L
+			result_dictionary["wing_part_CL"] = wing_part_CL
+			result_dictionary["wing_span_dist"] = wing_part_span_dist
 
 		if elastic_twist is not None:
 			result_dictionary['elastic_twist_array'] = elastic_twist_array

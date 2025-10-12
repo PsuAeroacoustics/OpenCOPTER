@@ -7,7 +7,9 @@ import opencopter.memory;
 
 import std.math;
 
-double integrate_trapaziodal(string value, BS, BG)(auto ref BS blade, auto ref BG blade_geom) {
+double integrate_trapaziodal(string value, BS, BG)(auto ref BS blade, auto ref BG blade_geom) 
+	if(is_blade_state!BS && is_blade_geometry!BG)
+{
 	double val = 0;
 	import std.stdio : writeln;
 
@@ -20,6 +22,35 @@ double integrate_trapaziodal(string value, BS, BG)(auto ref BS blade, auto ref B
 		if(idx != blade.chunks.length - 1) {
 			dr[$-1] = blade_geom.chunks[idx + 1].r[0] - blade_geom.chunks[idx].r[$-1];
 			mixin("tmp_sum[$-1] = 0.5*(blade.chunks[idx + 1]."~value~"[0] + chunk."~value~"[$-1]);");
+		} else {
+			tmp_sum[$-1] = 0;
+			dr[$-1] = 0;
+		}
+
+		tmp_sum[] *= abs(dr)[];
+
+		import std.algorithm : sum;
+		val += tmp_sum[].sum;
+	}
+
+	return val;
+}
+
+double integrate_trapaziodal(string value, WPS, WPG)(auto ref WPS wing_part_state, auto ref WPG wing_part) 
+	if(is_wing_part_state!WPS && is_wing_part_geometry!WPG)
+{
+	double val = 0;
+	import std.stdio : writeln;
+
+	foreach(size_t idx, ref WingPartStateChunk chunk; wing_part_state.chunks) {
+		Chunk dr;
+		Chunk tmp_sum;
+		mixin("tmp_sum[0..$-1] = 0.5*(chunk."~value~"[1..$] + chunk."~value~"[0..$-1]);");
+
+		dr[0..$-1] = wing_part.chunks[idx].y_span[1..$] - wing_part.chunks[idx].y_span[0..$ - 1];
+		if(idx != wing_part.chunks.length - 1) {
+			dr[$-1] = wing_part.chunks[idx + 1].y_span[0] - wing_part.chunks[idx].y_span[$-1];
+			mixin("tmp_sum[$-1] = 0.5*(wing_part_state.chunks[idx + 1]."~value~"[0] + chunk."~value~"[$-1]);");
 		} else {
 			tmp_sum[$-1] = 0;
 			dr[$-1] = 0;

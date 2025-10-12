@@ -592,12 +592,13 @@ def main():
 					V_inf_dir = f'V_inf_{V_inf:.3}'
 
 					state_dir = ''
-					if "c_t" in flight_condition:
-						state_dir = f'ct{"_".join([f"{c_t:.6f}" for c_t in flight_condition["c_t"]])}'
-					elif "T" in flight_condition:
-						state_dir = f'T{"_".join([f"{T:.4f}" for T in flight_condition["T"]])}'
-					else:
-						state_dir = f'theta{"_".join([f"{theta:.2f}" for theta in flight_condition["collective"]])}'
+					if aircraft.rotors.length() != 0:
+						if "c_t" in flight_condition:
+							state_dir = f'ct{"_".join([f"{c_t:.6f}" for c_t in flight_condition["c_t"]])}'
+						elif "T" in flight_condition:
+							state_dir = f'T{"_".join([f"{T:.4f}" for T in flight_condition["T"]])}'
+						else:
+							state_dir = f'theta{"_".join([f"{theta:.2f}" for theta in flight_condition["collective"]])}'
 
 					if "name" in flight_condition:
 						root_path = f'./{case.aircraft.root_frame.name}/{flight_condition["name"]}'

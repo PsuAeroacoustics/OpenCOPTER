@@ -175,12 +175,12 @@ class VtkWing {
 		private Vec3 origin;
 		private Vec3[vtkIdType][] base_points;
 		private vtkIdType[][][] base_point_ids;
-		//private vtkDoubleArray* loads;
+		//private vtkDoubleArray* loads;G
 		private vtkDoubleArray* aoa;
 		private vtkDoubleArray* u_p;
 		private vtkDoubleArray* u_t;
 		//private vtkDoubleArray* gamma;
-		private vtkDoubleArray* dC_T;
+		private vtkDoubleArray* dC_L;
 
 		private this(size_t num_wing_parts) {
 			base_points = new Vec3[vtkIdType][num_wing_parts];
@@ -189,7 +189,7 @@ class VtkWing {
 			u_t = vtkDoubleArray.New;
 			aoa = vtkDoubleArray.New;
 			//gamma = vtkDoubleArray.New;
-			dC_T = vtkDoubleArray.New;
+			dC_L = vtkDoubleArray.New;
 			grid = vtkUnstructuredGrid.New;
 			points = vtkPoints.New;
 		}
@@ -243,10 +243,10 @@ void write_wing_vtu(WS, W)(string base_filename, size_t iteration, size_t wing_i
 					immutable chord_idx = (ch_idx - ch_idx%span_chunk_length)/span_chunk_length;
 
 					auto id = wing.base_point_ids[wp_idx][span_idx][chord_idx];
-					wing.aoa.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_aoa[c_idx]);
+					wing.aoa.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_aoa[c_idx]*180.0/PI);
 					wing.u_p.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_up[c_idx]);
 					wing.u_t.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_ut[c_idx]);
-					wing.dC_T.SetTuple1(id, wp_state.chunks[span_chunk_idx].dC_L[c_idx]);
+					wing.dC_L.SetTuple1(id, wp_state.chunks[span_chunk_idx].dC_L[c_idx]);
 				}
 			}
 		}
@@ -292,9 +292,9 @@ VtkWing build_base_vtu_wing(WG)(auto ref WG wing_geo) {
 		vtk_wing.gamma.SetNumberOfTuples(span_elements*chord_elements*wing_geo.wing_parts.length);
 		vtk_wing.gamma.SetName("gamma");*/
 
-		vtk_wing.dC_T.SetNumberOfComponents(1);
-		vtk_wing.dC_T.SetNumberOfTuples(span_elements*chord_elements*wing_geo.wing_parts.length);
-		vtk_wing.dC_T.SetName("dC_T");
+		vtk_wing.dC_L.SetNumberOfComponents(1);
+		vtk_wing.dC_L.SetNumberOfTuples(span_elements*chord_elements*wing_geo.wing_parts.length);
+		vtk_wing.dC_L.SetName("dC_L");
 
 		vtk_wing.base_point_ids = new vtkIdType[][][](wing_geo.wing_parts.length,span_elements,chord_elements);
 
@@ -346,7 +346,7 @@ VtkWing build_base_vtu_wing(WG)(auto ref WG wing_geo) {
 		point_data.AddArray(vtk_wing.u_p);
 		point_data.AddArray(vtk_wing.u_t);
 		//point_data.AddArray(vtk_wing.gamma);
-		point_data.AddArray(vtk_wing.dC_T);
+		point_data.AddArray(vtk_wing.dC_L);
 
 		return vtk_wing;
 	} else {

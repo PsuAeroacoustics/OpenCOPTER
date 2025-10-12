@@ -41,7 +41,7 @@ if __name__ == "__main__":
     num_blade_elements = 48
     
     num_rotors = 1
-    num_blades = [2]
+    num_blades = [4]
     rotor_R = 0.8255
     
     theta_75 = 9.0*(math.pi/180.0)
@@ -107,6 +107,9 @@ if __name__ == "__main__":
     wing_sweep = np.zeros(span_vortex_nodes) # change it to a formula based on wing parameters
     
     aircraft = Aircraft(num_rotors, num_wings)
+
+    aircraft.root_frame = frame(Vec3(1.0 ,0.0 ,0.0), 0.0, Vec3(0.0, 0.0, 0.0), None, "aircraft", "connection")
+    
     
     def build_blade(b_idx):
         
@@ -236,15 +239,14 @@ if __name__ == "__main__":
         r_0 = ac_input_state.rotor_inputs[0].r_0[b_idx]
         print("r_0: ", ac_input_state.rotor_inputs[0].r_0)
     
+    print("defining inflows")
     rotor_inflows = [HuangPeters(4, 2, aircraft.rotors[r_idx], ac_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+    print("rotor_inflows defined")
     wing_inflows = [WingInflow(aircraft.wings[w_idx], ac_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
-    
-    inflows = rotor_inflows + wing_inflows
-
-    rotorcraft_state = CreateAircraftState(num_rotors, num_blades, elements, num_wings, num_wing_parts, span_elements, chord_elements, rotorcraft_system, rotor_inflows, wing_inflows, [math.copysign(1.0, omega) for omega in omegas])
+    print("wing inflows defined")
+    rotorcraft_state = CreateAircraftState(num_rotors, num_blades, elements, num_wings, num_wing_parts, span_vortex_nodes, chord_vortex_nodes, aircraft, rotor_inflows, wing_inflows, math.copysign(1.0, omega))
     rotorcraft_state.freestream = Vec4([flight_condition["V_inf"], 0, 0, 0])
     
-    print("inflow length = ", len(inflows))
     
     vtk_rotors = [build_base_vtu_rotor(aircraft.rotors[r_idx]) for r_idx in range(num_rotors)]
     vtk_wake = build_base_vtu_wake(wake_history.history[0])
@@ -273,7 +275,7 @@ if __name__ == "__main__":
             if ac_input_state.rotor_inputs[r_idx].azimuth > 2.0*math.pi:
                 ac_input_state.rotor_inputs[r_idx].azimuth = math.fmod(ac_input_state.rotor_inputs[r_idx].azimuth, 2.0*math.pi)
 
-        step(ac_state, aircraft, ac_input_state, inflows, wake_history, atmo, iteration, dt)
+        step(ac_state, aircraft, ac_input_state, wake_history, atmo, iteration, dt)
         
         #if( iteration%iter_per_revs == 0):
             #print("iterations : ", iteration, "\tC_T_0 = ", ac_state.rotor_states[0].C_T)

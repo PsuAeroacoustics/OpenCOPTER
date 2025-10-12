@@ -113,6 +113,16 @@ template is_wing_lift_surface(A) {
 	}();
 }
 
+template is_wing_part_lift_surf(A) {
+    enum bool is_wing_part_lift_surf = {
+        static if(isPointer!(A)) {
+            return isInstanceOf!(WingPartLiftingSurfT, PointerTarget!A);
+        } else {
+            return isInstanceOf!(WingLiftSurfT, A);
+        }
+    }();
+}
+
 alias WingPartLiftingSurf = WingPartLiftingSurfT!(ArrayContainer.none);
 
 extern(C++) struct WingPartLiftingSurfT(ArrayContainer AC) {
@@ -531,7 +541,7 @@ struct VortexLatticeT(ArrayContainer AC) {
         span_elements = _span_elements;
         chord_elements = _chord_elements;
 
-        immutable wing_AR = 2*(2*wing.wing_span)/(wing.wing_root_chord + wing.wing_tip_chord);
+        immutable wing_AR = (2*wing.wing_span)/(wing.wing_root_chord + wing.wing_tip_chord);
         writeln("wing_AR = ", wing_AR);
         immutable lamda = wing.wing_tip_chord/wing.wing_root_chord;
         writeln("lamda : ", lamda);
@@ -553,30 +563,48 @@ struct VortexLatticeT(ArrayContainer AC) {
 
         foreach(ch1; 0..chunks) {
             foreach(c1; 0..chunk_size) {
-                immutable v = ch1*chunk_size + c1;
+                /*immutable v = ch1*chunk_size + c1;
                 immutable j = (v%span_elements); // index of spanwise control point
-                immutable i = (v - v%span_elements)/span_elements +1; // index of chordwise control point
+                immutable i = (v - v%span_elements)/span_elements +1; // index of chordwise control point*/
+
+                immutable v = ch1*chunk_size + c1;
+
+                immutable j = ((v + 1) % span_elements != 0) ? ((v + 1) % span_elements - 1) : (span_elements - 1);
+                immutable i = (v - j) / span_elements + 1;
+
+                theta_i = i * PI / chord_elements;
+                phi_j = j * PI / span_elements;
+                
                 assert(i<= chord_elements, "i is out of bound");
                 assert(j<= span_elements, "j is out of bound");
 
-                theta_i = i*PI/chord_elements;
+                /*theta_i = i*PI/chord_elements;
                 if(j<span_elements){
                     phi_j = j*PI/span_elements;    
-                }
+                }*/
+
+                //writeln("i = ", i, "\tj = ", j, "\tv = ", v, "\tch1 = ", ch1, "\tc1 = ", c1, "\ttheta_i = ", theta_i, "\tphi_j = ", phi_j, "\n");
                 
                 foreach(ch2 ; 0..chunks) {
                     foreach(c2 ; 0..chunk_size) {
                         immutable n = ch2*chunk_size + c2;
+                        
+                        /*
                         //writeln(n);
                         immutable l = (n%span_elements)+1; // index of span vortex node
                         //writeln(l);
-                        immutable k = (n - n%span_elements)/span_elements +1; // index of chord vortex node
+                        immutable k = (n - n%span_elements)/span_elements +1; // index of chord vortex node*/
+
+                        immutable l = ((n + 1) % span_elements != 0) ? ((n + 1) % span_elements) : span_elements;
+                        immutable k = (n - (l - 1)) / span_elements + 1;
 
                         assert(k <= chord_elements, "k is out of bound");
                         assert(l <= span_elements, "l is out of bound");
 
                         theta_k = (2*k - 1)*PI/(2*chord_elements);
                         phi_l = (2*l - 1)*PI/(2*span_elements);
+
+                        //writeln("k = ", k, "\tl = ", l, "\tn = ", n, "\tch2 = ", ch2, "\tc2 = ", c2, "\ttheta_k = ", theta_k, "\tphi_l = ", phi_l, "\n");
 
                         double A1 = m_LE + (delta_m/2)*(1-cos(theta_k));
                         double B1 = (cos(theta_k) - cos(theta_i))*(2.0/(wing_AR*(1+lamda)) + delta_m*(1.0-cos(phi_j))/4);
@@ -595,34 +623,51 @@ struct VortexLatticeT(ArrayContainer AC) {
                         W_R = -C1 * K_R * sin(theta_k)/(cos(phi_l)-cos(phi_j));
                         W_L = C1 * K_L * sin(theta_k)/(2.0-cos(phi_l)-cos(phi_j));
 
+                        /*writeln("A1 =", A1);
+                        writeln("B1 =", B1);
+                        writeln("B2 =", B2);
+                        writeln("C1 =", C1);
+                        writeln("K_L =", K_L);
+                        writeln("K_LC =", K_LC);
+                        writeln("K_RC =", K_RC);
+                        writeln("K_R =", K_R);*/
+
 
                         if(j == 0){
                             if(cos(theta_k) - cos(theta_i) > 0)
                                 del_ij = 1.0;
-                                else{
-                                    del_ij = -1.0;
-                                }
+                            else{
+                                del_ij = -1.0;
+                            }
                             double test_term1 = (PI/(4.0*span_elements*chord_elements))* del_ij * sin(theta_k);
                             double test_term2 = (m_LE + (delta_m/2)*(1.0-cos(theta_i)));
                             W_RC_plus_LC = (PI/(4.0*span_elements*chord_elements))* del_ij * sin(theta_k) * (2.0*(m_LE + (delta_m/2)*(1.0-cos(theta_i)))/(cos(theta_k)-cos(theta_i)) - delta_m);
                             //writeln("test_term_1 : ", test_term1);
                             //writeln("test_term_2 : ", test_term2);
                             //writeln("k = ", k, "\tl = ", l, "\ti = ", i, "\tW_RC+LC : ", W_RC_plus_LC);
-                            if(side == Location.right || side == Location.left){
-                                influence[v][n] = W_R + W_RC_plus_LC/2.0;
-                            }else{
-                                influence[v][n] = W_R + W_L + W_RC_plus_LC;
-                            }
+                            //if(side == Location.right || side == Location.left){
+                            //    influence[v][n] = W_R + W_RC_plus_LC/2.0;
+                            //}else{
+                            influence[v][n] = W_R + W_L + W_RC_plus_LC;
+                            //}
                         }
                         else{
                             W_RC = C1 * K_RC * sin(theta_k)/(1.0-cos(phi_j));
                             W_LC = -C1 * K_LC * sin(theta_k)/(1.0-cos(phi_j));
-                            if(side == Location.right || side == Location.left){
-                                influence[v][n] = W_R + W_RC;
-                            }else{
-                                influence[v][n] = W_R + W_RC + W_L + W_LC;
-                            }
+                            //if(side == Location.right || side == Location.left){
+                            //    influence[v][n] = W_R + W_RC;
+                            //}else{
+                            influence[v][n] = W_R + W_RC + W_L + W_LC;
+                            //}
                         }
+
+                        /*writeln("W_R =", W_R);
+                        writeln("W_L =", W_L);
+                        writeln("W_RC =", W_RC);
+                        writeln("W_LC =", W_LC);
+                        writeln("W_RC+LC =", W_RC_plus_LC);
+                        writeln("influence[", v, "][", n, "] = ", influence[v][n]);
+                        writeln("--------------------------------------------------");*/
 
                         /*if(i==2 && j==7 && k==2 && l==8){
                             writeln("theta_i = ", theta_i);
@@ -671,16 +716,18 @@ struct VortexLatticeT(ArrayContainer AC) {
 				influence_inv[r][ch][] = _influence_inv[r][ch*chunk_size..ch*chunk_size+chunk_size];
 			}
 		}
-        debug writeln("inf_inv= ", influence_inv);
+        writeln("inf_inv= ", influence_inv);
     }
 
     void compute_d_gamma_coefficients(WLS,WS)(auto ref WLS wing_lift_surface, auto ref WS wing_part_state, size_t wp_idx, size_t span_chunk_idx, size_t chord_node_idx, immutable Chunk u){ 
+        
         foreach(c1; 0..chunk_size){
-            
             double A_kl = 0;
             size_t span_chunks_length = wing_part_state.chunks.length;
+            size_t num_chord_elements = wing_part_state.ctrl_chunks.length/span_chunks_length;
             //size_t num_half_filaments = wing_part_state.ctrl_chunks.length/span_chunks_length;
             immutable r = span_chunk_idx*chunk_size + c1 + span_chunks_length*chunk_size*chord_node_idx;
+            //immutable r = span_chunk_idx*chunk_size*num_chord_elements + c1*num_chord_elements + chord_node_idx;
             //writeln("span_chunk_length = ",span_chunks_length);
             //immutable Chunk tmp;
             foreach(ch, ref inf; influence_inv[r]) {
@@ -693,7 +740,7 @@ struct VortexLatticeT(ArrayContainer AC) {
                 //writeln("ctrl_pt_aoa = ", wing_part_state.ctrl_chunks[ch].ctrl_pt_aoa[]);
             }
             //writeln("span_idx= ", span_chunk_idx*chunk_size + c1, "\tChord_node_idx = ", chord_node_idx, "\tA_kl = ", A_kl);
-            A_kl *= u[c1];
+            //A_kl *= u[c1];
             wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].A_kl[c1] = A_kl;
         }
     }
@@ -702,18 +749,20 @@ struct VortexLatticeT(ArrayContainer AC) {
         double gamma = 0.0;
         size_t num_span_chunks = wing_part.chunks.length;
         double root_chord = wing_part.wing_root_chord;
+        double lamda = wing_part.wing_tip_chord/wing_part.wing_root_chord;
         //size_t num_half_filaments = wing_part.ctrl_chunks.length/num_span_chunks;
         //writeln(num_span_chunks);
         foreach(c1; 0..chunk_size){
             double tmp_gamma = wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx+1..$]
                 .map!(c => c.A_kl.sum).sum;
-            //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_node_idx, "\tspan_chunk =", span_chunk_idx ,"temp_gamma = ", tmp_gamma);    
+            //writeln("wing_part = ", wp_idx, "\tchord_idx = ", chord_node_idx, "\tspan_chunk =", span_chunk_idx ,"temp_gamma = ", tmp_gamma);
             gamma = tmp_gamma + wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].A_kl[c1..$].sum;
             //writeln("span_idx= ", span_chunk_idx*chunk_size + c1, "\tChord_node_idx = ", chord_node_idx, "\tgamma = ", gamma);
-            wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].gamma[c1] = -PI*gamma*root_chord*root_chord/(num_span_chunks*chunk_size*wing_part.chunks[span_chunk_idx].chord[c1]);  
-            //writeln("span_idx= ", span_chunk_idx*chunk_size + c1, "\tChord_node_idx = ", chord_node_idx, "\tgamma = ", -PI*gamma/(num_span_chunks*chunk_size*wing_part.chunks[span_chunk_idx].chord[c1]));
+            // negative trem in the following expression is correct (verified)
+            wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].gamma[c1] = -PI*gamma*root_chord/(num_span_chunks*chunk_size*wing_part.chunks[span_chunk_idx].chord[c1]); 
+            wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].gamma[c1] /= wing_part.chunks[span_chunk_idx].chord[c1]/wing_part.wing_root_chord;
             gamma = 0.0;
-        }         
+        }
     }
 
     void compute_dCl(WLS,WPS)(auto ref WLS wing_lift_surface, auto ref WPS wing_part_state, size_t wp_idx, size_t span_chunk_idx){
@@ -726,13 +775,13 @@ struct VortexLatticeT(ArrayContainer AC) {
             foreach(n_idx; 0..num_chord_pt){
                 double theta_n = (2*n_idx +1)*PI/(2*num_chord_pt);
                 Chunk u = wing_part_state.ctrl_chunks[n_idx*num_span_chunks + span_chunk_idx].ctrl_pt_ut;
-                immutable dCl_inter = PI*(wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[n_idx].chunks[span_chunk_idx].gamma[c1]/u[c1])*sin(theta_n)/num_chord_pt;
+                immutable dCl_inter = PI*(wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[n_idx].chunks[span_chunk_idx].gamma[c1])*sin(theta_n)/num_chord_pt;
                 dCl += dCl_inter;
             }
             wing_part_state.chunks[span_chunk_idx].dC_L[c1]= dCl;
             dCl = 0.0;            
         }
-    }
+    }    
 }
 
 double[][] get_wls_state_matrix(string value, ArrayContainer AC)(ref WingPartLiftingSurfT!AC wing_part){
@@ -751,9 +800,7 @@ double[][] get_wls_state_matrix(string value, ArrayContainer AC)(ref WingPartLif
             immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
 
             mixin("state_matrix[fl_idx][out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
-        }
-
-		
+        }		
 	}
 	return state_matrix;
 }

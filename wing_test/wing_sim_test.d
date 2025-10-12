@@ -312,11 +312,6 @@ void main(){
     plt.savefig("Cl_wing_tip.png");
     */
 
-    
-
-    
-
-
     //Wing alone simulation (tested already)
     foreach(wp_idx, wing_part_state; ac_state.wing_states[0].wing_part_states){
         foreach(sp_chunk; 0..chord_vortex_nodes*span_chunks){

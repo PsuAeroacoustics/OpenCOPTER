@@ -1315,7 +1315,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		}
 	}
 
-	void update(AircraftStateT!AC ac_state, double dt) {
+	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt){
 		omega = rotor_input.angular_velocity;
 		
 		immutable t_scale = abs(omega);
@@ -1496,7 +1496,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		immutable normalized_xyz = xyz/rotor.radius;
 
 		if(!contraction_mapping) {
-			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, normalized_xyz[0], normalized_xyz[1], normalized_xyz[2])[];
+			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, normalized_xyz[0], normalized_xyz[1], normalized_xyz[2])[]; 
 			return V;
 		} else {
 
@@ -1516,7 +1516,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		immutable Chunk normalized_z = z[]/rotor.radius;
 
 		if(!contraction_mapping) {
-			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, normalized_x, normalized_y, normalized_z)[];
+			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, normalized_x, normalized_y, normalized_z)[]; 
 			return V;
 		} else {
 
@@ -1524,7 +1524,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 			immutable Chunk x_c = normalized_x[]/k_bar[];
 			immutable Chunk y_c = normalized_y[]/k_bar[];
-			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, x_c, y_c, normalized_z)[];
+			immutable Chunk V = abs(omega*rotor.radius)*inflow_at_impl(this, x_c, y_c, normalized_z)[];  
 			return V;
 		}
 	}

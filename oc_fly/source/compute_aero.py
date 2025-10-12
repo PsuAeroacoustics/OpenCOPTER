@@ -474,6 +474,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	omegas = np.asarray(omegas)
 
 	d_psi = computational_parameters["d_psi"]*math.pi/180.0
+
 	dt = d_psi/np.max(np.abs(omegas))
 
 	motion_lambdas = []
@@ -547,9 +548,21 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 						elif motion_vec_dict[child.name][1] == "static":
 							log_file.write(f"Adding static motion lambda for frame {child.name}\n")
+							print(f"Adding static motion lambda for frame {child.name}\n")
 							angle = child_motion["angle"]*(math.pi/180.0)
 							motion_lambda = lambda rotor_inputs, _r_idx=r_idx, angle=angle, frame=child, vec=motion_vec_dict[child.name][0]: static_motion(angle, vec, frame, rotor_inputs, _r_idx)
+							print("frame name: ", child.name, " angle: ", angle, " vec: ", motion_vec_dict[child.name][0])
+							local = [child.local_matrix[k] for k in range(16)]
+							globalm = [child.global_matrix[k] for k in range(16)]
 
+							# reshape to 4x4 for readability
+							local = [local[r*4:(r+1)*4] for r in range(4)]
+							globalm = [globalm[r*4:(r+1)*4] for r in range(4)]
+
+							print("local_matrix:\n", local)
+							print("global_matrix:\n", globalm)
+
+							
 						sub_motion_lambdas.append(deepcopy(motion_lambda))
 
 				sub_motion_lambdas = sub_motion_lambdas + build_motion_lambdas(child, rotor, azimuth_offset, r_idx)
@@ -604,7 +617,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	if "collective" in flight_condition:
 		collectives = np.asarray(flight_condition["collective"])*np.pi/180
 	else:
-		collectives = 3.0*np.ones(num_rotors)*np.pi/180
+		collectives = 3.0*np.ones(num_rotors)*np.pi/180	
 
 	atmo = Atmosphere(density = density, dynamic_viscosity = dynamic_viscosity, speed_of_sound = flight_condition["sos"])
 	
@@ -622,9 +635,9 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	num_wing_parts = [wing.wing_parts.length() for wing in rotorcraft_system.wings]
 	print("num_wing_parts: ", num_wing_parts)
 
+
 	r = generate_radius_points(requested_elements)
 	elements = len(r)
-	log_file.write(f"requested_elements: {requested_elements}, actual elements:  {elements}\n")
 
 	span_elements = 8
 	chord_elements = 4
@@ -724,7 +737,10 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
+	
+	
 	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1, hybrid)
+
 	
 	try:
 		vehicle = SimulatedVehicle(
@@ -754,7 +770,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			acoustics,
 			wake_history_length,
 			results,
-			wopwop_motion
+			wopwop_motion,
+			wing_lift_surface
 		)
 
 		if do_compute:

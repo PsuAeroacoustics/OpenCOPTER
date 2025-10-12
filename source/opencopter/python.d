@@ -102,7 +102,7 @@ double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
  +/
 class Inflow {
 	Inflow_D get_wrapped_inflow(){ assert (0);}
-	void update(PyAircraftState* ac_state, double dt) { assert(0); }
+	void update(PyAircraftState* ac_state, PyWake* wake, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) { assert(0); }
 	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) { assert(0); }
 	void update_wing_circulation(PyWingState* wing_state) { assert(0); }
@@ -124,8 +124,8 @@ class HuangPeters : Inflow {
 		huang_peters = new HP(4, 2, rotor, rotor_input, dt);
 	}
 
-	override void update(PyAircraftState* ac_state, double dt) {
-		huang_peters.update(*ac_state, dt);
+	override void update(PyAircraftState* ac_state, PyWake* wake, double dt) {
+		huang_peters.update(*ac_state, *wake, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
@@ -171,8 +171,8 @@ class WingInflow: Inflow{
 		wing_inflow = new WI(_wing, _wing_inputs, _wing_lift_surf);
 	}
 
-	override void update(PyAircraftState* ac_state, double dt) {
-		wing_inflow.update(*ac_state, dt);
+	override void update(PyAircraftState* ac_state, PyWake* wake, double dt) {
+		wing_inflow.update(*ac_state, *wake, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
@@ -1761,6 +1761,7 @@ extern(C) void PydMain() {
 
 	wrap_struct!(
 		WingPartGeometryChunk,
+		Member!"y_span",
 		Member!"twist",
 		Member!"chord",
 		Member!"sweep"

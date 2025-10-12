@@ -118,7 +118,7 @@
 	AxisType = 'TimeIndependent'
 	TranslationType = 'TimeIndependent'
 	AngleType = 'TimeIndependent'
-	AxisValue = 1, 0, 0
+	AxisValue = 0, 1, 0
 	TranslationValue = 1.51639, 0, 0.57377
 	AngleValue = 0
 /
@@ -182,7 +182,7 @@
 	AxisType = 'TimeIndependent'
 	TranslationType = 'TimeIndependent'
 	AngleType = 'TimeIndependent'
-	AxisValue = 1, 0, 0
+	AxisValue = 0, 1, 0
 	TranslationValue = 1.51639, 0, 0.57377
 	AngleValue = 0
 /
@@ -246,7 +246,7 @@
 	AxisType = 'TimeIndependent'
 	TranslationType = 'TimeIndependent'
 	AngleType = 'TimeIndependent'
-	AxisValue = 1, 0, 0
+	AxisValue = 0, 1, 0
 	TranslationValue = 1.51639, 0, 0.57377
 	AngleValue = 0
 /
@@ -310,7 +310,7 @@
 	AxisType = 'TimeIndependent'
 	TranslationType = 'TimeIndependent'
 	AngleType = 'TimeIndependent'
-	AxisValue = 1, 0, 0
+	AxisValue = 0, 1, 0
 	TranslationValue = 1.51639, 0, 0.57377
 	AngleValue = 0
 /

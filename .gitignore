@@ -34,3 +34,7 @@ oc_fly/rotor_wing
 oc_fly/singe_rotor
 oc_fly/test_evtol_without_wing
 oc_fly/test_evtol_wo_symmetry
+oc_fly/Prop_wing_interaction
+oc_fly/test_evtol_no_symmetry
+oc_fly/VLM_test
+oc_fly/Wing_only_simulation

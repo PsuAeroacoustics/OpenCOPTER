@@ -43,7 +43,7 @@
 	},
 	flight_conditions: [
 		{
-			name: "FF_32p9_wing_aoa_0_2",
+			name: "FF_32p9_aoa_0_wake_ind_vel_on_wing",
 			aoa: 0,
 			density: 1.2055,
 			sos: 341.7,

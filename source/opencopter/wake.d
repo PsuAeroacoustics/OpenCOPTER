@@ -720,6 +720,43 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 	return ret;
 }
 
+
+InducedVelocities compute_wake_induced_velocities_on_wing(W, AS)(auto ref W wake, auto ref AS ac_state, immutable Chunk x, immutable Chunk y, immutable Chunk z)
+	if((isInstanceOf!(WakeT, W) || (isPointer!W && isInstanceOf!(WakeT, PointerTarget!W))) && is_aircraft_state!AS)
+{
+	static import std.math;
+
+	InducedVelocities ret;
+	
+	ret.v_x[] = 0;
+	ret.v_y[] = 0;
+	ret.v_z[] = 0;
+
+	foreach(rotor_idx, ref i_rotor; ac_state.rotor_states) {
+		foreach(blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length){
+			auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks, x, y, z, 0);
+			ret.v_x[] += ind_vel.v_x[];
+			ret.v_y[] += ind_vel.v_y[];
+			ret.v_z[] += ind_vel.v_z[];
+
+			auto ind_vel_tip = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[blade_idx].chunks, x, y, z, 0);
+			ret.v_x[] += ind_vel_tip.v_x[];
+			ret.v_y[] += ind_vel_tip.v_y[];
+			ret.v_z[] += ind_vel_tip.v_z[];
+
+			foreach(fil_idx, ref shed_filament; wake.rotor_wakes[rotor_idx].shed_vortices[blade_idx].shed_filaments){
+				auto ind_vel_shed = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0);
+				ret.v_x[] += ind_vel_shed.v_x[];
+				ret.v_y[] += ind_vel_shed.v_y[];
+				ret.v_z[] += ind_vel_shed.v_z[];
+			}			
+		}
+	}
+
+	return ret;	
+}
+
+
 immutable double alpha_l = 1.25643;
 
 import core.thread;
