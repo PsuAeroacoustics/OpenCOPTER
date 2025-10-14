@@ -1116,15 +1116,18 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								
 								value = np.dot(np.ravel(d), np.ravel(c)) / np.linalg.norm(c)
 								if abs(angle1) < 0.35 and abs(angle2) < 0.35:
-									if blade_idx_values == 0:
-										perpInteraction[blade_idx].psi.append(acoustic_iteration + 180)
-									elif blade_idx_values == 1:
-										perpInteraction[blade_idx].psi.append(acoustic_iteration + 270)
-									elif blade_idx_values == 2:			
-										perpInteraction[blade_idx].psi.append(acoustic_iteration)
-									elif blade_idx_values == 3:
-										perpInteraction[blade_idx].psi.append(acoustic_iteration + 90)
-										
+									angle_offset = 360/rotor.blade_states.length()
+									angle = acoustic_iteration + (180 + blade_idx_values*angle_offset)%360
+									# if blade_idx_values == 0:
+									# 	perpInteraction[blade_idx].psi.append(acoustic_iteration + 180)
+									# elif blade_idx_values == 1:
+									# 	perpInteraction[blade_idx].psi.append(acoustic_iteration + 270)
+									# elif blade_idx_values == 2:			
+									# 	perpInteraction[blade_idx].psi.append(acoustic_iteration)
+									# elif blade_idx_values == 3:
+									# 	perpInteraction[blade_idx].psi.append(acoustic_iteration + 90)
+									
+									perpInteraction[blade_idx].psi.append(acoustic_iteration + angle)	
 									perpInteraction[blade_idx].wake_idx.append(wake_idx_values)
 									perpInteraction[blade_idx].blade_idx.append(blade_idx_values)
 									perpInteraction[blade_idx].blade_directionVec.append(a)
