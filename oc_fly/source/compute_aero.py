@@ -84,7 +84,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		af_r.append(0.5*(extent[0] + extent[1]))
 
 	if len(af_r) == 1:
-		af_r.append(af_r[0])
+		af_r.append(extent[1])
 		af_thickness.append(af_thickness[0])
 		
 
