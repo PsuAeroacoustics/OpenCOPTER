@@ -81,10 +81,10 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		extents.append(extent)
 		airfoils.append(airfoil)
 		af_thickness.append(airfoil_desc['thickness'])
-		af_r.append(0.5*(extent[0] + extent[1]))
+		af_r.append(0.5*(extent[0] + extent[1])/elements)
 
 	if len(af_r) == 1:
-		af_r.append(extent[1])
+		af_r.append(extent[1]/elements)
 		af_thickness.append(af_thickness[0])
 		
 
