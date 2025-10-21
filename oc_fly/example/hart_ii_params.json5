@@ -31,7 +31,7 @@
 			theta_3: 0.0,
 			V_inf: 32.9,
 			observer_file: "hart_ii_observers.json5",
-			acoustics_file: "acoustics_total_noise.json",
+			acoustics_file: "acoustics_total_noise_no_bwi.json5",
 			// Indicates that this frame is used to trim the rotor.
 			// Will use the provided axis as the trim axis.
 			// If an axis angle function has been also specified, then
@@ -105,7 +105,7 @@
 			theta_3: 0.8,
 			V_inf: 32.9,
 			observer_file: "hart_ii_observers.json5",
-			acoustics_file: "acoustics_total_noise.json",
+			acoustics_file: "acoustics_total_noise_no_bwi.json5",
 			trim_frame: "pitch hinge",
 			motion: [
 				{
@@ -181,7 +181,7 @@
 			theta_3: 0.8,
 			V_inf: 32.9,
 			observer_file: "hart_ii_observers.json5",
-			acoustics_file: "acoustics_total_noise.json",
+			acoustics_file: "acoustics_total_noise_no_bwi.json5",
 			trim_frame: "pitch hinge",
 			motion: [
 				{

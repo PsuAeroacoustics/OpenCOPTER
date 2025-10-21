@@ -10,7 +10,7 @@ import json
 import numpy as np
 import math
 import argparse
-
+import csv
 import matplotlib.pyplot as plt
 
 import scipy.io as sio
@@ -525,25 +525,61 @@ def read_hart_microphone_data_tecplot(filename: str):
 
 	return blade_data
 
+def read_hart_microphone_data_csv(filename: str, channel: int):
+	csv_idx = channel + 2
+	num_points = 2048#int(zone_dictionary["I"])
+	p = np.zeros((2, num_points))
+	p_idx = 0
+	with open(filename) as csvfile:
+		mic_reader = csv.reader(csvfile)
+		next(mic_reader)
+		next(mic_reader)
+		next(mic_reader)
+		for row in mic_reader:
+			if row[0][0] != "#":
+				p[0, p_idx] = row[0]
+				p[1, p_idx] = row[csv_idx]
+				p_idx = p_idx + 1
+
+	return p
+
 cmap_lines = matplotlib.colors.LinearSegmentedColormap.from_list("", ["black", "black"])
 cmap = matplotlib.colors.LinearSegmentedColormap.from_list("", ["#648FFF", "#785EF0", "#DC267F", "#FE6100", "#FFB000"])
 #cmap = matplotlib.colormaps.get_cmap('viridis')
 
-def plot_spectrum(plot_name: str, presentation: bool):
+mic_data_table = {
+	"BL": {
+		"adv": lambda: read_hart_microphone_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/bl_adv-M11-th.tec'),
+		"ret": lambda: read_hart_microphone_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/bl_ret-M4-th.tec')
+	},
+	"MN": {
+		"adv": lambda: read_hart_microphone_data_csv(f'{os.path.dirname(os.path.realpath(__file__))}/MN_M10_th_sa.csv', 10),
+		"ret": lambda: read_hart_microphone_data_csv(f'{os.path.dirname(os.path.realpath(__file__))}/MN_M6_th_sa.csv', 6)
+	},
+	"MV": {
+		"adv": lambda: read_hart_microphone_data_csv(f'{os.path.dirname(os.path.realpath(__file__))}/MV_M11_th_sa.csv', 11),
+		"ret": lambda: read_hart_microphone_data_csv(f'{os.path.dirname(os.path.realpath(__file__))}/MV_M5_th_sa.csv', 5)
+	}
+}
+
+def plot_spectrum(plot_name: str, mic_x: float, mic_y: float, suffix: str, t_shift: float, presentation: bool):
 	wopwop_results = parse_wopwop_results(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.upper()}/acoustics/full_system', 'case.nam')
 
-	mic_data = read_hart_microphone_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/bl_adv-M11-th.tec')
+	#mic_data = read_hart_microphone_data_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/bl_{suffix}-M11-th.tec')
+	mic_data = mic_data_table[plot_name][suffix]()
 
-	t_measured = np.linspace(0, 2.0*math.pi/109.12, mic_data.shape[1])
+	omega = 109.12
+
+	t_measured = np.linspace(0, 2.0*math.pi/omega, mic_data.shape[1])
 	p_measured = mic_data[1,:]
 
 	bpf = 17.36698741*4
 	bvi_spl_start = bpf*6
 	bvi_spl_end = bpf*20
-	#y = np.asarray(wopwop_results.oaspl_dba_grid.obs_y[0])
-	y = np.asarray([_y[0] for _y in wopwop_results.oaspl_dba_grid.obs_y])
-	#x = [_x[0] for _x in wopwop_results.oaspl_dba_grid.obs_x]
-	x = wopwop_results.oaspl_dba_grid.obs_x[0]
+	#y = np.asarray(wopwop_results.oaspl_db_grid.obs_y[0])
+	y = np.asarray([_y[0] for _y in wopwop_results.oaspl_db_grid.obs_y])
+	#x = [_x[0] for _x in wopwop_results.oaspl_db_grid.obs_x]
+	x = wopwop_results.oaspl_db_grid.obs_x[0]
 	x_delta = 4 - x[-1]
 	x.reverse()
 	x = np.asarray(x)
@@ -552,21 +588,38 @@ def plot_spectrum(plot_name: str, presentation: bool):
 	i_max = len(wopwop_results.oaspl_db_grid.obs_x)
 	j_max = len(wopwop_results.oaspl_db_grid.obs_x[0])
 
-	mic_x = -0.054*2
-	#mic_x = 0.1*2
-	mic_y = 0.905*2
+	# mic_x = -0.054*2
+	# #mic_x = 0.1*2
+	# mic_y = 0.905*2
 	#mic_y = 1.1*2
 
 	j = np.argmin(np.abs(x - mic_x))
 	i = np.argmin(np.abs(y - mic_y))
 
+	print(f'x = {x[j]}')
+	print(f'y = {y[i]}')
 	t = np.asarray(wopwop_results.observer_pressures[i*j_max + j].independent_axis)
 	p = np.asarray(wopwop_results.observer_pressures[i*j_max + j].functions[2].data)
+	#p = p - p.mean()
 
 	t = t - t[0]
 
+	#t_shift = 0.0137
+
+	t_start = np.argmin(np.abs(t - t_shift))
+
+	t = t - t_shift
+	t_end = np.argmin(np.abs(t - t_measured[-1]))
+
 	fs = 1.0/(t[1] - t[0])
 	fs_measured = 1.0/(t_measured[1] - t_measured[0])
+
+
+	six_per_rev = 6*omega*RADPS_2_HZ
+
+	measured_dt = t_measured[1] - t_measured[0]
+	measured_sos = sig.butter(13, six_per_rev, 'highpass', output='sos', fs=1/measured_dt)
+	p_measured = sig.sosfilt(measured_sos, p_measured)
 
 	f, pxx = sig.welch(p, fs, detrend=False, scaling='spectrum', nperseg=len(p))
 	f_measured, pxx_measured = sig.welch(p_measured, fs_measured, detrend=False, scaling='spectrum', nperseg=len(p_measured))
@@ -583,19 +636,26 @@ def plot_spectrum(plot_name: str, presentation: bool):
 	# f_measured = sft.fftfreq(p_measured.size, t_measured[1] - t_measured[0])
 
 	plt.figure(num = 1)
-	plt.plot(f/bpf, pxx, 'b', f_measured/bpf, pxx_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	#plt.plot(f/bpf, pxx, 'b', f_measured/bpf, pxx_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.plot(f/bpf, spl, 'b', f_measured/bpf, spl_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.legend(["Predicted", "Measured"])
 	#plt.plot(f_measured, pxx_measured)
 	plt.xlim(bvi_spl_start/bpf, bvi_spl_end/bpf)
+	plt.ylim([50, 110])
+	#plt.xlim(0, bvi_spl_end/bpf)
 	#plt.ylim(120, 170)
 	#plt.xlim(0, int(bvi_spl_end/2))
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum_{suffix}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum_{suffix}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
 	plt.clf()
 
 	plt.figure(num = 1)
-	plt.plot(t, p, 'b', t_measured, p_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.plot(t[t_start:t_end], p[t_start:t_end], 'b', t_measured, p_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.legend(["Predicted", "Measured"])
 	#plt.xlim(bvi_spl_start, bvi_spl_end)
-	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure_{suffix}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure_{suffix}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
 	plt.clf()
 
@@ -884,7 +944,7 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax2.set_yticklabels([])
 	ax2.set_xticklabels([])
 	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/US_{plot_name}.JPG')
-	arr = plt.imread(f'./HART_Results/US_{plot_name}.JPG')
+	arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/HART_Results/US_{plot_name}.JPG')
 
 	#plt.imshow(np.fliplr(np.flipud(np.transpose(arr, [1, 0, 2]))) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
@@ -910,7 +970,7 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	#ax3.set_yticklabels([])
 	ax3.set_xticklabels([])
 	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/KU_{plot_name}.JPG')
-	arr = plt.imread(f'./HART_Results/KU_{plot_name}.JPG')
+	arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/HART_Results/KU_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr) ,interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 
@@ -934,7 +994,7 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax4.set_yticklabels([])
 	#ax4.set_xticklabels([])
 	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/Onera_{plot_name}.JPG')
-	arr = plt.imread(f'./HART_Results/Onera_{plot_name}.JPG')
+	arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/HART_Results/Onera_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 
@@ -963,7 +1023,7 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	ax5 = plt.subplot(336)
 	ax5.set_yticklabels([])
 	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/DLR_{plot_name}.JPG')
-	arr = plt.imread(f'./HART_Results/DLR_{plot_name}.JPG')
+	arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/HART_Results/DLR_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	#plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
@@ -992,7 +1052,7 @@ def plot_acoustic_contours_all(plot_name: str, presentation: bool):
 	#ax6.set_yticklabels([])
 	
 	#arr = plt.imread(f'/mnt/e/OpenCOPTER/oc_fly/example/hart_ii/HART_Results/UM_{plot_name}.JPG')
-	arr = plt.imread(f'./HART_Results/UM_{plot_name}.JPG')
+	arr = plt.imread(f'{os.path.dirname(os.path.realpath(__file__))}/HART_Results/UM_{plot_name}.JPG')
 
 	plt.imshow(np.flipud(arr),interpolation='bilinear', origin='lower', extent=[y[-1]/R, y[0]/R,-4/R,4/R])
 	#plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
@@ -1992,11 +2052,41 @@ if __name__ == "__main__":
 		matplotlib.rcParams['font.family'] = 'sans-serif'
 		matplotlib.rcParams['font.sans-serif'] = prop_arial.get_name()
 
-	#plot_spectrum('BL')
+	bl_adv_mic_x = -0.054*2
+	bl_adv_mic_y = 0.905*2
 
-	plot_acoustic_contours_all("BL", args.p)
-	plot_acoustic_contours_all("MN", args.p)
-	plot_acoustic_contours_all("MV", args.p)
+	# TITLE = "BL, (x,y,z)/R = (1.000, -0.672, -1.1095) wrt. hub center"
+	bl_ret_mic_x = -1.0*2
+	bl_ret_mic_y = -0.672*2
+
+	mn_adv_mic_x = -0.5
+	mn_adv_mic_y =-1.36
+
+	mn_ret_mic_x = 2.0
+	mn_ret_mic_y = 0.46
+
+
+	mv_adv_mic_x = -0.0
+	mv_adv_mic_y = -1.81
+
+	mv_ret_mic_x = 2.5
+	mv_ret_mic_y = 0.894
+
+	plot_spectrum('BL', bl_adv_mic_x, bl_adv_mic_y, "adv", 0.0135, args.p)
+	plot_spectrum('BL', bl_ret_mic_x, bl_ret_mic_y, "ret", 0.0135, args.p)
+
+	plot_spectrum('MN', mn_adv_mic_x, mn_adv_mic_y, "adv", 0.0137, args.p)
+	plot_spectrum('MN', mn_ret_mic_x, mn_ret_mic_y, "ret", 0.0071, args.p)
+
+	plot_spectrum('MV', bl_adv_mic_x, bl_adv_mic_y, "adv", 0.0137, args.p)
+	plot_spectrum('MV', bl_ret_mic_x, bl_ret_mic_y, "ret", 0.013, args.p)
+	
+	#plot_spectrum('MN', bl_adv_mic_x, bl_adv_mic_y, "adv", 0.0137, args.p)
+	#plot_spectrum('MN', bl_ret_mic_x, bl_ret_mic_y, "ret", 0.0122, args.p)
+
+	# plot_acoustic_contours_all("BL", args.p)
+	# plot_acoustic_contours_all("MN", args.p)
+	# plot_acoustic_contours_all("MV", args.p)
 
 	# plot_acoustic_contours("BL", args.p)
 	# plot_acoustic_contours_cfd("BL", args.p)

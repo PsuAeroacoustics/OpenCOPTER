@@ -293,9 +293,14 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	elif observer_config["type"] == "points":
 		with open(f"{wopwop_data_path}/observers.dat", 'w') as observer_file:
 			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['layout']])}\n")
-			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['x']])}\n")
-			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['y']])}\n")
-			observer_file.write(f"{''.join([f'{l} ' for l in observer_config['z']])}\n")
+			if observer_config["radii_relative"]:
+				observer_file.write(f"{''.join([f'{l*R} ' for l in observer_config['x']])}\n")
+				observer_file.write(f"{''.join([f'{l*R} ' for l in observer_config['y']])}\n")
+				observer_file.write(f"{''.join([f'{l*R} ' for l in observer_config['z']])}\n")
+			else:
+				observer_file.write(f"{''.join([f'{l} ' for l in observer_config['x']])}\n")
+				observer_file.write(f"{''.join([f'{l} ' for l in observer_config['y']])}\n")
+				observer_file.write(f"{''.join([f'{l} ' for l in observer_config['z']])}\n")
 
 			observer.fileName = f"../data/observers.dat"
 
