@@ -73,7 +73,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	d_psi = computational_parameters['d_psi']
 
 	dt = d_psi*(math.pi/180.0)/np.max(np.abs(omegas))
-	iter_per_rev = 360/d_psi
+
+	# rescale iter_per_rev to be based off slowest rotor in the system
+	min_max_omega_ratio = np.max(np.abs(omegas))/np.min(np.abs(omegas))
+	iter_per_rev = 360/d_psi*int(np.round(min_max_omega_ratio))
 
 	d_psi = d_psi*np.abs(omegas)/np.max(np.abs(omegas))
 
@@ -1395,8 +1398,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 		min_omega = np.min(np.abs(omegas))
 
-		tau_min = 0.5*(1.0*math.pi/min_omega)
-		tau_max = tau_min + (post_conv_revolutions - 0.5)*(2.0*math.pi/min_omega)
+		#tau_min = 0.5*(1.0*math.pi/min_omega)
+		#tau_max = tau_min + (post_conv_revolutions - 0.5)*(2.0*math.pi/min_omega)
 
 		min_obs_dist = math.inf
 		max_obs_dist = -math.inf
@@ -1456,9 +1459,16 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 					min_obs_dist = min(min_obs_dist, dist)
 					max_obs_dist = max(max_obs_dist, dist)
-			
-		t_min = tau_min + min_obs_dist/flight_condition["sos"]
-		t_max = tau_max + max_obs_dist/flight_condition["sos"]
+
+		min_propagation_time_to_observer = min_obs_dist/flight_condition["sos"]
+		max_propagation_time_to_observer = max_obs_dist/flight_condition["sos"]
+		ref_revolution_time = 2.0*math.pi/min_omega
+		revolution_offset = np.ceil(ref_revolution_time / min_propagation_time_to_observer)
+		t_min = min_propagation_time_to_observer
+		if(revolution_offset > post_conv_revolutions):
+			t_max = t_min + post_conv_revolutions*ref_revolution_time + max_propagation_time_to_observer
+		else:
+			t_max = t_min + (post_conv_revolutions - revolution_offset)*ref_revolution_time
 
 		nt = int(round((t_max - t_min)/dt))
 

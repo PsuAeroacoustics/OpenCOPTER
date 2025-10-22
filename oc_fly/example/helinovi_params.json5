@@ -6,7 +6,7 @@
 		shed_release_angle: 2,
 
 		convergence_criteria: 5.0e-5,
-		post_conv_revolutions: 6,
+		post_conv_revolutions: 2,
 		wake_trail_distance: [15, 4],
 
 		//wake_trail_distance: [, 1],
@@ -19,8 +19,7 @@
 		convergence_rotor: 0,
 		convergence_rev_multiple: 5,
 		r_0: [0.9, 1.0],
-		a1: 1.0e-5,
-		
+		a1: 1.0e-5
 	},
 	flight_conditions: [
 		// {
