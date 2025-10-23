@@ -1466,7 +1466,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		revolution_offset = np.ceil(ref_revolution_time / min_propagation_time_to_observer)
 		t_min = min_propagation_time_to_observer
 		if(revolution_offset > post_conv_revolutions):
-			t_max = t_min + post_conv_revolutions*ref_revolution_time + max_propagation_time_to_observer
+			t_max = t_min + post_conv_revolutions*ref_revolution_time
 		else:
 			t_max = t_min + (post_conv_revolutions - revolution_offset)*ref_revolution_time
 
