@@ -108,7 +108,7 @@ extern(C++) struct RotorWakeT(ArrayContainer AC) {
 	mixin ArrayDeclMixin!(AC, VortexFilamentT!(AC), "tip_vortices");
 	mixin ArrayDeclMixin!(AC, ShedVortexT!(AC), "shed_vortices");
 	// 09/02: Nitya
-	mixin ArrayDeclMixin!(AC, VortexInteractionT!(AC), "blade_vortex_interaction");
+	mixin ArrayDeclMixin!(AC, VortexInteraction_multiRotorT!(AC), "interaction_perRotor");
 
 	Chunk[][] last_gammas;
 
@@ -117,12 +117,13 @@ extern(C++) struct RotorWakeT(ArrayContainer AC) {
 
 	size_t shed_update_rate;
 
-	this(size_t num_blades, size_t radial_elements, size_t _shed_update_rate) {
+	this(size_t num_blades, size_t radial_elements, size_t _shed_update_rate, size_t num_rotors) {
 
 		mixin(array_ctor_mixin!(AC, "VortexFilamentT!(AC)", "tip_vortices", "num_blades"));
 		mixin(array_ctor_mixin!(AC, "ShedVortexT!(AC)", "shed_vortices", "num_blades"));
 		// 09/02: Nitya
-		mixin(array_ctor_mixin!(AC, "VortexInteractionT!(AC)", "blade_vortex_interaction", "num_blades"));
+		mixin(array_ctor_mixin!(AC, "VortexInteraction_multiRotorT!(AC)", "interaction_perRotor", "num_rotors"));
+		debug writeln("interaction_perRotor.length:", interaction_perRotor.length);
 
 		last_gammas = new Chunk[][num_blades];
 
@@ -169,7 +170,7 @@ struct WakeT(ArrayContainer AC) {
 
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
-			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref filament; rotor_wake.tip_vortices) {
 				filament = VortexFilamentT!AC(actual_wake_history);
 			}
@@ -179,8 +180,12 @@ struct WakeT(ArrayContainer AC) {
 			}
 
 			// 09/02: Nitya
-			foreach(ref interaction; rotor_wake.blade_vortex_interaction) {
-			 	interaction = VortexInteractionT!AC(num_blades, actual_wake_history, actual_radial_elements);
+			debug writeln("1. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
+			debug writeln("r_idx:", r_idx, num_blades);
+			size_t[] num_blades_array;
+			num_blades_array[0] = num_blades;
+			foreach(ref interaction; rotor_wake.interaction_perRotor) {
+			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history, actual_radial_elements);
 			}
 
 			smoothing_buffer ~= new double[actual_wake_history];
@@ -198,7 +203,7 @@ struct WakeT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
 
-			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref filament; rotor_wake.tip_vortices) {
 				filament = VortexFilamentT!AC(actual_wake_history[r_idx]);
 			}
@@ -206,10 +211,13 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-
+			size_t[] num_blades_array;
+			num_blades_array[0] = num_blades;
+			debug writeln("2. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
+			debug writeln("r_idx:", r_idx, num_blades);
 			// 09/02: Nitya
-			foreach(ref interaction; rotor_wake.blade_vortex_interaction) {
-			 	interaction = VortexInteractionT!AC(num_blades, actual_wake_history[r_idx], actual_radial_elements);
+			foreach(ref interaction; rotor_wake.interaction_perRotor) {
+			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history[r_idx], actual_radial_elements);
 			}
 
 			smoothing_buffer ~= new double[actual_wake_history[r_idx]];
@@ -224,7 +232,7 @@ struct WakeT(ArrayContainer AC) {
 
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
-			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref filament; rotor_wake.tip_vortices) {
 				filament = VortexFilamentT!AC(actual_wake_history);
 			}
@@ -232,10 +240,11 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-
+			writeln("3. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
+			writeln("r_idx:", r_idx, num_blades);
 			// 09/02: Nitya
-			foreach(ref interaction; rotor_wake.blade_vortex_interaction) {
-			 	interaction = VortexInteractionT!AC(num_blades[r_idx], actual_wake_history, actual_radial_elements);
+			foreach(r_idx2, ref interaction; rotor_wake.interaction_perRotor) {
+			 	interaction = VortexInteraction_multiRotorT!AC(num_blades[r_idx], num_blades[r_idx2], actual_wake_history, actual_radial_elements);
 			}
 
 			smoothing_buffer ~= new double[actual_wake_history];
@@ -252,7 +261,7 @@ struct WakeT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
 
-			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref filament; rotor_wake.tip_vortices) {
 				debug writeln("filament:", filament);
 				filament = VortexFilamentT!AC(actual_wake_history[r_idx]);
@@ -261,12 +270,12 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-
+			debug writeln("4. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
+			debug writeln("r_idx:", r_idx, num_blades);
 			// 09/02: Nitya
 			debug writeln("r_idx:", r_idx);
-			foreach(ref interaction; rotor_wake.blade_vortex_interaction) {
-				debug writeln("interaction:", interaction);
-			 	interaction = VortexInteractionT!AC(num_blades[r_idx], actual_wake_history[r_idx], actual_radial_elements);
+			foreach(r_idx2, ref interaction; rotor_wake.interaction_perRotor) {
+			 	interaction = VortexInteraction_multiRotorT!AC(num_blades[r_idx], num_blades[r_idx2], actual_wake_history[r_idx], actual_radial_elements);
 			}
 
 			smoothing_buffer ~= new double[actual_wake_history[r_idx]];
@@ -465,7 +474,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		v_y[n_idx][] = 0;
 		v_z[n_idx][] = 0;
 	}
-	debug writeln("chunks.length:", chunks.length);
+	//debug writeln("chunks.length:", chunks.length);
 	foreach(i_c_idx, ref chunk_i; chunks[chunk_offset..$]) {
 
 		i_c_idx += chunk_offset;
@@ -790,8 +799,8 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 
 	if(single_rotor) {
 		foreach(i_blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length) {
-
-			auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
+			BWIinputsChunk[] dummy_chunks;
+			auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, dummy_chunks, x_old, y_old, z_old, false);
 			ret.v_x[] += ind_vel.v_x[];
 			ret.v_y[] += ind_vel.v_y[];
 			ret.v_z[] += ind_vel.v_z[];
@@ -801,8 +810,10 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 		foreach(i_rotor_idx, ref i_rotor; ac_state.rotor_states) {
 			foreach(i_blade_idx; 0..ac_state.rotor_states[i_rotor_idx].blade_states.length) {
 
+				BWIinputsChunk[] dummy_chunks;
+
 				if((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx))) {
-					auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
+					auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0, dummy_chunks, x_old, y_old, z_old, false);
 					ret_shed.v_x[] += ind_vel.v_x[];
 					ret_shed.v_y[] += ind_vel.v_y[];
 					ret_shed.v_z[] += ind_vel.v_z[];
@@ -811,7 +822,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 				if(!tip_only) {
 					foreach(fil_idx, ref shed_filament; wake.rotor_wakes[i_rotor_idx].shed_vortices[i_blade_idx].shed_filaments) {
 						
-						auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
+						auto ind_vel = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, 0, dummy_chunks, x_old, y_old, z_old, false);
 						ret_shed.v_x[] += ind_vel.v_x[];
 						ret_shed.v_y[] += ind_vel.v_y[];
 						ret_shed.v_z[] += ind_vel.v_z[];
@@ -826,11 +837,26 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 					x_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].x_old;
 					y_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].y_old;
 					z_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].z_old;
-					auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
+
+					auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
 					ret.v_x[] += ind_vel.v_x[];
 					ret.v_y[] += ind_vel.v_y[];
 					ret.v_z[] += ind_vel.v_z[];
-
+					/*
+					if(rotor_idx == i_rotor_idx) {
+						debug writeln("wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction.length:", wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction.length);
+						debug writeln("wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length:" , wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length);
+						auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
+						ret.v_x[] += ind_vel.v_x[];
+						ret.v_y[] += ind_vel.v_y[];
+						ret.v_z[] += ind_vel.v_z[];
+					} else{
+						BWIinputsChunk[] dummy_chunks;
+						auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, dummy_chunks, x_old, y_old, z_old, blade_chunk_idx, false);
+						ret.v_x[] += ind_vel.v_x[];
+						ret.v_y[] += ind_vel.v_y[];
+						ret.v_z[] += ind_vel.v_z[];
+					}*/
 				}
 			}
 		}

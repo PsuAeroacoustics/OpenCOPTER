@@ -206,6 +206,7 @@ alias PyVortexFilament = opencopter.wake.VortexFilamentT!(ArrayContainer.array);
 alias PyBWIinputs = opencopter.bwi.TipVortexInteractionT!(ArrayContainer.array);
 alias PyBladeVortexInteraction = opencopter.bwi.VortexInteractionT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
+alias PyInteractionPerRotor = opencopter.bwi.VortexInteraction_multiRotorT!(ArrayContainer.array);
 
 alias PyVortexLattice = opencopter.vortexlattice.VortexLatticeT!(ArrayContainer.array);
 alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftSurfT!(ArrayContainer.array);
@@ -1995,6 +1996,14 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyInteractionPerRotor,
+		PyName!"VortexInteractionMultiRotor",
+		Init!(size_t, size_t, size_t, size_t),
+		Member!("blade_vortex_interaction", Docstring!q{An array of :class:`VortexInteraction`}),
+	);
+
+
+	wrap_struct!(
 		PyShedVortex,
 		PyName!"ShedVortex",
 		//Init!(size_t, size_t),
@@ -2004,10 +2013,10 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorWake,
 		PyName!"RotorWake",
-		Init!(size_t, size_t, size_t),
+		Init!(size_t, size_t, size_t, size_t),
 		Member!("tip_vortices", Docstring!q{An array of :class:`VortexFilament`}),
 		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`}),
-		Member!("blade_vortex_interaction", Docstring!q{An array of :class:`VortexInteraction`}),
+		Member!("interaction_perRotor", Docstring!q{An array of :class:`VortexInteractionMultiRotor`}),
 	);
 
 	wrap_struct!(
@@ -2629,6 +2638,7 @@ extern(C) void PydMain() {
 	wrap_array!PyWingVortexFilament;
 	wrap_array!PyShedVortex;
 	wrap_array!PyBladeVortexInteraction;
+	wrap_array!PyInteractionPerRotor;
 	wrap_array!PyBWIinputs;
 	wrap_array!(opencopter.bwi.BWIinputsChunk);
 	wrap_array!(opencopter.bwi.InteractionPoints);
