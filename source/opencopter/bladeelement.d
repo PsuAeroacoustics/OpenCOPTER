@@ -254,20 +254,20 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 			normalVec[1] = updated_normal[1][0];
 			normalVec[2] = updated_normal[2][0];
 			//double[] r = get_geometry_array!"r"(blade);
-			writeln("1. bladeElement, before  iteration:", iteration);
-			foreach (i_rotor_idx; 0..wake.rotor_wakes.length){
-				//writeln("wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length:", wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length);
-				foreach (i_blade_idx; 0..wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length) {
-					/*if(wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.empty){
-						writeln("no interaction point");
-					} else{
-						wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
-					}*/
-					wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
-				} 
-			}
-			calculate_BWI_points(wake, blade_state, rotor_idx, blade_idx, blade, normalVec);
-			writeln("1. bladeElement, after iteration:", iteration);
+			//writeln("1. bladeElement, before  iteration:", iteration);
+			// foreach (i_rotor_idx; 0..wake.rotor_wakes.length){
+			// 	//writeln("wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length:", wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length);
+			// 	foreach (i_blade_idx; 0..wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length) {
+			// 		/*if(wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.empty){
+			// 			writeln("no interaction point");
+			// 		} else{
+			// 			wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
+			// 		}*/
+			// 		wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
+			// 	} 
+			// }
+			calculate_BWI_points(wake, blade_state, rotor_idx, blade_idx, blade, normalVec, iteration);
+			// writeln("1. bladeElement, after iteration:", iteration);
 		}
 	}
 }
@@ -306,7 +306,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	foreach(blade_idx; 0..rotor.blades.length) {
 
 		if(iteration > 0) {
-			debug writeln("1. iteration:", iteration);
+			//debug writeln("1. iteration:", iteration);
 			//writeln("\n blade properites for blade ", blade_idx);
 			rotor.blades[blade_idx].compute_blade_properties(
 				rotor_state.blade_states[blade_idx],
@@ -349,8 +349,8 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
 			blade_chunk.aoa_eff[] = blade_chunk.aoa[];
 		}
-		debug writeln("2. iteration:", iteration);
-		debug writeln("blade_idx:", blade_idx, "rotor_idx:", rotor_idx);
+		//debug writeln("2. iteration:", iteration);
+		//debug writeln("blade_idx:", blade_idx, "rotor_idx:", rotor_idx);
 		//writeln("\n blade properites for blade ", blade_idx);
 		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
@@ -416,6 +416,8 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	import std.math : PI, cos, sin;
 	import std.numeric : findRoot;
 	import std.stdio : writeln;
+
+	//GC.collect();
 	
 	aircraft.root_frame.update(Mat4.identity);
 	//aircraft.root_frame.print_frame;
