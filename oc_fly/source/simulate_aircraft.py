@@ -1555,6 +1555,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				vehicle.input_state,
 				wopwop_case_path,
 				[rotor_phases[rotor_idx]],
+				rotor_idx,
 				geom_directory
 			)
 
@@ -1584,6 +1585,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			vehicle.input_state,
 			wopwop_case_path,
 			rotor_phases,
+			rotor_idx,
 			geom_directory
 		)
 

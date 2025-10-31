@@ -167,7 +167,7 @@ def build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phas
 def flatten(xss):
 	return [x for xs in xss for x in xs]
 
-def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases, geom_directory):
+def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt, observer_config, acoustics_config, wopwop_data_path, sos, aircraft, rotors, wopwop_motion, ac_input, wopwop_case_path, rotor_phases, rotor_idx2, geom_directory):
 
 	aircraft_cob = CB()
 	aircraft_cob.Title = "Forward Velocity"
@@ -237,8 +237,12 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	environment_in.broadbandFlag = acoustics_config["broadband_flag"] if "broadband_flag" in acoustics_config else False
 	environment_in.BWINoiseFlag = acoustics_config["BWI_flag"] if "BWI_flag" in acoustics_config else False
 
-	wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, environment_in.BWINoiseFlag) for rotor_idx, rotor in enumerate(rotors)])
-
+	num_rotors = len(rotor_phases)
+	if (num_rotors>1):
+		wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, environment_in.BWINoiseFlag) for rotor_idx, rotor in enumerate(rotors)])
+	else :
+		wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx2, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, environment_in.BWINoiseFlag) for rotor_idx, rotor in enumerate(rotors)])
+	
 	R = 1
 	num_blades = 1
 	ref_omega = 1
