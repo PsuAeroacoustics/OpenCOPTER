@@ -1361,7 +1361,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				acoustic_iteration = acoustic_iteration + 1
 
 			iteration = iteration + 1
-			print('iteration:', iteration, 'acoustic_iteration:', acoustic_iteration)
+			# print('iteration:', iteration, 'acoustic_iteration:', acoustic_iteration)
 		for rotor_idx in range(num_rotors):
 			for blade_idx in range(num_blades[rotor_idx]):
 				close_loading_file(loading_files[rotor_idx][blade_idx])
