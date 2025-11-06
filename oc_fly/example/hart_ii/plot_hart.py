@@ -628,14 +628,13 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	y.reverse()
 
 	#print(x)
-	offset = x[0] - -4.0
-
+	#offset = x[0] - -4.0
 	#clevels = np.linspace(85, 119, 18)
 	clevels = np.linspace(86, 118, 17)
 
 	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
-	print([(_x - offset)/R for _x in x])
+	print([(_x)/R for _x in x])
 	print([_y/R for _y in y])
 	print(x_grid[0,:])
 	print(y_grid[:,0])
@@ -658,7 +657,7 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	ax0 = plt.subplot(121)
 	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
 	#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
-	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
+	plt1 = plt.contourf([-_y/R for _y in y], [-_x/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
 	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
@@ -1994,11 +1993,11 @@ if __name__ == "__main__":
 
 	#plot_spectrum('BL')
 
-	plot_acoustic_contours_all("BL", args.p)
-	plot_acoustic_contours_all("MN", args.p)
-	plot_acoustic_contours_all("MV", args.p)
+	# plot_acoustic_contours_all("BL", args.p)
+	# plot_acoustic_contours_all("MN", args.p)
+	# plot_acoustic_contours_all("MV", args.p)
 
-	# plot_acoustic_contours("BL", args.p)
+	plot_acoustic_contours("BL", args.p)
 	# plot_acoustic_contours_cfd("BL", args.p)
 	# plot_acoustic_contours_charm("BL", args.p)
 	# #plot_blade_twist('BL', args.p)

@@ -335,7 +335,11 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 		else:
 			observer.highPassFrequency = observer_config["high_pass_cutoff"]
 
-	observer.cobs = [aircraft_cob]
+	observer.cobs = wopwop_aircraft.cobs
+
+	if ("attached_to_aircraft" in observer_config) and observer_config["attached_to_aircraft"]:
+		observer.cobs = []
+		observer.attachedTo = wopwop_aircraft.Title
 
 	if "frequency_ranges" in observer_config:
 
