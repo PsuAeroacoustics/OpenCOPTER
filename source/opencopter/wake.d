@@ -180,8 +180,7 @@ struct WakeT(ArrayContainer AC) {
 			}
 
 			// 09/02: Nitya
-			debug writeln("1. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
-			debug writeln("r_idx:", r_idx, num_blades);
+			
 			size_t[] num_blades_array;
 			num_blades_array[0] = num_blades;
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
@@ -213,8 +212,6 @@ struct WakeT(ArrayContainer AC) {
 			}
 			size_t[] num_blades_array;
 			num_blades_array[0] = num_blades;
-			debug writeln("2. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
-			debug writeln("r_idx:", r_idx, num_blades);
 			// 09/02: Nitya
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history[r_idx], actual_radial_elements);
@@ -240,8 +237,6 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-			writeln("3. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
-			writeln("r_idx:", r_idx, num_blades);
 			// 09/02: Nitya
 			foreach(r_idx2, ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades[r_idx], num_blades[r_idx2], actual_wake_history, actual_radial_elements);
@@ -270,10 +265,8 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-			debug writeln("4. rotor_wake.interaction_perRotor.length:", rotor_wake.interaction_perRotor.length);
-			debug writeln("r_idx:", r_idx, num_blades);
+			
 			// 09/02: Nitya
-			debug writeln("r_idx:", r_idx);
 			foreach(r_idx2, ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades[r_idx], num_blades[r_idx2], actual_wake_history[r_idx], actual_radial_elements);
 			}
@@ -474,7 +467,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		v_y[n_idx][] = 0;
 		v_z[n_idx][] = 0;
 	}
-	//debug writeln("chunks.length:", chunks.length);
+	
 	foreach(i_c_idx, ref chunk_i; chunks[chunk_offset..$]) {
 
 		i_c_idx += chunk_offset;
@@ -744,7 +737,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 							dx_b = x[n_idx] - x_old[n_idx];
 							dy_b = y[n_idx] - y_old[n_idx];
 							dz_b = z[n_idx] - z_old[n_idx];
-							// BWIinputs[i_c_idx].r_blade_v[bwi_idx] = Vec3(dx_b, dy_b, dz_b);
 							BWIinputs[i_c_idx].pos_v[bwi_idx] = Vec3(x_a[bwi_idx], y_a[bwi_idx], z_a[bwi_idx]);
 						}
 					}
@@ -754,11 +746,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 					foreach(bwi_idx;0..Chunk.length){
 						dl = (dx[bwi_idx]*dx[bwi_idx] + dy[bwi_idx]*dy[bwi_idx] + dz[bwi_idx]*dz[bwi_idx]);
 						dl = sqrt(dl);
-						BWIinputs[i_c_idx].dl[bwi_idx] = dl;
-						/*if(bwi_idx==Chunk.length-1) {
-							debug writeln("i_c_idx:", i_c_idx, "BWIinputs[i_c_idx].dl:", BWIinputs[i_c_idx].dl);
-						}*/
-                                            
+						BWIinputs[i_c_idx].dl[bwi_idx] = dl;                                            
 					}
 				}
 			}
@@ -842,21 +830,6 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 					ret.v_x[] += ind_vel.v_x[];
 					ret.v_y[] += ind_vel.v_y[];
 					ret.v_z[] += ind_vel.v_z[];
-					/*
-					if(rotor_idx == i_rotor_idx) {
-						debug writeln("wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction.length:", wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction.length);
-						debug writeln("wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length:" , wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length);
-						auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
-						ret.v_x[] += ind_vel.v_x[];
-						ret.v_y[] += ind_vel.v_y[];
-						ret.v_z[] += ind_vel.v_z[];
-					} else{
-						BWIinputsChunk[] dummy_chunks;
-						auto ind_vel = compute_filament_induced_velocities(wake.rotor_wakes[i_rotor_idx].tip_vortices[i_blade_idx].chunks, x, y, z, chunk_offset, dummy_chunks, x_old, y_old, z_old, blade_chunk_idx, false);
-						ret.v_x[] += ind_vel.v_x[];
-						ret.v_y[] += ind_vel.v_y[];
-						ret.v_z[] += ind_vel.v_z[];
-					}*/
 				}
 			}
 		}
