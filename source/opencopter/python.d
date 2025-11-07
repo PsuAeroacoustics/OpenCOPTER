@@ -206,6 +206,7 @@ alias PyVortexFilament = opencopter.wake.VortexFilamentT!(ArrayContainer.array);
 alias PyBWIinputs = opencopter.bwi.TipVortexInteractionT!(ArrayContainer.array);
 alias PyBladeVortexInteraction = opencopter.bwi.VortexInteractionT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
+alias PyInteractionPerRotor = opencopter.bwi.VortexInteraction_multiRotorT!(ArrayContainer.array);
 
 alias PyVortexLattice = opencopter.vortexlattice.VortexLatticeT!(ArrayContainer.array);
 alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftSurfT!(ArrayContainer.array);
@@ -503,8 +504,16 @@ size_t[] get_interactionPt_wake_idx(ref PyBWIinputs VortexInteraction) {
 	return opencopter.bwi.get_interaction_points!"wake_idx"(VortexInteraction);
 }
 
+void fill_interactionPt_wake_idx(ref PyBWIinputs VortexInteraction, size_t[] outArray) {
+	return opencopter.bwi.fill_indexArray!"wake_idx"(VortexInteraction, outArray);
+}
+
 size_t[] get_interactionPt_bladeSec_idx(ref PyBWIinputs VortexInteraction) {
 	return opencopter.bwi.get_interaction_points!"bladeSec_idx"(VortexInteraction);
+}
+
+void fill_interactionPt_bladeSec_idx(ref PyBWIinputs VortexInteraction, size_t[] outArray) {
+	return opencopter.bwi.fill_indexArray!"bladeSec_idx"(VortexInteraction, outArray);
 }
 
 double[][] get_interaction_point_r_blade(ref PyBWIinputs VortexInteraction) {
@@ -521,6 +530,22 @@ double[][] get_interaction_point_blade_normal(ref PyBWIinputs VortexInteraction)
 
 double[][] get_interaction_point_r_vortex(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_directionVec!("r_vortex")(VortexInteraction);
+}
+
+void fill_interaction_point_r_blade(ref PyBWIinputs VortexInteraction, double[][] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_directionVec!("r_blade")(VortexInteraction, outArray);
+}
+
+void fill_interaction_point_r_blade_v(ref PyBWIinputs VortexInteraction, double[][] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_directionVec!("r_blade_v")(VortexInteraction, outArray);
+}
+
+void fill_interaction_point_blade_normal(ref PyBWIinputs VortexInteraction, double[][] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_directionVec!("normal")(VortexInteraction, outArray);
+}
+
+void fill_interaction_point_r_vortex(ref PyBWIinputs VortexInteraction, double[][] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_directionVec!("r_vortex")(VortexInteraction, outArray);
 }
 
 double[] get_interaction_point_gamma_w(ref PyBWIinputs VortexInteraction) {
@@ -550,6 +575,31 @@ double[] get_interaction_point_C_d(ref PyBWIinputs VortexInteraction) {
 double[] get_interaction_point_l(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_components!"l"(VortexInteraction);
 }
+
+
+void fill_interaction_point_gamma_w(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"gamma_w"(VortexInteraction, outArray);
+}
+
+void fill_interaction_point_secLen(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"secLen"(VortexInteraction, outArray);
+}
+void fill_interaction_point_r_c(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"r_c"(VortexInteraction, outArray);
+}
+void fill_interaction_point_miss_dist(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"miss_dist"(VortexInteraction, outArray);
+}
+void fill_interaction_point_gamma_sec(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"gamma_sec"(VortexInteraction, outArray);
+}
+void fill_interaction_point_C_d(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"C_d"(VortexInteraction, outArray);
+}
+void fill_interaction_point_l(ref PyBWIinputs VortexInteraction, double[] outArray) {
+ 	return opencopter.bwi.fill_interaction_point_components!"l"(VortexInteraction, outArray);
+}
+
 /*double[] get_interaction_point_TKE(ref PyBWIinputs VortexInteraction) {
  	return opencopter.bwi.get_interaction_point_components!"TKE"(VortexInteraction);
 }*/
@@ -1588,6 +1638,99 @@ extern(C) void PydMain() {
 		:return: List of vortex length
 	});
 
+
+	def!(fill_interactionPt_wake_idx, void function(ref PyBWIinputs, size_t[]), Docstring!q{
+		Extract wake index corresponding to vortex blade interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the wake index from
+		:return: List of wake_idx corresponding to the interactions
+	});
+ 
+	def!(fill_interactionPt_bladeSec_idx, void function(ref PyBWIinputs, size_t[]), Docstring!q{
+		Extract blade section index corresponding to vortex blade interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the blade section index from
+		:return: List of wake_idx corresponding to the interactions
+	});
+
+	def!(fill_interaction_point_r_blade, void function(ref PyBWIinputs, double[][]), Docstring!q{
+		Extract the direction vector of blade segment at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the direction vector from
+		:return: List of the direction vector of blade segment
+	});
+
+	def!(fill_interaction_point_r_blade_v, void function(ref PyBWIinputs, double[][]), Docstring!q{
+		Extract the direction vector of blade segment at the point of interaction in the inflow direction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the direction vector from
+		:return: List of the direction vector of blade segment
+	});
+
+	def!(fill_interaction_point_blade_normal, void function(ref PyBWIinputs, double[][]), Docstring!q{
+		Extract the direction vector of blade segment at the point of interaction in the inflow direction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the direction vector from
+		:return: List of the direction vector of blade segment
+	});
+
+
+	def!(fill_interaction_point_r_vortex, void function(ref PyBWIinputs, double[][]), Docstring!q{
+		Extract the direction vector of the vortex segment at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract the direction vector from
+		:return: List of the direction vector of the vortex segment
+	});
+
+	def!(fill_interaction_point_miss_dist, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract miss distance at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract miss distance from
+		:return: List of miss distance
+	});
+
+	def!(fill_interaction_point_gamma_w, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract vortex gamma at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract vortex gamma from
+		:return: List of vortex gamma
+	});
+
+	def!(fill_interaction_point_secLen, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract section length point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract section length from
+		:return: List of secLen
+	});
+
+	def!(fill_interaction_point_r_c, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract vortex core radius at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract vortex core radius from
+		:return: List of vortex core radius
+	});
+
+	def!(fill_interaction_point_gamma_sec, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract blade section gamma at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract blade section gamma from
+		:return: List of blade section gamma
+	});
+
+	def!(fill_interaction_point_C_d, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract blade C_d at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract blade C_d
+		:return: List of blade C_d
+	});
+
+	def!(fill_interaction_point_l, void function(ref PyBWIinputs, double[]), Docstring!q{
+		Extract vortex length at the point of interaction to a linear array.
+
+		:param BWI_input: the :class:`TipVortexInteraction` to extract vortex length from
+		:return: List of vortex length
+	});
+
 	/*def!(get_interaction_point_TKE, double[] function(ref PyBWIinputs), Docstring!q{
 		Extract blade TKE at the point of interaction to a linear array.
 
@@ -1995,6 +2138,14 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyInteractionPerRotor,
+		PyName!"VortexInteractionMultiRotor",
+		Init!(size_t, size_t, size_t, size_t),
+		Member!("blade_vortex_interaction", Docstring!q{An array of :class:`VortexInteraction`}),
+	);
+
+
+	wrap_struct!(
 		PyShedVortex,
 		PyName!"ShedVortex",
 		//Init!(size_t, size_t),
@@ -2004,10 +2155,10 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorWake,
 		PyName!"RotorWake",
-		Init!(size_t, size_t, size_t),
+		Init!(size_t, size_t, size_t, size_t),
 		Member!("tip_vortices", Docstring!q{An array of :class:`VortexFilament`}),
 		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`}),
-		Member!("blade_vortex_interaction", Docstring!q{An array of :class:`VortexInteraction`}),
+		Member!("interaction_perRotor", Docstring!q{An array of :class:`VortexInteractionMultiRotor`}),
 	);
 
 	wrap_struct!(
@@ -2629,6 +2780,7 @@ extern(C) void PydMain() {
 	wrap_array!PyWingVortexFilament;
 	wrap_array!PyShedVortex;
 	wrap_array!PyBladeVortexInteraction;
+	wrap_array!PyInteractionPerRotor;
 	wrap_array!PyBWIinputs;
 	wrap_array!(opencopter.bwi.BWIinputsChunk);
 	wrap_array!(opencopter.bwi.InteractionPoints);

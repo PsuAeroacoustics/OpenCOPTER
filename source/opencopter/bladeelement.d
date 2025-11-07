@@ -64,7 +64,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 	return ret;
 }
 //extern (C++) void compute_blade_properties(BG, BS, RG, RIS, RS, AS, I, W)(auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, I inflow, auto ref W wake, double time, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo, bool trackBWIevents, bool converged)
-void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, auto ref W wake, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo, bool trackBWIevents, bool converged)
+void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, auto ref BS blade_state, auto ref RG rotor, auto ref RIS rotor_input, auto ref RS rotor_state, auto ref AS ac_state, auto ref W wake, double dt, size_t rotor_idx, size_t blade_idx, immutable Atmosphere atmo, size_t iteration, bool trackBWIevents, bool converged)
 	if(is_blade_geometry!BG && is_blade_state!BS && is_rotor_geometry!RG && is_rotor_input_state!RIS && is_rotor_state!RS && is_aircraft_state!AS && is_wake!W)
 {
 	version(LDC) pragma(inline, true);
@@ -254,10 +254,20 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 			normalVec[1] = updated_normal[1][0];
 			normalVec[2] = updated_normal[2][0];
 			//double[] r = get_geometry_array!"r"(blade);
-			foreach (i_blade_idx; 0..rotor.blades.length) {
-				wake.rotor_wakes[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
-			} 
-			calculate_BWI_points(wake, blade_state, rotor_idx, blade_idx, blade, normalVec);
+			//writeln("1. bladeElement, before  iteration:", iteration);
+			// foreach (i_rotor_idx; 0..wake.rotor_wakes.length){
+			// 	//writeln("wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length:", wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length);
+			// 	foreach (i_blade_idx; 0..wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length) {
+			// 		/*if(wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.empty){
+			// 			writeln("no interaction point");
+			// 		} else{
+			// 			wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
+			// 		}*/
+			// 		wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].interaction_pts.clear();
+			// 	} 
+			// }
+			calculate_BWI_points(wake, blade_state, rotor_idx, blade_idx, blade, normalVec, iteration);
+			// writeln("1. bladeElement, after iteration:", iteration);
 		}
 	}
 }
@@ -281,8 +291,8 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	import std.math : cos, sin, abs;
 	import std.stdio : writeln;
 
-	debug writeln("wing geometry frame: ", wings[0].frame);
-	debug writeln("wing geometry frame: ", wings[0].frame.name);
+	//debug writeln("wing geometry frame: ", wings[0].frame);
+	//debug writeln("wing geometry frame: ", wings[0].frame.name);
 
 	foreach(blade_idx; 0..rotor.blades.length) {
 		rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
@@ -296,6 +306,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	foreach(blade_idx; 0..rotor.blades.length) {
 
 		if(iteration > 0) {
+			//debug writeln("1. iteration:", iteration);
 			//writeln("\n blade properites for blade ", blade_idx);
 			rotor.blades[blade_idx].compute_blade_properties(
 				rotor_state.blade_states[blade_idx],
@@ -308,6 +319,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 				rotor_idx,
 				blade_idx,
 				atmo,
+				iteration,
 				trackBWIevents,
 				converged
 			);
@@ -337,7 +349,8 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
 			blade_chunk.aoa_eff[] = blade_chunk.aoa[];
 		}
-
+		//debug writeln("2. iteration:", iteration);
+		//debug writeln("blade_idx:", blade_idx, "rotor_idx:", rotor_idx);
 		//writeln("\n blade properites for blade ", blade_idx);
 		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
@@ -350,6 +363,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			rotor_idx,
 			blade_idx,
 			atmo, 
+			iteration,
 			trackBWIevents,
 			converged
 		);
@@ -402,6 +416,8 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	import std.math : PI, cos, sin;
 	import std.numeric : findRoot;
 	import std.stdio : writeln;
+
+	//GC.collect();
 	
 	aircraft.root_frame.update(Mat4.identity);
 	//aircraft.root_frame.print_frame;
