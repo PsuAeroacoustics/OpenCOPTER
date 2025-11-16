@@ -619,7 +619,7 @@ def plot_spectrum(plot_name: str, mic_x: float, mic_y: float, suffix: str, t_shi
 
 	measured_dt = t_measured[1] - t_measured[0]
 	measured_sos = sig.butter(13, six_per_rev, 'highpass', output='sos', fs=1/measured_dt)
-	p_measured = sig.sosfilt(measured_sos, p_measured)
+	p_measured = sig.sosfiltfilt(measured_sos, p_measured)
 
 	f, pxx = sig.welch(p, fs, detrend=False, scaling='spectrum', nperseg=len(p))
 	f_measured, pxx_measured = sig.welch(p_measured, fs_measured, detrend=False, scaling='spectrum', nperseg=len(p_measured))
