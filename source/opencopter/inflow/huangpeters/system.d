@@ -462,7 +462,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		_rotor.frame.parent.children ~= new Frame(Vec3(1, 0, 0), PI, Vec3(0, 0, 0.0), _rotor.frame.parent, _rotor.frame.parent.name ~ " inflow", "connection");
 		local_frame = _rotor.frame.parent.children[$-1];
-		local_frame.local_matrix[1, 1] *= -1.0;
+		//local_frame.local_matrix[1, 1] *= -1.0;
 
 		size_t len = round(2.0*PI/(dt*235.325)).to!size_t;
 		//ai_idx = 0;
@@ -1246,8 +1246,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 						auto blade_frame_forces = Vector!(4, Chunk)(0);
 						blade_frame_forces[2][] = blade_state.chunks[c_idx].dC_T[];
 
-						auto global_frame_forces = rotor.blades[b_idx].frame.global_matrix*blade_frame_forces;
-						auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
+						auto global_frame_forces = rotor.blades[b_idx].frame.global_matrix*blade_frame_forces; //back corrected!!
+						auto rotor_frame_forces = rotor.frame.parent.inverse_global_matrix*global_frame_forces; //back corrected!!
 
 						immutable Chunk Pmn = associated_legendre_polynomial_nh(m, n, nu, P_coefficients_nh[idx]);
 
@@ -1292,8 +1292,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 						auto blade_frame_forces = Vector!(4, Chunk)(0);
 						blade_frame_forces[2][] = blade_state.chunks[c_idx].dC_T[];
 
-						auto global_frame_forces = rotor.blades[b_idx].frame.global_matrix*blade_frame_forces;
-						auto rotor_frame_forces = rotor.frame.parent.global_matrix.inverse.get()*global_frame_forces;
+						auto global_frame_forces = rotor.blades[b_idx].frame.global_matrix*blade_frame_forces; //back corrected!!
+						auto rotor_frame_forces = rotor.frame.parent.inverse_global_matrix*global_frame_forces; //back corrected!!
 
 						immutable Chunk Pmn = associated_legendre_polynomial(m, n, nu, P_coefficients[idx]);
 
@@ -1315,7 +1315,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		}
 	}
 
-	void update(AircraftStateT!AC ac_state, double dt) {
+	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
 		omega = rotor_input.angular_velocity;
 		
 		immutable t_scale = abs(omega);
@@ -1389,7 +1389,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 			contraction_array[z_idx] = sqrt(v_0_v_z);
 		}
 
-		global_inverse = local_frame.global_matrix.inverse.get;
+		global_inverse = local_frame.inverse_global_matrix;   // This is not used anywhere, should it be removed?
 		if (advance_ratio > 0) {
 			immutable local_freestream = global_inverse*ac_state.freestream;
 			immutable normal = Vec4(0, 0, -1, 0);
@@ -1398,7 +1398,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 			immutable double freestream_rotation = acos(projected_freestream.dot(x_axis)/projected_freestream.magnitude);
 			local_frame.rotate(Vec3(0, 0, -1), freestream_rotation);
 			local_frame.update(local_frame.parent.global_matrix);
-			global_inverse = local_frame.global_matrix.inverse.get;
+			global_inverse = local_frame.inverse_global_matrix;
 		}
 
 	}

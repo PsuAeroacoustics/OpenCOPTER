@@ -22,7 +22,7 @@ import std.algorithm;
 import std.array;
 import std.conv : to;
 import std.exception : enforce;
-import std.math : abs, fmod, PI;
+import std.math : abs, fmod, PI, sgn;
 import std.traits : isBasicType;
 
 import numd.linearalgebra.matrix;
@@ -63,12 +63,12 @@ struct Direction {
 void basic_aircraft_rotor_dynamics(PyAircraftInputState* ac_input, double dt) {
 	foreach(r_idx, ref rotor; ac_input.rotor_inputs) {
 		rotor.azimuth += rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
-
+		auto sign = sgn(rotor.azimuth);
 		// Keep the azimuth between 0 and 2*PI so we don't
 		// lose fp precicion as the sim marches in time and
 		// the azimuth grows unbounded.
-		if(rotor.azimuth > 2.0*PI) {
-			rotor.azimuth = fmod(abs(rotor.azimuth), 2.0*PI);
+		if(abs(rotor.azimuth) > 2.0*PI) {
+			rotor.azimuth = sign * fmod(abs(rotor.azimuth), 2.0*PI);
 		}
 	}
 }
@@ -95,7 +95,7 @@ double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
  +/
 class Inflow {
 	Inflow_D get_wrapped_inflow(){ assert (0);}
-	void update(PyAircraftState* ac_state, double dt) { assert(0); }
+	void update(PyAircraftState* ac_state,PyWake* wake, double dt) { assert(0); }
 	Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) { assert(0); }
 	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) { assert(0); }
 	void update_wing_circulation(PyWingState* wing_state) { assert(0); }
@@ -117,8 +117,8 @@ class HuangPeters : Inflow {
 		huang_peters = new HP(4, 2, rotor, rotor_input, dt);
 	}
 
-	override void update(PyAircraftState* ac_state, double dt) {
-		huang_peters.update(*ac_state, dt);
+	override void update(PyAircraftState* ac_state, PyWake* wake, double dt) {
+		huang_peters.update(*ac_state, *wake, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
@@ -164,8 +164,8 @@ class WingInflow: Inflow{
 		wing_inflow = new WI(_wing, _wing_inputs, _wing_lift_surf);
 	}
 
-	override void update(PyAircraftState* ac_state, double dt) {
-		wing_inflow.update(*ac_state, dt);
+	override void update(PyAircraftState* ac_state, PyWake* wake, double dt) {
+		wing_inflow.update(*ac_state, *wake, dt);
 	}
 
 	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
@@ -304,6 +304,10 @@ void set_wing_twist(ref PyWingPartGeometry wg, double[] data) {
 
 void set_wing_sweep(ref PyWingPartGeometry wg, double[] data) {
 	wg.set_geometry_array!"sweep"(data);
+}
+
+void set_wing_y_span(ref PyWingPartGeometry wg, double[] data){
+	wg.set_geometry_array!"y_span"(data);
 }
 
 double[] get_wing_aoa(ref PyWingState wing){
@@ -808,6 +812,14 @@ Mat3 Mat3_identity() {
 	return Mat3.identity();
 }
 
+/*Mat4 get_local_matrix(ref Frame comp_frame){
+	return comp_frame.local_matrix;
+}
+
+Mat4 get_global_matrix(ref Frame comp_frame){
+	return comp_frame.global_matrix;
+}*/
+
 alias PyWingLoc = opencopter.aircraft.geometry.Location;
 
 struct Location{
@@ -851,6 +863,9 @@ extern(C) void PydMain() {
 
 	def!(Mat4_identity);
 	def!(Mat3_identity);
+
+	//def!(get_local_matrix);
+	//def!(get_global_matrix);
 
 	def!(compute_blade_vectors);
 
@@ -1319,6 +1334,13 @@ extern(C) void PydMain() {
 
 		:param bg: :class:`BladeGeometry` object to apply sweep to.
 		:param data: List of sweep (in radians) for each radial station
+	});
+
+	def!(set_wing_y_span, Docstring!q{
+		Set the spanwise location of a :class:`WingPartGeometry` from a linear array.
+
+		:param wg: :class:`WingPartGeometry` object to apply sweep to.
+		:param data: List of span locations
 	});
 
 	def!(get_dC_T, double[] function(ref PyBladeState), Docstring!q{
@@ -2141,6 +2163,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		WingPartGeometryChunk,
 		Member!"twist",
+		Member!"y_span",
 		Member!"chord",
 		Member!"sweep"
 	);
@@ -2299,6 +2322,7 @@ extern(C) void PydMain() {
 		Member!("aoa", Docstring!q{A chunk of spanwise sectional angle of attack (in radians)}),
 		Member!("dC_L", Docstring!q{A chunk of spanwise sectional lift coefficent}),
 		Member!("dC_M", Docstring!q{A chunk of spanwise sectional moment coefficient}),
+		Member!("dCL_dim", Docstring!q{A chunk of spanwise sectional lift coefficent multiplied by sectional velocity squared}),
 	);
 
 	wrap_struct!(
@@ -2598,6 +2622,9 @@ extern(C) void PydMain() {
 		Def!(Frame.translate),
 		Def!(Frame.global_position),
 		Def!(Frame.global_to_local),
+		Def!(Frame.get_local_mat),
+		Def!(Frame.get_global_mat),
+		Def!(Frame.get_origin_in_frame_coordinate)
 	);
 
 	wrap_array!double;

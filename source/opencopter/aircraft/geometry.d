@@ -248,6 +248,7 @@ struct Frame {
 		
 		local_matrix = Mat4.identity();
 		global_matrix = Mat4.identity();
+		inverse_global_matrix = Mat4.identity();
 
 		translate(translation);
 		rotate(axis, angle);
@@ -274,6 +275,7 @@ struct Frame {
 		
 		local_matrix = Mat4.identity();
 		global_matrix = Mat4.identity();
+		inverse_global_matrix = Mat4.identity();
 
 		translate(translation);
 		rotate(axis, angle);
@@ -281,7 +283,7 @@ struct Frame {
 
 	Vec3 global_position() {
 		nop;
-		auto pos = Vec3(global_matrix[0, 3], global_matrix[1, 3], global_matrix[2, 3]);
+		auto pos = Vec3(inverse_global_matrix[0, 3], inverse_global_matrix[1, 3], inverse_global_matrix[2, 3]);
 		return pos;
 	}
 
@@ -328,7 +330,7 @@ struct Frame {
 		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
 		M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
 		
-		temp_mat = temp_mat * local_matrix.extract_rotation_matrix();
+		temp_mat = local_matrix.extract_rotation_matrix() * temp_mat;
 		
 		local_matrix.set_rotation_matrix(temp_mat);
 	}
@@ -377,6 +379,21 @@ struct Frame {
 		return angle;
 	}
 
+	Mat4 get_local_mat(){
+		nop;
+		return local_matrix;
+	}
+
+	Mat4 get_global_mat(){
+		nop;
+		return global_matrix;
+	}
+
+	Vec4 get_origin_in_frame_coordinate(Vec4 origin){
+		auto local_origin = -local_matrix*origin;
+		return local_origin;
+	}
+
 	void translate(Vec3 translation) {
 		nop;
 		local_matrix[0, 3] += translation[0];
@@ -385,8 +402,16 @@ struct Frame {
 	}
 
 	void update(ref Mat4 parent_global_mat) {
-		global_matrix = parent_global_mat*local_matrix;
-		inverse_global_matrix = global_matrix.inverse.get;
+		global_matrix = parent_global_mat * local_matrix;
+		auto rotation_matrix = extract_rotation_matrix(global_matrix);
+		auto inverse_rotation_matrix = rotation_matrix.transpose;
+		set_rotation_matrix(inverse_global_matrix, inverse_rotation_matrix);
+		auto d_vec = Vec3(global_matrix[0, 3], global_matrix[1, 3], global_matrix[2, 3]);
+		auto invese_d_vec = -inverse_rotation_matrix*d_vec;
+		//writeln("inverse d vec: ", "\tx = ", invese_d_vec[0], "\ty = ", invese_d_vec[1], "\tz = ", invese_d_vec[2]);
+		inverse_global_matrix[0, 3] = invese_d_vec[0];
+		inverse_global_matrix[1, 3] = invese_d_vec[1];
+		inverse_global_matrix[2, 3] = invese_d_vec[2];
 
 		foreach(ref child; children){
 			child.update(global_matrix);
@@ -430,7 +455,7 @@ extern(C++) struct AircraftT(ArrayContainer AC) {
 	this(size_t num_rotors , size_t num_wings) {		
 		mixin(array_ctor_mixin!(AC, "RotorGeometryT!AC", "rotors", "num_rotors"));
 
-		root_frame = new Frame(Vec3(0, 0, 1), PI, Vec3(0, 0, 0), null, "aircraft", "connection");
+		root_frame = new Frame(Vec3(0, 0, 1), 0.0, Vec3(0, 0, 0), null, "aircraft", "connection");
 		mixin(array_ctor_mixin!(AC, "WingGeometryT!AC", "wings", "num_wings"));
 	}
 
@@ -745,13 +770,10 @@ extern (C++) struct WingPartGeometryChunk {
 	 +   Chord distribution
 	 +/
 	Chunk chord;
-	//Chunk span_vortex_pt;
-
-	//Chunk span_ctrl_pt;
 	/++
-	 +   Radial distribution
+	 +   span_locations
 	 +/
-	//Chunk r;
+	Chunk y_span;
 	/++
 	 +  Radial sectional airfoil lift curve slope
 	 +/

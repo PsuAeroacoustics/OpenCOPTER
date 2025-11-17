@@ -199,7 +199,7 @@ class VtkWing {
 void write_wing_vtu(WS, W)(string base_filename, size_t iteration, size_t wing_idx, ref VtkWing wing, auto ref WS wing_state, auto ref W wing_geom){
 
 	version(Have_vtkd) {
-		writeln("writing wing vtu");
+		//writeln("writing wing vtu");
 		immutable spanwise_elements = wing_state.wing_part_states[0].chunks.length*chunk_size;
 		immutable chordwise_elements = wing_state.wing_part_states[0].ctrl_chunks.length*chunk_size / spanwise_elements;
 
@@ -228,7 +228,7 @@ void write_wing_vtu(WS, W)(string base_filename, size_t iteration, size_t wing_i
 
 				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0);
 
-				auto final_p = wing_geom.frame.global_matrix * point;
+				auto final_p = wing_geom.frame.global_matrix * point; // back corrected!!
 
 				wing.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
 			}	
@@ -243,7 +243,7 @@ void write_wing_vtu(WS, W)(string base_filename, size_t iteration, size_t wing_i
 					immutable chord_idx = (ch_idx - ch_idx%span_chunk_length)/span_chunk_length;
 
 					auto id = wing.base_point_ids[wp_idx][span_idx][chord_idx];
-					wing.aoa.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_aoa[c_idx]);
+					wing.aoa.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_aoa[c_idx]*(180.0/PI));
 					wing.u_p.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_up[c_idx]);
 					wing.u_t.SetTuple1(id, wp_state.ctrl_chunks[ch_idx].ctrl_pt_ut[c_idx]);
 					wing.dC_T.SetTuple1(id, wp_state.chunks[span_chunk_idx].dC_L[c_idx]);
@@ -368,7 +368,7 @@ void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t roto
 				vtkIdType id = pi.key;
 				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0/rotor_geom.radius)*rotor_geom.radius;
 
-				auto final_p = rotor_geom.blades[blade_idx].frame.global_matrix * point;
+				auto final_p = rotor_geom.blades[blade_idx].frame.global_matrix * point; //back corrected!!
 				
 				rotor.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
 			}
@@ -378,7 +378,7 @@ void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t roto
 				auto chunk_idx = radial_idx/chunk_size;
 				auto inner_idx = radial_idx%chunk_size;
 
-				auto af_norm = rotor_geom.blades[blade_idx].frame.global_matrix*rotor_geom.blades[blade_idx].chunks[chunk_idx].af_norm;
+				auto af_norm = rotor_geom.blades[blade_idx].frame.global_matrix*rotor_geom.blades[blade_idx].chunks[chunk_idx].af_norm; //back corrected!!
 
 				auto blade_local_vel = blade.chunks[chunk_idx].blade_local_vel;
 				auto projected_vel = blade.chunks[chunk_idx].projected_vel;
@@ -1139,7 +1139,7 @@ void write_inflow_vtu(I, RGA)(string filename, I[] inflows, Vec3 delta, Vec3 sta
 
 						g_pos[3][] = 1;
 						
-						auto l_pos = inflow.frame.global_matrix.inverse().get() * (g_pos);
+						auto l_pos = inflow.frame.inverse_global_matrix * (g_pos); //back corrected!!
 						//auto l_pos = inflow.frame.global_matrix.transpose * (g_pos);
 						//auto l_pos = inflow.frame.global_matrix * (g_pos);
 
@@ -1149,7 +1149,7 @@ void write_inflow_vtu(I, RGA)(string filename, I[] inflows, Vec3 delta, Vec3 sta
 						auto local_inflow = Vector!(4, Chunk)(zero, zero, infl, zero);
 
 						local_inflow[2][] = infl[];
-						global_inflow += inflow.frame.global_matrix * local_inflow;
+						global_inflow += inflow.frame.global_matrix * local_inflow; //back corrected!!
 						//global_inflow += inflow.frame.global_matrix.inverse.get() * local_inflow;
 					}
 
