@@ -183,7 +183,8 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 				# plus 1R to finish going past the other rotor, and then wake_trail_distance more radii after that
 				wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + wake_trail_distance[o_idx])
-
+			
+			print(f"o_idx {origin} other_origin {other_origin}  wake_dists[o_idx] {wake_dists[o_idx]}")
 		if wake_dists[o_idx] <= 0:
 			# if all others are upstream, just trail wake_trail_distance radii behind
 			wake_dists[o_idx] = wake_trail_distance[o_idx]
@@ -191,14 +192,17 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	wake_history_revs = np.zeros(wake_dists.size)
 
 	for idx, mu in enumerate(mus):
+		print("mu = ", mu)
 		if mu != 0:
+			print("mu = ", mu)			
 			wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
 		else:
 			wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
 	
+	print("wake_history_revs", wake_history_revs)
 	wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 	total_wake_history = wake_history_length.sum()
-	
+	print(f"wake_history_length {wake_history_length} total_wake_history {total_wake_history}")
 	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'])
 
 def main():
@@ -718,8 +722,17 @@ def main():
 		with open(prog_file_name, open_mode) as prog_file:
 			for case_idx, case in enumerate(cases[acoustic_start_idx:]):
 				print("calculating acoustics")
+				case_list_element = Casename()
+				case_list_element.caseNameFile = case[0]
+				case_list_element.globalFolderName = case[1]
+
+				print("case_name_file = ", case[0])
+				print("globalFolderName = ",case[1])
+
 				case_list = CaseList()
-				case_list.cases = [case]
+				case_list.cases = [case_list_element]
+
+				write_caselist_custom_name(case_list, "./", f'cases_{rank}_{case_idx}.nam')
 
 				compute_acoustics.compute_acoustics(case_list, rank)
 

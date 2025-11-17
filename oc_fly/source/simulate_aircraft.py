@@ -83,6 +83,15 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	vtk_rotors = [build_base_vtu_rotor(vehicle.aircraft.rotors[rotor_idx]) for rotor_idx in range(num_rotors)]
 	vtk_wake = build_base_vtu_wake(vehicle.wake_history.history[0])
 	vtk_wing = [build_base_vtu_wing(vehicle.aircraft.wings[w_idx]) for w_idx in range(num_wings)]
+
+	for r_idx in range(num_rotors):
+		origin = vehicle.aircraft.rotors[r_idx].frame.global_position()
+		print(f'{vehicle.aircraft.rotors[r_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+
+	for wing_idx in range(num_wings):
+		print("writing wing vtu")
+		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
+		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
 	
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))
 	C_T_len = np.round(2.0*math.pi/(dt*np.abs(omegas))).astype(dtype=np.int64)
@@ -491,6 +500,18 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	
 	wake_element_piv = np.zeros((num_rotors, max(num_blades), len(piv_slices), 2, int(post_conv_revolutions*iter_per_rev) + 1))
 
+	if num_wings != 0:
+		span_chunks = vehicle.aircraft.wings[0].wing_parts[0].chunks.len()
+		chord_pts = vehicle.aircraft.wings[0].wing_parts[0].ctrl_chunks.len()/span_chunks
+		wing_up = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_ut = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_gamma = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_A_kl = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()) , int(chord_pts), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_dC_L = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_span_dist = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_dC_L_dim = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(span_chunks*chunk_size()), int(convergence_rev_multiple*iter_per_rev)))
+		wing_part_CL = np.zeros((vehicle.aircraft.wings[0].wing_parts.len(), int(convergence_rev_multiple*iter_per_rev)))
+
 	actual_wake_history = [wake_lengths[r_idx] if wake_lengths[r_idx]%chunk_size() == 0 else wake_lengths[r_idx] + (chunk_size() - wake_lengths[r_idx]%chunk_size()) for r_idx in range(num_rotors)]
 	#wake_trajectory_timehistories = [np.zeros((int((post_conv_revolutions + 1)*iter_per_rev), num_blades[r_idx], 3, actual_wake_history[r_idx])) for r_idx in range(num_rotors)]
 
@@ -553,8 +574,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
 
 		while not sim_done:
-
+			#print("iteration: ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
+				print("rev = ", iteration/iter_per_rev)
 				max_l2 = 1000
 				for rotor_idx in range(num_rotors):
 					if convergence_type == 'wake':
@@ -931,6 +953,39 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					for rotor_idx in range(num_rotors):
 						rotor_phases[rotor_idx] = vehicle.input_state.rotor_inputs[rotor_idx].azimuth
 				
+
+				if start_recording and not done_recording and num_wings != 0:
+					for wp_idx, wp_state in enumerate(vehicle.ac_state.wing_states[0].wing_part_states):
+						#print("ctrl_chunk_len = ", wp_state.ctrl_chunks.len())
+						for chord_idx in range(int(chord_pts)):
+							for span_idx in range(span_chunks):
+								for c_idx in range(chunk_size()):
+									chunk_idx = chord_idx*span_chunks + span_idx
+								#print("c_idx = ", c_idx)
+									wp_up = wp_state.ctrl_chunks[chunk_idx].ctrl_pt_up[c_idx]
+									wp_ut = wp_state.ctrl_chunks[chunk_idx].ctrl_pt_ut[c_idx]
+								#gamma = wing_lift_surf.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[0].gamma[span_idx]
+								#A_kl = wing_lift_surf.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_idx].chunks[0].A_kl[span_idx]
+
+									wrt_idx = span_idx * chunk_size() + c_idx
+									#print("write idx = ", wrt_idx)
+									wing_up[wp_idx, wrt_idx, chord_idx, spanwise_element_iteration] = wp_up
+									wing_ut[wp_idx, wrt_idx, chord_idx, spanwise_element_iteration] = wp_ut
+								#wing_gamma[wp_idx, span_idx, chord_idx, spanwise_element_iteration] = gamma
+								#wing_A_kl[wp_idx, span_idx, chord_idx, spanwise_element_iteration] = A_kl
+						
+						for span_ch_idx in range(span_chunks):
+							for ch_idx in range(chunk_size()):
+								wp_d_CL = wp_state.chunks[span_ch_idx].dC_L[ch_idx]
+								wp_d_CL_mult_v_sq = wp_state.chunks[span_ch_idx].dCL_dim[ch_idx]
+								wp_span_dist = vehicle.aircraft.wings[0].wing_parts[wp_idx].chunks[span_ch_idx].y_span[ch_idx]
+								span_idx = span_ch_idx*chunk_size() + ch_idx
+								wing_part_dC_L[wp_idx, span_idx, spanwise_element_iteration] = wp_d_CL
+								wing_part_span_dist[wp_idx, span_idx, spanwise_element_iteration] = wp_span_dist
+								wing_part_dC_L_dim[wp_idx, span_idx, spanwise_element_iteration] = wp_d_CL_mult_v_sq
+
+						#print("wing_CL = ", vehicle.ac_state.wing_states[0].C_L)
+						wing_part_CL[wp_idx, spanwise_element_iteration] = vehicle.ac_state.wing_states[0].C_L
 
 				for rotor_idx, rotor in enumerate(vehicle.ac_state.rotor_states):
 
@@ -1416,45 +1471,55 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		result_dictionary['cos_pitch_array'] = cos_pitch_array
 		result_dictionary['hhc_pitch_array'] = hhc_pitch_array
 
-		if elastic_twist is not None:
-			result_dictionary['elastic_twist_array'] = elastic_twist_array
+	if num_wings != 0:
+		result_dictionary["wing_Up"] = wing_up
+		result_dictionary["wing_Ut"] = wing_ut
+		result_dictionary["wing_Gamma"] = wing_gamma
+		result_dictionary["wing_A_kl"] = wing_A_kl
+		result_dictionary["wing_part_dC_l"]= wing_part_dC_L
+		result_dictionary["wing_part_CL"] = wing_part_CL
+		result_dictionary["wing_span_dist"] = wing_part_span_dist
+		result_dictionary["wing_part_CL_dim"] = wing_part_dC_L_dim
 
-		if blade_flapping is not None:
-			result_dictionary['blade_flapping_array'] = blade_flapping_array
-			result_dictionary['blade_flapping_der_array'] = blade_flapping_der_array
+	if elastic_twist is not None:
+		result_dictionary['elastic_twist_array'] = elastic_twist_array
 
-		if track_wake_element:
-			result_dictionary['wake_element_index'] = wake_element_index
-			result_dictionary['target_y_slices'] = target_y_slices
-			result_dictionary["wake_element_trajectory"] = wake_element_trajectory
-			result_dictionary["wake_element_core_size"] = wake_element_core_size
+	if blade_flapping is not None:
+		result_dictionary['blade_flapping_array'] = blade_flapping_array
+		result_dictionary['blade_flapping_der_array'] = blade_flapping_der_array
 
-		if track_span_element:
-			result_dictionary['span_element_af_loading'] = span_element_af_loading
-			result_dictionary['span_element_loading'] = span_element_loading
-			result_dictionary['span_element_aoa_eff'] = span_element_aoa_eff
-			result_dictionary['span_element_aoa'] = span_element_aoa
-			result_dictionary['span_element_up'] = span_element_up
-			result_dictionary['span_element_inflow_angle'] = span_element_inflow_angle
-			result_dictionary['span_element_theta'] = span_element_theta
-			result_dictionary['span_element_gamma'] = span_element_gamma
-			result_dictionary['span_element_azimuth'] = span_element_azimuth
+	if track_wake_element:
+		result_dictionary['wake_element_index'] = wake_element_index
+		result_dictionary['target_y_slices'] = target_y_slices
+		result_dictionary["wake_element_trajectory"] = wake_element_trajectory
+		result_dictionary["wake_element_core_size"] = wake_element_core_size
 
-		if track_piv_window:
-			result_dictionary['wake_element_piv'] = wake_element_piv
+	if track_span_element:
+		result_dictionary['span_element_af_loading'] = span_element_af_loading
+		result_dictionary['span_element_loading'] = span_element_loading
+		result_dictionary['span_element_aoa_eff'] = span_element_aoa_eff
+		result_dictionary['span_element_aoa'] = span_element_aoa
+		result_dictionary['span_element_up'] = span_element_up
+		result_dictionary['span_element_inflow_angle'] = span_element_inflow_angle
+		result_dictionary['span_element_theta'] = span_element_theta
+		result_dictionary['span_element_gamma'] = span_element_gamma
+		result_dictionary['span_element_azimuth'] = span_element_azimuth
 
-		result_dictionary["omegas"] = omegas
-		result_dictionary["dt"] = dt
-		result_dictionary["average_powers"] = average_Qs
-		result_dictionary["average_torques"] = [average_Qs[rotor_idx]/abs(omegas[rotor_idx]) for rotor_idx in range(num_rotors)]
-		result_dictionary["rotor_phases"] = rotor_phases
+	if track_piv_window:
+		result_dictionary['wake_element_piv'] = wake_element_piv
 
-		result_dictionary["blade_inflow_distribution"] = blade_inflow_distribution
-		result_dictionary["blade_loading_distribution"] = blade_loading_distribution
+	result_dictionary["omegas"] = omegas
+	result_dictionary["dt"] = dt
+	result_dictionary["average_powers"] = average_Qs
+	result_dictionary["average_torques"] = [average_Qs[rotor_idx]/abs(omegas[rotor_idx]) for rotor_idx in range(num_rotors)]
+	result_dictionary["rotor_phases"] = rotor_phases
 
-		result_dictionary["blade_induced_drag_distribution"] = blade_induced_drag_distribution
-		result_dictionary["blade_profile_drag_distribution"] = blade_profile_drag_distribution
-		result_dictionary["blade_dynamic_aoa_distribution"] = blade_dynamic_aoa_distribution
+	result_dictionary["blade_inflow_distribution"] = blade_inflow_distribution
+	result_dictionary["blade_loading_distribution"] = blade_loading_distribution
+
+	result_dictionary["blade_induced_drag_distribution"] = blade_induced_drag_distribution
+	result_dictionary["blade_profile_drag_distribution"] = blade_profile_drag_distribution
+	result_dictionary["blade_dynamic_aoa_distribution"] = blade_dynamic_aoa_distribution
 
 	namelists = []
 
