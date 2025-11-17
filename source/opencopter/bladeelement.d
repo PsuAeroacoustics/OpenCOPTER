@@ -324,12 +324,8 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	foreach(blade_idx; 0..rotor.blades.length) {
 		//writlen("blade_idx = ",blade_idx);
 		if(iteration > 0) {
-<<<<<<< HEAD
 			//debug writeln("1. iteration:", iteration);
 			//writeln("\n blade properites for blade ", blade_idx);
-=======
-			//writeln("\n blade properites for blade dynamic inflow wake ", blade_idx);
->>>>>>> local_rotor_wing_changes
 			rotor.blades[blade_idx].compute_blade_properties(
 				rotor_state.blade_states[blade_idx],
 				rotor,
@@ -371,14 +367,9 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 			blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
 			blade_chunk.aoa_eff[] = blade_chunk.aoa[];
 		}
-<<<<<<< HEAD
 		//debug writeln("2. iteration:", iteration);
 		//debug writeln("blade_idx:", blade_idx, "rotor_idx:", rotor_idx);
 		//writeln("\n blade properites for blade ", blade_idx);
-=======
-
-		//writeln("\n blade properites for blade wake ", blade_idx);
->>>>>>> local_rotor_wing_changes
 		rotor.blades[blade_idx].compute_blade_properties(
 			rotor_state.blade_states[blade_idx],
 			rotor,

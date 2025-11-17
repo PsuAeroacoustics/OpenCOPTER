@@ -873,20 +873,20 @@ InducedVelocities compute_wake_induced_velocities_on_wing(W, AS)(auto ref W wake
 	foreach(rotor_idx, ref i_rotor; ac_state.rotor_states) {
 		foreach(blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length){
 			//writeln("in compute_wake_ind_vel_wing_1");
-			auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].blade_vortex_interaction[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
+			auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].interaction_perRotor[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
 			ret.v_x[] += ind_vel.v_x[];
 			ret.v_y[] += ind_vel.v_y[];
 			ret.v_z[] += ind_vel.v_z[];
 
 			//writeln("in compute_wake_ind_vel_wing_2");
-			auto ind_vel_tip = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].blade_vortex_interaction[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
+			auto ind_vel_tip = compute_filament_induced_velocities(wake.rotor_wakes[rotor_idx].tip_vortices[blade_idx].chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].interaction_perRotor[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
 			ret.v_x[] += ind_vel_tip.v_x[];
 			ret.v_y[] += ind_vel_tip.v_y[];
 			ret.v_z[] += ind_vel_tip.v_z[];
 
 			//writeln("in compute_wake_ind_vel_wing_3");
 			foreach(fil_idx, ref shed_filament; wake.rotor_wakes[rotor_idx].shed_vortices[blade_idx].shed_filaments){
-				auto ind_vel_shed = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].blade_vortex_interaction[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
+				auto ind_vel_shed = compute_filament_induced_velocities(shed_filament.chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].interaction_perRotor[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
 				ret.v_x[] += ind_vel_shed.v_x[];
 				ret.v_y[] += ind_vel_shed.v_y[];
 				ret.v_z[] += ind_vel_shed.v_z[];
@@ -981,9 +981,9 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 					chunk.z[] = blade_state.chunks[c_idx].z[];
 
 					chunk.gamma[] = wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][] - blade_state.chunks[c_idx].gamma[];
-					writeln("wake_last_gamma = ", wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][]);
-					writeln("current blade gamma = ", blade_state.chunks[c_idx].gamma[]);
-					writeln("chunk gamma = ", chunk.gamma);
+					//writeln("wake_last_gamma = ", wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][]);
+					//writeln("current blade gamma = ", blade_state.chunks[c_idx].gamma[]);
+					//writeln("chunk gamma = ", chunk.gamma);
 					// Nitya: Gamma_w - circulation strength of the filament 
 					// wake_history is passed as a reference, therefore should get modified   
 					
