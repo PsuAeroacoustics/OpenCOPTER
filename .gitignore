@@ -46,6 +46,11 @@ oc_fly/Tandem_rotor_wing_system_no_wing/
 oc_fly/Tandem_system_2/
 oc_fly/Tandem_system_2_with_hinge/
 oc_fly/Tander_system_rotor_only/
+<<<<<<< HEAD
+=======
+oc_fly/archer_midnight/
+oc_fly/example/DualProp_json_debug/
+>>>>>>> 09f4d47 ( Intermediate commit: Changing the code to model multiple triling vortices. The code is not complete yet notthing. Won't even build.)
 *.svg
 .DS_Store
 oc_fly/example/helinovi/ID*
