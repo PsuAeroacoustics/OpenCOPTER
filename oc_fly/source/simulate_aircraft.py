@@ -1411,50 +1411,50 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		result_dictionary['blade_twist_array'] = blade_twist_array
 		result_dictionary['blade_twist_azimuth'] = blade_twist_azimuth
 
-		result_dictionary['collective_pitch_array'] = collective_pitch_array
-		result_dictionary['sin_pitch_array'] = sin_pitch_array
-		result_dictionary['cos_pitch_array'] = cos_pitch_array
-		result_dictionary['hhc_pitch_array'] = hhc_pitch_array
+	result_dictionary['collective_pitch_array'] = collective_pitch_array
+	result_dictionary['sin_pitch_array'] = sin_pitch_array
+	result_dictionary['cos_pitch_array'] = cos_pitch_array
+	result_dictionary['hhc_pitch_array'] = hhc_pitch_array
 
-		if elastic_twist is not None:
-			result_dictionary['elastic_twist_array'] = elastic_twist_array
+	if elastic_twist is not None:
+		result_dictionary['elastic_twist_array'] = elastic_twist_array
 
-		if blade_flapping is not None:
-			result_dictionary['blade_flapping_array'] = blade_flapping_array
-			result_dictionary['blade_flapping_der_array'] = blade_flapping_der_array
+	if blade_flapping is not None:
+		result_dictionary['blade_flapping_array'] = blade_flapping_array
+		result_dictionary['blade_flapping_der_array'] = blade_flapping_der_array
 
-		if track_wake_element:
-			result_dictionary['wake_element_index'] = wake_element_index
-			result_dictionary['target_y_slices'] = target_y_slices
-			result_dictionary["wake_element_trajectory"] = wake_element_trajectory
-			result_dictionary["wake_element_core_size"] = wake_element_core_size
+	if track_wake_element:
+		result_dictionary['wake_element_index'] = wake_element_index
+		result_dictionary['target_y_slices'] = target_y_slices
+		result_dictionary["wake_element_trajectory"] = wake_element_trajectory
+		result_dictionary["wake_element_core_size"] = wake_element_core_size
 
-		if track_span_element:
-			result_dictionary['span_element_af_loading'] = span_element_af_loading
-			result_dictionary['span_element_loading'] = span_element_loading
-			result_dictionary['span_element_aoa_eff'] = span_element_aoa_eff
-			result_dictionary['span_element_aoa'] = span_element_aoa
-			result_dictionary['span_element_up'] = span_element_up
-			result_dictionary['span_element_inflow_angle'] = span_element_inflow_angle
-			result_dictionary['span_element_theta'] = span_element_theta
-			result_dictionary['span_element_gamma'] = span_element_gamma
-			result_dictionary['span_element_azimuth'] = span_element_azimuth
+	if track_span_element:
+		result_dictionary['span_element_af_loading'] = span_element_af_loading
+		result_dictionary['span_element_loading'] = span_element_loading
+		result_dictionary['span_element_aoa_eff'] = span_element_aoa_eff
+		result_dictionary['span_element_aoa'] = span_element_aoa
+		result_dictionary['span_element_up'] = span_element_up
+		result_dictionary['span_element_inflow_angle'] = span_element_inflow_angle
+		result_dictionary['span_element_theta'] = span_element_theta
+		result_dictionary['span_element_gamma'] = span_element_gamma
+		result_dictionary['span_element_azimuth'] = span_element_azimuth
 
-		if track_piv_window:
-			result_dictionary['wake_element_piv'] = wake_element_piv
+	if track_piv_window:
+		result_dictionary['wake_element_piv'] = wake_element_piv
 
-		result_dictionary["omegas"] = omegas
-		result_dictionary["dt"] = dt
-		result_dictionary["average_powers"] = average_Qs
-		result_dictionary["average_torques"] = [average_Qs[rotor_idx]/abs(omegas[rotor_idx]) for rotor_idx in range(num_rotors)]
-		result_dictionary["rotor_phases"] = rotor_phases
+	result_dictionary["omegas"] = omegas
+	result_dictionary["dt"] = dt
+	result_dictionary["average_powers"] = average_Qs
+	result_dictionary["average_torques"] = [average_Qs[rotor_idx]/abs(omegas[rotor_idx]) for rotor_idx in range(num_rotors)]
+	result_dictionary["rotor_phases"] = rotor_phases
 
-		result_dictionary["blade_inflow_distribution"] = blade_inflow_distribution
-		result_dictionary["blade_loading_distribution"] = blade_loading_distribution
+	result_dictionary["blade_inflow_distribution"] = blade_inflow_distribution
+	result_dictionary["blade_loading_distribution"] = blade_loading_distribution
 
-		result_dictionary["blade_induced_drag_distribution"] = blade_induced_drag_distribution
-		result_dictionary["blade_profile_drag_distribution"] = blade_profile_drag_distribution
-		result_dictionary["blade_dynamic_aoa_distribution"] = blade_dynamic_aoa_distribution
+	result_dictionary["blade_induced_drag_distribution"] = blade_induced_drag_distribution
+	result_dictionary["blade_profile_drag_distribution"] = blade_profile_drag_distribution
+	result_dictionary["blade_dynamic_aoa_distribution"] = blade_dynamic_aoa_distribution
 
 	namelists = []
 

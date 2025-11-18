@@ -14,7 +14,7 @@
 					{
 						type: "C81",
 						extent: [
-							0.2,
+							0.15087320808110705,
 							1.0
 						],
 						filename: "polars/NACA23012.C81",
@@ -28,7 +28,85 @@
 					{
 						type: "C81",
 						extent: [
-							0.2,
+							0.15087320808110705,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			}
+		]
+	},
+	{
+		// Top level always to be of type 'Aircraft'
+		// Convention will have x pointing towards the rear of the vehicle,
+		// y points out the starboard side,
+		// z points up (we aren't control nerds here)
+		name: "test_evtol_high_lifters",
+		vsp: "test_evtol_high_lifters.vsp3",
+		parameter_file: "test_evtol_params.json5",
+		airfoil_definition: [
+			{
+				rotor: "LiftRotor",
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.15087320808110705,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			},
+			{
+				rotor: "CruiseProp",
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.15087320808110705,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			}
+		]
+	},
+	{
+		// Top level always to be of type 'Aircraft'
+		// Convention will have x pointing towards the rear of the vehicle,
+		// y points out the starboard side,
+		// z points up (we aren't control nerds here)
+		name: "test_evtol_low_lifters",
+		vsp: "test_evtol_low_lifters.vsp3",
+		parameter_file: "test_evtol_params.json5",
+		airfoil_definition: [
+			{
+				rotor: "LiftRotor",
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.15087320808110705,
+							1.0
+						],
+						filename: "polars/NACA23012.C81",
+						thickness: 0.12
+					}
+				]
+			},
+			{
+				rotor: "CruiseProp",
+				airfoils: [
+					{
+						type: "C81",
+						extent: [
+							0.15087320808110705,
 							1.0
 						],
 						filename: "polars/NACA23012.C81",

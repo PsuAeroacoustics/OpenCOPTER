@@ -89,6 +89,83 @@
 				}
 			],
 			hybrid: false,
+		},
+			{
+			name: "Approach",
+			aoa: 5,
+			density: 1.2055,
+			sos: 341.7,
+			c_t: [
+				0.01,
+                0.01,
+                0.01,
+                0.01
+			],
+			//collective: [15, 15, 15, 15],
+            // Mx: [
+            //     -63.3,
+            //     0
+            // ],
+            // My: [
+            //     268.8,
+            //     0
+            // ],
+			V_inf: 25.0,
+			observer_file: "observer_sphere.json5",
+			acoustics_file: "acoustics_loading_noise.json",
+			run_for: 0.0,
+			// Indicates that this frame is used to trim the rotor.
+			// Will use the provided axis as the trim axis.
+			// If an axis angle function has been also specified, then
+			// the trim output will be added linearly to the motion.
+			//trim_frame: "pitch hinge",
+			motion: [
+				{
+					frame: "LiftRotor",
+					blade_element_func: "rotation",
+					omega: 350
+				},
+				{
+					frame: "LiftRotor_symmetry",
+					blade_element_func: "rotation",
+					omega: 350
+				},
+				{
+					frame: "CruiseProp",
+					blade_element_func: "rotation",
+					omega: 350
+				},
+                {
+					frame: "CruiseProp_symmetry",
+					blade_element_func: "rotation",
+					omega: 350
+				},
+				{
+					frame: "HingeGeom",
+					axis_angle_function: "static",
+					angle: -90
+				},
+				{
+					frame: "HingeGeom_symmetry",
+					axis_angle_function: "static",
+					angle: -90
+				},
+				{
+					frame: "WingGeom",
+					axis_angle_function: "static",
+					angle: 0
+				}
+			],
+			hybrid: false,
 		}
-	]
+	],
+	results: {
+		wake_slices: [
+			{
+				resolution: [456, 56, 200],
+				slice_start: [-3.0, -2.0, -2],
+				slice_size: [9, 1, 4]
+			}
+		]
+	}
 }

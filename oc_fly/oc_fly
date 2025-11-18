@@ -111,10 +111,10 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 								extents.append(extent)
 								airfoils.append(airfoil)
 								af_thickness.append(airfoil_desc['thickness'])
-								af_r.append(0.5*(extent[0] + extent[1]))
+								af_r.append(0.5*(extent[0] + extent[1])/elements)
 
 							if len(af_r) == 1:
-								af_r.append(af_r[0])
+								af_r.append(extent[1]/elements)
 								af_thickness.append(af_thickness[0])
 								
 							blade_airfoil = BladeAirfoil(airfoils, extents)

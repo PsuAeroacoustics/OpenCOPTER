@@ -755,32 +755,6 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 			scipy.io.savemat(f"{output_base}/results.mat", results_dictionary)
 
-			if args.vtu_results:
-				if results is not None:
-					if 'inflow_slices' in results:
-						for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
-							res_x = inflow_slice["resolution"][0]
-							res_y = inflow_slice["resolution"][1]
-							res_z = inflow_slice["resolution"][2]
-
-							deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-							start = Vec3(inflow_slice["slice_start"])
-
-							#aoa =  vehicle.input_state.rotor_inputs[0].angle_of_attack
-							#write_inflow_vtu(f"{vtu_output_path}/../inflow_model_slice_    .vtu", vehicle.inflows, deltas, start, res_x, res_y, res_z, 0, omegas[0], vehicle.aircraft.rotors)
-							write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
-
-					if 'wake_slices' in results:
-						for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
-							res_x = inflow_slice["resolution"][0]
-							res_y = inflow_slice["resolution"][1]
-							res_z = inflow_slice["resolution"][2]
-
-							deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
-							start = Vec3(inflow_slice["slice_start"])
-
-							write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
-
 		cases = []
 		if (acoustics is not None) and (observer is not None):
 			print("Acoustics for individual rotors")
@@ -818,6 +792,33 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		cases_tuple = [(case.caseNameFile, case.globalFolderName) for case in cases]
 		for case in cases:
 			write_namelist(case.namelist, f'{case.globalFolderName}/{case.caseNameFile}')
+
+		if do_compute:
+			if args.vtu_results:
+				if results is not None:
+					if 'inflow_slices' in results:
+						for slice_idx, inflow_slice in enumerate(results["inflow_slices"]):
+							res_x = inflow_slice["resolution"][0]
+							res_y = inflow_slice["resolution"][1]
+							res_z = inflow_slice["resolution"][2]
+
+							deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+							start = Vec3(inflow_slice["slice_start"])
+
+							#aoa =  vehicle.input_state.rotor_inputs[0].angle_of_attack
+							#write_inflow_vtu(f"{vtu_output_path}/../inflow_model_slice_    .vtu", vehicle.inflows, deltas, start, res_x, res_y, res_z, 0, omegas[0], vehicle.aircraft.rotors)
+							write_inflow_vtu(f"{output_base}/inflow_model_slice_{slice_idx}.vtu", rotorcraft_inflows, deltas, start, res_x, res_y, res_z, 0, omegas, rotorcraft_system.rotors)
+
+					if 'wake_slices' in results:
+						for slice_idx, inflow_slice in enumerate(results["wake_slices"]):
+							res_x = inflow_slice["resolution"][0]
+							res_y = inflow_slice["resolution"][1]
+							res_z = inflow_slice["resolution"][2]
+
+							deltas = Vec3([inflow_slice["slice_size"][0]/res_x, inflow_slice["slice_size"][1]/res_y, inflow_slice["slice_size"][2]/res_z])
+							start = Vec3(inflow_slice["slice_start"])
+
+							write_wake_field_vtu(f"{output_base}/wake_field_slice_{slice_idx}.vtu", rotorcraft_state, rotor_wake_history.history[0], deltas, start, res_x, res_y, res_z)
 
 	except FloatingPointError as e:
 		print(f"Simulation failed with floating point error: {e}")
