@@ -982,9 +982,9 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 					chunk.z[] = blade_state.chunks[c_idx].z[];
 
 					chunk.gamma[] = wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][] - blade_state.chunks[c_idx].gamma[];
-					writeln("wake_last_gamma = ", wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][]);
-					writeln("current blade gamma = ", blade_state.chunks[c_idx].gamma[]);
-					writeln("chunk gamma = ", chunk.gamma);
+					//writeln("wake_last_gamma = ", wake_history.history[0].rotor_wakes[rotor_idx].last_gammas[blade_idx][c_idx][]);
+					//writeln("current blade gamma = ", blade_state.chunks[c_idx].gamma[]);
+					//writeln("chunk gamma = ", chunk.gamma);
 					// Nitya: Gamma_w - circulation strength of the filament 
 					// wake_history is passed as a reference, therefore should get modified   
 					
