@@ -259,10 +259,6 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 
 		current_rotor_radius = component_json["radius"]
 		component_frame.set_rotation(Vec3([0.0, 0.0, 1.0]), math.pi)
-		if angle_axis != Vec3([0.0, 0.0, 1.0]):
-			component_frame.rotate(angle_axis, -angle)
-		else:
-			component_frame.rotate(Vec3([0.0, 0.0, 1.0]), angle)
 
 	elif frame_type == FrameType_blade():
 
@@ -312,7 +308,7 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 
 	elif frame_type == FrameType_wing():
 		component_frame.children = child_components
-		wing = build_wing(component_frame, 32, 4, component_json)
+		wing = build_wing(component_frame, 8, 4, component_json)
 		wings.append(wing)
 
 	else:

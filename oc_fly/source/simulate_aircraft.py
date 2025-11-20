@@ -574,7 +574,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
 
 		while not sim_done:
-			#print("iteration: ", iteration)
+			print("iteration: ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				print("rev = ", iteration/iter_per_rev)
 				max_l2 = 1000

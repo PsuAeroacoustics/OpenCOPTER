@@ -48,7 +48,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 			//writeln("\t\tglobal_x = ", x[]);
 			//writeln("\t\tglobal_y = ", y[]);
 			//writeln("\t\tglobal_z = ", z[]);
-			auto xyz_tpp = interacting_rotor.inflow_model.frame.global_matrix * xyz_chunk;  //currected!!
+			auto xyz_tpp = interacting_rotor.inflow_model.frame.inverse_global_matrix * xyz_chunk;  // back currected!!
 			
 			//writeln("\t\ttpp_x = ", xyz_tpp[0][]);
 			//writeln("\t\ttpp_y = ", xyz_tpp[1][]);
@@ -60,7 +60,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 			
 			local_inflow[2][] = lambda_i[];
 			local_inflow[3][] = 0.0;
-			global_infow += interacting_rotor.inflow_model.frame.inverse_global_matrix * local_inflow;  //currected!!
+			global_infow += interacting_rotor.inflow_model.frame.global_matrix * local_inflow;  // back currected!!
 			//writeln("\t\tx global inflow from rotor ", i_rotor_idx, " = ", global_infow[0][]);
 			//writeln("\t\ty global inflow from rotor ", i_rotor_idx, " = ", global_infow[1][]);
 			//writeln("\t\tz global inflow from rotor ", i_rotor_idx, " = ", global_infow[2][]);
@@ -250,6 +250,7 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 
 		blade_state.chunks[chunk_idx].dC_My[] = dC_T[]*blade.chunks[chunk_idx].r[];
 		blade_state.chunks[chunk_idx].dC_Mz[] = dC_Db[]*blade.chunks[chunk_idx].r[];
+
 	}
 
 	blade_state.chunks[$-1].d_gamma[$-1] = 0;
@@ -322,7 +323,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	Chunk[] backup_CT = new Chunk[rotor.blades[0].chunks.length];
 	//writeln("calculating blade properties");
 	foreach(blade_idx; 0..rotor.blades.length) {
-		//writlen("blade_idx = ",blade_idx);
+		writeln("blade_idx = ",blade_idx);
 		if(iteration > 0) {
 			//debug writeln("1. iteration:", iteration);
 			//writeln("\n blade properites for blade ", blade_idx);

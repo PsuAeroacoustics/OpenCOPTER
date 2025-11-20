@@ -22,7 +22,7 @@
 			collective: [15.0, 0.0],
 			collective_force_components: [2, 2],
 			V_inf: 30.0,
-            run_for: 15.0,
+            run_for: 2.0,
 			observer_file: "Tandem_system_observers.json5",
 			acoustics_file: "acoustics_total_noise.json",
 			motion: [
