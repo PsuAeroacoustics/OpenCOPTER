@@ -323,7 +323,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	Chunk[] backup_CT = new Chunk[rotor.blades[0].chunks.length];
 	//writeln("calculating blade properties");
 	foreach(blade_idx; 0..rotor.blades.length) {
-		writeln("blade_idx = ",blade_idx);
+		//writeln("blade_idx = ",blade_idx);
 		if(iteration > 0) {
 			//debug writeln("1. iteration:", iteration);
 			//writeln("\n blade properites for blade ", blade_idx);

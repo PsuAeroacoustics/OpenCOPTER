@@ -86,12 +86,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 	for r_idx in range(num_rotors):
 		origin = vehicle.aircraft.rotors[r_idx].frame.global_position()
-		print(f'{vehicle.aircraft.rotors[r_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		#print(f'{vehicle.aircraft.rotors[r_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
 
 	for wing_idx in range(num_wings):
-		print("writing wing vtu")
+		#print("writing wing vtu")
 		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
-		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		#print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
 	
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))
 	C_T_len = np.round(2.0*math.pi/(dt*np.abs(omegas))).astype(dtype=np.int64)
@@ -574,9 +574,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
 
 		while not sim_done:
-			print("iteration: ", iteration)
+			#print("iteration: ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
-				print("rev = ", iteration/iter_per_rev)
+				#print("rev = ", iteration/iter_per_rev)
 				max_l2 = 1000
 				for rotor_idx in range(num_rotors):
 					if convergence_type == 'wake':
