@@ -581,11 +581,11 @@ class VtkWake {
 	VtkRotorWake[] rotor_wakes;
 
 	version(Have_vtkd) {
-		private this(size_t num_rotors, size_t[] num_blades, size_t[] shed_length, size_t elements) {
+		private this(size_t num_rotors, size_t[] num_blades, size_t[] num_trail_vortices, size_t[] shed_length, size_t elements) {
 			rotor_wakes = new VtkRotorWake[num_rotors];
 
 			foreach(r_idx, ref rotor_wake; rotor_wakes) {
-				rotor_wake = new VtkRotorWake(num_blades[r_idx], shed_length[r_idx], elements);
+				rotor_wake = new VtkRotorWake(num_blades[r_idx], num_trail_vortices[r_idx], shed_length[r_idx], elements);
 			}
 		}
 	}
@@ -744,16 +744,16 @@ class VtkRotorWake {
 		private vtkPoints*[] shed_points;
 		private vtkDoubleArray*[] shed_induced;
 		private vtkDoubleArray*[] shed_circ;
-		private vtkIdType[] tip_point_ids;
-		private vtkIdType[] tip_cell_ids;
-		private vtkUnstructuredGrid*[] tip_grids;
-		private vtkPoints*[] tip_points;
-		private vtkDoubleArray*[] tip_induced;
-		private vtkDoubleArray*[] tip_circ;
-		private vtkDoubleArray*[] tip_core_size;
-		private vtkDoubleArray*[] tip_d_volume;
+		private vtkIdType[][] trail_point_ids;
+		private vtkIdType[][] trail_cell_ids;
+		private vtkUnstructuredGrid*[][] trail_grids;
+		private vtkPoints*[][] trail_points;
+		private vtkDoubleArray*[][] trail_induced;
+		private vtkDoubleArray*[][] trail_circ;
+		private vtkDoubleArray*[][] trail_core_size;
+		private vtkDoubleArray*[][] trail_d_volume;
 
-		this(size_t num_blades, size_t shed_length, size_t elements) {
+		this(size_t num_blades, size_t num_trail_vortices, size_t shed_length, size_t elements) {
 
 			writer = vtkXMLUnstructuredGridWriter.New;
 
@@ -782,35 +782,52 @@ class VtkRotorWake {
 				circ = vtkDoubleArray.New;
 			}
 	
-			tip_grids = new vtkUnstructuredGrid*[num_blades];
-			foreach(ref tip_grid; tip_grids) {
-				tip_grid = vtkUnstructuredGrid.New;
-			}
+			trail_grids = new vtkUnstructuredGrid*[num_blades][num_trail_vortices];
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref trail_grid; trail_grids[blade_idx][]) {
+					trail_grid = vtkUnstructuredGrid.New;
+				}	
+			}			
 
-			tip_points = new vtkPoints*[num_blades];
-			foreach(ref tip_point; tip_points) {
-				tip_point = vtkPoints.New(VTK__DOUBLE);
+			trail_points = new vtkPoints*[num_blades][num_trail_vortices];
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref trail_point; trail_points[blade_idx][]) {
+					trail_point = vtkPoints.New(VTK__DOUBLE);
+				}
 			}
+			
 
-			tip_induced = new vtkDoubleArray*[num_blades];
-			foreach(ref induced; tip_induced) {
-				induced = vtkDoubleArray.New;
+			trail_induced = new vtkDoubleArray*[num_blades][num_trail_vortices];
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref induced; trail_induced[blade_idx][]) {
+					induced = vtkDoubleArray.New;
+				}
 			}
+			
 
-			tip_circ = new vtkDoubleArray*[num_blades];
-			foreach(ref circ; tip_circ) {
-				circ = vtkDoubleArray.New;
+			trail_circ = new vtkDoubleArray*[num_blades][num_trail_vortices];
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref circ; trail_circ[blade_idx][]) {
+					circ = vtkDoubleArray.New;
+				}
 			}
+			
 
-			tip_core_size = new vtkDoubleArray*[num_blades];
-			foreach(ref core_size; tip_core_size) {
-				core_size = vtkDoubleArray.New;
+			trail_core_size = new vtkDoubleArray*[num_blades][num_trail_vortices];
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref core_size; trail_core_size[blade_idx][]) {
+					core_size = vtkDoubleArray.New;
+				}
 			}
+			
 
-			tip_d_volume = new vtkDoubleArray*[num_blades];
-			foreach(ref d_volume; tip_d_volume) {
-				d_volume = vtkDoubleArray.New;
+			trail_d_volume = new vtkDoubleArray*[num_blades][num_trail_vortices];
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref d_volume; trail_d_volume[blade_idx][]) {
+					d_volume = vtkDoubleArray.New;
+				}
 			}
+			
 		}
 
 		~this() {
@@ -835,30 +852,33 @@ class VtkRotorWake {
 			foreach(ref circ; shed_circ) {
 				circ.Delete;
 			}
-	
-			foreach(ref tip_grid; tip_grids) {
-				tip_grid.Delete;
-			}
 
-			foreach(ref tip_point; tip_points) {
-				tip_point.Delete;
-			}
+			foreach(blade_idx; 0..num_blades){
+				foreach(ref trail_grid; trail_grids[blade_idx][]) {
+					trail_grid.Delete;
+				}
 
-			foreach(ref induced; tip_induced) {
-				induced.Delete;
-			}
+				foreach(ref trail_point; trail_points[blade_idx][]) {
+					trail_point.Delete;
+				}
 
-			foreach(ref circ; tip_circ) {
-				circ.Delete;
-			}
+				foreach(ref induced; trail_induced[blade_idx][]) {
+					induced.Delete;
+				}
 
-			foreach(ref core_size; tip_core_size) {
-				core_size.Delete;
-			}
+				foreach(ref circ; trail_circ[blade_idx][]) {
+					circ.Delete;
+				}
 
-			foreach(ref d_volume; tip_d_volume) {
-				d_volume.Delete;
+				foreach(ref core_size; trail_core_size[blade_idx][]) {
+					core_size.Delete;
+				}
+
+				foreach(ref d_volume; trail_d_volume[blade_idx][]) {
+					d_volume.Delete;
+				}
 			}
+			
 		}
 	}
 }
@@ -870,7 +890,8 @@ VtkWake build_base_vtu_wake(W)(auto ref W wake) {
 		import std.array : array;
 
 		size_t[] shed_length = wake.rotor_wakes.map!(r => r.shed_vortices[0].shed_filaments.length).array;
-		size_t[] num_blades = wake.rotor_wakes.map!(r => r.tip_vortices.length).array;
+		size_t[] num_blades = wake.rotor_wakes.map!(r => r.blade_trailers.length).array;
+		size_t[] num_trailers = wake.rotor_wakes.map!(r => r.blade_trailers[0].trailing_filaments.length).array;
 
 		immutable elements = wake.rotor_wakes[0].shed_vortices[0].shed_filaments[0].length*chunk_size;
 		auto vtk_wake = new VtkWake(wake.rotor_wakes.length, num_blades, shed_length, elements);

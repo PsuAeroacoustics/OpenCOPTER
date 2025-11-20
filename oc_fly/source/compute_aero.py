@@ -610,6 +610,10 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
 	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
+
+	num_trailing_vortices = np.ones(num_rotors)
+	if computational_parameters["num_trailing_vortices"]:
+		num_trailing_vortices = computational_parameters["num_trailing_vortices"]
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
@@ -766,7 +770,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
 	# Increasing the history increases computation time with the current implementation
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
-	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, shed_history, release_ratio, a1, hybrid)
+	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, num_trailing_vortices, shed_history, release_ratio, a1, hybrid)
 	
 	try:
 		vehicle = SimulatedVehicle(
