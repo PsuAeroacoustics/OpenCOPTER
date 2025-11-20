@@ -462,7 +462,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		_rotor.frame.parent.children ~= new Frame(Vec3(1, 0, 0), PI, Vec3(0, 0, 0.0), _rotor.frame.parent, _rotor.frame.parent.name ~ " inflow", "connection");
 		local_frame = _rotor.frame.parent.children[$-1];
-		local_frame.local_matrix[1, 1] *= -1.0;
+		//local_frame.local_matrix[1, 1] *= -1.0;
 
 		size_t len = round(2.0*PI/(dt*235.325)).to!size_t;
 		//ai_idx = 0;
