@@ -9,6 +9,7 @@
 
 		convergence_criteria: 1.0e-4,
 		post_conv_revolutions: 2,
+		trackBWIevents: true,
 		//wake_trail_distance: [4, 4, 4, 4],
 		wake_trail_distance: [8],
 		// convergence_criteria: 1.0e-1,
