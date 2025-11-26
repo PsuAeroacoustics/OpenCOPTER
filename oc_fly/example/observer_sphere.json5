@@ -12,6 +12,6 @@
 		theta_max: 360,
 		psi_min: -90,
 		psi_max: 0,
-		radius: 20
+		radius: 10
 	}
 }

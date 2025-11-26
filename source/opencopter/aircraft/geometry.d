@@ -248,6 +248,7 @@ struct Frame {
 		
 		local_matrix = Mat4.identity();
 		global_matrix = Mat4.identity();
+		inverse_global_matrix = Mat4.identity();
 
 		translate(translation);
 		rotate(axis, angle);
@@ -256,6 +257,7 @@ struct Frame {
 	this(Frame* _frame, string _name) {
 		this.local_matrix = _frame.local_matrix;
 		this.global_matrix = _frame.global_matrix;
+		this.inverse_global_matrix = _frame.inverse_global_matrix;
 		this.name = _name;
 		this.frame_type = _frame.frame_type;
 		this.parent = _frame.parent;
@@ -274,6 +276,7 @@ struct Frame {
 		
 		local_matrix = Mat4.identity();
 		global_matrix = Mat4.identity();
+		inverse_global_matrix = Mat4.identity();
 
 		translate(translation);
 		rotate(axis, angle);
@@ -385,9 +388,33 @@ struct Frame {
 	}
 
 	void update(ref Mat4 parent_global_mat) {
-		global_matrix = parent_global_mat*local_matrix;
-		inverse_global_matrix = global_matrix.inverse.get;
+		// global_matrix = parent_global_mat*local_matrix;
+		// inverse_global_matrix = global_matrix.inverse.get;
+		global_matrix = parent_global_mat * local_matrix;
+		auto rotation_matrix = extract_rotation_matrix(global_matrix);
+		auto inverse_rotation_matrix = rotation_matrix.transpose;
+		set_rotation_matrix(inverse_global_matrix, inverse_rotation_matrix);
+		auto d_vec = Vec3(global_matrix[0, 3], global_matrix[1, 3], global_matrix[2, 3]);
+		
+		
+		auto invese_d_vec = -inverse_rotation_matrix*d_vec;
+		// if(parent == null) {
+		// 	writeln(name, ": d_vec: ", d_vec);
+		// 	writeln(name, ": local_matrix: ", local_matrix);
+		// 	writeln(name, ": rotation_matrix: ", rotation_matrix);
+		// 	writeln(name, ": inverse_rotation_matrix: ", inverse_rotation_matrix);
+		// 	writeln(name, ": global_matrix: ", global_matrix);
+		// 	writeln(name, ": parent_global_mat: ", parent_global_mat);
+		// 	writeln(name, ": invese_d_vec: ", invese_d_vec);
+		// }
 
+		
+		//writeln("inverse d vec: ", "\tx = ", invese_d_vec[0], "\ty = ", invese_d_vec[1], "\tz = ", invese_d_vec[2]);
+		inverse_global_matrix[0, 3] = invese_d_vec[0];
+		inverse_global_matrix[1, 3] = invese_d_vec[1];
+		inverse_global_matrix[2, 3] = invese_d_vec[2];
+		inverse_global_matrix[3, 3] = 1.0;
+		
 		foreach(ref child; children){
 			child.update(global_matrix);
 		}

@@ -118,9 +118,12 @@ class VtkRotor {
 		private vtkDoubleArray* aoa;
 		private vtkDoubleArray* aoa_eff;
 		private vtkDoubleArray* u_p;
+		private vtkDoubleArray* dynamic_u_p;
 		private vtkDoubleArray* shed_u_p;
 		private vtkDoubleArray* u_t;
 		private vtkDoubleArray* inflow_angle;
+		private vtkDoubleArray* effective_inflow_angle;
+		private vtkDoubleArray* dynamic_inflow_angle;
 		private vtkDoubleArray* gamma;
 		private vtkDoubleArray* d_gamma;
 		private vtkDoubleArray* theta;
@@ -129,6 +132,7 @@ class VtkRotor {
 		private vtkDoubleArray* dC_N;
 		private vtkDoubleArray* dC_c;
 		private vtkDoubleArray* dC_T;
+		private vtkDoubleArray* dT;
 		private vtkDoubleArray* dC_Q;
 		private vtkDoubleArray* dC_D;
 		private vtkDoubleArray* af_norm;
@@ -139,6 +143,11 @@ class VtkRotor {
 			azimuth_offsets = new double[num_blades];
 			base_points = new Vec3[vtkIdType][num_blades];
 			loads = vtkDoubleArray.New;
+			dC_T = vtkDoubleArray.New;
+			dT = vtkDoubleArray.New;
+			effective_inflow_angle = vtkDoubleArray.New;
+			dynamic_inflow_angle = vtkDoubleArray.New;
+			dynamic_u_p = vtkDoubleArray.New;
 			dC_T = vtkDoubleArray.New;
 			dC_Q = vtkDoubleArray.New;
 			dC_D = vtkDoubleArray.New;
@@ -386,6 +395,11 @@ void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t roto
 				foreach(l_idx, id; loop) {
 					rotor.loads.SetTuple1(id, blade.chunks[chunk_idx].dC_L[inner_idx]);
 					rotor.dC_T.SetTuple1(id, blade.chunks[chunk_idx].dC_T[inner_idx]);
+					
+					rotor.dT.SetTuple1(id, blade.chunks[chunk_idx].dT[inner_idx]);
+					rotor.dynamic_u_p.SetTuple1(id, blade.chunks[chunk_idx].dynamic_u_p[inner_idx]);
+					rotor.dynamic_inflow_angle.SetTuple1(id, blade.chunks[chunk_idx].dynamic_inflow_angle[inner_idx]*(180.0/PI));
+
 					rotor.dC_Q.SetTuple1(id, blade.chunks[chunk_idx].dC_Q[inner_idx]);
 					rotor.dC_D.SetTuple1(id, blade.chunks[chunk_idx].dC_D[inner_idx]);
 					rotor.dC_L_dot.SetTuple1(id, blade.chunks[chunk_idx].dC_L_dot[inner_idx]);
@@ -398,6 +412,7 @@ void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t roto
 					rotor.aoa.SetTuple1(id, blade.chunks[chunk_idx].aoa[inner_idx]*(180.0/PI));
 					rotor.aoa_eff.SetTuple1(id, blade.chunks[chunk_idx].aoa_eff[inner_idx]*(180.0/PI));
 					rotor.inflow_angle.SetTuple1(id, blade.chunks[chunk_idx].inflow_angle[inner_idx]*(180.0/PI));
+					rotor.effective_inflow_angle.SetTuple1(id, blade.chunks[chunk_idx].effective_inflow_angle[inner_idx]*(180.0/PI));
 					rotor.gamma.SetTuple1(id, blade.chunks[chunk_idx].gamma[inner_idx]);
 					rotor.d_gamma.SetTuple1(id, blade.chunks[chunk_idx].d_gamma[inner_idx]);
 					rotor.theta.SetTuple1(id, blade.chunks[chunk_idx].theta[inner_idx]*(180.0/PI));
@@ -433,83 +448,99 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		vtk_rotor.origin = rotor_geo.origin;
 
 		vtk_rotor.loads.SetNumberOfComponents(1);
-		vtk_rotor.loads.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.loads.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.loads.SetName("dC_L");
 		
 		vtk_rotor.dC_L_dot.SetNumberOfComponents(1);
-		vtk_rotor.dC_L_dot.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_L_dot.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_L_dot.SetName("dC_L_dot");
 
 		vtk_rotor.dC_T_dot.SetNumberOfComponents(1);
-		vtk_rotor.dC_T_dot.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_T_dot.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_T_dot.SetName("dC_T_dot");
 
 		vtk_rotor.dC_T.SetNumberOfComponents(1);
-		vtk_rotor.dC_T.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_T.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_T.SetName("dC_T");
 
+		vtk_rotor.dT.SetNumberOfComponents(1);
+		vtk_rotor.dT.SetNumberOfTuples(elements*rotor_geo.blades.length);
+		vtk_rotor.dT.SetName("dT");
+
+		vtk_rotor.dynamic_u_p.SetNumberOfComponents(1);
+		vtk_rotor.dynamic_u_p.SetNumberOfTuples(elements*rotor_geo.blades.length);
+		vtk_rotor.dynamic_u_p.SetName("dynamic_u_p");
+
+		vtk_rotor.dynamic_inflow_angle.SetNumberOfComponents(1);
+		vtk_rotor.dynamic_inflow_angle.SetNumberOfTuples(elements*rotor_geo.blades.length);
+		vtk_rotor.dynamic_inflow_angle.SetName("dynamic_inflow_angle");
+
 		vtk_rotor.dC_Q.SetNumberOfComponents(1);
-		vtk_rotor.dC_Q.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_Q.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_Q.SetName("dC_Q");
 
 		vtk_rotor.dC_D.SetNumberOfComponents(1);
-		vtk_rotor.dC_D.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_D.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_D.SetName("dC_D");
 
 		vtk_rotor.dC_N.SetNumberOfComponents(1);
-		vtk_rotor.dC_N.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_N.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_N.SetName("dC_N");
 
 		vtk_rotor.dC_c.SetNumberOfComponents(1);
-		vtk_rotor.dC_c.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.dC_c.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.dC_c.SetName("dC_c");
 
 		vtk_rotor.aoa.SetNumberOfComponents(1);
-		vtk_rotor.aoa.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.aoa.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.aoa.SetName("aoa");
 
 		vtk_rotor.aoa_eff.SetNumberOfComponents(1);
-		vtk_rotor.aoa_eff.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.aoa_eff.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.aoa_eff.SetName("aoa_eff");
 
 		vtk_rotor.u_p.SetNumberOfComponents(1);
-		vtk_rotor.u_p.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.u_p.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.u_p.SetName("u_p");
 
 		vtk_rotor.shed_u_p.SetNumberOfComponents(1);
-		vtk_rotor.shed_u_p.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.shed_u_p.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.shed_u_p.SetName("shed_u_p");
 
 		vtk_rotor.u_t.SetNumberOfComponents(1);
-		vtk_rotor.u_t.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.u_t.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.u_t.SetName("u_t");
 
 		vtk_rotor.inflow_angle.SetNumberOfComponents(1);
-		vtk_rotor.inflow_angle.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.inflow_angle.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.inflow_angle.SetName("inflow angle");
 
+		vtk_rotor.effective_inflow_angle.SetNumberOfComponents(1);
+		vtk_rotor.effective_inflow_angle.SetNumberOfTuples(elements*rotor_geo.blades.length);
+		vtk_rotor.effective_inflow_angle.SetName("effective inflow angle");
+
 		vtk_rotor.gamma.SetNumberOfComponents(1);
-		vtk_rotor.gamma.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.gamma.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.gamma.SetName("gamma");
 
 		vtk_rotor.d_gamma.SetNumberOfComponents(1);
-		vtk_rotor.d_gamma.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.d_gamma.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.d_gamma.SetName("d_gamma");
 
 		vtk_rotor.theta.SetNumberOfComponents(1);
-		vtk_rotor.theta.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.theta.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.theta.SetName("theta");
 
 		vtk_rotor.af_norm.SetNumberOfComponents(3);
-		vtk_rotor.af_norm.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.af_norm.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.af_norm.SetName("af_norm");
 
 		vtk_rotor.blade_local_vel.SetNumberOfComponents(3);
-		vtk_rotor.blade_local_vel.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.blade_local_vel.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.blade_local_vel.SetName("blade_local_vel");
 
 		vtk_rotor.projected_vel.SetNumberOfComponents(3);
-		vtk_rotor.projected_vel.SetNumberOfTuples(elements*rotor_geo.blades.length*naca0012.length);
+		vtk_rotor.projected_vel.SetNumberOfTuples(elements*rotor_geo.blades.length);
 		vtk_rotor.projected_vel.SetName("projected_vel");
 
 		foreach(blade_idx, ref blade_geo; rotor_geo.blades) {
@@ -548,6 +579,10 @@ VtkRotor build_base_vtu_rotor(RG)(auto ref RG rotor_geo) {
 		point_data.AddArray(vtk_rotor.dC_L_dot);
 		point_data.AddArray(vtk_rotor.dC_T_dot);
 		point_data.AddArray(vtk_rotor.dC_T);
+		point_data.AddArray(vtk_rotor.dT);
+		point_data.AddArray(vtk_rotor.effective_inflow_angle);
+		point_data.AddArray(vtk_rotor.dynamic_inflow_angle);
+		point_data.AddArray(vtk_rotor.dynamic_u_p);
 		point_data.AddArray(vtk_rotor.dC_D);
 		point_data.AddArray(vtk_rotor.dC_Q);
 		point_data.AddArray(vtk_rotor.dC_N);
@@ -1139,7 +1174,8 @@ void write_inflow_vtu(I, RGA)(string filename, I[] inflows, Vec3 delta, Vec3 sta
 
 						g_pos[3][] = 1;
 						
-						auto l_pos = inflow.frame.global_matrix.inverse().get() * (g_pos);
+						//auto l_pos = inflow.frame.global_matrix.inverse().get() * (g_pos);
+						auto l_pos = inflow.frame.inverse_global_matrix * (g_pos);
 						//auto l_pos = inflow.frame.global_matrix.transpose * (g_pos);
 						//auto l_pos = inflow.frame.global_matrix * (g_pos);
 

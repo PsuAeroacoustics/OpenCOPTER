@@ -77,6 +77,7 @@ struct WeissingerL(ArrayContainer AC) {
 
 		immutable m = integration_elements;
 		immutable psi_vs = iota(1.0*PI/(m + 1.0), m*PI/(m + 1.0), 1.0*PI/(m + 1.0)).retro.array;
+		//immutable psi_vs = iota(1.0*PI/(m + 1.0), m*PI/(m + 1.0), 1.0*PI/(m + 1.0)).array;
 		immutable y_array = psi_vs.map!(psi_mu => cos(psi_mu)).array;
 		//writeln("going into nested for loop");
 		foreach(ch1; 0..chunks) {
@@ -230,10 +231,10 @@ struct WeissingerL(ArrayContainer AC) {
 			foreach(ch, ref inf; influence_inv[r]) {
 				Chunk tmp = inf[]*sin(blade_state.chunks[ch].aoa)[];
 				
-				gamma[c1] += tmp.sum;
+				gamma[c1] += tmp[].sum;
 			}
 
-			gamma[c1] *= -sgn(direction_multiplier);
+			gamma[c1] *= sgn(direction_multiplier);
 		}
 		return gamma;
 	}

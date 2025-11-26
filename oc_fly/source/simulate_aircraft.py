@@ -295,6 +295,9 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	else:
 		Ks = 0.4*np.ones(num_trim_groups)
 		taus = 4*np.ones(num_trim_groups)
+
+		#Ks = 0.004*np.ones(num_trim_groups)
+		#taus = 20*np.ones(num_trim_groups)
 	#taus = 0.4*np.ones(num_trim_groups)
 	moment_Ks = np.ones((num_rotors, 2))
 	moment_taus = np.ones((num_rotors, 2))
@@ -524,6 +527,15 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	for rotor_idx, rotor in enumerate(vehicle.aircraft.rotors):
 		wopwop_motion[rotor.frame.name]["omega"] = vehicle.input_state.rotor_inputs[rotor_idx].angular_velocity
 
+	walk_aoa_to_target = False
+	current_aoa = 0
+	if flight_condition["aoa"] > 0:
+		walk_aoa_to_target = True
+
+	#vehicle.aircraft.root_frame.rotate(Vec3([0, 1, 0]), flight_condition["aoa"]*(math.pi/180.0))
+
+	log_file.write(f'dt = {dt}\n')
+
 	max_l2 = 1000
 	average_step = 0
 	if do_compute:
@@ -553,6 +565,15 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
 
 		while not sim_done:
+
+			# if walk_aoa_to_target and (iteration > 0) and (iteration > 5*iter_per_rev) and (iteration % iter_per_rev == 0):
+			# 	#walk by 1 degree
+			# 	if(current_aoa + 1 < flight_condition["aoa"]):
+			# 		vehicle.aircraft.root_frame.rotate(Vec3([0, 1, 0]), 1*(math.pi/180.0))
+			# 	else:
+			# 		vehicle.aircraft.root_frame.rotate(Vec3([0, 1, 0]), (flight_condition["aoa"] - current_aoa)*(math.pi/180.0))
+
+			# 	current_aoa += 1
 
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
 				max_l2 = 1000
@@ -691,8 +712,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			# 			len1 = vehicle.wake_history.history[0].rotor_wakes[rotor_idx].interaction_perRotor[rotor_idx_2].blade_vortex_interaction.length()
 			# 			len2 = vehicle.wake_history.history[0].rotor_wakes[rotor_idx].interaction_perRotor[rotor_idx_2].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length()
 			
-			if math.isnan(vehicle.ac_state.rotor_states[0].C_T):
-				raise FloatingPointError("Simulation failed: Encountered NaN in rotor thrust")
+			# if math.isnan(vehicle.ac_state.rotor_states[0].C_T):
+			# 	raise FloatingPointError("Simulation failed: Encountered NaN in rotor thrust")
 			
 			average_F_arrays[0,iteration % C_T_len.max()] = vehicle.ac_state.forces[0]
 			average_F_arrays[1,iteration % C_T_len.max()] = vehicle.ac_state.forces[1]
@@ -909,6 +930,19 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 			loading_data.time = dt*acoustic_iteration
 
+			# if write_wake and (not math.isnan(max_l2)) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0) and (iteration > 0):
+			# 	for rotor_idx in range(num_rotors):
+			# 		print("writing rotor and wake vtu")
+			# 		write_rotor_vtu(f"{vtu_output_path}/rotor", iteration, rotor_idx, vtk_rotors[rotor_idx], vehicle.ac_state.rotor_states[rotor_idx], vehicle.aircraft.rotors[rotor_idx])
+			# 		write_wake_vtu(f"{vtu_output_path}/wake", iteration, vtk_wake, vehicle.wake_history.history[0])
+				
+			# 	for wing_idx in range(num_wings):
+			# 		print("writing wing vtu")
+			# 		write_wing_vtu(f"{vtu_output_path}/wing", iteration, wing_idx, vtk_wing[wing_idx], vehicle.ac_state.wing_states[wing_idx], vehicle.aircraft.wings[wing_idx])
+
+			if math.isnan(vehicle.ac_state.rotor_states[0].C_T):
+				raise FloatingPointError("Simulation failed: Encountered NaN in rotor thrust")
+
 			if converged:
 				# print('converged: acoustic_iteration:', acoustic_iteration);
 				if write_wake and (converged_revolutions >= (post_conv_revolutions - 1)):
@@ -988,7 +1022,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 						sin3_azimuth = math.cos(3.0*(blade_azimuth) - (psi_3 - math.pi))
 
-						collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]#get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
+						#collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]#get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
+						collective_pitch_array[rotor_idx, acoustic_iteration] = get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
 						#collective_pitch_array[rotor_idx, acoustic_iteration] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] # thetas[rotor_idx, 1]
 						sin_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1s[rotor_idx]
 						cos_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1c[rotor_idx]

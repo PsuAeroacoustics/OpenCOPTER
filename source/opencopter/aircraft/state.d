@@ -270,6 +270,10 @@ extern (C++) struct BladeStateChunk {
 	 +/
 	Chunk dC_T;
 	/++
+	 +  Spanwise thrust coefficient distribution
+	 +/
+	Chunk dT;
+	/++
 	 +  Spanwise drag coefficient distribution in blade frame
 	 +/
 	Chunk dC_Db;
@@ -345,6 +349,14 @@ extern (C++) struct BladeStateChunk {
 	 +	Spanwise angle of attack
 	 +/
 	Chunk inflow_angle;
+	/++
+	 +	Spanwise angle of attack
+	 +/
+	Chunk effective_inflow_angle;
+	/++
+	 +	Spanwise angle of attack
+	 +/
+	Chunk dynamic_inflow_angle;
 	/++
 	 +	Spanwise circulation
 	 +/

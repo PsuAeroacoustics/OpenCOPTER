@@ -1998,6 +1998,8 @@ if __name__ == "__main__":
 	# plot_acoustic_contours_all("MV", args.p)
 
 	plot_acoustic_contours("BL", args.p)
+	plot_acoustic_contours("MN", args.p)
+	plot_acoustic_contours("MV", args.p)
 	# plot_acoustic_contours_cfd("BL", args.p)
 	# plot_acoustic_contours_charm("BL", args.p)
 	# #plot_blade_twist('BL', args.p)

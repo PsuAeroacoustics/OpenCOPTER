@@ -655,17 +655,17 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			// Vortex interaction angles will need to be calculated 
 			// Most likely in this function 
 
-			immutable Chunk x_cross1 = r_y1[]*dz_m1[] - r_z1[]*dy_m1[];
-			immutable Chunk y_cross1 = r_z1[]*dx_m1[] - r_x1[]*dz_m1[];
-			immutable Chunk z_cross1 = r_x1[]*dy_m1[] - r_y1[]*dx_m1[];
+			immutable Chunk x_cross1 = -(r_y1[]*dz_m1[] - r_z1[]*dy_m1[]);
+			immutable Chunk y_cross1 = -(r_z1[]*dx_m1[] - r_x1[]*dz_m1[]);
+			immutable Chunk z_cross1 = -(r_x1[]*dy_m1[] - r_y1[]*dx_m1[]);
 
-			immutable Chunk x_cross2 = r_y2[]*dz[] - r_z2[]*dy[];
-			immutable Chunk y_cross2 = r_z2[]*dx[] - r_x2[]*dz[];
-			immutable Chunk z_cross2 = r_x2[]*dy[] - r_y2[]*dx[];
+			immutable Chunk x_cross2 = -(r_y2[]*dz[] - r_z2[]*dy[]);
+			immutable Chunk y_cross2 = -(r_z2[]*dx[] - r_x2[]*dz[]);
+			immutable Chunk z_cross2 = -(r_x2[]*dy[] - r_y2[]*dx[]);
 
-			immutable Chunk x_cross3 = r_y3[]*dz_p1[] - r_z3[]*dy_p1[];
-			immutable Chunk y_cross3 = r_z3[]*dx_p1[] - r_x3[]*dz_p1[];
-			immutable Chunk z_cross3 = r_x3[]*dy_p1[] - r_y3[]*dx_p1[];
+			immutable Chunk x_cross3 = -(r_y3[]*dz_p1[] - r_z3[]*dy_p1[]);
+			immutable Chunk y_cross3 = -(r_z3[]*dx_p1[] - r_x3[]*dz_p1[]);
+			immutable Chunk z_cross3 = -(r_x3[]*dy_p1[] - r_y3[]*dx_p1[]);
 
 			immutable Chunk x_cross = (1.0/3.0)*(x_cross1[] + x_cross2[] + x_cross3[]);
 			immutable Chunk y_cross = (1.0/3.0)*(y_cross1[] + y_cross2[] + y_cross3[]);
@@ -889,7 +889,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 
 			immutable Vec4 inboard_factor =
 			Vec4(
-				1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/4.0,
+				1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/16.0,
 				ac.rotors[rotor_idx].blades[blade_idx].chunks[$-1].xi[$-1],
 				0,
 				1.0/ac.rotors[rotor_idx].radius
