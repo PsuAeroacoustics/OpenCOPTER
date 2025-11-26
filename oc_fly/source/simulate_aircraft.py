@@ -1466,10 +1466,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		result_dictionary['blade_twist_array'] = blade_twist_array
 		result_dictionary['blade_twist_azimuth'] = blade_twist_azimuth
 
-		result_dictionary['collective_pitch_array'] = collective_pitch_array
-		result_dictionary['sin_pitch_array'] = sin_pitch_array
-		result_dictionary['cos_pitch_array'] = cos_pitch_array
-		result_dictionary['hhc_pitch_array'] = hhc_pitch_array
+	result_dictionary['collective_pitch_array'] = collective_pitch_array
+	result_dictionary['sin_pitch_array'] = sin_pitch_array
+	result_dictionary['cos_pitch_array'] = cos_pitch_array
+	result_dictionary['hhc_pitch_array'] = hhc_pitch_array
 
 	if num_wings != 0:
 		result_dictionary["wing_Up"] = wing_up

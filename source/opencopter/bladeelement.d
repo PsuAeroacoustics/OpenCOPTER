@@ -199,27 +199,40 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		immutable Chunk u_inf = sqrt(u_squared);
 		immutable Chunk dimensional_u_inf = u_inf[] * rotor.radius * abs(rotor_input.angular_velocity);
 		immutable Chunk M_inf = dimensional_u_inf[]/atmo.speed_of_sound;
+	}
 
+	foreach(chunk_idx; 0..blade.chunks.length) {
 		//writeln("blade sec u_squared = ", u_squared);
 		auto gamma = blade_state.circulation_model.compute_bound_circulation_band(blade_state, chunk_idx, rotor_input.angular_velocity, blade.airfoil.lift_curve_slope(chunk_idx), blade.airfoil.zero_lift_aoa(chunk_idx));
+
+		immutable Chunk u_p = blade_state.chunks[chunk_idx].u_p[];
+		immutable Chunk u_t = blade_state.chunks[chunk_idx].u_t[];
+
+		immutable Chunk u_squared = (u_t[]*u_t[] + u_p[]*u_p[]);
+		immutable Chunk u_inf = sqrt(u_squared);
+		immutable Chunk dimensional_u_inf = u_inf[] * rotor.radius * abs(rotor_input.angular_velocity);
+		immutable Chunk M_inf = dimensional_u_inf[]/atmo.speed_of_sound;
 
 		//writeln("balde gamma = ", gamma);
 		// Denormalize gamma
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 		// Nitya: Blade circulation dimensionalized here!!
 
-		blade_state.chunks[chunk_idx].aoa_eff[] = -2.0*std.math.sgn(rotor_input.angular_velocity)*gamma[];
+		blade_state.chunks[chunk_idx].aoa_eff[] = 2.0*std.math.sgn(rotor_input.angular_velocity)*gamma[];
 
 		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.airfoil.lift_curve_slope(chunk_idx)[]*blade.chunks[chunk_idx].chord[]*std.math.abs(rotor_input.angular_velocity)*rotor.radius*rotor.radius);
 		blade_state.chunks[chunk_idx].aoa_eff[] += blade.airfoil.zero_lift_aoa(chunk_idx)[];
 
-		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa, M_inf);
+		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, M_inf);
 
 		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
 		blade_state.chunks[chunk_idx].gamma[] = gamma[];
 
 		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 		immutable Chunk dC_D = steady_sectional_model(u_p, u_t, af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
+
+		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
+		immutable Chunk inflow_angle = blade_state.chunks[chunk_idx].theta[] - blade_state.chunks[chunk_idx].aoa_eff[] - plunging_correction[];
 
 		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[];
 		blade_state.chunks[chunk_idx].dC_d[] = af_coefficients.C_d[];
@@ -324,50 +337,50 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 	//writeln("calculating blade properties");
 	foreach(blade_idx; 0..rotor.blades.length) {
 		//writeln("blade_idx = ",blade_idx);
-		if(iteration > 0) {
-			//debug writeln("1. iteration:", iteration);
-			//writeln("\n blade properites for blade ", blade_idx);
-			rotor.blades[blade_idx].compute_blade_properties(
-				rotor_state.blade_states[blade_idx],
-				rotor,
-				rotor_input,
-				rotor_state,
-				ac_state,
-				dynWake,
-				dt,
-				rotor_idx,
-				blade_idx,
-				atmo,
-				iteration,
-				trackBWIevents,
-				converged
-			);
-			//writeln("blade state calculation done: dynamic inflow wake \n");
+		// if(iteration > 0) {
+		// 	//debug writeln("1. iteration:", iteration);
+		// 	//writeln("\n blade properites for blade ", blade_idx);
+		// 	rotor.blades[blade_idx].compute_blade_properties(
+		// 		rotor_state.blade_states[blade_idx],
+		// 		rotor,
+		// 		rotor_input,
+		// 		rotor_state,
+		// 		ac_state,
+		// 		dynWake,
+		// 		dt,
+		// 		rotor_idx,
+		// 		blade_idx,
+		// 		atmo,
+		// 		iteration,
+		// 		trackBWIevents,
+		// 		converged
+		// 	);
+		// 	//writeln("blade state calculation done: dynamic inflow wake \n");
 
-			auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
-			auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
+		// 	auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
+		// 	auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
 			
-			auto global_frame_forces = rotor.blades[blade_idx].frame.global_matrix*blade_frame_forces; //back corrected!!
-			auto rotor_frame_forces = rotor.frame.parent.inverse_global_matrix*global_frame_forces; // back Corrected!!
+		// 	auto global_frame_forces = rotor.blades[blade_idx].frame.global_matrix*blade_frame_forces; //back corrected!!
+		// 	auto rotor_frame_forces = rotor.frame.parent.inverse_global_matrix*global_frame_forces; // back Corrected!!
 
-			auto global_frame_moments = rotor.blades[blade_idx].frame.global_matrix*blade_frame_moments; //back corrected!!
-			auto rotor_frame_moments = rotor.frame.parent.inverse_global_matrix*global_frame_moments; //back Corrected!!
+		// 	auto global_frame_moments = rotor.blades[blade_idx].frame.global_matrix*blade_frame_moments; //back corrected!!
+		// 	auto rotor_frame_moments = rotor.frame.parent.inverse_global_matrix*global_frame_moments; //back Corrected!!
 
-			C_T += rotor_frame_forces[2];
-			rotor_state.C_Q += rotor_frame_moments[2];
+		// 	C_T += rotor_frame_forces[2];
+		// 	rotor_state.C_Q += rotor_frame_moments[2];
 
 			
-			rotor_state.C_Mx += rotor_frame_moments[0];
-			rotor_state.C_My += rotor_frame_moments[1];
-		}
+		// 	rotor_state.C_Mx += rotor_frame_moments[0];
+		// 	rotor_state.C_My += rotor_frame_moments[1];
+		// }
 
-		foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
-			backup_CT[chunk_idx][] = blade_chunk.dC_T[];
-			blade_chunk.dynamic_u_p[] = blade_chunk.u_p[];
-			blade_chunk.dynamic_dC_Db_induced[] = blade_chunk.dC_Db_induced[];
-			blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
-			blade_chunk.aoa_eff[] = blade_chunk.aoa[];
-		}
+		// foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
+		// 	backup_CT[chunk_idx][] = blade_chunk.dC_T[];
+		// 	blade_chunk.dynamic_u_p[] = blade_chunk.u_p[];
+		// 	blade_chunk.dynamic_dC_Db_induced[] = blade_chunk.dC_Db_induced[];
+		// 	blade_chunk.dynamic_dC_Db_profile[] = blade_chunk.dC_Db_profile[];
+		// 	blade_chunk.aoa_eff[] = blade_chunk.aoa[];
+		// }
 		//debug writeln("2. iteration:", iteration);
 		//debug writeln("blade_idx:", blade_idx, "rotor_idx:", rotor_idx);
 		//writeln("\n blade properites for blade ", blade_idx);
@@ -388,11 +401,11 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 		);
 		//writeln("blade state calculation done wake \n");
 
-		foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
-			blade_chunk.dC_T[] = backup_CT[chunk_idx][];
-		}
+		// foreach(chunk_idx, ref blade_chunk; rotor_state.blade_states[blade_idx].chunks) {
+		// 	blade_chunk.dC_T[] = backup_CT[chunk_idx][];
+		// }
 
-		if(iteration == 0) {
+		// if(iteration == 0) {
 			auto blade_frame_forces = Vec4(0, 0, rotor_state.blade_states[blade_idx].C_T, 0);
 			auto blade_frame_moments = Vec4(0.0, rotor_state.blade_states[blade_idx].C_My, rotor_state.blade_states[blade_idx].C_Mz, 0.0);
 			
@@ -407,7 +420,7 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 
 			rotor_state.C_Mx += rotor_frame_moments[0];
 			rotor_state.C_My += rotor_frame_moments[1];
-		}
+		// }
 	}
 
 	rotor_state.C_T = C_T;

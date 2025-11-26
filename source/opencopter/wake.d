@@ -942,7 +942,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 
 			immutable Vec4 inboard_factor =
 			Vec4(
-				1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/4.0,
+				1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/16.0,
 				ac.rotors[rotor_idx].blades[blade_idx].chunks[$-1].xi[$-1],
 				0,
 				1.0/ac.rotors[rotor_idx].radius
