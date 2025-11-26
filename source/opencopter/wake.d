@@ -667,15 +667,15 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 			immutable Chunk x_cross1 = r_z1[]*dy_m1[] - r_y1[]*dz_m1[];
 			immutable Chunk y_cross1 = r_x1[]*dz_m1[] - r_z1[]*dx_m1[];
-			immutable Chunk z_cross1 = -r_x1[]*dy_m1[] + r_y1[]*dx_m1[];
+			immutable Chunk z_cross1 = r_y1[]*dx_m1[] - r_x1[]*dy_m1[];
 
-			immutable Chunk x_cross2 = -r_y2[]*dz[] + r_z2[]*dy[];
-			immutable Chunk y_cross2 = -r_z2[]*dx[] + r_x2[]*dz[];
-			immutable Chunk z_cross2 = -r_x2[]*dy[] + r_y2[]*dx[];
+			immutable Chunk x_cross2 = r_z2[]*dy[] - r_y2[]*dz[];
+			immutable Chunk y_cross2 = r_x2[]*dz[] - r_z2[]*dx[];
+			immutable Chunk z_cross2 = r_y2[]*dx[] - r_x2[]*dy[];
 
-			immutable Chunk x_cross3 = -r_y3[]*dz_p1[] + r_z3[]*dy_p1[];
-			immutable Chunk y_cross3 = -r_z3[]*dx_p1[] + r_x3[]*dz_p1[];
-			immutable Chunk z_cross3 = -r_x3[]*dy_p1[] + r_y3[]*dx_p1[];
+			immutable Chunk x_cross3 = r_z3[]*dy_p1[] - r_y3[]*dz_p1[];
+			immutable Chunk y_cross3 = r_x3[]*dz_p1[] - r_z3[]*dx_p1[];
+			immutable Chunk z_cross3 = r_y3[]*dx_p1[] - r_x3[]*dy_p1[];
 
 			immutable Chunk x_cross = (1.0/3.0)*(x_cross1[] + x_cross2[] + x_cross3[]);
 			immutable Chunk y_cross = (1.0/3.0)*(y_cross1[] + y_cross2[] + y_cross3[]);
@@ -696,8 +696,7 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 
 			immutable Chunk unorm = 1.0/(miss_dist[] + r_c_ave[]*r_c_ave[]);
-			//immutable Chunk unorm = 1.0/(miss_dist2[] + r_c[]*r_c[]);
-			//immutable Chunk unorm = 1.0/(miss_dist[] + r_c[]*r_c[]);
+
 			immutable Chunk norm = sqrt(unorm)[]*unorm[];
 
 			immutable Chunk circulation = norm[]*gamma[]*one_over_four_pi[];
@@ -710,9 +709,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			immutable Chunk tmp_v_x = random_mult_by_one[]*circulation[]*x_cross[];
 			immutable Chunk tmp_v_y = random_mult_by_one[]*circulation[]*y_cross[];
 			immutable Chunk tmp_v_z = random_mult_by_one[]*circulation[]*z_cross[];
-			// immutable Chunk tmp_v_x = random_mult_by_one[]*circulation[]*x_cross2[];
-			// immutable Chunk tmp_v_y = random_mult_by_one[]*circulation[]*y_cross2[];
-			// immutable Chunk tmp_v_z = random_mult_by_one[]*circulation[]*z_cross2[];
 
 			Chunk dx_p, dy_p, dz_p;
 

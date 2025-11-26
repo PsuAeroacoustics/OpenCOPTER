@@ -412,7 +412,8 @@ struct Frame {
 		inverse_global_matrix[0, 3] = invese_d_vec[0];
 		inverse_global_matrix[1, 3] = invese_d_vec[1];
 		inverse_global_matrix[2, 3] = invese_d_vec[2];
-
+		inverse_global_matrix[3, 3] = 1.0;
+		
 		foreach(ref child; children){
 			child.update(global_matrix);
 		}

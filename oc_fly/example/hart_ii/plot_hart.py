@@ -657,7 +657,7 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	ax0 = plt.subplot(121)
 	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
 	#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
-	plt1 = plt.contourf([-_y/R for _y in y], [-_x/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
+	plt1 = plt.contourf([_y/R for _y in y], [_x/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
 	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
@@ -1505,6 +1505,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(400)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1558,6 +1559,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(1000)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1592,6 +1594,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(300)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_adv.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_adv.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_adv.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1617,6 +1620,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(300)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_ret.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_ret.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_ret.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1768,6 +1772,7 @@ def plot_wake_trajectory(plot_name: str, presentation: bool, wake_results):
 		#plt.gca().invert_xaxis()
 		if not presentation:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		else:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		plt.cla()
@@ -1784,6 +1789,7 @@ def plot_wake_trajectory(plot_name: str, presentation: bool, wake_results):
 		#plt.gca().invert_xaxis()
 		if not presentation:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		else:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		plt.cla()
@@ -1801,6 +1807,7 @@ def plot_wake_trajectory(plot_name: str, presentation: bool, wake_results):
 	#plt.gca().invert_xaxis()
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_fil_core_size.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_fil_core_size.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_fil_core_size.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
@@ -1997,24 +2004,24 @@ if __name__ == "__main__":
 	# plot_acoustic_contours_all("MN", args.p)
 	# plot_acoustic_contours_all("MV", args.p)
 
-	plot_acoustic_contours("BL", args.p)
+	#plot_acoustic_contours("BL", args.p)
 	# plot_acoustic_contours_cfd("BL", args.p)
 	# plot_acoustic_contours_charm("BL", args.p)
 	# #plot_blade_twist('BL', args.p)
 	# #plot_blade_twist('MN', args.p)
 	# #plot_blade_twist('MV', args.p)
 
-	# plot_blade_normal_pressures('BL', args.p, blade_results_bl)
-	# plot_wake_trajectory('BL', args.p, blade_results_bl)
-	# # plot_acoustic_contours("BL", args.p)
+	plot_blade_normal_pressures('BL', args.p, blade_results_bl)
+	plot_wake_trajectory('BL', args.p, blade_results_bl)
+	plot_acoustic_contours("BL", args.p)
 
-	# plot_blade_normal_pressures('MN', args.p, blade_results_mn)
-	# plot_wake_trajectory('MN', args.p, blade_results_mn)
-	# plot_acoustic_contours("MN", args.p)
+	plot_blade_normal_pressures('MN', args.p, blade_results_mn)
+	plot_wake_trajectory('MN', args.p, blade_results_mn)
+	plot_acoustic_contours("MN", args.p)
 
-	# plot_blade_normal_pressures('MV', args.p, blade_results_mv)
-	# plot_wake_trajectory('MV', args.p, blade_results_mv)
-	# plot_acoustic_contours("MV", args.p)
+	plot_blade_normal_pressures('MV', args.p, blade_results_mv)
+	plot_wake_trajectory('MV', args.p, blade_results_mv)
+	plot_acoustic_contours("MV", args.p)
 
 	# theta_bl = blade_results_bl['collective_pitch_array'].mean()*(180.0/math.pi)
 	# theta_1s_bl = blade_results_bl['sin_pitch_array'].mean()*(180.0/math.pi)

@@ -1227,7 +1227,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
 						Chunk atan_num = -omega_sgn*chunk.xi[];
 						immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
+						immutable Chunk mpsi = m.to!double*(-blade_state.azimuth - psi_r[]);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
@@ -1273,7 +1273,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 					foreach(c_idx, ref chunk; rotor.blades[b_idx].chunks) {
 						Chunk atan_num = -omega_sgn*chunk.xi[];
 						immutable Chunk psi_r = atan2(atan_num, chunk.r);
-						immutable Chunk mpsi = m.to!double*(blade_state.azimuth + psi_r[]);
+						immutable Chunk mpsi = m.to!double*(-blade_state.azimuth - psi_r[]);
 
 						Chunk cos_mpsi;
 						Chunk sin_mpsi;
