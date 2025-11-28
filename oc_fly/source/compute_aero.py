@@ -709,10 +709,23 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		print("wing vortex geometry is set")
 
 	if "inflow_model" in flight_condition:
-		if flight_condition["inflow_model"] == "huang_peters":
-			rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
-		elif flight_condition["inflow_model"] == "null_inflow":
-			rotorcraft_inflows = [NullInflow(rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx]) for r_idx in range(num_rotors)]
+		if isinstance(flight_condition["inflow_model"], list):
+			def create_inflow(name, rotor_idx):
+				if name == "huang_peters":
+					if num_blades[rotor_idx] != 2:
+						return HuangPeters(4, 2, rotorcraft_system.rotors[rotor_idx], rotorcraft_input_state.rotor_inputs[rotor_idx], dt)
+					else:
+						return HuangPeters(2, 1, rotorcraft_system.rotors[rotor_idx], rotorcraft_input_state.rotor_inputs[rotor_idx], dt)
+
+				elif name == "null_inflow":
+					return NullInflow(rotorcraft_system.rotors[rotor_idx], rotorcraft_input_state.rotor_inputs[rotor_idx])
+			
+			rotorcraft_inflows = [create_inflow(name, rotor_index) for rotor_index, name in enumerate(flight_condition["inflow_model"])]
+		else:
+			if flight_condition["inflow_model"] == "huang_peters":
+				rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+			elif flight_condition["inflow_model"] == "null_inflow":
+				rotorcraft_inflows = [NullInflow(rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx]) for r_idx in range(num_rotors)]
 	else:
 		rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 	
