@@ -34,86 +34,70 @@ interface InflowT(ArrayContainer AC = ArrayContainer.none) {
 	@nogc Frame* frame();
 }
 
-// void get_ind_vel_on_rotor(RS,RG,RIS,WG, WIS,WS, I)(auto ref RS rotor_states, auto ref RG rotors, auto ref RIS rotor_inputs, auto ref WG wings, auto ref WIS wing_inputs, auto ref WS wing_states, I inflows) {
+class NullInflow(ArrayContainer AC) : InflowT!AC {
+
+	alias RG = RotorGeometryT!AC;
+	alias RS = RotorStateT!AC;
+	alias RIS = RotorInputStateT!AC;
+
+	package RG* rotor;
+	package RIS* rotor_input;
+
+	Frame* local_frame;
+
+	double advance_ratio;
+	double axial_advance_ratio;
+
+	this(RG* _rotor, RIS* _rotor_input) {
+		rotor = _rotor;
+		rotor_input = _rotor_input;
+		
+		_rotor.frame.parent.children ~= new Frame(Vec3(1, 0, 0), PI, Vec3(0, 0, 0.0), _rotor.frame.parent, _rotor.frame.parent.name ~ " inflow", "connection");
+		local_frame = _rotor.frame.parent.children[$-1];
+	}
+
+	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
+		auto inflow_local_freestream = local_frame.inverse_global_matrix * ac_state.freestream;
+		
+		advance_ratio = abs(inflow_local_freestream[0])/abs(rotor_input.angular_velocity*rotor.radius);
+		axial_advance_ratio = inflow_local_freestream[2]/abs(rotor_input.angular_velocity*rotor.radius);
+
+		auto global_inverse = local_frame.inverse_global_matrix;
+		if (advance_ratio > 0) {
+			immutable local_freestream = global_inverse*ac_state.freestream;
+			immutable normal = Vec4(0, 0, -1, 0);
+			immutable projected_freestream = local_freestream - local_freestream.dot(normal)*normal;
+			immutable x_axis = Vec4(-1, 0, 0, 0);
+			immutable double freestream_rotation = acos(projected_freestream.dot(x_axis)/projected_freestream.magnitude);
+			local_frame.rotate(Vec3(0, 0, -1), freestream_rotation);
+			local_frame.update(local_frame.parent.global_matrix);
+		}
+
+		inflow_local_freestream = local_frame.inverse_global_matrix * ac_state.freestream;
+		
+		advance_ratio = abs(inflow_local_freestream[0])/abs(rotor_input.angular_velocity*rotor.radius);
+		axial_advance_ratio = inflow_local_freestream[2]/abs(rotor_input.angular_velocity*rotor.radius);
+	}
+
+	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
+		immutable Chunk lambda = 0;
+		return lambda;
+	}
+
+	void update_wing_circulation(WingStateT!AC wing_state) {}
+	void update_wing_dC_L(WingStateT!AC wing_state) {}
 	
-//    	size_t num_rotors = rotors.length; 
-//    	double[] v_z = new double[num_rotors];
-//    	double[] v_x = new double[num_rotors];
-//    	Chunk x_rotor; Chunk y_rotor; Chunk z_rotor;
-// 	Chunk x_rotor_op; Chunk y_rotor_op; Chunk z_rotor_op;
-// 	Chunk x_inflow; Chunk y_inflow; Chunk z_inflow;
-// 	immutable Chunk chunk_of_zeros = 0.0;
-//    	Chunk psi_i = iota(0.0,8.0).map!(x => (x*PI/8.0).to!double).array;
+	double wake_skew() {
+		return atan2(advance_ratio, axial_advance_ratio);
+	}
 
-//    	foreach(rotor_idx, rotor; rotors){
-// 		v_z[rotor_idx] = 0.0;
-// 		v_x[rotor_idx] = 0.0;
-//        	//double cos_aoa = rotor_inputs[rotor_idx].cos_aoa;
-//    		//double sin_aoa = rotor_inputs[rotor_idx].sin_aoa;
-
-//        	double half_rotor_radius = rotor.blades[0].chunks[$-1].r[$-1]/2;
-//        	// check the relative distance of the x, y, zcoordinates for the rotors
-// 		// For the coordinate transformation Do rotation and then translation
-//        	x_rotor[] = -half_rotor_radius*cos(psi_i)[] ;
-//        	y_rotor[] = half_rotor_radius*sin(psi_i)[] ;
-//        	z_rotor[] = 0.0;
-		
-//        	foreach(inflow_idx, inflow; inflows){
-//            	// if(inflow_idx != rotor_idx){
-//             //    	if(inflow_idx < num_rotors){
-// 			// 		x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0];
-// 			// 		y_rotor_op[] = -y_rotor[] + rotors[rotor_idx].origin[1];
-// 			// 		z_rotor_op[] = -z_rotor[]*cos_aoa + x_rotor[]*sin_aoa + rotors[rotor_idx].origin[2];
-
-// 			// 		x_inflow[] = x_rotor_op[]*rotor_inputs[inflow_idx].cos_aoa + z_rotor_op[]*rotor_inputs[inflow_idx].sin_aoa - rotors[inflow_idx].origin[0];
-// 			// 		y_inflow[] = -y_rotor_op[]  - rotors[inflow_idx].origin[1];
-// 			// 		z_inflow[] = x_rotor_op[]*rotor_inputs[inflow_idx].sin_aoa - z_rotor_op[]*rotor_inputs[inflow_idx].cos_aoa - rotors[inflow_idx].origin[2];
-
-// 			// 		immutable Chunk ind_vel = inflow.inflow_at(x_inflow,y_inflow,z_inflow,chunk_of_zeros,rotor_inputs[inflow_idx].angle_of_attack);
-// 			// 		//writeln("ind_vel_rotor: ", ind_vel);
-
-//             //        	v_z[rotor_idx] += -ind_vel[].mean*rotor_inputs[inflow_idx].cos_aoa*abs(rotor_inputs[inflow_idx].angular_velocity*rotors[inflow_idx].radius);
-//             //        	v_x[rotor_idx] += -ind_vel[].mean*rotor_inputs[inflow_idx].sin_aoa*abs(rotor_inputs[inflow_idx].angular_velocity*rotors[inflow_idx].radius);
-// 			// 		//debug writeln("v_x:", v_x);
-// 			// 		//debug writeln("v_z:", v_z);
-//             //    	} else {
-
-// 			// 		x_rotor_op[] = x_rotor[]*cos_aoa + z_rotor[]*sin_aoa + rotors[rotor_idx].origin[0];
-// 			// 		y_rotor_op[] = -y_rotor[] + rotors[rotor_idx].origin[1];
-// 			// 		z_rotor_op[] = -z_rotor[]*cos_aoa + x_rotor[]*sin_aoa + rotors[rotor_idx].origin[2];
-
-// 			// 		x_inflow[] = -x_rotor_op[]*wing_inputs[inflow_idx-num_rotors].cos_aoa - z_rotor_op[]*wing_inputs[inflow_idx-num_rotors].sin_aoa - wings[inflow_idx-num_rotors].origin[0];
-// 			// 		y_inflow[] = -y_rotor_op[] - wings[inflow_idx-num_rotors].origin[1];
-// 			// 		z_inflow[] = -x_rotor_op[]*wing_inputs[inflow_idx-num_rotors].sin_aoa + z_rotor_op[]*wing_inputs[inflow_idx-num_rotors].cos_aoa - wings[inflow_idx- num_rotors].origin[2];
-					
-// 			// 		//writeln("x: ", wing_inputs[inflow_idx-num_rotors].cos_aoa);
-// 			// 		//writeln("y: ", wing_inputs[inflow_idx-num_rotors].sin_aoa);
-// 			// 		//writeln("z: ", z_rotor_op);
-
-// 			// 		immutable Chunk ind_vel = inflow.inflow_at(x_inflow,y_inflow,z_inflow,chunk_of_zeros,wing_inputs[inflow_idx - num_rotors].angle_of_attack);
-// 			// 		//writeln("ind_vel_wing: ", ind_vel);
-
-//             //        	v_z[rotor_idx] += ind_vel[].mean*wing_inputs[inflow_idx-num_rotors].cos_aoa;
-//             //        	v_x[rotor_idx] += -ind_vel[].mean*wing_inputs[inflow_idx-num_rotors].sin_aoa;
-					
-//             //    	}               
-//             //    	//rotor_states[rotor_idx].advance_ratio = (rotor_inputs[0].freestream_velocity + v_x[rotor_idx])/rotor_inputs[inflow_idx].angular_velocity*rotor_inputs[inflow_idx].r_0[$-1];
-//             //    	//rotor_states[rotor_idx].axial_advance_ratio = v_z[rotor_idx]/rotor_inputs[inflow_idx].angular_velocity*rotor_inputs[inflow_idx].r_0[$-1];  
-//            	// }
-//    		}
-		
-// 		//rotor_states[rotor_idx].advance_ratio = (rotor_inputs[0].freestream_velocity*rotor_inputs[rotor_idx].cos_aoa + v_x[rotor_idx])/abs(rotor_inputs[rotor_idx].angular_velocity * rotors[rotor_idx].radius);
-//         //rotor_states[rotor_idx].axial_advance_ratio = (rotor_inputs[0].freestream_velocity*rotor_inputs[rotor_idx].sin_aoa - v_z[rotor_idx])/abs(rotor_inputs[rotor_idx].angular_velocity * rotors[rotor_idx].radius);
-
-// 		//immutable adv_ratio_t1 = rotor_inputs[0].freestream_velocity*rotor_inputs[rotor_idx].cos_aoa/abs(rotor_inputs[rotor_idx].angular_velocity*rotors[rotor_idx].radius);
-// 		//immutable adv_ratio_t2 = -v_x[rotor_idx]/abs(rotor_inputs[rotor_idx].angular_velocity*rotors[rotor_idx].radius);
-
-// 		//immutable axial_adv_ratio_t1 = rotor_inputs[0].freestream_velocity*rotor_inputs[rotor_idx].sin_aoa/abs(rotor_inputs[rotor_idx].angular_velocity*rotors[rotor_idx].radius);
-// 		//immutable axial_adv_ratio_t2 = -v_z[rotor_idx]/abs(rotor_inputs[rotor_idx].angular_velocity*rotors[rotor_idx].radius);
-		
-// 		/*writeln("adv_ratio_t1 = ", adv_ratio_t1, "adv_ratio_t2 = ", adv_ratio_t2);
-// 		writeln("axial_adv_ratio_t1 = ", axial_adv_ratio_t1, "axial_adv_ratio_t2 = ", axial_adv_ratio_t2);
-// 		writeln("adv_ratio: ", rotor_states[rotor_idx].advance_ratio);
-// 		writeln("axial_adv_ratio: ", rotor_states[rotor_idx].axial_advance_ratio);*/
-//    	}
-// }
+	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
+		InducedVelocities vel;
+		vel.v_x[] = 0;
+		vel.v_y[] = 0;
+		vel.v_z[] = 0;
+		return vel;
+	}
+	
+	@nogc Frame* frame() { return local_frame; }
+}

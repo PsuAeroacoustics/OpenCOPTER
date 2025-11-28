@@ -29,6 +29,7 @@ import numd.linearalgebra.matrix;
 
 alias BI = opencopter.inflow.BeddosInflow!(ArrayContainer.array);
 alias HP = opencopter.inflow.HuangPetersInflowT!(ArrayContainer.array);
+alias NI = opencopter.inflow.NullInflow!(ArrayContainer.array);
 alias SW = opencopter.inflow.SimpleWingT!(ArrayContainer.array);
 alias WI = opencopter.inflow.WingInflowT!(ArrayContainer.array);
 
@@ -153,6 +154,53 @@ class HuangPeters : Inflow {
 
 	override Inflow_D get_wrapped_inflow(){
 		return huang_peters;
+	}
+
+}
+
+class NullInflow : Inflow {
+	private NI null_inflow;
+
+	this(PyRotorGeometry* rotor, PyRotorInputState* rotor_input) {
+		null_inflow = new NI(rotor, rotor_input);
+	}
+
+	override void update(PyAircraftState* ac_state, PyWake* wake, double dt) {
+		null_inflow.update(*ac_state, *wake, dt);
+	}
+
+	override Chunk inflow_at(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
+		auto xyz = Vector!(4, Chunk)(0);
+
+		xyz[0][] = x[];
+		xyz[1][] = y[];
+		xyz[2][] = z[];
+
+		return null_inflow.inflow_at(xyz);
+	}
+
+	override Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
+		return null_inflow.inflow_at(xyz);
+	}
+
+	override double wake_skew() {
+		return null_inflow.wake_skew();
+	}
+
+	override Frame* frame() {
+		return null_inflow.frame();
+	}
+
+	override Mat4 inverse_global_frame() {
+		return null_inflow.frame.inverse_global_matrix;
+	}
+
+	override IV compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+		return null_inflow.compute_wing_induced_vel_on_blade(x, y, z);
+	}
+
+	override Inflow_D get_wrapped_inflow(){
+		return null_inflow;
 	}
 
 }
@@ -2640,6 +2688,56 @@ extern(C) void PydMain() {
 			}
 		),
 		Def!(HuangPeters.wake_skew, Docstring!q{
+			:return: The current wake skew angle of the rotor in radians.
+		})
+	)();
+
+	wrap_class!(
+		NullInflow,
+		//Init!(long, long, PyRotorGeometry*, PyRotorState*, PyRotorInputState*, double),
+		Init!(PyRotorGeometry*, PyRotorInputState*),
+		Docstring!q{
+			This class instantiates a dynamic inflow model for a single rotor.
+			One of these will be needed for each rotor in the aircraft.
+
+			Constructor:
+
+			:param Mo: The number of odd modes used in the model. 4 typically works well.
+			:param Me: The number of even modes used in the model. 2 typically works well.
+			:param rotor: The geometry of the rotor this inflow model is modeling.
+			:param dt: The timestep of the simulation.
+		},
+		Def!(NullInflow.update, Docstring!q{
+			Updates the inflow model by one timestep
+
+			.. attention
+
+				You will likely never have to call this function yourself. This is called automaticall
+				in the :func:`step` function.
+
+			:param C_T: Current rotor thrust coefficient. This does nothing for this inflow model.
+			:param rotor: The current input state for the rotor.
+			:param rotor_state: The current rotor state.
+			:param advance_ratio: The current advance ratio for the rotor.
+			:param axial_advance_ratio: The current axial advance ratio for the rotor.
+			:param ac_state: The currect AircraftState object
+			:param dt: The current timestep size.
+		}),
+		Def!(NullInflow.inflow_at,
+			Chunk function(immutable Chunk, immutable Chunk, immutable Chunk),
+			PyName!"inflow_at",
+			Docstring!q{
+				Computes the rotor induced flow at the requested location.
+
+				:param x: A chunk of x positions to compute the induced velocity at.
+				:param y: A chunk of y positions to compute the induced velocity at.
+				:param z: A chunk of z positions to compute the induced velocity at.
+				:param x_e: A chunk of x_e positions to compute the induced velocity at. Unused in this inflow model.
+				:param angle_of_attack: Current angle of attack of the rotor. Unused in this inflow model.
+				:return: A chunk of z induced velocities.
+			}
+		),
+		Def!(NullInflow.wake_skew, Docstring!q{
 			:return: The current wake skew angle of the rotor in radians.
 		})
 	)();
