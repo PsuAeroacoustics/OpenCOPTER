@@ -411,22 +411,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 	# Nitya: checking if these gets stored in the matlab file!
 
-	# wake_idx =  [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# bladeSec_idx = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# #wake_miss_dist = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
-	# blade_directionVec = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# directionVec_bv = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# vortex_directionVec = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# normalVec = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# missDist = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# gammaSec =[[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# gammaVortex = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# r_c = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# C_d = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# l = [[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# secLen =[[[[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(num_rotors)]
-	# #TKE = [[[[] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)] for _ in range(max(num_blades))] for _ in range(max(num_blades))]
-	
 	class Interaction:
 		def __init__(self):
 			self.t = []
@@ -453,6 +437,18 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			self.gamma00 = []
 			self.Uref = []
 			self.L0 = []
+			self.rotorIdx = []
+
+	class interaction_plot:
+		def __init__(self):
+			self.ID = []
+			self.psi = []
+			self.secIdx = []
+			self.rotorIdx = []
+			self.tipV_idx = []
+	
+	BWI_plot =  [[[interaction_plot() for _ in range(max(num_blades))] for _ in range(num_rotors)] for _ in range(int(round(post_conv_revolutions*iter_per_rev)) + 1)]
+	print(len(BWI_plot), len(BWI_plot[0]), len(BWI_plot[0][0]))
 
 	temp_u_p = np.zeros(elements)
 	temp_dC_T = np.zeros(elements)
@@ -1105,23 +1101,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 						# Nitya, 09.16
 						
 						if(trackBWIevents):
-							# print('1. acoustic_iteration:', acoustic_iteration)
 							for rotor_idx_2 in range(num_rotors):
-								#print(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].interaction_perRotor[rotor_idx_2].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length())
 								for blade_idx2 in range(0,vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction.length()):
-									# wake_idx[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append( get_interactionPt_wake_idx(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# bladeSec_idx[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interactionPt_bladeSec_idx(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# blade_directionVec[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_r_blade(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# directionVec_bv[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_r_blade_v(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# vortex_directionVec[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_r_vortex(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# normalVec[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_blade_normal(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# missDist[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_miss_dist(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# gammaSec[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_gamma_sec(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# gammaVortex[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_gamma_w(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# r_c[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_r_c(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# C_d[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_C_d(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# l[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_l(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
-									# secLen[rotor_idx][rotor_idx_2][blade_idx][blade_idx2].append(get_interaction_point_secLen(vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]))
 									
 									tvi = vehicle.wake_history.history[0].rotor_wakes[rotor_idx_2].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[blade_idx2]
 									temp_out = []
@@ -1163,6 +1144,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 							size2 = len(wake_idx[rotor_idx][rotor_idx_2][blade_idx][blade_idx2])
 							for blade_idx2 in range(numBladesArray[rotor_idx_2]):
 								for blade_idx in range(numBladesArray[rotor_idx]):
+
+									blade_azimuth = get_blade_azimuth(vehicle.aircraft, vehicle.input_state, rotor_idx_2, blade_idx2)
 								
 									if len(wake_idx[rotor_idx][rotor_idx_2][blade_idx][blade_idx2])>1:
 										print('change the logic')
@@ -1182,12 +1165,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 											interaction[blade_idx2].Cd.append(C_d[rotor_idx][rotor_idx_2][blade_idx][blade_idx2][0][i])
 											interaction[blade_idx2].r_c.append(r_c[rotor_idx][rotor_idx_2][blade_idx][blade_idx2][0][i])
 											interaction[blade_idx2].l.append(l[rotor_idx][rotor_idx_2][blade_idx][blade_idx2][0][i])
+											interaction[blade_idx2].rotorIdx.append(rotor_idx_2)
+											interaction[blade_idx2].psi.append(blade_azimuth)
 										else:
 											interaction[blade_idx2].gamma0 = gammaVortex[rotor_idx][rotor_idx_2][blade_idx][blade_idx2][0][i]
-
-									
-										#append_bwi_data(bwi_files[rotor_idx][blade_idx], loading_data.time, aoa_array, 2.0*math.pi, u)
-									#print('2. blade_idx2:', blade_idx2, 'rotor_idx_2:', rotor_idx_2, 'blade_idx:', blade_idx, 'rotor_idx:', rotor_idx)
 
 							
 							#flat_wake_idx = [w[0] if isinstance(w, list) else w for w in interaction[blade_idx].wake_idx]
@@ -1205,6 +1186,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 							interaction[blade_idx].Cd = [interaction[blade_idx].Cd[i] for i in sorted_indices]
 							interaction[blade_idx].r_c = [interaction[blade_idx].r_c[i] for i in sorted_indices]
 							interaction[blade_idx].l = [interaction[blade_idx].l[i] for i in sorted_indices]
+							interaction[blade_idx].rotorIdx = [interaction[blade_idx].rotorIdx[i] for i in sorted_indices]
+							interaction[blade_idx].psi = [interaction[blade_idx].psi[i] for i in sorted_indices]
 							#interaction[blade_idx].secLen = [interaction[blade_idx].secLen[i] for i in sorted_indices]
 
 							for i in range(0,len(interaction[blade_idx].wake_idx)):
@@ -1222,6 +1205,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								Cd_values = np.array(interaction[blade_idx].Cd[i])
 								r_c_values = np.array(interaction[blade_idx].r_c[i])
 								l_values = np.array(interaction[blade_idx].l[i])
+								rotorIdx_values = np.array(interaction[blade_idx].rotorIdx[i])
+								psi_values = np.array(interaction[blade_idx].psi[i])
 								#secLen = np.array(interaction[tipV_idx].secLen)
 								
 								angle1 = np.dot(np.ravel(a), np.ravel(b)) / (np.linalg.norm(a) * np.linalg.norm(b))
@@ -1229,10 +1214,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								
 								value = np.dot(np.ravel(d), np.ravel(c)) / np.linalg.norm(c)
 								if abs(angle1) < 0.35 and abs(angle2) < 0.35:
-									angle_offset = 360/rotor.blade_states.length()
-									angle = acoustic_iteration + (180 + blade_idx_values*angle_offset)%360
-
-									perpInteraction[blade_idx].psi.append(acoustic_iteration + angle)	
+									perpInteraction[blade_idx].psi.append(psi_values)	
 									perpInteraction[blade_idx].wake_idx.append(wake_idx_values)
 									perpInteraction[blade_idx].blade_idx.append(blade_idx_values)
 									perpInteraction[blade_idx].blade_directionVec.append(a)
@@ -1246,6 +1228,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 									perpInteraction[blade_idx].Cd.append(Cd_values)
 									perpInteraction[blade_idx].r_c.append(r_c_values)
 									perpInteraction[blade_idx].l.append(l_values)
+									perpInteraction[blade_idx].rotorIdx.append(rotorIdx_values)
 									#perpInteraction[tipV_idx].secLength.append(np.sqrt(secLen[i]))
 							
 						for tipV_idx in range(0,rotor.blade_states.length()):
@@ -1265,6 +1248,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								r_c_values = np.array(perpInteraction[tipV_idx].r_c)
 								l_values = np.array(perpInteraction[tipV_idx].l)
 								blade_idx_values = np.array(perpInteraction[tipV_idx].blade_idx)
+								rotorIdx_values = np.array(perpInteraction[tipV_idx].rotorIdx)
 								#secLen_values = np.array(perpInteraction[tipV_idx].secLength)
 								theta = np.zeros(16)									
 								for i in range(len(wake_idx_values)):
@@ -1272,8 +1256,10 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 									
 									#perpInteraction_perBlade[blade_idxx].secLength.append(secLen_values[i])
 
-									Vx = flight_condition["V_inf"] + omegas[rotor_idx]*radii[rotor_idx]* np.sin(np.radians(acoustic_iteration+ psi_values[i] - 1))
-									Vy = omegas[rotor_idx]*radii[rotor_idx]* np.cos(np.radians(acoustic_iteration + psi_values[i] - 1))
+									#Vx = flight_condition["V_inf"] + omegas[rotor_idx]*radii[rotor_idx]* np.sin(np.radians(acoustic_iteration+ psi_values[i] - 1))
+									#Vy = omegas[rotor_idx]*radii[rotor_idx]* np.cos(np.radians(acoustic_iteration + psi_values[i] - 1))
+									Vx = flight_condition["V_inf"] + omegas[rotor_idx]*radii[rotor_idx]* np.sin(psi_values[i])
+									Vy = omegas[rotor_idx]*radii[rotor_idx]* np.cos(psi_values[i])
 									Uref = np.sqrt(Vx**2 + Vy**2)
 									
 								
@@ -1297,28 +1283,24 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 									perpInteraction_perBlade[blade_idxx].r_c.append(r_c_values[i])
 									perpInteraction_perBlade[blade_idxx].l.append(l_values[i])
 									perpInteraction_perBlade[blade_idxx].Uref.append(Uref)
-									perpInteraction_perBlade[blade_idxx].L0.append(L0)
+									perpInteraction_perBlade[blade_idxx].L0.append(L0) 
+									perpInteraction_perBlade[blade_idxx].rotorIdx.append(rotorIdx_values[i]) 
+									perpInteraction_perBlade[blade_idxx].tipV_idx.append(tipV_idx) 
 										
 									if i > 0:
 										L0_1 = 0.32 * theta[0] * np.sqrt(l_values[0] / theta[0] + 380)
 										L0_2 = 0.32 * theta[1] * np.sqrt(l_values[1] / theta[1] + 380)
 										value = K1 * np.sqrt(l_values[0]/real_c[0]) + abs(K2*gamma0)/(Uref*real_c[0])*((l_values[0] * L0_1)/real_c[0]**2 + (l_values[1]*L0_2)/real_c[0]**2)
 										perpInteraction_perBlade[blade_idxx].a0.append(value)
+										if (value < r_c_values[i]):
+											print('value is leass than a0')
 										if (value**2 - missDist2[i]**2) > 0.0:
 											perpInteraction_perBlade[blade_idxx].b_e.append(np.sqrt(value**2 - missDist2[i]**2))
 										else:
 											perpInteraction_perBlade[blade_idxx].b_e.append(0.0)
 									else:
 										perpInteraction_perBlade[blade_idxx].a0.append(r_c_values[i]) 
-										perpInteraction_perBlade[blade_idxx].b_e.append(r_c_values[i])
-										
-										# value = r_c_values[i]**2 - missDist2[i]**2
-										# if value > 0:
-										# 	perpInteraction_perBlade[blade_idxx].b_e.append(value)
-										# else:
-										# 	value = 0.0
-										# 	perpInteraction_perBlade[blade_idxx].b_e.append(r_c_values[i])
-									
+										perpInteraction_perBlade[blade_idxx].b_e.append(r_c_values[i])						
 						
 						for blade_idxx in range(0,rotor.blade_states.length()): 
 							
@@ -1330,8 +1312,14 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 							vortex_len = []
 							L0 = []
 							b_e = []
-							Uref = []
+							Uref = []							
 							
+							BWI_plot[acoustic_iteration][rotor_idx][blade_idxx].ID.append(perpInteraction_perBlade[blade_idxx].ID)
+							BWI_plot[acoustic_iteration][rotor_idx][blade_idxx].psi.append(perpInteraction_perBlade[blade_idxx].psi)
+							BWI_plot[acoustic_iteration][rotor_idx][blade_idxx].secIdx.append(perpInteraction_perBlade[blade_idxx].secIdx)
+							BWI_plot[acoustic_iteration][rotor_idx][blade_idxx].rotorIdx.append(perpInteraction_perBlade[blade_idxx].rotorIdx)
+							BWI_plot[acoustic_iteration][rotor_idx][blade_idxx].tipV_idx.append(perpInteraction_perBlade[blade_idxx].tipV_idx)
+
 							ID_full = perpInteraction_perBlade[blade_idxx].ID
 							psi_full = perpInteraction_perBlade[blade_idxx].psi
 							sec_idx_full = perpInteraction_perBlade[blade_idxx].secIdx
@@ -1355,8 +1343,6 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 								L0 = [L0_full[i] for i in filtered_indices]
 								b_e = [b_e_full[i] for i in filtered_indices]
 								Uref = [Uref_full[i] for i in filtered_indices]
-								#print('b_e:', b_e)
-							# print('writing rotor_idx:', rotor_idx, 'blade_idxx:', blade_idxx)
 							append_bwi_data(bwi_files[rotor_idx][blade_idxx], loading_data.time, nInteractions, ID, psi, sec_idx, wake_angle, missDist2, vortex_len, L0, b_e, Uref)		
 							
 
@@ -1446,20 +1432,8 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			raise FileExistsError("Failed to find results.mat from previous run")
 
 	# Nitya, 09.16
-	# if trackBWIevents:
-	# 	result_dictionary['wake_idx'] = np.asarray(wake_idx, dtype=object)
-	# 	result_dictionary['bladeSec_idx'] = np.asarray(bladeSec_idx, dtype=object)
-	# 	result_dictionary['wake_miss_dist'] = np.asarray(missDist, dtype=object)
-	# 	result_dictionary['r_c'] = np.asarray(r_c, dtype=object)
-	# 	result_dictionary['gamma_sec'] = np.asarray(gammaSec, dtype=object)
-	# 	result_dictionary['gamma_vortex'] = np.asarray(gammaVortex, dtype=object)
-	# 	result_dictionary['C_d'] = np.asarray(C_d, dtype=object)
-	# 	result_dictionary['l'] = np.asarray(l, dtype=object)
-	# 	result_dictionary['secLen'] = np.asarray(secLen, dtype=object)
-	# 	result_dictionary['blade_directionVec'] = np.asarray(blade_directionVec, dtype=object)
-	# 	result_dictionary['vortex_directionVec'] = np.asarray(vortex_directionVec, dtype=object)
-	# 	result_dictionary['directionVec_bv'] = np.asarray(directionVec_bv, dtype=object)
-	# 	result_dictionary['normalVec'] = np.asarray(normalVec, dtype=object)
+	if trackBWIevents:
+		result_dictionary['BWI_plot'] = np.asarray(BWI_plot, dtype=object)
 
 	if elastic_twist is not None:
 		result_dictionary['elastic_twist_array'] = elastic_twist_array
