@@ -22,7 +22,7 @@
 		type: "points",
 		radii_relative: false,
 		// Rotor 0 is the rotor to be relative to
-		reference_rotor: 0,
+		reference_rotor: 1,
 		layout: [16, 16, 1],
 		//"nb": [2, 2, 1],
 		x: [4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0, 4.0,

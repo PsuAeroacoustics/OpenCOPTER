@@ -1,0 +1,12 @@
+&Casename
+	globalFolderName = './Tander_system_rotor_only/FF_30mps_aoa_0_acoustics_multiple_obs/acoustics/full_system/'
+	caseNameFile = 'case.nam'
+/
+&Casename
+	globalFolderName = './Tander_system_rotor_only/FF_30mps_aoa_0_acoustics_multiple_obs/acoustics/rotor_1/'
+	caseNameFile = 'case.nam'
+/
+&Casename
+	globalFolderName = './Tander_system_rotor_only/FF_30mps_aoa_0_acoustics_multiple_obs/acoustics/rotor_0/'
+	caseNameFile = 'case.nam'
+/
