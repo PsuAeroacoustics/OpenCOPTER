@@ -928,6 +928,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 			loading_data.time = dt*acoustic_iteration
 
 			if converged:
+				if trim_mode == TRIM_MODE_SHARED_COLLECTIVE:
+					for trim_group in range(num_trim_groups):
+						collective_pitch_array[trim_group, acoustic_iteration] = thetas[trim_group, 1]
+				else:
+					for rotor_idx in range(num_rotors):
+						collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]
+
 				# print('converged: acoustic_iteration:', acoustic_iteration);
 				if write_wake and (converged_revolutions >= (post_conv_revolutions - 1)):
 					for rotor_idx in range(num_rotors):
@@ -1039,7 +1046,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 						sin3_azimuth = math.cos(3.0*(blade_azimuth) - (psi_3 - math.pi))
 
-						collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]#get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
+						#collective_pitch_array[rotor_idx, acoustic_iteration] = thetas[rotor_idx, 1]#get_blade_pitch(vehicle.input_state, rotor_idx, blade_idx)
 						#collective_pitch_array[rotor_idx, acoustic_iteration] = vehicle.input_state.rotor_inputs[rotor_idx].blade_pitches[blade_idx] # thetas[rotor_idx, 1]
 						sin_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1s[rotor_idx]
 						cos_pitch_array[rotor_idx, blade_idx, acoustic_iteration] = theta_1c[rotor_idx]
