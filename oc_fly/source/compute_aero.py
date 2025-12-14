@@ -251,11 +251,14 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 		name = component_json["name"] + "_" + str(ref_count)
 
 	component_frame = Frame(angle_axis, angle, origin, parent_frame, name, frame_type)
+	#location_in_local_frame = component_frame.get_origin_in_frame_coordinate(Vec4([origin[0], origin[1], origin[2], 1.0]))
+	#component_frame.translate(Vec3([location_in_local_frame[0], location_in_local_frame[1], location_in_local_frame[2]]))
 	# Nitya: Frame- opencopter/aircraft/geometry.d
 
 	if frame_type == FrameType_rotor():
 
 		current_rotor_radius = component_json["radius"]
+		component_frame.set_rotation(Vec3([0.0, 0.0, 1.0]), math.pi)
 
 	elif frame_type == FrameType_blade():
 
@@ -288,7 +291,7 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 	
 	if frame_type == FrameType_rotor():
 
-		rotating_rotor_frame = Frame(angle_axis, angle, origin, component_frame, name, frame_type)
+		rotating_rotor_frame = Frame(Vec3([1.0, 0.0, 0.0]), 0.0, Vec3([0, 0, 0]), component_frame, name, frame_type)
 		rotating_rotor_frame.children = child_components
 		for child in child_components:
 			child.parent = rotating_rotor_frame
@@ -304,7 +307,8 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 		blades = []
 
 	elif frame_type == FrameType_wing():
-		wing = build_wing(component_frame)
+		component_frame.children = child_components
+		wing = build_wing(component_frame, 8, 4, component_json)
 		wings.append(wing)
 
 	else:
@@ -313,17 +317,51 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 
 	return component_frame, rotors, blades, wings
 
-def build_wing(num_wing_parts, frame, num_span_elements, num_chord_elements, wing_span):
+def build_wing(frame, num_span_elements, num_chord_elements, component_json):
+	num_wing_parts = component_json["num_wing_parts"]
+	wing_span = component_json["span"]
+	wing_part_span = wing_span/num_wing_parts
+	avg_chord = component_json["avg_chord"] if "avg_chord" in component_json else 0.1*wing_part_span
+	root_chord = component_json["root_chord"] if "root_chord" in component_json else avg_chord
+	tip_chord = component_json["tip_chord"] if "tip_chord" in component_json else avg_chord
+	LE_sweep = component_json["LE_sweep"] if "LE_sweep" in component_json else 0.0
+	TE_sweep = component_json["TE_sweep"] if "TE_sweep" in component_json else 0.0
 	
+	lamda = tip_chord/root_chord
+	quarted_chord_sweep = math.tan(LE_sweep) - (root_chord - tip_chord)/(2.0*wing_span)
+	
+	wing_y = generate_spanwise_control_points(num_span_elements)
+
+	chord_dist = np.asarray([(root_chord*(1.0 - (1.0 - lamda)*(abs(y)*2))) for y in wing_y])
+	sweep_dist = np.asarray([(quarted_chord_sweep*abs(y)) for y in wing_y])
+	twist_dist = np.asarray([0.0 for y in wing_y])
+
 	wing = WingGeometry(
 		num_wing_parts,
 		origin = Vec3([0.0, 0.0, 0.0]),
 		wing_span = wing_span
 	)
 
+	for wp_idx in range(num_wing_parts):
+		if wp_idx % 2 == 0:
+			loc = location_right_wing()
+		else:
+			loc = location_left_wing()
+
+		wing_part_geom = build_wing_part_geometry(num_span_elements, num_chord_elements, Vec3([0.0, 0.0, 0.0]), avg_chord, root_chord, tip_chord, LE_sweep, TE_sweep, wing_span, loc)
+
+		set_wing_chord(wing_part_geom,chord_dist)
+		set_wing_twist(wing_part_geom, twist_dist)
+		set_wing_sweep(wing_part_geom, sweep_dist)
+		set_wing_y_span(wing_part_geom, wing_y)
+
+		wing.wing_parts[wp_idx] = wing_part_geom
+	
+
 	wing.frame = frame
 
 	print("\n wing frame name: ", wing.frame.name)
+	set_wing_ctrl_pt_geometry(wing, num_wing_parts, num_chord_elements, 0.0)
 
 	return wing
 	
@@ -525,6 +563,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 						elif motion_vec_dict[child.name][1] == "static":
 							log_file.write(f"Adding static motion lambda for frame {child.name}\n")
 							angle = child_motion["angle"]*(math.pi/180.0)
+							vector =  motion_vec_dict[child.name][0]
+							print("frame_name = ",child.name, "ange = ", angle, "vec = ", vector[0], ' ', vector[1], ' ', vector[2])
 							motion_lambda = lambda rotor_inputs, _r_idx=r_idx, angle=angle, frame=child, vec=motion_vec_dict[child.name][0]: static_motion(angle, vec, frame, rotor_inputs, _r_idx)
 
 						sub_motion_lambdas.append(deepcopy(motion_lambda))
@@ -608,7 +648,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	if "span_elements" in computational_parameters:
 		span_elements = computational_parameters["span_elements"]
-		span_chunks = int(span_elements/chunk_size())
+	span_chunks = int(span_elements/chunk_size())
 
 	if "chord_elements" in computational_parameters:
 		chord_elements = computational_parameters["chord_elements"]
@@ -668,7 +708,28 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[w_idx], span_chunks, chord_elements)
 		
 		print("wing vortex geometry is set")
-	rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+
+	if "inflow_model" in flight_condition:
+		if isinstance(flight_condition["inflow_model"], list):
+			def create_inflow(name, rotor_idx):
+				if name == "huang_peters":
+					if num_blades[rotor_idx] != 2:
+						return HuangPeters(4, 2, rotorcraft_system.rotors[rotor_idx], rotorcraft_input_state.rotor_inputs[rotor_idx], dt)
+					else:
+						return HuangPeters(2, 1, rotorcraft_system.rotors[rotor_idx], rotorcraft_input_state.rotor_inputs[rotor_idx], dt)
+
+				elif name == "null_inflow":
+					return NullInflow(rotorcraft_system.rotors[rotor_idx], rotorcraft_input_state.rotor_inputs[rotor_idx])
+			
+			rotorcraft_inflows = [create_inflow(name, rotor_index) for rotor_index, name in enumerate(flight_condition["inflow_model"])]
+		else:
+			if flight_condition["inflow_model"] == "huang_peters":
+				rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+			elif flight_condition["inflow_model"] == "null_inflow":
+				rotorcraft_inflows = [NullInflow(rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx]) for r_idx in range(num_rotors)]
+	else:
+		rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+	
 	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
 	#print(len(wing_inflows))
 	print("instantiated inflows")

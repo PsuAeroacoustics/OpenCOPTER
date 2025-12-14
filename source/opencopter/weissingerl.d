@@ -233,7 +233,7 @@ struct WeissingerL(ArrayContainer AC) {
 				gamma[c1] += tmp.sum;
 			}
 
-			gamma[c1] *= -sgn(direction_multiplier);
+			gamma[c1] *= sgn(direction_multiplier);
 		}
 		return gamma;
 	}
