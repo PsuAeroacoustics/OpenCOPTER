@@ -38,7 +38,7 @@ def calculate_sound_power_level(oaspl_db,area):
 
 	return sound_power_level
 
-FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name")
+FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name bwi_params")
 
 def find_frame(root_frame, frame_name):
 	if root_frame.name == frame_name:
@@ -51,7 +51,7 @@ def find_frame(root_frame, frame_name):
 
 	return None
 
-def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory):
+def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory):
 
 	motions = flight_condition["motion"] if "motion" in flight_condition else None
 	if "vsp" in aircraft:
@@ -203,7 +203,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 	total_wake_history = wake_history_length.sum()
 	print(f"wake_history_length {wake_history_length} total_wake_history {total_wake_history}")
-	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'])
+	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'], bwi_params)
 
 def main():
 	# push check
@@ -423,6 +423,7 @@ def main():
 	input_flight_conditions = None
 	input_computational_parameters = None
 	input_results = None
+	bwi_params = None
 
 	if args.observer_param is not None:
 		with open(args.observer_param) as param_file:
@@ -438,6 +439,7 @@ def main():
 		input_flight_conditions = param["flight_conditions"]
 		input_computational_parameters = param["computational_parameters"]
 		input_results = param["results"] if "results" in param else None
+		bwi_params = param["bwi_params"] if "bwi_params" in param else None
 	
 	flat_cases = []
 	for ac_idx, aircraft in enumerate(geom):
@@ -538,7 +540,7 @@ def main():
 					ac_acoustics = pyjson5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
-			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory))
+			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory))
 		# else:
 		# 	print(f'Only running case {args.ci}')
 		# 	flight_condition = flight_conditions[args.ci]
