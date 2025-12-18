@@ -491,6 +491,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	rotorcraft_system = case.aircraft
 	motion_vec_dict = case.motion_vec_dict
 	trim_vec_dict = case.trim_vec_dict
+	bwi_params = case.bwi_params
 
 	num_rotors = rotorcraft_system.rotors.length()
 	num_wings = rotorcraft_system.wings.length()
@@ -796,6 +797,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			wake_history_length,
 			results,
 			wopwop_motion,
+			bwi_params,
 			args.geom_directory
 		)
 
