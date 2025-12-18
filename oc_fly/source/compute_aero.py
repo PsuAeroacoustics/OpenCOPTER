@@ -140,6 +140,7 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		theta_tw_1 = blade_object['theta_tw']
 		twist = np.asarray([(_r - 0.75)*theta_tw_1*(1/(1 - r_c))*(math.pi/180.0) for _r in generate_radius_points(requested_elements, r_c)])
 
+	print("twist (deg): ", twist*(180.0/math.pi))
 	x_over_c = np.asarray(linear_x)/np.asarray(linear_c)
 	
 	f_x_over_c = interp1d(linear_r, x_over_c, bounds_error=False, fill_value='extrapolate')
@@ -308,7 +309,10 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 
 	elif frame_type == FrameType_wing():
 		component_frame.children = child_components
-		wing = build_wing(component_frame, 8, 4, component_json)
+		span_elements= component_json["span_elements"] if "span_elements" in component_json else 8
+		print("\n building wing: span_elemtns = ", span_elements)
+		num_chord_elements = component_json["chord_elements"] if "chord_elements" in component_json else 4
+		wing = build_wing(component_frame, span_elements, num_chord_elements, component_json)
 		wings.append(wing)
 
 	else:
@@ -330,7 +334,7 @@ def build_wing(frame, num_span_elements, num_chord_elements, component_json):
 	lamda = tip_chord/root_chord
 	quarted_chord_sweep = math.tan(LE_sweep) - (root_chord - tip_chord)/(2.0*wing_span)
 	
-	wing_y = generate_spanwise_control_points(num_span_elements)
+	wing_y = generate_spanwise_control_points(num_span_elements) ### make sure that the input of chord distribution is normalized
 
 	chord_dist = np.asarray([(root_chord*(1.0 - (1.0 - lamda)*(abs(y)*2))) for y in wing_y])
 	sweep_dist = np.asarray([(quarted_chord_sweep*abs(y)) for y in wing_y])
@@ -350,7 +354,7 @@ def build_wing(frame, num_span_elements, num_chord_elements, component_json):
 
 		wing_part_geom = build_wing_part_geometry(num_span_elements, num_chord_elements, Vec3([0.0, 0.0, 0.0]), avg_chord, root_chord, tip_chord, LE_sweep, TE_sweep, wing_span, loc)
 
-		set_wing_chord(wing_part_geom,chord_dist)
+		set_wing_chord(wing_part_geom, chord_dist)
 		set_wing_twist(wing_part_geom, twist_dist)
 		set_wing_sweep(wing_part_geom, sweep_dist)
 		set_wing_y_span(wing_part_geom, wing_y)
@@ -361,7 +365,7 @@ def build_wing(frame, num_span_elements, num_chord_elements, component_json):
 	wing.frame = frame
 
 	print("\n wing frame name: ", wing.frame.name)
-	set_wing_ctrl_pt_geometry(wing, num_wing_parts, num_chord_elements, 0.0)
+	set_wing_ctrl_pt_geometry(wing, num_span_elements, num_chord_elements, 0.0)
 
 	return wing
 	
@@ -648,6 +652,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	if "span_elements" in computational_parameters:
 		span_elements = computational_parameters["span_elements"]
+	print("span_elements from computational parameters = ", span_elements)
 	span_chunks = int(span_elements/chunk_size())
 
 	if "chord_elements" in computational_parameters:

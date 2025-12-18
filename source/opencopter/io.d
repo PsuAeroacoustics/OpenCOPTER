@@ -279,7 +279,7 @@ double[] cubic_bezier_approx(double[], double[], double[]) {
 	return new double[0];
 }
 
-AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t elements = 48, size_t span_elements = 32, size_t chord_elements = 4) {
+AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, bool is_half_wing, size_t elements = 48, size_t span_elements = 8, size_t chord_elements = 4) {
 
 	AircraftT!AC ac;
 
@@ -446,7 +446,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 		if(frame_type == FrameType.rotor) {
 			frame.rotate(Vec3(0, 0, 1), (z_rel_rot_nodes[0].getAttribute("Value").to!double + 180.0)*(PI/180.0));
-			frame.rotate(Vec3(0, 1, 0), -(y_rel_rot_nodes[0].getAttribute("Value").to!double - 90.0)*(PI/180.0));
+			frame.rotate(Vec3(0, 1, 0), (y_rel_rot_nodes[0].getAttribute("Value").to!double - 90.0)*(PI/180.0));
 			frame.rotate(Vec3(1, 0, 0), x_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
 		} else {
 			frame.rotate(Vec3(0, 0, 1), z_rel_rot_nodes[0].getAttribute("Value").to!double*(PI/180.0));
@@ -684,7 +684,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		return rotors;
 	}
 
-	WingGeometryT!AC*[] build_oc_wing(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent) {
+	WingGeometryT!AC*[] build_oc_wing(VspFrameData* frame_data, VspFrameData* parent_frame_data, bool symmetry_applied, bool symmetry_parent, bool half_wing) {
 
 		writeln("\n Going into build_oc_wing");
 
@@ -728,8 +728,8 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 				);
 
 				writeln("went into symmetry check");
-				wings ~= build_oc_wing(child1_frame_data, frame_data, true, false);
-				wings ~= build_oc_wing(child2_frame_data, frame_data, true, true);
+				wings ~= build_oc_wing(child1_frame_data, frame_data, true, false, is_half_wing);
+				wings ~= build_oc_wing(child2_frame_data, frame_data, true, true, is_half_wing);
 				
 				writeln("pass symmetry check");
 			} else {
@@ -746,7 +746,7 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 					geom_dict[child_id].xml_node
 				);
 
-				wings ~= build_oc_wing(new_frame, frame_data, symmetry_applied, symmetry_parent);
+				wings ~= build_oc_wing(new_frame, frame_data, symmetry_applied, symmetry_parent, is_half_wing);
 				writeln("pass symmetry check: else");
 			}
 		}
@@ -767,11 +767,11 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 
 			auto x_sec_array = frame_data.xml_node.parseXPath("WingGeom/XSecSurf/XSec");
 			size_t num_wing_parts = 2*(x_sec_array.length - 1);
-
-			if(frame_data.symmetry != PlanarSymetry.none){
-				num_wing_parts = 2*(x_sec_array.length - 1);
+			writeln("half_wing: ", half_wing);
+			if(half_wing){
+				num_wing_parts = (x_sec_array.length - 1);
 			}else{
-				num_wing_parts = x_sec_array.length - 1;
+				num_wing_parts = 2*(x_sec_array.length - 1);
 			}
 			writeln("\nnum_wing_parts = ", num_wing_parts);
 
@@ -930,21 +930,13 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 		root_component.frame.parent = ac.root_frame;
 			
 		rotors ~= build_oc_rotor(&root_component, null, false, false);
-		wings ~= build_oc_wing(&root_component, null, false, false);
+		wings ~= build_oc_wing(&root_component, null, false, false, is_half_wing);
 
 		foreach(child; root_component.frame.children){
 			writeln("\nroot component children = ", child.name);
 		}
 	}
 
-	if (wings.length > 0){
-		writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
-		writeln("wing frame: ", wings[0].frame.name);
-	}
-	if (rotors.length > 0){
-		writeln("rotors.length: ", rotors.length);
-		writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
-	}
 
 	ac.rotors = new RotorGeometryT!AC[rotors.length];
 	ac.wings = new WingGeometryT!AC[wings.length];
@@ -960,6 +952,15 @@ AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t
 	ac.root_frame.update(Mat4.identity);
 
 	ac.root_frame.print_frame();
+
+	if (wings.length > 0){
+		writeln("number of wing parts in wing: ", wings[0].wing_parts.length);
+		writeln("wing frame: ", wings[0].frame.local_matrix, wings[0].frame.global_matrix);
+	}
+	if (rotors.length > 0){
+		writeln("rotors.length: ", rotors.length);
+		writeln("rotors[$-1].blades[$-1].chunks.length: ", rotors[$-1].blades[$-1].chunks.length);
+	}
 
 	return ac;
 }

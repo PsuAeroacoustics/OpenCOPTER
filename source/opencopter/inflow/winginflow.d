@@ -296,8 +296,8 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
             foreach (span_idx; 0..num_span_chunks){
                 wing_part_state.circulation_model.compute_dCl(wing_lift_surf,wing_part_state,wp_idx,span_idx);
                 //wing_part_state.chunks[span_idx].dC_L[] /= root_chord; //circulation is multiplied by root chord in compute_d_gamma_circulation, so Cl need to be devided by it
-                dC_L[c_idx][] = wing_part_state.chunks[span_idx].dC_L[];
-                c_idx++;
+                //dC_L[c_idx][] = wing_part_state.chunks[span_idx].dC_L[];
+                //c_idx++;
             }
 
             //compute_wing_C_L(wing_lift_surf, wing, wing_state);

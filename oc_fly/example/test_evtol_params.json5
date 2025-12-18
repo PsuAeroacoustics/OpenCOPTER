@@ -21,6 +21,8 @@
 		convergence_rev_multiple: 1,
 		r_0: [0.9, 0.9, 0.9, 0.9],
 		a1: 1.0e-5,
+		is_half_wing: false,
+        trackBWIevents: false
 	},
 	flight_conditions: [
 		{
@@ -55,7 +57,7 @@
 				{
 					frame: "LiftRotor",
 					blade_element_func: "rotation",
-					omega: 200
+					omega: -200
 				},
 				{
 					frame: "LiftRotor_symmetry",
@@ -65,7 +67,7 @@
 				{
 					frame: "CruiseProp",
 					blade_element_func: "rotation",
-					omega: 200
+					omega: -200
 				},
                 {
 					frame: "CruiseProp_symmetry",
