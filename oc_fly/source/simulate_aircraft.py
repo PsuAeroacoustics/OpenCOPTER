@@ -86,12 +86,12 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 
 	for r_idx in range(num_rotors):
 		origin = vehicle.aircraft.rotors[r_idx].frame.global_position()
-		#print(f'{vehicle.aircraft.rotors[r_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		print(f'{vehicle.aircraft.rotors[r_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
 
 	for wing_idx in range(num_wings):
 		#print("writing wing vtu")
 		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
-		#print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
 	
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))
 	C_T_len = np.round(2.0*math.pi/(dt*np.abs(omegas))).astype(dtype=np.int64)

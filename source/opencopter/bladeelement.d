@@ -137,23 +137,24 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		wake_global_vel[1][] = wake_velocities.v_y[] + wing_global_infow[1][];
 		wake_global_vel[2][] = wake_velocities.v_z[] + wing_global_infow[2][];
 
-		/*writeln("wake_velocities: ");
-		writeln("\tv_x = ", wake_velocities.v_x[]);
-		writeln("\tv_y = ", wake_velocities.v_y[]);
-		writeln("\tv_z = ", wake_velocities.v_z[]);
-		writeln("wing global inflow: ");
-		writeln("\tv_x = ", wing_global_infow[0][]);
-		writeln("\tv_y = ", wing_global_infow[1][]);
-		writeln("\tv_z = ", wing_global_infow[2][]);*/
-
 		shed_wake_global_vel[0][] = shed_wake_velocities.v_x[];
 		shed_wake_global_vel[1][] = shed_wake_velocities.v_y[];
 		shed_wake_global_vel[2][] = shed_wake_velocities.v_z[];
 
-		/*writeln("shed wake velocities: ");
-		writeln("\tv_x = ", shed_wake_velocities.v_x[]);
-		writeln("\tv_y = ", shed_wake_velocities.v_x[]);
-		writeln("\tv_z = ", shed_wake_velocities.v_x[]);*/
+		/*if(iteration > 0){
+			writeln("wake_velocities: ");
+			writeln("\tv_x = ", wake_velocities.v_x[]);
+			writeln("\tv_y = ", wake_velocities.v_y[]);
+			writeln("\tv_z = ", wake_velocities.v_z[]);
+			writeln("wing global inflow: ");
+			writeln("\tv_x = ", wing_global_infow[0][]);
+			writeln("\tv_y = ", wing_global_infow[1][]);
+			writeln("\tv_z = ", wing_global_infow[2][]);
+			writeln("shed wake velocities: ");
+			writeln("\tv_x = ", shed_wake_velocities.v_x[]);
+			writeln("\tv_y = ", shed_wake_velocities.v_x[]);
+			writeln("\tv_z = ", shed_wake_velocities.v_x[]);
+		}*/
 
 		immutable total_vel_vec = blade.frame.inverse_global_matrix * (wake_global_vel + ac_state.freestream);  // back corrected!!
 		immutable shed_vel_vec = blade.frame.inverse_global_matrix * shed_wake_global_vel; // back corrected!!

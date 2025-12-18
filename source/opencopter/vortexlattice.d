@@ -39,7 +39,8 @@ double[] generate_chordwise_votex_nodes(size_t chord_n_sections) {
 	import std.math : cos, PI;
 	import std.range : iota, retro;
 	// Spanwise Votex nodes
-	immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
+	//immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
+    immutable num_points = chord_n_sections;
 	return iota(1.0,num_points + 1.0).map!((k){
 		immutable theta = (2*k-1)*PI/(2.0*(num_points.to!double));
 		auto chord_vortex_pt = 0.5*(1 - cos(theta)).to!double;
@@ -380,33 +381,47 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
             immutable Chunk fac2_t2_den_square = x_1mb[]*x_1mb[] + y_1mb[]*y_1mb[] + z_1mb[]*z_1mb[];
             immutable Chunk fac2_t1_den = sqrt(fac2_t1_den_square);
             immutable Chunk fac2_t2_den = sqrt(fac2_t2_den_square);
+            immutable Chunk dl_AB_mag_square = x_amb[]*x_amb[] + y_amb[]*y_amb[] + z_amb[]*z_amb[];
+            immutable Chunk dl_AB_mag = sqrt(dl_AB_mag_square); 
             
             //debug writeln("fac2_t1_den : ", fac2_t1_den[]);
             //debug writeln("fac2_t2_den : ", fac2_t2_den[]);
             immutable Chunk fac2_t1 = -(x_amb[]*x_1ma[] + y_amb[]*y_1ma[] + z_amb[]*z_1ma[])/fac2_t1_den[];
             immutable Chunk fac2_t2 = -(x_amb[]*x_1mb[] + y_amb[]*y_1mb[] + z_amb[]*z_1mb[])/fac2_t2_den[];
-            immutable Chunk fac2_ab = fac2_t1[] - fac2_t2[];
+            immutable Chunk fac2_ab = (fac2_t1[] - fac2_t2[])/dl_AB_mag[];
   
-            immutable Chunk AB_cross_mag_1 = (y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[])*(y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[]);
+            /*immutable Chunk AB_cross_mag_1 = (y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[])*(y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[]);
             immutable Chunk AB_cross_mag_2 = (x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[])*(x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[]);
             immutable Chunk AB_cross_mag_3 = (x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[])*(x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[]);
-            immutable Chunk AB_cross_mag_suare = AB_cross_mag_1[] + AB_cross_mag_2[] + AB_cross_mag_3[];
+            immutable Chunk AB_cross_mag_suare = AB_cross_mag_1[] + AB_cross_mag_2[] + AB_cross_mag_3[];*/
+
+            immutable Chunk r1_mag_sqre = (x_1ma[]*x_1ma[] + y_1ma[]*y_1ma[] + z_1ma[]*z_1ma[]);
+            immutable Chunk r2_mag_sqre = (x_1mb[]*x_1mb[] + y_1mb[]*y_1mb[] + z_1mb[]*z_1mb[]);
+            immutable Chunk r1a_mag = sqrt(r1_mag_sqre);
+            immutable Chunk r1b_mag = sqrt(r2_mag_sqre);
             
             //debug writeln("AB_cross_mag_1 : ", AB_cross_mag_1);
             //debug writeln("AB_cross_mag_2 : ", AB_cross_mag_2);
             //debug writeln("AB_cross_mag_3 : ", AB_cross_mag_3);
 
-            immutable Chunk AB_cross_x = (y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[])/AB_cross_mag_suare[];
-            immutable Chunk AB_cross_y = -(x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[])/AB_cross_mag_suare[];
-            immutable Chunk AB_cross_z = (x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[])/AB_cross_mag_suare[];
+            immutable Chunk AB_cross_x = (y_1ma[]*z_1mb[] - y_1mb[]*z_1ma[])/(r1a_mag[]*r1b_mag[]);
+            immutable Chunk AB_cross_y = -(x_1ma[]*z_1mb[] - x_1mb[]*z_1ma[])/(r1a_mag[]*r1b_mag[]);
+            immutable Chunk AB_cross_z = (x_1ma[]*y_1mb[] - x_1mb[]*y_1ma[])/(r1a_mag[]*r1b_mag[]);
             
             //debug writeln("AB_cross_mag_x : ", AB_cross_x);
             //debug writeln("AB_cross_mag_y : ", AB_cross_y);
             //debug writeln("AB_cross_mag_z : ", AB_cross_z);
+            immutable Chunk AP_cross_l_square = (-y_1ma[]*z_amb[] + y_amb[]*z_1ma[])*(-y_1ma[]*z_amb[] + y_amb[]*z_1ma[]) + (-x_amb[]*z_1ma[] + x_1ma[]*z_amb[])*(-x_amb[]*z_1ma[] + x_1ma[]*z_amb[]) + (-x_1ma[]*y_amb[] + x_amb[]*y_1ma[])*(-x_1ma[]*y_amb[] + x_amb[]*y_1ma[]);
+            immutable Chunk AP_cross_l = sqrt(AP_cross_l_square);
+            immutable Chunk h_AB = AP_cross_l[]/dl_AB_mag[];
+            immutable Chunk c_r = 0.001;
 
-            immutable Chunk AB_v_x = AB_cross_x[]*fac2_ab[];
-            immutable Chunk AB_v_y = AB_cross_y[]*fac2_ab[];
-            immutable Chunk AB_v_z = AB_cross_z[]*fac2_ab[];
+            immutable Chunk miss_dist = h_AB[]*h_AB[] + c_r[]*c_r[];
+            immutable Chunk denom = 1.0/miss_dist[];
+
+            immutable Chunk AB_v_x = AB_cross_x[]*fac2_ab[]*denom[];
+            immutable Chunk AB_v_y = AB_cross_y[]*fac2_ab[]*denom[];
+            immutable Chunk AB_v_z = AB_cross_z[]*fac2_ab[]*denom[];
             
             //debug writeln("AB_v_x = ", AB_v_x);
             //debug writeln("AB_v_y = ", AB_v_y);
@@ -423,17 +438,24 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
             
             immutable Chunk AD_fac2_t1 = -(x_1md[])/AD_fac2_t1_den[];
             immutable Chunk AD_fac2_t2 = x_1ma[]/AD_fac2_t2_den[];
-            immutable Chunk AD_fac2 = x_dma[]*(AD_fac2_t1[] + AD_fac2_t2[]);
+            immutable Chunk AD_fac2 = -(AD_fac2_t1[] + AD_fac2_t2[]);
             
             //debug writeln("point_idx : ", n_idx, "\tAD_fac2_t1 : ", AD_fac2_t1, "\tAD_fac_2_t2 : ", AD_fac2_t2);
+            immutable Chunk r1d_mag_sqre = (x_1md[]*x_1md[] + y_1ma[]*y_1ma[] + z_1ma[]*z_1ma[]);
+            immutable Chunk r1d_mag = sqrt(r1d_mag_sqre);
 
-            immutable Chunk AD_fac1_den = (z_1ma[]*z_1ma[] + y_1ma[]*y_1ma[])*x_dma[];
-            immutable Chunk AD_cross_y = z_1ma[]/AD_fac1_den[];
-            immutable Chunk AD_cross_z = -y_1ma[]/AD_fac1_den[];
+            //immutable Chunk AD_fac1_den = (z_1ma[]*z_1ma[] + y_1ma[]*y_1ma[])*x_dma[];
+            immutable Chunk AD_cross_y = z_1ma[]*x_dma[]/(r1a_mag[]*r1d_mag[]);
+            immutable Chunk AD_cross_z = -y_1ma[]*x_dma[]/(r1a_mag[]*r1d_mag[]);
 
+            immutable Chunk AP_cross_l_AD_square = (z_1ma[]*x_dma[])*(z_1ma[]*x_dma[]) + (x_dma[]*y_1ma[])*(x_dma[]*y_1ma[]);
+            immutable Chunk AP_cross_l_AD = sqrt(AP_cross_l_AD_square);
+            immutable Chunk h_AD = AP_cross_l_AD[]/x_dma[];
+            immutable Chunk miss_dist_AD = h_AD[]*h_AD[] + c_r[]*c_r[];
+            immutable Chunk denom_AD = 1.0/miss_dist_AD[];
                 // AD_v_x = 0
-            immutable Chunk AD_v_y = AD_cross_y[]*AD_fac2[];
-            immutable Chunk AD_v_z = AD_cross_z[]*AD_fac2[];
+            immutable Chunk AD_v_y = AD_cross_y[]*AD_fac2[]*denom_AD[];
+            immutable Chunk AD_v_z = AD_cross_z[]*AD_fac2[]*denom_AD[];
 
             //induced velocity due to vortex BC
             immutable Chunk BC_fac2_t1_den_square = x_1mc[]*x_1mc[] + y_1mb[]*y_1mb[] + z_1mb[]*z_1mb[];
@@ -442,15 +464,24 @@ InducedVelocities compute_horseshoe_vortex_induce_vel(WFC)(auto ref WFC wing_fil
             immutable Chunk BC_fac2_t2_den = sqrt(BC_fac2_t2_den_square);
             immutable Chunk BC_fac2_t1 = -x_1mc[]/BC_fac2_t1_den[];
             immutable Chunk BC_fac2_t2 = x_1mb[]/BC_fac2_t2_den[];
-            immutable Chunk BC_fac2 = x_cmb[]*(BC_fac2_t1[] + BC_fac2_t2[]);
+            immutable Chunk BC_fac2 = (BC_fac2_t1[] + BC_fac2_t2[]);
 
-            immutable Chunk BC_fac1_den = (z_1mb[]*z_1mb[] + y_1mb[]*y_1mb[])*x_cmb[];
-            immutable Chunk BC_cross_y = (z_1mb[])/BC_fac1_den[];
-            immutable Chunk BC_cross_z = -(y_1mb[])/BC_fac1_den[];
+            immutable Chunk r1c_mag_sqre = (x_1mc[]*x_1mc[] + y_1mb[]*y_1mb[] + z_1mb[]*z_1mb[]);
+            immutable Chunk r1c_mag = sqrt(r1c_mag_sqre);
+
+            //immutable Chunk BC_fac1_den = (z_1mb[]*z_1mb[] + y_1mb[]*y_1mb[])*x_cmb[];
+            immutable Chunk BC_cross_y = -(z_1mb[])*x_cmb[]/(r1b_mag[]*r1c_mag[]);
+            immutable Chunk BC_cross_z = (y_1mb[])*x_cmb[]/(r1b_mag[]*r1c_mag[]);
+
+            immutable Chunk BP_cross_l_BC_square = (z_1mb[]*x_cmb[])*(z_1mb[]*x_cmb[]) + (x_cmb[]*y_1mb[])*(x_cmb[]*y_1mb[]);
+            immutable Chunk BP_cross_l_BC = sqrt(BP_cross_l_BC_square);
+            immutable Chunk h_BC = BP_cross_l_BC[]/x_cmb[];
+            immutable Chunk miss_dist_BC = h_BC[]*h_BC[] + c_r[]*c_r[];
+            immutable Chunk denom_BC = 1.0/miss_dist_BC[];
 
                 //BC_v_x = 0
-            immutable Chunk BC_v_y = BC_cross_y[]*BC_fac2[];
-            immutable Chunk BC_v_z = BC_cross_z[]*BC_fac2[];
+            immutable Chunk BC_v_y = BC_cross_y[]*BC_fac2[]*denom_BC[];
+            immutable Chunk BC_v_z = BC_cross_z[]*BC_fac2[]*denom_BC[];
 
             immutable Chunk circulation = gamma[]*one_over_four_pi[];
 
@@ -497,9 +528,9 @@ InducedVelocities compute_wing_induced_vel(WLS)(auto ref WLS wing_lift_surface, 
                 auto ind_vel = compute_horseshoe_vortex_induce_vel(horseshoe_vortex.chunks, x, y, z);
                 if(del_y < 0){
                     // induced velocity by left wing
-                    ret.v_x[] -= ind_vel.v_x[];   
-                    ret.v_y[] -= ind_vel.v_y[];
-                    ret.v_z[] -= ind_vel.v_z[];
+                    ret.v_x[] += ind_vel.v_x[];   
+                    ret.v_y[] += ind_vel.v_y[];
+                    ret.v_z[] += ind_vel.v_z[];
                 }else{
                     // induced velocity by right wing
                     ret.v_x[] += ind_vel.v_x[];
@@ -515,9 +546,9 @@ InducedVelocities compute_wing_induced_vel(WLS)(auto ref WLS wing_lift_surface, 
                 auto ind_vel = compute_horseshoe_vortex_induce_vel(horseshoe_vortex.chunks, x, y, z);
                 if(wp_idx%2 == 0){
                     // induced velocity by left wing
-                    ret.v_x[] -= ind_vel.v_x[];   
-                    ret.v_y[] -= ind_vel.v_y[];
-                    ret.v_z[] -= ind_vel.v_z[];
+                    ret.v_x[] += ind_vel.v_x[];   
+                    ret.v_y[] += ind_vel.v_y[];
+                    ret.v_z[] += ind_vel.v_z[];
                 }else{
                     // induced velocity by right wing
                     ret.v_x[] += ind_vel.v_x[];
@@ -718,7 +749,7 @@ struct VortexLatticeT(ArrayContainer AC) {
 				influence_inv[r][ch][] = _influence_inv[r][ch*chunk_size..ch*chunk_size+chunk_size];
 			}
 		}
-        writeln("inf_inv= ", influence_inv);
+        writeln("inf_inv size= ", influence_inv.length);
     }
 
     void compute_d_gamma_coefficients(WLS,WS)(auto ref WLS wing_lift_surface, auto ref WS wing_part_state, size_t wp_idx, size_t span_chunk_idx, size_t chord_node_idx){ 

@@ -51,11 +51,11 @@ def find_frame(root_frame, frame_name):
 
 	return None
 
-def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory):
+def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory, is_half_wing):
 
 	motions = flight_condition["motion"] if "motion" in flight_condition else None
 	if "vsp" in aircraft:
-		rotorcraft_system = create_aircraft_from_vsp(path.join(geom_directory, aircraft["vsp"]))
+		rotorcraft_system = create_aircraft_from_vsp(path.join(geom_directory, aircraft["vsp"]), is_half_wing)
 		rotorcraft_system.root_frame.name = aircraft["name"]
 		trim_vec_dict = {}
 		motion_vec_dict = {}
@@ -111,7 +111,7 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 								extents.append(extent)
 								airfoils.append(airfoil)
 								af_thickness.append(airfoil_desc['thickness'])
-								af_r.append(0.5*(extent[0] + extent[1])/extent)
+								af_r.append(0.5*(extent[0] + extent[1]) / extent)
 
 							if len(af_r) == 1:
 								af_r.append(extent[1]/elements)
@@ -121,7 +121,6 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 							f_thickness = interp1d(af_r, af_thickness, bounds_error=False, fill_value='extrapolate')
 
-							
 							thickness = f_thickness(r)
 							
 							set_thickness(blade, thickness)
@@ -517,9 +516,13 @@ def main():
 		elif ac_param is not None:
 			if 'results' in ac_param:
 				results = ac_param['results']
+		
 
 		#if args.ci is None:
 		for flight_condition in flight_conditions_for_ac:
+			is_half_wing = flight_condition["is_half_wing"] if "is_half_wing" in flight_condition else True
+
+			print("is_half_wing in oc_fly:", is_half_wing)
 			observer = None
 			acoustics = None
 			if input_observer is not None:
@@ -538,7 +541,7 @@ def main():
 					ac_acoustics = pyjson5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
-			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory))
+			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory, is_half_wing))
 		# else:
 		# 	print(f'Only running case {args.ci}')
 		# 	flight_condition = flight_conditions[args.ci]

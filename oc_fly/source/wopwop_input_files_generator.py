@@ -181,7 +181,7 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	aircraft_frame_change.AxisType = AxisType_time_independant()
 	aircraft_frame_change.AxisValue = FVec3([0, 0, 1])
 	aircraft_frame_change.AngleType = AngleType_time_independant()
-	aircraft_frame_change.AngleValue = math.pi
+	aircraft_frame_change.AngleValue = 0.0
 
 	aircraft_aoa_cb = CB()
 	aircraft_aoa_cb.Title = "Aircraft aoa"

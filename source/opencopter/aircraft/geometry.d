@@ -135,7 +135,7 @@ double[] generate_chordwise_control_points(size_t chord_n_sections) {
 	import std.math : cos, PI;
 	import std.range : iota, retro;
 	// Spanwise Votex nodes
-	immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
+	immutable num_points = chord_n_sections; //%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
 	return iota(1.0,num_points + 2.0).map!((i){
 		immutable theta = i*PI/(num_points.to!double + 1.0);
 		auto chord_ctrl_pt = 0.5*(1 - cos(theta)).to!double;
@@ -283,7 +283,7 @@ struct Frame {
 
 	Vec3 global_position() {
 		nop;
-		auto pos = Vec3(inverse_global_matrix[0, 3], inverse_global_matrix[1, 3], inverse_global_matrix[2, 3]);
+		auto pos = Vec3(global_matrix[0, 3], global_matrix[1, 3], global_matrix[2, 3]);
 		return pos;
 	}
 
