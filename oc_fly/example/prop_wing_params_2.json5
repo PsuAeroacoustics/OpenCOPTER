@@ -6,7 +6,7 @@
 		chord_elements: 4,
 		shed_history_angle: [45],
 		shed_release_angle: 2,
-
+		num_trailing_vortices: [4],
 		convergence_criteria: 1.0e-4,
 		post_conv_revolutions: 2,
 		trackBWIevents: true,
@@ -44,7 +44,7 @@
 	},
 	flight_conditions: [
 		{
-			name: "FF_95_ftps_aoa_0_fine_grid_wing",
+			name: "FF_95_ftps_aoa_0_fine_grid_winnum_trailers_49",
 			aoa: 0.0,
 			density: 1.2055,
 			sos: 341.7,

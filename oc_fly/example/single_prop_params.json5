@@ -6,11 +6,11 @@
 		chord_elements: 4,
 		shed_history_angle: [45],
 		shed_release_angle: 2,
-
+		num_trailing_vortices: [4],
 		convergence_criteria: 1.0e-3,
 		post_conv_revolutions: 2,
 		//wake_trail_distance: [4, 4, 4, 4],
-		wake_trail_distance: [0],
+		wake_trail_distance: [8],
 		// convergence_criteria: 1.0e-1,
 		// post_conv_revolutions: 1,
 		// wake_trail_distance: [1, 1],

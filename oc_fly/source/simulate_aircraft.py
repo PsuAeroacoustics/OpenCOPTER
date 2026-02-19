@@ -93,6 +93,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
 		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
 	
+	print("built vtk wake")
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))
 	C_T_len = np.round(2.0*math.pi/(dt*np.abs(omegas))).astype(dtype=np.int64)
 
@@ -563,12 +564,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		if convergence_type == 'wake':
 			for rotor_idx in range(num_rotors):
 				if convergence_orientation == 'x':
-					last_wake_points[rotor_idx] = np.asarray(get_wake_x_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
+					last_wake_points[rotor_idx] = np.asarray(get_wake_x_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].blade_trailers[0].trailing_filaments[0]))
 				elif convergence_orientation == 'y':
-					last_wake_points[rotor_idx] = np.asarray(get_wake_y_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
+					last_wake_points[rotor_idx] = np.asarray(get_wake_y_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].blade_trailers[0].trailing_filaments[0]))
 				elif convergence_orientation == 'z':
-					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
-
+					last_wake_points[rotor_idx] = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].blade_trailers[0].trailing_filaments[0]))
 		while not sim_done:
 			#print("iteration: ", iteration)
 			if (iteration > 0) and (iteration % int(convergence_rev_multiple*iter_per_rev) == 0):
@@ -578,11 +578,11 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 					if convergence_type == 'wake':
 						wake_points = []
 						if convergence_orientation == 'x':
-							wake_points = np.asarray(get_wake_x_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
+							wake_points = np.asarray(get_wake_x_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].blade_trailers[0].trailing_filaments[0]))
 						elif convergence_orientation == 'y':
-							wake_points = np.asarray(get_wake_y_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
+							wake_points = np.asarray(get_wake_y_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].blade_trailers[0].trailing_filaments[0]))
 						elif convergence_orientation == 'z':
-							wake_points = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].tip_vortices[0]))
+							wake_points = np.asarray(get_wake_z_component(vehicle.wake_history.history[0].rotor_wakes[rotor_idx].blade_trailers[0].trailing_filaments[0]))
 
 						wake_l2[rotor_idx] = np.sqrt(np.mean(np.power((wake_points - last_wake_points[rotor_idx]), 2.0)))
 

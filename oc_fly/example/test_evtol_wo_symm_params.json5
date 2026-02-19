@@ -4,13 +4,13 @@
 		spanwise_elements: 48,
 		span_elements: 8,
 		chord_elements: 4,
-		shed_history_angle: [45],
+		shed_history_angle: [45, 45, 45, 45],
 		shed_release_angle: 2,
-		num_trailing_vortices: [2],
+
 		convergence_criteria: 1.0e-3,
 		post_conv_revolutions: 2,
 		//wake_trail_distance: [4, 4, 4, 4],
-		wake_trail_distance: [0],
+		wake_trail_distance: [0, 0, 0, 0],
 		// convergence_criteria: 1.0e-1,
 		// post_conv_revolutions: 1,
 		// wake_trail_distance: [1, 1],
@@ -19,16 +19,15 @@
 		convergence_type: "wake",
 		convergence_rotor: 0,
 		convergence_rev_multiple: 1,
-		r_0: [0.9],
+		r_0: [0.9, 0.9, 0.9, 0.9],
 		a1: 1.0e-5,
-		trackBWIevents: false
 	},
-	results: {
+    results: {
         inflow_slices: [
 			{
-				resolution: [256, 256, 256],
-				slice_start: [-2.5, -2.5, -2.5],
-				slice_size: [5, 5, 5]
+				resolution: [256, 256, 101],
+				slice_start: [-2.5, -2.5, -1.0],
+				slice_size: [5, 5, 2.0]
 			}
 		],
 		wake_slices: [
@@ -44,12 +43,15 @@
 	},
 	flight_conditions: [
 		{
-			name: "FF_32p9_prop_mode_origin_offset_num_trailers_2",
+			name: "Level_flight_wo_wing",
 			aoa: 0,
 			density: 1.2055,
 			sos: 341.7,
 			c_t: [
-				0.01
+				0.01,
+                0.01,
+                0.01,
+                0.01
 			],
             // Mx: [
             //     -63.3,
@@ -59,10 +61,10 @@
             //     268.8,
             //     0
             // ],
-			V_inf: 32.9,
+			V_inf:32.9,
 			observer_file: "helinovi_observers_climb.json5",
 			acoustics_file: "acoustics_total_noise.json",
-			run_for: 10.0,
+			run_for: 0,
 			// Indicates that this frame is used to trim the rotor.
 			// Will use the provided axis as the trim axis.
 			// If an axis angle function has been also specified, then
@@ -70,14 +72,34 @@
 			//trim_frame: "pitch hinge",
 			motion: [
 				{
-					frame: "Rotor_0",
+					frame: "LiftRotor",
 					blade_element_func: "rotation",
-					omega: -200.0
+					omega: -200
 				},
 				{
-					frame: "WingGeom",
-					blade_element_func: "static",
-					angle: 0.0
+					frame: "LiftRotor_left",
+					blade_element_func: "rotation",
+					omega: 200
+				},
+				{
+					frame: "CruiseProp",
+					blade_element_func: "rotation",
+					omega: -200
+				},
+                {
+					frame: "CruiseProp_left",
+					blade_element_func: "rotation",
+					omega: 200
+				},
+				{
+					frame: "HingeGeom",
+					axis_angle_function: "static",
+					angle: 30
+				},
+				{
+					frame: "HingeGeom_left",
+					axis_angle_function: "static",
+					angle: 30
 				}
 			],
 			hybrid: false,

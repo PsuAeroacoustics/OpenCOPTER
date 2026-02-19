@@ -255,6 +255,7 @@ alias PyBWIinputs = opencopter.bwi.TipVortexInteractionT!(ArrayContainer.array);
 alias PyBladeVortexInteraction = opencopter.bwi.VortexInteractionT!(ArrayContainer.array);
 alias PyShedVortex = opencopter.wake.ShedVortexT!(ArrayContainer.array);
 alias PyInteractionPerRotor = opencopter.bwi.VortexInteraction_multiRotorT!(ArrayContainer.array);
+alias PyTipVortex = opencopter.wake.TipVortexT!(ArrayContainer.array);
 
 alias PyVortexLattice = opencopter.vortexlattice.VortexLatticeT!(ArrayContainer.array);
 alias PyWingLiftSurf = opencopter.vortexlattice.WingLiftSurfT!(ArrayContainer.array);
@@ -2223,10 +2224,17 @@ extern(C) void PydMain() {
 	);
 
 	wrap_struct!(
+		PyTipVortex,
+		PyName!"TipVortex",
+		Init!(size_t, size_t),
+		Member!("trailing_filaments", Docstring!q{An array of :class:`VortexFilament`}),
+	);
+
+	wrap_struct!(
 		PyRotorWake,
 		PyName!"RotorWake",
-		Init!(size_t, size_t, size_t, size_t),
-		Member!("tip_vortices", Docstring!q{An array of :class:`VortexFilament`}),
+		Init!(size_t, size_t , size_t),
+		Member!("blade_trailers", Docstring!q{An array of :class:`TipVortex` representing the bound vortices trailing from the blades}),
 		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`}),
 		Member!("interaction_perRotor", Docstring!q{An array of :class:`VortexInteractionMultiRotor`}),
 	);
@@ -2234,14 +2242,14 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyWake,
 		PyName!"Wake",
-		Init!(size_t, size_t[], size_t[], size_t, size_t[], size_t[]),
+		Init!(size_t, size_t[], size_t[], size_t, size_t[], size_t[], size_t[]),
 		Member!("rotor_wakes", Docstring!q{An array of :class:`RotorWake`})
 	);
 
 	wrap_struct!(
 		PyWakeHistory,
 		PyName!"WakeHistory",
-		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t[], size_t[], double, bool),
+		Init!(size_t, size_t[], size_t[], size_t, size_t, size_t[], size_t[], size_t[], double, bool),
 		Docstring!q{
 			Top level structure for holding the wake and its history.
 			
@@ -2897,6 +2905,7 @@ extern(C) void PydMain() {
 	wrap_array!PyWake;
 	wrap_array!PyRotorWake;
 	wrap_array!PyShedVortex;
+	wrap_array!PyTipVortex;
 	wrap_array!PyVortexFilament;
 	wrap_array!PyWingLiftSurf;
 	wrap_array!PyWingPartLiftingSurf;

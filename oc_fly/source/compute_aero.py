@@ -771,6 +771,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	# Increasing the history increases computation time with the current implementation
 	log_file.write(f'wake_history_length: {wake_history_length}\n')
 	rotor_wake_history = WakeHistory(num_rotors, num_blades, wake_history_length, 2, elements, num_trailing_vortices, shed_history, release_ratio, a1, hybrid)
+	print("rotor_wake_history instantiated")
 	
 	try:
 		vehicle = SimulatedVehicle(
@@ -813,10 +814,10 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 				wake_core_sizes = np.zeros((num_blades[r_idx], actual_wake_history))
 
 				for b_idx in range(num_blades[r_idx]):
-					wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-					wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-					wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
-					wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].tip_vortices[b_idx])
+					wake_trajectories[b_idx, 0, :] = get_wake_x_component(rotor_wake_history.history[0].rotor_wakes[r_idx].blade_trailers[b_idx].trailing_filaments[0])
+					wake_trajectories[b_idx, 1, :] = get_wake_y_component(rotor_wake_history.history[0].rotor_wakes[r_idx].blade_trailers[b_idx].trailing_filaments[0])
+					wake_trajectories[b_idx, 2, :] = get_wake_z_component(rotor_wake_history.history[0].rotor_wakes[r_idx].blade_trailers[b_idx].trailing_filaments[0])
+					wake_core_sizes[b_idx,  :] = get_wake_r_c_component(rotor_wake_history.history[0].rotor_wakes[r_idx].blade_trailers[b_idx].trailing_filaments[0])
 
 				results_dictionary[f'wake_{r_idx}_trajectory'] = wake_trajectories
 				results_dictionary[f'wake_{r_idx}_core_size'] = wake_core_sizes
