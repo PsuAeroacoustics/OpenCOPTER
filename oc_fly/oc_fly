@@ -664,10 +664,16 @@ def main():
 					else:
 						state_dir = f'theta{"_".join([f"{theta:.2f}" for theta in flight_condition["collective"]])}'
 
-					if "name" in flight_condition:
-						root_path = f'./{case.aircraft.root_frame.name}/{flight_condition["name"]}'
-					else:
-						root_path = f'./{case.aircraft.root_frame.name}/{aoa_dir}/{V_inf_dir}/{state_dir}'
+					tilt_dir = ''
+					for motion in flight_condition["motion"]:
+						if motion["frame"] == "tilter_0_tilt_hinge":
+							tilt_dir = f'tilt_{motion["angle"]:.2f}'
+							break
+					#print("tilt_dir", tilt_dir)
+					#if "name" in flight_condition:
+						#root_path = f'./{case.aircraft.root_frame.name}/{flight_condition["name"]}'
+					#else:
+					root_path = f'./{case.aircraft.root_frame.name}/{aoa_dir}/{V_inf_dir}/{tilt_dir}/{state_dir}'
 
 					if not path.isdir(root_path):
 						makedirs(root_path, exist_ok=True)

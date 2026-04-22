@@ -1,0 +1,159 @@
+{
+    // All positions are dimensional unless otherwise noted
+    /*"components": [
+        {
+            "type": "connection",
+            // Hinge used for blade pitch trim
+            "name": "tilter_pitch_hinge",
+            "origin": [
+                0.1,
+                0,
+                0
+            ],
+            "axis": [
+                -1,
+                0,
+                0
+            ],
+            "children": [
+                {
+                    "ref": "tilter_blade"
+                }
+            ]
+        }
+    ],*/
+    // Multiple rotors can be defined in this array
+    "rotors": [
+        {
+            "type": "rotor",
+            // Name is used as a reference in files that include this file
+            "name": "propeller",
+            "radius": 0.3302,
+            "origin": [
+                0,
+                0,
+                0
+            ],
+            "axis": [
+                0,
+                0,
+                1
+            ],
+            "axis_angle_function": "constant",
+            "children": [
+                {
+                    "type": "connection",
+                    "name": "blade attach 0",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 0,
+                    "children": [
+                        {
+                            "ref": "propeller_blade"
+                        }
+                    ]
+                },
+                {
+                    "type": "connection",
+                    "name": "blade attach 1",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 90,
+                    "children": [
+                        {
+                            "ref": "propeller_blade"
+                        }
+                    ]
+                },
+                {
+                    "type": "connection",
+                    "name": "blade attach 2",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 180,
+                    "children": [
+                        {
+                            "ref": "propeller_blade"
+                        }
+                    ]
+                },
+                {
+                    "type": "connection",
+                    "name": "blade attach 3",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 270,
+                    "children": [
+                        {
+                            "ref": "propeller_blade"
+                        }
+                    ]
+                },
+            ]
+        }
+    ],
+    "blades": [
+        {
+            "type": "blade",
+            "name": "propeller_blade",
+            "origin": [
+                0,
+                0,
+                0
+            ],
+            // Root cut-out, rotor radius non-dimensionalized
+            "r_c": 0.2,
+            // chord distribution, rotor radius non-dimensionalized
+            "c": [
+                0.12,
+                0.12,
+                0.12,
+                0.12,
+                0.12
+            ],
+            // Twist distribution in degrees
+            "twist": [
+                73.0,
+                58.7,
+                48.75,
+                36.25,
+                30.75
+            ],
+            // This defines the quarter chord line.
+            // It is an offset from the blades y axis (which points down the span)
+            // rotor radius non-dimensionalized
+            "x": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ],
+            airfoils: [
+					// {
+					// 	type: "aerodas",
+					// 	extent: [0.2, 0.3],
+					// 	xfoil_polar: "polars/NACA0014_1000000_polar.dat",
+					// 	thickness: 0.14
+					// },
+					{
+						type: "thinaf",
+						extent: [0.2, 1.0],
+						thickness: 0.12
+					}
+			]
+        }
+    ]
+}

@@ -141,15 +141,16 @@ def build_blade(blade_object, requested_elements, geom_directory, R, frame):
 		twist = np.asarray([(_r - 0.75)*theta_tw_1*(1/(1 - r_c))*(math.pi/180.0) for _r in generate_radius_points(requested_elements, r_c)])
 
 	print("twist (deg): ", twist*(180.0/math.pi))
+	print("linear_r = ", linear_r)
 	x_over_c = np.asarray(linear_x)/np.asarray(linear_c)
 	
 	f_x_over_c = interp1d(linear_r, x_over_c, bounds_error=False, fill_value='extrapolate')
 
 	f_thickness = interp1d(af_r, af_thickness, bounds_error=False, fill_value='extrapolate')
 
-	linear_x_over_c_p = [derivative(f_x_over_c, _r, 1.0e-12) for _r in linear_r[3:-3]]
+	linear_x_over_c_p = [derivative(f_x_over_c, _r, 1.0e-12) for _r in linear_r]
 
-	f_x_over_c_p = interp1d(linear_r[3:-3], linear_x_over_c_p, bounds_error=False, fill_value='extrapolate')
+	f_x_over_c_p = interp1d(linear_r, linear_x_over_c_p, bounds_error=False, fill_value='extrapolate')
 
 	xp = f_x_over_c_p(r)
 

@@ -1,0 +1,67 @@
+[
+    {
+        "include": [
+            "PropGeom.json5"
+        ],
+        "name": "PropWing_Dunsby_test_3",
+        "type": "aircraft",
+        "children": [
+            {
+                // Defining wing geometry. We can run the case without the wing by just change wing type to "connection".
+                "type": "wing",
+                "name": "main_wing",
+                origin: [0.0,0.0,0.0],
+				avg_chord: 0.4572,
+				root_chord: 0.4572,
+				tip_chord: 0.4572,
+				LE_sweep: 0,
+				TE_sweep: 0,
+                span: 0.6604,
+                span_elements: 32,
+                chord_elements: 6,
+                num_wing_parts: 1,
+                // Axis for setting wing angle of attack.
+				axis: [0,1,0],
+                axis_angle: 0.0,
+				axis_angle_function: "static",
+                "children": [
+                    {
+                        "type": "connection",
+                        "name": "Propeller_attach",
+                        // This is relative to the wing [+ve x: downstram of the wing, +ve y right/starboard of the wing, +ve z above the wing]
+                        "origin": [
+                            -0.279,
+                            0.429,
+                            0.0
+                        ],
+                        "axis": [
+                            0,
+                            1,
+                            0
+                        ],
+                        "axis_angle": 0,
+                        "children": [
+                            {
+                                "type": "connection",
+                                "name": "prop_hinge",
+                                axis_angle_function: "static",
+                                // 
+                                "origin": [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "axis": [ 0, 1, 0 ],
+                                
+                                "children": [{ 
+                                    "ref": "propeller"
+                                }]
+                            }
+                        ]
+                    },
+                ]
+            }
+        ],
+        "parameter_file": "./prop_wing_params_2.json5"
+    }
+]

@@ -190,7 +190,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                             local_inflow_due_to_wing[2][] = wing_induced[];
 
                             combined_inflow += wing.inflow_model.frame.global_matrix * local_inflow_due_to_wing; //back_corrected!!
-                            writeln("going into wing_inflow");
+                            //writeln("going into wing_inflow");
                         }
                     }
                 }
@@ -218,14 +218,14 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_up[] = wing_local_inflow[2][];
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_ut[] = wing_local_inflow[0][];
-                debug writeln("wp_idx = ", wp_idx, "\twing control point up = ",wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_up[]);
-                debug writeln("wp_idx = ", wp_idx, "\twing control point ut = ",wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_ut[]);
+                //writeln("wp_idx = ", wp_idx, "\twing control point up = ",wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_up[]);
+                //writeln("wp_idx = ", wp_idx, "\twing control point ut = ",wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_ut[]);
 
                 immutable wing_inflow_angle = atan2(wing_local_inflow[2], wing_local_inflow[0]);
                 
 
                 immutable Chunk effective_aoa = wing_inflow_angle[];
-                debug writeln("effective_aoa = ", effective_aoa, "\twing_inflow_angle = ", wing_inflow_angle, "\n");
+                //writeln("effective_aoa = ", effective_aoa, "\twing_inflow_angle = ", wing_inflow_angle, "\n");
                 
                 wing_state.wing_part_states[wp_idx].ctrl_chunks[ch_idx].ctrl_pt_aoa[] = ctrl_chunk.camber[] - effective_aoa[];
                 //writeln("camber = ", ctrl_chunk.camber, "effective aoa = ", effective_aoa);

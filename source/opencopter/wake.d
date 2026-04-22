@@ -17,6 +17,8 @@ import std.stdio;
 import std.traits;
 import std.typecons;
 import std.stdio : writeln;
+import std.algorithm: maxElement;
+
 
 extern (C++) struct FilamentChunk {
 	Chunk x;
@@ -188,7 +190,7 @@ struct WakeT(ArrayContainer AC) {
 
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
-			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref blade_trailers; rotor_wake.blade_trailers){
 				blade_trailers = TipVortexT!AC(num_trail_vortices[r_idx], actual_wake_history);
 			}
@@ -220,7 +222,7 @@ struct WakeT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
 
-			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades, actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref blade_trailers; rotor_wake.blade_trailers){
 				blade_trailers = TipVortexT!AC(num_trail_vortices[r_idx], actual_wake_history[r_idx]);
 			}
@@ -247,7 +249,7 @@ struct WakeT(ArrayContainer AC) {
 
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
-			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref blade_trailers; rotor_wake.blade_trailers){
 				blade_trailers = TipVortexT!AC(num_trail_vortices[r_idx], actual_wake_history);
 			}
@@ -274,7 +276,7 @@ struct WakeT(ArrayContainer AC) {
 		mixin(array_ctor_mixin!(AC, "RotorWakeT!(AC)", "rotor_wakes", "num_rotors"));
 		foreach(r_idx, ref rotor_wake; rotor_wakes) {
 
-			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx]);
+			rotor_wake = RotorWakeT!AC(num_blades[r_idx], actual_radial_elements, shed_release[r_idx], num_rotors);
 			foreach(ref blade_trailers; rotor_wake.blade_trailers){
 				blade_trailers = TipVortexT!AC(num_trail_vortices[r_idx], actual_wake_history[r_idx]);
 			}
@@ -802,8 +804,9 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 
 	if(single_rotor) {
 		foreach(i_blade_idx; 0..ac_state.rotor_states[rotor_idx].blade_states.length) {
+			BWIinputsChunk[] dummy_chunks;
 			foreach(fil_idx,ref trailing_filament; wake.rotor_wakes[rotor_idx].blade_trailers[i_blade_idx].trailing_filaments){
-				auto ind_vel = compute_filament_induced_velocities(trailing_filament.chunks, x, y, z, chunk_offset, wake.rotor_wakes[rotor_idx].blade_vortex_interaction[i_blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, false);
+				auto ind_vel = compute_filament_induced_velocities(trailing_filament.chunks, x, y, z, chunk_offset, dummy_chunks, x_old, y_old, z_old, false);
 				ret.v_x[] += ind_vel.v_x[];
 				ret.v_y[] += ind_vel.v_y[];
 				ret.v_z[] += ind_vel.v_z[];
@@ -841,7 +844,7 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 					y_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].y_old;
 					z_old = i_rotor.blade_states[i_blade_idx].chunks[blade_chunk_idx].z_old;
 					foreach(fil_idx,ref trailing_filament; wake.rotor_wakes[i_rotor_idx].blade_trailers[i_blade_idx].trailing_filaments){
-						auto ind_vel = compute_filament_induced_velocities(trailing_filament.chunks, x, y, z, chunk_offset, wake.rotor_wakes[i_rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
+						auto ind_vel = compute_filament_induced_velocities(trailing_filament.chunks, x, y, z, chunk_offset,  wake.rotor_wakes[i_rotor_idx].interaction_perRotor[rotor_idx].blade_vortex_interaction[blade_idx].tip_vortex_interaction[i_blade_idx].BWI_inputs, x_old, y_old, z_old, blade_chunk_idx, trackBWIevents);
 						ret.v_x[] += ind_vel.v_x[];
 						ret.v_y[] += ind_vel.v_y[];
 						ret.v_z[] += ind_vel.v_z[];
@@ -887,7 +890,8 @@ InducedVelocities compute_wake_induced_velocities_on_wing(W, AS)(auto ref W wake
 
 			//writeln("in compute_wake_ind_vel_wing_2");
 			foreach(fil_idx, ref trailing_filament; wake.rotor_wakes[rotor_idx].blade_trailers[blade_idx].trailing_filaments){
-				auto ind_vel_tip = compute_filament_induced_velocities(trailing_filament.chunks, x, y, z, chunk_offset, wake.rotor_wakes[0].blade_vortex_interaction[0].tip_vortex_interaction[0].BWI_inputs, x_old, y_old, z_old, 0, false);
+				auto ind_vel_tip = compute_filament_induced_velocities(trailing_filament.chunks, x, y, z, chunk_offset, dummy_chunks, x_old, y_old, z_old, 0, false);
+				//writeln("ind_vel_tip = ", ind_vel_tip.v_x[], ", ", ind_vel_tip.v_y[], ", ", ind_vel_tip.v_z[], "\n");
 				ret.v_x[] += ind_vel_tip.v_x[];
 				ret.v_y[] += ind_vel_tip.v_y[];
 				ret.v_z[] += ind_vel_tip.v_z[];
@@ -1174,13 +1178,30 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 					size_t chunk_idx = num_chunks - 1 - i;
 					trailing_rad_location[i] = ac.rotors[rotor_idx].blades[blade_idx].chunks[chunk_idx].r[7];
 					trailing_xi_location[i] = ac.rotors[rotor_idx].blades[blade_idx].chunks[chunk_idx].xi[7];
-					seg_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[].sum;
+					//trailing_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[$-1] - ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[0];
+					seg_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[].sum/chunk_size;
+					//seg_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[].maxElement!(a => abs(a));
+					//writeln("chunk_idx = ", chunk_idx, "gamma = ", ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[]);
+					//writeln("gamma_seg = ", seg_gamma[i]);
 				}
 				trailing_rad_location[num_trailers-1] = ac.rotors[rotor_idx].blades[blade_idx].chunks[0].r[0];
 				trailing_xi_location[num_trailers-1] = ac.rotors[rotor_idx].blades[blade_idx].chunks[0].xi[0];
-				size_t last_chunk_idx = num_chunks - (num_trailers-1);
-				double root_gamma = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[0..last_chunk_idx].map!(c => c.gamma.sum).sum;
-				seg_gamma[num_trailers-2] += root_gamma;
+				//trailing_gamma[num_trailers-1] = -max_gamma;
+
+				
+				if (num_trailers < num_chunks + 1) {		
+					size_t last_chunk_idx = num_chunks - (num_trailers-1);
+					//double root_gamma = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[0..last_chunk_idx].map!(c => c.gamma[].maxElement!(a => abs(a))).maxElement!(a => abs(a));
+					double root_gamma_sum = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[0..last_chunk_idx].map!(c => c.gamma[].sum).sum + seg_gamma[$-1];
+					double root_gamma = root_gamma_sum/((last_chunk_idx+1)*chunk_size);
+					seg_gamma[$-1] = root_gamma;
+					
+					/*if (abs(root_gamma) > abs(seg_gamma[$-1])) {
+						seg_gamma[$-1] = root_gamma;
+					}*/
+					
+				}
+				//seg_gamma[num_trailers-2] += root_gamma;
 				
 				foreach(i;0..num_trailers){
 					if(i==0){
@@ -1188,15 +1209,44 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 					}else if(i == num_trailers-1){
 						trailing_gamma[i] = -seg_gamma[i-1];
 					}else{
-						trailing_gamma[i] = seg_gamma[i-1] - seg_gamma[i];
+						trailing_gamma[i] =  seg_gamma[i] - seg_gamma[i-1];
 					}
 				}
+				//writeln("seg_gamma = ", seg_gamma);
+			}else if(num_trailers == num_chunks*chunk_size + 1){
+				//trailing vortices will be placed at each blade element
+				debug writeln("going into: trailers = num blade elements\n");
+				
+				foreach(i;0..num_trailers-1){
+					size_t chunk_idx =(num_blade_elements - i - 1)%chunk_size;
+					size_t c_idx = num_blade_elements - i - 1 - chunk_idx*chunk_size;
+					trailing_rad_location[i] = ac.rotors[rotor_idx].blades[blade_idx].chunks[chunk_idx].r[c_idx];
+					trailing_xi_location[i] = ac.rotors[rotor_idx].blades[blade_idx].chunks[chunk_idx].xi[c_idx];
+					if (i == 0){
+						trailing_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[c_idx];
+					}
+
+					if(c_idx == 0){
+						trailing_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx-1].gamma[$-1] - ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[c_idx];
+					}else{						
+						trailing_gamma[i] = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[c_idx-1] - ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[chunk_idx].gamma[c_idx];
+					}
+				}
+				trailing_rad_location[num_trailers-1] = ac.rotors[rotor_idx].blades[blade_idx].chunks[0].r[0];
+				trailing_xi_location[num_trailers-1] = ac.rotors[rotor_idx].blades[blade_idx].chunks[0].xi[0];
+				trailing_gamma[num_trailers-1] = -ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[0].gamma[0];
+
 			}
+			
+			//writeln("trailing_rad_location = ", trailing_rad_location);
+			//writeln("trailing_xi_location = ", trailing_xi_location);
+			//writeln("trailing_gamma = ", trailing_gamma, "\n");
+			
 
 			foreach(trailing_idx, ref trailing_filament ; current_blade_trailers.trailing_filaments){
 				
-				immutable Vec4 inboard_factor =Vec4(
-					trailing_rad_location[trailing_idx] - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/4.0,
+				immutable Vec4 inboard_factor = Vec4(
+					trailing_rad_location[trailing_idx] - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/16.0,
 					trailing_xi_location[trailing_idx],
 					0,
 					1.0/ac.rotors[rotor_idx].radius

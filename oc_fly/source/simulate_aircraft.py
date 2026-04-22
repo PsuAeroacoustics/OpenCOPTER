@@ -87,11 +87,13 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 	for r_idx in range(num_rotors):
 		origin = vehicle.aircraft.rotors[r_idx].frame.global_position()
 		print(f'{vehicle.aircraft.rotors[r_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		write_rotor_vtu(f"{vtu_output_path}/rotor", 0, r_idx, vtk_rotors[r_idx], vehicle.ac_state.rotor_states[r_idx], vehicle.aircraft.rotors[r_idx])
 
 	for wing_idx in range(num_wings):
 		#print("writing wing vtu")
 		origin = vehicle.aircraft.wings[wing_idx].frame.global_position()
 		print(f'{vehicle.aircraft.wings[wing_idx].frame.name} location: {origin[0]}, {origin[1]}, {origin[2]}')
+		write_wing_vtu(f"{vtu_output_path}/wing", 0, wing_idx, vtk_wing[wing_idx], vehicle.ac_state.wing_states[wing_idx], vehicle.aircraft.wings[wing_idx])
 	
 	print("built vtk wake")
 	#C_T_len = int(round(2.0*math.pi/(dt*max(abs(omegas)))))

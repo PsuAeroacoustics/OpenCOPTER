@@ -2233,7 +2233,7 @@ extern(C) void PydMain() {
 	wrap_struct!(
 		PyRotorWake,
 		PyName!"RotorWake",
-		Init!(size_t, size_t , size_t),
+		Init!(size_t, size_t , size_t, size_t),
 		Member!("blade_trailers", Docstring!q{An array of :class:`TipVortex` representing the bound vortices trailing from the blades}),
 		Member!("shed_vortices", Docstring!q{An array of :class:`ShedVortex`}),
 		Member!("interaction_perRotor", Docstring!q{An array of :class:`VortexInteractionMultiRotor`}),

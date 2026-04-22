@@ -263,7 +263,7 @@ void set_wing_vortex_geometry(WLS,WG)(auto ref WLS wing_lifting_surf, auto ref W
                         spanwise_filament.chunks[c_idx].trail_end[]= spanwise_filament.chunks[c_idx].x[] + span[] + span[];
                     }
                 spanwise_filament.chunks[c_idx].z[]= 0.0;
-                }    
+                }
             }
         }
     }

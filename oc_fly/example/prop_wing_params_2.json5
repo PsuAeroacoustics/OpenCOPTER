@@ -3,25 +3,21 @@
 		d_psi: 1.0,
 		spanwise_elements: 48,
 		span_elements: 32,
-		chord_elements: 4,
+		chord_elements: 6,
 		shed_history_angle: [45],
-		shed_release_angle: 2,
-		num_trailing_vortices: [4],
-		convergence_criteria: 1.0e-4,
-		post_conv_revolutions: 2,
-		trackBWIevents: true,
-		//wake_trail_distance: [4, 4, 4, 4],
 		wake_trail_distance: [8],
-		// convergence_criteria: 1.0e-1,
-		// post_conv_revolutions: 1,
-		// wake_trail_distance: [1, 1],
-
+		num_trailing_vortices: [7],
+		shed_release_angle: 2.0,
+		convergence_criteria: 1.0e-4,
 		trim_algo: "lympany",
 		convergence_type: "run_for",
-		convergence_rotor: 0,
-		convergence_rev_multiple: 1,
 		r_0: [0.9],
 		a1: 1.0e-5,
+		post_conv_revolutions: 2,
+		convergence_rotor: 0,
+		convergence_rev_multiple: 1,
+		is_half_wing: true,
+		trackBWIevents: false,
 	},
 	results: {
         inflow_slices: [
@@ -44,14 +40,14 @@
 	},
 	flight_conditions: [
 		{
-			name: "FF_95_ftps_aoa_0_fine_grid_winnum_trailers_49",
-			aoa: 0.0,
+			name: "Avg_gamma_2_FF_95_ftps_aoa_neg_5_num_trailers_7_CT_0.0197_no_wing_wake",
+			aoa: 5.0,
 			density: 1.2055,
 			sos: 341.7,
 			c_t: [
-				0.0191
+				0.0197
 			],
-			//collective: [-14.13],
+			//collective: [-13.46],
             // Mx: [
             //     -63.3,
             //     0
@@ -72,12 +68,17 @@
 			//trim_frame: "pitch hinge",
 			motion: [
 				{
-					frame: "Rotor",
+					frame: "propeller_0",
 					blade_element_func: "rotation",
 					omega: -314.16
 				},
 				{
-					frame: "WingGeom",
+					frame: "prop_hinge",
+					axis_angle_function: "static",
+					angle: -90.0
+				},
+				{
+					frame: "main_wing",
 					axis_angle_function: "static",
 					angle: 0.0
 				}
