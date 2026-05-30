@@ -7,7 +7,7 @@
 		"radii_relative": true,
 		"reference_rotor": 0,
 		"nb_theta": 20,
-		"nb_psi": 20,
+		"nb_psi": 10,
 		"theta_min": 0,
 		"theta_max": 360,
 		"psi_min": -90,

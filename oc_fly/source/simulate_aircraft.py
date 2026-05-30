@@ -298,7 +298,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 		#Ks = 10*np.ones(num_trim_groups)
 		#taus = 20*np.ones(num_trim_groups)
 	elif trim_mode == TRIM_MODE_SHARED_COLLECTIVE:
-		Ks = 10000*np.ones(num_trim_groups)
+		Ks = 1000*np.ones(num_trim_groups)
 		#Ks = 0.01*np.ones(num_trim_groups)
 		taus = 0.4*np.ones(num_trim_groups)
 	else:
@@ -816,6 +816,7 @@ def simulate_aircraft(log_file, vehicle: SimulatedVehicle, atmo, elements, write
 				elif trim_mode == TRIM_MODE_SHARED_COLLECTIVE:
 					for trim_group in range(num_trim_groups):
 						if trim_algo == 'he':
+							thetas[trim_group,:] = thetas[trim_group,:] + dt*abs(np.mean(trim_omegas))*trim_ode(thetas[trim_group,:], taus[trim_group], c_t_bars[trim_group], Ks[trim_group], curr_forces[trim_group])
 							print(f'c_t_bars[{trim_group}]: {c_t_bars[trim_group]}, curr_forces[{trim_group}]: {curr_forces[trim_group]} delta: {c_t_bars[trim_group] - curr_forces[trim_group]} thetas[{trim_group}, 1]: {thetas[trim_group, 1]*(180.0/math.pi)}')
 						elif trim_algo == 'lympany':
 							thetas[trim_group, 1] = thetas[trim_group, 1] + 3.0/(math.pi*vehicle.aircraft.rotors[collective_groups[trim_group][0]].solidity)*(c_t_bars[trim_group] - curr_forces[trim_group])

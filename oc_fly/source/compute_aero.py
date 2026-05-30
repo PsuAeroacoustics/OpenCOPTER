@@ -286,7 +286,7 @@ def build_component(component_json, parent_frame, components_ref_dict, component
 
 				built_blades[0].azimuth_offset = child_component["axis_angle"]*(math.pi/180.0)
 
-	elif frame_type != FrameType_blade():
+	elif (frame_type != FrameType_blade()) and (frame_type != FrameType_wing()):
 		raise Exception("Component has no children and is not of type 'blade'")
 	
 	if frame_type == FrameType_rotor():
@@ -326,7 +326,8 @@ def build_wing(frame, num_span_elements, num_chord_elements, component_json):
 	tip_chord = component_json["tip_chord"] if "tip_chord" in component_json else avg_chord
 	LE_sweep = component_json["LE_sweep"] if "LE_sweep" in component_json else 0.0
 	TE_sweep = component_json["TE_sweep"] if "TE_sweep" in component_json else 0.0
-	
+	origin = component_json["origin"] if "origin" in component_json else [0.0, 0.0, 0.0]
+
 	lamda = tip_chord/root_chord
 	quarted_chord_sweep = math.tan(LE_sweep) - (root_chord - tip_chord)/(2.0*wing_span)
 	
@@ -338,7 +339,7 @@ def build_wing(frame, num_span_elements, num_chord_elements, component_json):
 
 	wing = WingGeometry(
 		num_wing_parts,
-		origin = Vec3([0.0, 0.0, 0.0]),
+		origin = Vec3(origin),
 		wing_span = wing_span
 	)
 

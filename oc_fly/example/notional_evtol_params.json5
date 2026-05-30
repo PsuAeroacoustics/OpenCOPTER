@@ -8,11 +8,11 @@
 		shed_release_angle: 1.0,
 		//convergence_criteria: 1.0,
 		convergence_criteria: 1.0e-3,
-		trim_algo: "lympany",
+		trim_algo: "he",
 		convergence_type: "trim",
 		r_0: [1.0, 1.0, 1.0, 1.0],
 		a1: 1.0e-5,
-        post_conv_revolutions: 20
+        post_conv_revolutions: 30
 		//post_conv_revolutions: 1
 	},
 	flight_conditions: [
@@ -82,7 +82,7 @@
 			sos: 341.7,
 			//T: [37000],
 			//T: [6250, 6250, 6250, 6250],
-			T: [20000],
+			T: [30000],
 			// Trim in a shared collective mode. We define
 			// collective groups that share the same collective value.
 			// The collective force_components defines which ac force
