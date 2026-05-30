@@ -1,7 +1,7 @@
 {
 	"name": "opencopter",
-	"copyright": "Copyright © 2022, Robert F. Rau II, The Pennsylvania State University",
-	"license": "GPL-3.0",
+	"copyright": "Copyright © 2026, Robert F. Rau II, The Pennsylvania State University",
+	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},
