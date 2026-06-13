@@ -10,8 +10,10 @@
 	"targetType": "dynamicLibrary",
 	"lflags-posix": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib"],
 	"lflags-linux": ["-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack.a", "-l:libopenblas.a", "-lgfortran"],
-	"lflags-osx": ["-framework","Accelerate","/usr/local/lib/libsleef.a", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
+	"versions": ["PydPythonExtension"],
 	"configurations": [
 		{
 			"name": "library",

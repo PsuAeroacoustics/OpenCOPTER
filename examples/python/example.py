@@ -63,8 +63,9 @@ if __name__ == "__main__":
 
 	atmo = Atmosphere(density = 1.125, dynamic_viscosity = 18.03e-6, speed_of_sound = 343)
 	
-	# Create our outer aircraft geometry container
-	aircraft = Aircraft(num_rotors)
+	# Create our outer aircraft geometry container.
+	# The second argument is the number of wings (none in this example).
+	aircraft = Aircraft(num_rotors, 0)
 	
 	# The origins of our 2 rotors
 	origins = [Vec3([0, 0, 0]), Vec3([0, -2.5, 1])]
@@ -139,20 +140,12 @@ if __name__ == "__main__":
 
 	aircraft.root_frame.update(Mat4_identity())
 
-	# AircraftState is the top level container for holding the current
-	# aerodynamic state of the aircraft. It breaks down into rotors
-	# then the individual blades. There is a series of functions provided
-	# to turn internal state data into a linear array.
-	ac_state = AircraftState(num_rotors, [num_blades], elements, aircraft)
-
 	print("Freestream vel: ", V_inf, " m/s")
 
 	# Create and setup the input state. This would be the
 	# sort of input a dynamics simulator might feed into
-	# the aero model.
-	ac_input_state = AircraftInputState(num_rotors, [num_blades])
-
-	ac_state.freestream = Vec4([V_inf, 0, 0, 0])
+	# the aero model. The trailing argument is the number of wings.
+	ac_input_state = AircraftInputState(num_rotors, [num_blades], 0)
 
 	ac_input_state.rotor_inputs[0].angular_velocity = omega
 	ac_input_state.rotor_inputs[0].angular_accel = 0
@@ -176,11 +169,26 @@ if __name__ == "__main__":
 
 	r_0 = ac_input_state.rotor_inputs[0].r_0[b_idx]
 	print("r_0: ", ac_input_state.rotor_inputs[0].r_0)
-	inflows = [HuangPeters(4, 2, aircraft.rotors[r_idx], dt) for r_idx in range(num_rotors)]
+
+	# Each rotor gets a Huang-Peters dynamic inflow model. The constructor now
+	# also takes the rotor's input state. Constructing it inverts the
+	# Huang-Peters state matrices (BLAS/LAPACK).
+	inflows = [HuangPeters(4, 2, aircraft.rotors[r_idx], ac_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
+
+	# AircraftState is the top level container for holding the current
+	# aerodynamic state of the aircraft. It breaks down into rotors
+	# then the individual blades. The inflow models are attached to the
+	# state here so step() can evaluate and advance them. The trailing
+	# arguments cover wings (none here) and each rotor's rotation direction.
+	ac_state = CreateAircraftState(num_rotors, [num_blades], elements, 0, [], 0, 0, aircraft, inflows, [], [math.copysign(1.0, omega)])
+	ac_state.freestream = Vec4([V_inf, 0, 0, 0])
 
 	# Setup the wake history. We need at minimum 2 timesteps worth of history for the update.
-	# Increasing the history increases computation time with the current implementation
-	wake_history = WakeHistory(num_rotors, [num_blades], [wake_history_length], 2, elements, [shed_history], [1])
+	# Increasing the history increases computation time with the current implementation.
+	# a1 is the wake core growth constant; hybrid toggles hybrid free-wake/inflow advection.
+	a1 = 6.5e-5
+	hybrid = False
+	wake_history = WakeHistory(num_rotors, [num_blades], [wake_history_length], 2, elements, [shed_history], [1], a1, hybrid)
 
 	vtk_rotor = build_base_vtu_rotor(aircraft.rotors[0])
 	vtk_wake = build_base_vtu_wake(wake_history.history[0])
@@ -193,18 +201,17 @@ if __name__ == "__main__":
 			print(now - start_time, ": iteration: ", iteration)
 			start_time = now
 
-		for r_idx in range(ac_input_state.rotor_inputs.length()):
-			ac_input_state.rotor_inputs[r_idx].azimuth += ac_input_state.rotor_inputs[r_idx].angular_velocity*dt + ac_input_state.rotor_inputs[r_idx].angular_accel*dt*dt
+		# Advance each rotor's azimuth by one timestep. step() reads the
+		# azimuth from the input state, updates the frame tree, and spins
+		# the blades internally, so we no longer rotate the rotor frame here.
+		basic_aircraft_rotor_dynamics(ac_input_state, dt)
 
-			if ac_input_state.rotor_inputs[r_idx].azimuth > 2.0*math.pi:
-				ac_input_state.rotor_inputs[r_idx].azimuth = math.fmod(ac_input_state.rotor_inputs[r_idx].azimuth, 2.0*math.pi)
-
-			aircraft.rotors[r_idx].frame.set_rotation(Vec3([0, 0, 1]), ac_input_state.rotor_inputs[r_idx].azimuth)
-
-		step(ac_state, aircraft, ac_input_state, inflows, wake_history, atmo, iteration, dt)
+		# Inflows are now part of ac_state, so step() no longer takes them.
+		# The trailing flags are trackBWIevents and converged.
+		step(ac_state, aircraft, ac_input_state, wake_history, atmo, iteration, dt, False, False)
 
 		if iteration > (iterations - 360):
-			write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], ac_input_state.rotor_inputs[0], aircraft.rotors[0])
+			write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], aircraft.rotors[0])
 			write_wake_vtu("wake", iteration, vtk_wake, wake_history.history[0])
 
 	print("rotor 0 C_T: ", ac_state.rotor_states[0].C_T)
@@ -228,11 +235,14 @@ if __name__ == "__main__":
 			min_dim_1 = min(min_dim_1, min(x))
 			plt.plot(x, z, linewidth=0.5)
 
+			# RotorGeometry no longer exposes `origin` as a readable member, so we
+			# use the origins list we built the rotors from.
+			rotor_origin = origins[r_idx]
 			x_r = math.cos(blade.azimuth)
-			x_b = aircraft.rotors[r_idx].origin[0] + x_r*math.cos(aoa)
-			z_b = aircraft.rotors[r_idx].origin[2] - x_r*math.sin(aoa)
+			x_b = rotor_origin[0] + x_r*math.cos(aoa)
+			z_b = rotor_origin[2] - x_r*math.sin(aoa)
 
-			plt.plot([aircraft.rotors[r_idx].origin[0], x_b], [aircraft.rotors[r_idx].origin[2], z_b], "k-", linewidth=1.5)
+			plt.plot([rotor_origin[0], x_b], [rotor_origin[2], z_b], "k-", linewidth=1.5)
 
 	plt.axis("square")
 
