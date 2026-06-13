@@ -1,0 +1,350 @@
+{
+    // All positions are dimensional unless otherwise noted
+    "components": [
+        {
+            "type": "connection",
+            // Hinge used for blade pitch trim
+            "name": "lifter_pitch_hinge",
+            "origin": [
+                0.21,
+                0,
+                0
+            ],
+            "axis": [
+                -1,
+                0,
+                0
+            ],
+            "children": [
+                {
+                    "ref": "notional_blade"
+                }
+            ]
+        }
+    ],
+    // Multiple rotors can be defined in this array
+    "rotors": [
+        {
+            "type": "rotor",
+            // Name is used as a reference in files that include this file
+            "name": "notional_lifter",
+            "radius": 1.2,
+            "origin": [
+                0,
+                0,
+                0
+            ],
+            "axis": [
+                0,
+                0,
+                1
+            ],
+            "axis_angle_function": "constant",
+            "children": [
+                {
+                    "type": "connection",
+                    "name": "blade attach 0",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 0,
+                    "children": [
+                        {
+                            "ref": "lifter_pitch_hinge"
+                        }
+                    ]
+                },
+                {
+                    "type": "connection",
+                    "name": "blade attach 1",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 90,
+                    "children": [
+                        {
+                            "ref": "lifter_pitch_hinge"
+                        }
+                    ]
+                },
+                {
+                    "type": "connection",
+                    "name": "blade attach 2",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 180,
+                    "children": [
+                        {
+                            "ref": "lifter_pitch_hinge"
+                        }
+                    ]
+                },
+                {
+                    "type": "connection",
+                    "name": "blade attach 2",
+                    "axis": [
+                        0,
+                        0,
+                        1
+                    ],
+                    "axis_angle": 270,
+                    "children": [
+                        {
+                            "ref": "lifter_pitch_hinge"
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "blades": [
+        {
+            "type": "blade",
+            "name": "notional_blade",
+            "origin": [
+                0,
+                0,
+                0
+            ],
+            // Root cut-out, rotor radius non-dimensionalized
+            "r_c": 0.15,
+            // chord distribution, rotor radius non-dimensionalized
+            "c": [
+                0.27,
+                0.27,
+                0.27,
+                0.26,
+                0.26,
+                0.26,
+                0.26,
+                0.26,
+                0.26,
+                0.25,
+                0.25,
+                0.25,
+                0.25,
+                0.25,
+                0.24,
+                0.24,
+                0.23,
+                0.23
+            ],
+            // Twist distribution in degrees
+            "twist": [
+                23.5,
+                22.6,
+                21.6,
+                20.7,
+                19.8,
+                18.8,
+                17.9,
+                17.0,
+                16.0,
+                15.1,
+                14.2,
+                13.2,
+                12.3,
+                11.4,
+                10.5,
+                9.5,
+                9,
+                8
+            ],
+            "airfoils": [
+                {
+                    "type": "C81",
+                    // Extent is nondimensional
+                    "extent": [
+                        0.15,
+                        0.175
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.2608
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.175,
+                        0.225
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1695
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.225,
+                        0.275
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1695
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.275,
+                        0.325
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1695
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.325,
+                        0.375
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1695
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.375,
+                        0.425
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1153
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.425,
+                        0.475
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1153
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.475,
+                        0.525
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1153
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.525,
+                        0.575
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1153
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.575,
+                        0.625
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1153
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.625,
+                        0.675
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1026
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.675,
+                        0.725
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1026
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.725,
+                        0.775
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1026
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.775,
+                        0.825
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1026
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.825,
+                        0.875
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.1026
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.875,
+                        0.925
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.0971
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.925,
+                        0.975
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.0971
+                },
+                {
+                    "type": "C81",
+                    "extent": [
+                        0.975,
+                        1.0
+                    ],
+                    "filename": "./polars/NACA23012.C81",
+                    "thickness": 0.0971
+                }
+            ],
+            // This defines the quarter chord line.
+            // It is an offset from the blades y axis (which points down the span)
+            // rotor radius non-dimensionalized
+            "x": [
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ]
+        }
+    ]
+}

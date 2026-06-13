@@ -15,6 +15,7 @@ from libwopwopd import *
 from source import compute_aero
 from source import compute_acoustics
 import numpy as np
+from scipy.interpolate import interp1d
 import math
 import argparse
 from os import path, makedirs
@@ -37,7 +38,7 @@ def calculate_sound_power_level(oaspl_db,area):
 
 	return sound_power_level
 
-FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name")
+FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name bwi_params")
 
 def find_frame(root_frame, frame_name):
 	if root_frame.name == frame_name:
@@ -50,7 +51,7 @@ def find_frame(root_frame, frame_name):
 
 	return None
 
-def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory):
+def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory):
 
 	motions = flight_condition["motion"] if "motion" in flight_condition else None
 	if "vsp" in aircraft:
@@ -70,13 +71,61 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 				if motion_frame is not None:
 					motion_vec_dict[motion_frame.name] = (motion_frame.axis, motion["axis_angle_function"])
 
-		# for rotor in rotorcraft_system.rotors:
-		# 	rotor_name = rotor.frame.name
-		# 	print(f'rotor name: {rotor_name}')
-		# 	matched_motions = list(filter(lambda x: x["frame"] == rotor_name, motion))
-		# 	if len(matched_motions) > 0:
+		if "airfoil_definition" in aircraft:
+			airfoil_definitions = aircraft["airfoil_definition"]
+			for airfoil_def in airfoil_definitions:
+				matched_rotors = list(filter(lambda x: (airfoil_def["rotor"] == x.frame.name) or (airfoil_def["rotor"]+"_symmetry" == x.frame.name), rotorcraft_system.rotors))
+				if len(matched_rotors) > 0:
+					for rotor in matched_rotors:
+						for blade in rotor.blades:
+							r = get_r(blade)
+							airfoils = []
+							extents = []
+							af_thickness = []
+							af_r = []
 
-		# 		motion_vec_dict[rotor_name] = (Vec3([0, 0, 1]), "constant")
+							elements = len(r)
+							
+							r_c = r[0]
+							non_dim_length = 1.0 - r_c
+
+							for airfoil_desc in airfoil_def["airfoils"]:
+								
+								type = airfoil_desc['type']
+								extent = [0, 0]
+								af_extent = airfoil_desc['extent']
+								airfoil = None
+								if type == 'aerodas':
+									airfoil = create_aerodas_from_xfoil_polar(path.join(geom_directory, airfoil_desc['xfoil_polar']), airfoil_desc['thickness'])
+								elif type == 'thinaf': # ;)
+									airfoil = ThinAirfoil(0)
+								elif type == "C81":
+									airfoil = load_c81_file(airfoil_desc['filename'])
+								else:
+									print(f"Unsupported airfoil type: {type}. Defaulting to ThinAirfoil theory")
+									airfoil = ThinAirfoil(0)
+
+								extent[0] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[0] - r_c)/non_dim_length) - 1.0))*elements))
+								extent[1] = int(round((1.0 - (1.0/math.pi)*math.acos((2.0*(af_extent[1] - r_c)/non_dim_length) - 1.0))*elements)) - 1
+
+								extents.append(extent)
+								airfoils.append(airfoil)
+								af_thickness.append(airfoil_desc['thickness'])
+								af_r.append(0.5*(extent[0] + extent[1])/extent)
+
+							if len(af_r) == 1:
+								af_r.append(extent[1]/elements)
+								af_thickness.append(af_thickness[0])
+								
+							blade_airfoil = BladeAirfoil(airfoils, extents)
+
+							f_thickness = interp1d(af_r, af_thickness, bounds_error=False, fill_value='extrapolate')
+
+							
+							thickness = f_thickness(r)
+							
+							set_thickness(blade, thickness)
+							blade.airfoil = blade_airfoil
 
 	else:
 		rotorcraft_system, motion_vec_dict, trim_vec_dict, component_dict = compute_aero.build_aircraft(aircraft, computational_parameters['spanwise_elements'], geom_directory, motions, flight_condition["trim_frame"] if "trim_frame" in flight_condition else None)
@@ -89,11 +138,17 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	V_inf = flight_condition["V_inf"]
 	wake_dists = np.zeros(num_rotors)
 	
-	omegas = []
+	omegas_with_frame_name = []
 	for m in motions:
 		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
-			omegas.append(m['omega'])
+			omegas_with_frame_name.append((m['frame'], m['omega']))
 
+	omegas = []
+	for rotor in rotorcraft_system.rotors:
+		matched_frames = list(filter(lambda x: x[0] == rotor.frame.name, omegas_with_frame_name))
+		if len(matched_frames) > 0:
+			omegas.append(matched_frames[0][1])
+		 
 	omegas = np.asarray(omegas)
 	omegas = omegas[0:radii.size]
 	for rotor_idx, omega in enumerate(omegas):
@@ -128,7 +183,8 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 				# plus 1R to finish going past the other rotor, and then wake_trail_distance more radii after that
 				wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + wake_trail_distance[o_idx])
-
+			
+			print(f"o_idx {origin} other_origin {other_origin}  wake_dists[o_idx] {wake_dists[o_idx]}")
 		if wake_dists[o_idx] <= 0:
 			# if all others are upstream, just trail wake_trail_distance radii behind
 			wake_dists[o_idx] = wake_trail_distance[o_idx]
@@ -136,15 +192,18 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	wake_history_revs = np.zeros(wake_dists.size)
 
 	for idx, mu in enumerate(mus):
+		print("mu = ", mu)
 		if mu != 0:
+			print("mu = ", mu)			
 			wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
 		else:
 			wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
 	
+	print("wake_history_revs", wake_history_revs)
 	wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 	total_wake_history = wake_history_length.sum()
-	
-	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'])
+	print(f"wake_history_length {wake_history_length} total_wake_history {total_wake_history}")
+	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'], bwi_params)
 
 def main():
 	# push check
@@ -364,6 +423,7 @@ def main():
 	input_flight_conditions = None
 	input_computational_parameters = None
 	input_results = None
+	bwi_params = None
 
 	if args.observer_param is not None:
 		with open(args.observer_param) as param_file:
@@ -379,6 +439,7 @@ def main():
 		input_flight_conditions = param["flight_conditions"]
 		input_computational_parameters = param["computational_parameters"]
 		input_results = param["results"] if "results" in param else None
+		bwi_params = param["bwi_params"] if "bwi_params" in param else None
 	
 	flat_cases = []
 	for ac_idx, aircraft in enumerate(geom):
@@ -479,7 +540,7 @@ def main():
 					ac_acoustics = pyjson5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
-			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory))
+			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory))
 		# else:
 		# 	print(f'Only running case {args.ci}')
 		# 	flight_condition = flight_conditions[args.ci]
@@ -663,8 +724,17 @@ def main():
 		with open(prog_file_name, open_mode) as prog_file:
 			for case_idx, case in enumerate(cases[acoustic_start_idx:]):
 				print("calculating acoustics")
+				case_list_element = Casename()
+				case_list_element.caseNameFile = case[0]
+				case_list_element.globalFolderName = case[1]
+
+				print("case_name_file = ", case[0])
+				print("globalFolderName = ",case[1])
+
 				case_list = CaseList()
-				case_list.cases = [case]
+				case_list.cases = [case_list_element]
+
+				write_caselist_custom_name(case_list, "./", f'cases_{rank}_{case_idx}.nam')
 
 				compute_acoustics.compute_acoustics(case_list, rank)
 

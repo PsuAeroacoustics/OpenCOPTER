@@ -586,6 +586,9 @@ extern (C++) struct WingPartStateChunk{
 
 	// Distribution of spanwise change in circulation 
 	//Chunk d_gamma;
+	Chunk lift;
+
+	Chunk dCL_dim; //dC_L multiplied by sectional velocity
 
 	// distribution of elemental angle of attack
 	Chunk aoa;
