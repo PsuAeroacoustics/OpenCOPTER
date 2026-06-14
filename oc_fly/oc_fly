@@ -3,7 +3,7 @@
 from collections import namedtuple
 import sys
 import os
-import pyjson5
+import json5
 
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/../')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
@@ -398,25 +398,25 @@ def main():
 		param_directory = geom_directory
 
 		with open(args.input_geom) as geom_file:
-			geom = pyjson5.load(geom_file)
+			geom = json5.load(geom_file)
 	elif args.case_file is not None:
 		
 		with open(args.case_file) as case_file:
-			ac_list = pyjson5.load(case_file)
+			ac_list = json5.load(case_file)
 
 		for ac in ac_list:
 			geom_directory = path.dirname(path.realpath(args.case_file))
 			param_directory = geom_directory
 
 			with open(ac) as geom_file:
-				geom = geom + pyjson5.load(geom_file)
+				geom = geom + json5.load(geom_file)
 
 	args.geom_directory = geom_directory
 
 	param = None
 	if args.input_param is not None:
 		with open(args.input_param) as param_file:
-			param = pyjson5.load(param_file)
+			param = json5.load(param_file)
 
 	input_observer = None
 	input_acoustics = None
@@ -427,12 +427,12 @@ def main():
 
 	if args.observer_param is not None:
 		with open(args.observer_param) as param_file:
-			obs_param = pyjson5.load(param_file)
+			obs_param = json5.load(param_file)
 			input_observer = obs_param["observer"]
 
 	if args.acoustics_param is not None:
 		with open(args.acoustics_param) as param_file:
-			acoustic_param = pyjson5.load(param_file)
+			acoustic_param = json5.load(param_file)
 			input_acoustics = acoustic_param["acoustic_config"]
 
 	if param is not None:
@@ -451,7 +451,7 @@ def main():
 			param_directory = path.dirname(path.realpath(param_filepath))
 
 			with open(param_filepath) as param_file:
-				ac_param = pyjson5.load(param_file)
+				ac_param = json5.load(param_file)
 
 		if input_flight_conditions is not None:
 			flight_conditions = input_flight_conditions
@@ -479,7 +479,7 @@ def main():
 				include_filepath = path.join(geom_directory, include_filename)
 				include_directory = path.dirname(include_filepath)
 				with open(path.join(geom_directory, include_filename)) as include_file:
-					ac_include = pyjson5.load(include_file)
+					ac_include = json5.load(include_file)
 					if "components" in ac_include:
 						if "components" in aircraft:
 							aircraft["components"] = aircraft["components"] + ac_include["components"]
@@ -529,7 +529,7 @@ def main():
 			elif 'observer_file' in flight_condition:
 				ac_observers = None
 				with open(path.join(param_directory, flight_condition['observer_file'])) as param_file:
-					ac_observers = pyjson5.load(param_file)
+					ac_observers = json5.load(param_file)
 					observer = ac_observers["observer"]
 
 			if input_acoustics is not None:
@@ -537,7 +537,7 @@ def main():
 			elif 'acoustics_file' in flight_condition:
 				ac_acoustics = None
 				with open(path.join(param_directory, flight_condition['acoustics_file'])) as param_file:
-					ac_acoustics = pyjson5.load(param_file)
+					ac_acoustics = json5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
 			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory))
@@ -549,7 +549,7 @@ def main():
 		# 	elif 'observer_file' in flight_condition:
 		# 		ac_observers = None
 		# 		with open(flight_condition['observer_file']) as param_file:
-		# 			ac_observers = pyjson5.load(param_file)
+		# 			ac_observers = json5.load(param_file)
 		# 			observer = ac_observers["observer"]
 
 		# 	if input_acoustics is not None:
@@ -557,7 +557,7 @@ def main():
 		# 	elif 'acoustics_file' in flight_condition:
 		# 		ac_acoustics = None
 		# 		with open(flight_condition['acoustics_file']) as param_file:
-		# 			ac_acoustics = pyjson5.load(param_file)
+		# 			ac_acoustics = json5.load(param_file)
 		# 			acoustics = ac_acoustics["acoustic_config"]
 
 		# 	flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))

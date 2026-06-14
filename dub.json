@@ -395,7 +395,7 @@
 		"release-native-512": {
 			"buildOptions": ["releaseMode", "inline", "optimize"],
 			"dflags": ["-mcpu=native"],
-			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,-prefer-128-bit,+prefer-mask-registers,+evex512,+amx-avx512", "--frame-pointer=none", "--boundscheck=off"],
 			"versions": ["AVX_512F"]
 		},
 		"release-native-dbinf": {

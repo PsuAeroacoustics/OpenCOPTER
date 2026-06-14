@@ -185,21 +185,25 @@ struct Array(__T) {
 	}
 
 	int opApply(int delegate(ref T) dg) {
-		int result = 0;
 		foreach(i; 0..length) {
-			result = dg(data[i]);
-			if(result) break;
+			auto res = dg(data[i]);
+			if(res)
+			{
+				return res;
+			}
 		}
-		return result;
+		return 0;
 	}
 
 	int opApply(int delegate(ref size_t, ref T) dg) {
-		int result = 0;
 		foreach(i; 0..length) {
-			result = dg(i, data[i]);
-			if(result) break;
+			auto res = dg(i, data[i]);
+			if(res)
+			{
+				return res;
+			}
 		}
-		return result;
+		return 0;
 	}
 
 	auto ref opSlice(size_t i, size_t j) {

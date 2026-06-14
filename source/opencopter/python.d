@@ -12,6 +12,7 @@ import opencopter.vortexlattice;
 
 static import opencopter.vtk;
 
+static import opencopter.aircraft.geometry;
 static import opencopter.bladeelement;
 static import opencopter.wake;
 static import opencopter.inflow;

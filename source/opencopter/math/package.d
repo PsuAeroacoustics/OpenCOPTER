@@ -166,7 +166,8 @@ version(LDC) {
 				} else {
 					import ldc.intrinsics : llvm_sqrt;
 					double8 vec = pack_simd(vector);
-					result = unpack_simd(llvm_sqrt(vec));
+					double8 res = llvm_sqrt(vec);
+					result = unpack_simd(res);
 				}
 			} else {
 				foreach(idx; 0..T.length) {
