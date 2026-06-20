@@ -265,7 +265,11 @@ extern(C)
     int LAPACKE_cgetf2(int, int, int, cfloat*, int, int*) @nogc nothrow;
     int LAPACKE_zgetf2(int, int, int, cdouble*, int, int*) @nogc nothrow;
     int LAPACKE_sgetrf(int, int, int, float*, int, int*) @nogc nothrow;
+    // macOS Accelerate provides the Fortran LAPACK interface but not LAPACKE.
+    // LAPACKE_dgetrf/dgetri are emulated below via the Fortran routines.
+    version(OSX) {} else {
     int LAPACKE_dgetrf(int, int, int, double*, int, int*) @nogc nothrow;
+    }
     int LAPACKE_cgetrf(int, int, int, cfloat*, int, int*) @nogc nothrow;
     int LAPACKE_zgetrf(int, int, int, cdouble*, int, int*) @nogc nothrow;
     int LAPACKE_sgetrf2(int, int, int, float*, int, int*) @nogc nothrow;
@@ -273,7 +277,9 @@ extern(C)
     int LAPACKE_cgetrf2(int, int, int, cfloat*, int, int*) @nogc nothrow;
     int LAPACKE_zgetrf2(int, int, int, cdouble*, int, int*) @nogc nothrow;
     int LAPACKE_sgetri(int, int, float*, int, const(int)*) @nogc nothrow;
+    version(OSX) {} else {
     int LAPACKE_dgetri(int, int, double*, int, const(int)*) @nogc nothrow;
+    }
     int LAPACKE_cgetri(int, int, cfloat*, int, const(int)*) @nogc nothrow;
     int LAPACKE_zgetri(int, int, cdouble*, int, const(int)*) @nogc nothrow;
     int LAPACKE_sgetrs(int, char, int, int, const(float)*, int, const(int)*, float*, int) @nogc nothrow;
@@ -3756,4 +3762,36 @@ extern(C)
     void ssyevx_2stage_(char*, char*, char*, int*, float*, int*, float*, float*, int*, int*, float*, int*, float*, float*, int*, float*, int*, int*, int*, int*) @nogc nothrow;
     void dsyevx_2stage_(char*, char*, char*, int*, double*, int*, double*, double*, int*, int*, double*, int*, double*, double*, int*, double*, int*, int*, int*, int*) @nogc nothrow;
     void cheevx_2stage_(char*, char*, char*, int*, cfloat*, int*, float*, float*, int*, int*, float*, int*, float*, cfloat*, int*, cfloat*, int*, float*, int*, int*, int*) @nogc nothrow;
+}
+
+version(OSX) {
+    // Accelerate exposes the Fortran (column-major) LAPACK interface but not the
+    // LAPACKE C interface. These shims reproduce LAPACKE_dgetrf/dgetri for the
+    // row-major, square in-place inversion the code performs: a row-major buffer
+    // is the column-major transpose of the same matrix, and inv(Aᵀ) == inv(A)ᵀ,
+    // so running the Fortran routines on the buffer yields the identical bytes a
+    // LAPACK_ROW_MAJOR call would. The pivots produced here are consumed by the
+    // matching dgetri shim, so the combined factor-then-invert result is correct.
+    import core.stdc.stdlib : malloc, free;
+
+    int LAPACKE_dgetrf(int matrix_layout, int m, int n, double* a, int lda, int* ipiv) @nogc nothrow {
+        int info;
+        dgetrf_(&m, &n, a, &lda, ipiv, &info);
+        return info;
+    }
+
+    int LAPACKE_dgetri(int matrix_layout, int n, double* a, int lda, const(int)* ipiv) @nogc nothrow {
+        int info;
+        double query;
+        int lwork = -1;
+        dgetri_(&n, a, &lda, ipiv, &query, &lwork, &info);
+        if(info != 0) return info;
+        lwork = cast(int)query;
+        if(lwork < 1) lwork = n < 1 ? 1 : n;
+        double* work = cast(double*)malloc(double.sizeof*lwork);
+        if(work is null) return LAPACK_WORK_MEMORY_ERROR;
+        dgetri_(&n, a, &lda, ipiv, work, &lwork, &info);
+        free(work);
+        return info;
+    }
 }

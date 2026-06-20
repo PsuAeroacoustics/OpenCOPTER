@@ -8,9 +8,9 @@
 		"kxml": "~>1.1.1"
 	},
 	"targetType": "dynamicLibrary",
-	"lflags-posix": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib"],
-	"lflags-linux": ["-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack.a", "-l:libopenblas.a", "-lgfortran"],
-	"lflags-osx": ["-L/usr/local/opt/openblas/lib", "/usr/local/lib/libsleef.a", "-lopenblas", "-Wl,-rpath,@loader_path/"],
+	"lflags-linux": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib", "-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack.a", "-l:libopenblas.a", "-lgfortran"],
+	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 	"configurations": [
 		{
@@ -306,6 +306,31 @@
 			}
 		},
 		{
+			"name": "library-python314",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
+			"subConfigurations": {
+				"pyd": "python314"
+			}
+		},
+		{
+			"name": "library-python314-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python314"
+			}
+		},
+		{
 			"name": "library_huang",
 			"targetName": "opencopter_huang",
 			"targetType": "dynamicLibrary",
@@ -369,7 +394,7 @@
 		"release-native-512": {
 			"buildOptions": ["releaseMode", "inline", "optimize"],
 			"dflags": ["-mcpu=native"],
-			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,-prefer-128-bit,+prefer-mask-registers,+evex512,+amx-avx512", "--frame-pointer=none", "--boundscheck=off"],
 			"versions": ["AVX_512F"]
 		},
 		"release-native-dbinf": {

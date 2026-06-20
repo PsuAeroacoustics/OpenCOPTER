@@ -83,51 +83,47 @@ version(LDC) {
 		version(D_AVX2) {
 			pragma(msg, "avx2 exp");
 			static if(T.length == 16) {
-				result[0..4] = cast(double[4])Sleef_expd4_u10avx2(cast(double4)vector[0..4]);
-				result[4..8] = cast(double[4])Sleef_expd4_u10avx2(cast(double4)vector[4..8]);
-				result[8..12] = cast(double[4])Sleef_expd4_u10avx2(cast(double4)vector[8..12]);
-				result[12..$] = cast(double[4])Sleef_expd4_u10avx2(cast(double4)vector[12..$]);
+				result[0..4] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector[0..4])));
+				result[4..8] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector[4..8])));
+				result[8..12] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector[8..12])));
+				result[12..$] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector[12..$])));
 			} else static if(T.length == 8) {
-				result[0..4] = cast(double[4])Sleef_expd4_u10avx2(cast(double4)vector[0..4]);
-				result[4..$] = cast(double[4])Sleef_expd4_u10avx2(cast(double4)vector[4..$]);
+				result[0..4] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector[0..4])));
+				result[4..$] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector[4..$])));
 			} else static if(T.length == 4) {
-				result[] = cast(T)Sleef_expd4_u10avx2(cast(double4)vector);
+				result[] = unpack_simd(Sleef_expd4_u10avx2(pack_simd(vector)));
 			}
 		} else {
 			version(D_AVX) {
 				static if(T.length == 8) {
-					result[0..2] = cast(double[2])Sleef_expd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..4] = cast(double[2])Sleef_expd2_u10sse4(cast(double2)vector[2..4]);
-					result[4..6] = cast(double[2])Sleef_expd2_u10sse4(cast(double2)vector[4..6]);
-					result[6..$] = cast(double[2])Sleef_expd2_u10sse4(cast(double2)vector[6..$]);
-
+					result[0..2] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector[0..2])));
+					result[2..4] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector[2..4])));
+					result[4..6] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector[4..6])));
+					result[6..$] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector[6..$])));
 				} else static if(T.length == 4) {
-					result[0..2] = cast(double[2])Sleef_expd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..$] = cast(double[2])Sleef_expd2_u10sse4(cast(double2)vector[2..$]);
+					result[0..2] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector[0..2])));
+					result[2..$] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector[2..$])));
 				} else static if(T.length == 2) {
-					result[] = cast(T)Sleef_expd2_u10sse4(cast(double2)vector);
+					result[] = unpack_simd(Sleef_expd2_u10sse4(pack_simd(vector)));
 				}
-
 			} else {
 				version(X86_64) {
 					static if(T.length == 8) {
-						result[0..2] = cast(double[2])Sleef_expd2_u10sse2(cast(double2)vector[0..2]);
-						result[2..4] = cast(double[2])Sleef_expd2_u10sse2(cast(double2)vector[2..4]);
-						result[4..6] = cast(double[2])Sleef_expd2_u10sse2(cast(double2)vector[4..6]);
-						result[6..$] = cast(double[2])Sleef_expd2_u10sse2(cast(double2)vector[6..$]);
-
+						result[0..2] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector[0..2])));
+						result[2..4] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector[2..4])));
+						result[4..6] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector[4..6])));
+						result[6..$] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector[6..$])));
 					} else static if(T.length == 4) {
-						result[0..2] = cast(double[2])Sleef_expd2_u10sse2(cast(double2)vector[0..2]);
-						result[2..$] = cast(double[2])Sleef_expd2_u10sse2(cast(double2)vector[2..$]);
+						result[0..2] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector[0..2])));
+						result[2..$] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector[2..$])));
 					} else static if(T.length == 2) {
-						result[] = cast(T)Sleef_expd2_u10sse2(cast(double2)vector);
+						result[] = unpack_simd(Sleef_expd2_u10sse2(pack_simd(vector)));
 					}
 				} else {
 					foreach(idx; 0..T.length) {
 						result[idx] = std.math.exp(vector[idx]);
 					}
 				}
-				
 			}
 		}
 	} else {
@@ -143,8 +139,8 @@ version(LDC) {
 	Unqual!T result;
 	version(LDC) {
 		import ldc.intrinsics : llvm_sqrt;
-		double8 vec = cast(double8)vector[];
-		result = cast(T)llvm_rsqrt(vec);
+		double8 vec = pack_simd(vector);
+		result = unpack_simd(llvm_rsqrt(vec));
 	} else {
 		foreach(idx; 0..T.length) {
 			result[idx] = 1.0/std.math.sqrt(vector[idx]);
@@ -163,16 +159,16 @@ version(LDC) {
 			version(LDC) {
 				static if(T.length == 16) {
 					import ldc.intrinsics : llvm_sqrt;
-					double8 vec1 = cast(double8)vector[0..8];
-					double8 vec2 = cast(double8)vector[8..$];
-					result[0..8] = cast(double[8])llvm_sqrt(vec1);
-					result[8..$] = cast(double[8])llvm_sqrt(vec2);
+					double8 vec1 = pack_simd(vector[0..8]);
+					double8 vec2 = pack_simd(vector[8..$]);
+					result[0..8] = unpack_simd(llvm_sqrt(vec1));
+					result[8..$] = unpack_simd(llvm_sqrt(vec2));
 				} else {
 					import ldc.intrinsics : llvm_sqrt;
-					double8 vec = cast(double8)vector[];
-					result = cast(T)llvm_sqrt(vec);
+					double8 vec = pack_simd(vector);
+					double8 res = llvm_sqrt(vec);
+					result = unpack_simd(res);
 				}
-				
 			} else {
 				foreach(idx; 0..T.length) {
 					result[idx] = std.math.sqrt(vector[idx]);
@@ -182,51 +178,47 @@ version(LDC) {
 			version(D_AVX2) {
 				pragma(msg, "avx2 sqrt");
 				static if(T.length == 16) {
-					result[0..4] = cast(double[4])Sleef_sqrtd4_avx2(cast(double4)vector[0..4]);
-					result[4..8] = cast(double[4])Sleef_sqrtd4_avx2(cast(double4)vector[4..8]);
-					result[8..12] = cast(double[4])Sleef_sqrtd4_avx2(cast(double4)vector[8..12]);
-					result[12..$] = cast(double[4])Sleef_sqrtd4_avx2(cast(double4)vector[12..$]);
+					result[0..4] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector[0..4])));
+					result[4..8] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector[4..8])));
+					result[8..12] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector[8..12])));
+					result[12..$] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector[12..$])));
 				} else static if(T.length == 8) {
-					result[0..4] = cast(double[4])Sleef_sqrtd4_avx2(cast(double4)vector[0..4]);
-					result[4..$] = cast(double[4])Sleef_sqrtd4_avx2(cast(double4)vector[4..$]);
+					result[0..4] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector[0..4])));
+					result[4..$] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector[4..$])));
 				} else static if(T.length == 4) {
-					result[] = cast(T)Sleef_sqrtd4_avx2(cast(double4)vector);
+					result[] = unpack_simd(Sleef_sqrtd4_avx2(pack_simd(vector)));
 				}
 			} else {
 				version(D_AVX) {
 					static if(T.length == 8) {
-						result[0..2] = cast(double[2])Sleef_sqrtd2_sse4(cast(double2)vector[0..2]);
-						result[2..4] = cast(double[2])Sleef_sqrtd2_sse4(cast(double2)vector[2..4]);
-						result[4..6] = cast(double[2])Sleef_sqrtd2_sse4(cast(double2)vector[4..6]);
-						result[6..$] = cast(double[2])Sleef_sqrtd2_sse4(cast(double2)vector[6..$]);
-
+						result[0..2] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector[0..2])));
+						result[2..4] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector[2..4])));
+						result[4..6] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector[4..6])));
+						result[6..$] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector[6..$])));
 					} else static if(T.length == 4) {
-						result[0..2] = cast(double[2])Sleef_sqrtd2_sse4(cast(double2)vector[0..2]);
-						result[2..$] = cast(double[2])Sleef_sqrtd2_sse4(cast(double2)vector[2..$]);
+						result[0..2] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector[0..2])));
+						result[2..$] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector[2..$])));
 					} else static if(T.length == 2) {
-						result[] = cast(T)Sleef_sqrtd2_sse4(cast(double2)vector);
+						result[] = unpack_simd(Sleef_sqrtd2_sse4(pack_simd(vector)));
 					}
-
 				} else {
 					version(X86_64) {
 						static if(T.length == 8) {
-							result[0..2] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[0..2]);
-							result[2..4] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[2..4]);
-							result[4..6] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[4..6]);
-							result[6..$] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[6..$]);
-
+							result[0..2] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[0..2])));
+							result[2..4] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[2..4])));
+							result[4..6] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[4..6])));
+							result[6..$] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[6..$])));
 						} else static if(T.length == 4) {
-							result[0..2] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[0..2]);
-							result[2..$] = cast(double[2])Sleef_sqrtd2_sse2(cast(double2)vector[2..$]);
+							result[0..2] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[0..2])));
+							result[2..$] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector[2..$])));
 						} else static if(T.length == 2) {
-							result[] = cast(T)Sleef_sqrtd2_sse2(cast(double2)vector);
+							result[] = unpack_simd(Sleef_sqrtd2_sse2(pack_simd(vector)));
 						}
 					} else {
 						foreach(idx; 0..T.length) {
 							result[idx] = std.math.sqrt(vector[idx]);
 						}
 					}
-					
 				}
 			}
 		}
@@ -248,46 +240,42 @@ version(LDC) {
 		version(D_AVX2) {
 			pragma(msg, "avx2 erf");
 			static if(T.length == 8) {
-				result[0..4] = cast(double[4])Sleef_erfd4_u10avx2(cast(double4)vector[0..4]);
-				result[4..$] = cast(double[4])Sleef_erfd4_u10avx2(cast(double4)vector[4..$]);
+				result[0..4] = unpack_simd(Sleef_erfd4_u10avx2(pack_simd(vector[0..4])));
+				result[4..$] = unpack_simd(Sleef_erfd4_u10avx2(pack_simd(vector[4..$])));
 			} else static if(T.length == 4) {
-				result[] = cast(T)Sleef_erfd4_u10avx2(cast(double4)vector);
+				result[] = unpack_simd(Sleef_erfd4_u10avx2(pack_simd(vector)));
 			}
 		} else {
 			version(D_AVX) {
 				static if(T.length == 8) {
-					result[0..2] = cast(double[2])Sleef_erfd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..4] = cast(double[2])Sleef_erfd2_u10sse4(cast(double2)vector[2..4]);
-					result[4..6] = cast(double[2])Sleef_erfd2_u10sse4(cast(double2)vector[4..6]);
-					result[6..$] = cast(double[2])Sleef_erfd2_u10sse4(cast(double2)vector[6..$]);
-
+					result[0..2] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector[0..2])));
+					result[2..4] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector[2..4])));
+					result[4..6] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector[4..6])));
+					result[6..$] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector[6..$])));
 				} else static if(T.length == 4) {
-					result[0..2] = cast(double[2])Sleef_erfd2_u10sse4(cast(double2)vector[0..2]);
-					result[2..$] = cast(double[2])Sleef_erfd2_u10sse4(cast(double2)vector[2..$]);
+					result[0..2] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector[0..2])));
+					result[2..$] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector[2..$])));
 				} else static if(T.length == 2) {
-					result[] = cast(T)Sleef_erfd2_u10sse4(cast(double2)vector);
+					result[] = unpack_simd(Sleef_erfd2_u10sse4(pack_simd(vector)));
 				}
-
 			} else {
 				version(X86_64) {
 					static if(T.length == 8) {
-						result[0..2] = cast(double[2])Sleef_erfd2_u10sse2(cast(double2)vector[0..2]);
-						result[2..4] = cast(double[2])Sleef_erfd2_u10sse2(cast(double2)vector[2..4]);
-						result[4..6] = cast(double[2])Sleef_erfd2_u10sse2(cast(double2)vector[4..6]);
-						result[6..$] = cast(double[2])Sleef_erfd2_u10sse2(cast(double2)vector[6..$]);
-
+						result[0..2] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector[0..2])));
+						result[2..4] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector[2..4])));
+						result[4..6] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector[4..6])));
+						result[6..$] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector[6..$])));
 					} else static if(T.length == 4) {
-						result[0..2] = cast(double[2])Sleef_erfd2_u10sse2(cast(double2)vector[0..2]);
-						result[2..$] = cast(double[2])Sleef_erfd2_u10sse2(cast(double2)vector[2..$]);
+						result[0..2] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector[0..2])));
+						result[2..$] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector[2..$])));
 					} else static if(T.length == 2) {
-						result[] = cast(T)Sleef_erfd2_u10sse2(cast(double2)vector);
+						result[] = unpack_simd(Sleef_erfd2_u10sse2(pack_simd(vector)));
 					}
 				} else {
 					foreach(idx; 0..T.length) {
 						result[idx] = std.mathspecial.erf(vector[idx]);
 					}
 				}
-				
 			}
 		}
 	} else {
