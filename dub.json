@@ -12,7 +12,6 @@
 	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
-	"versions": ["PydPythonExtension"],
 	"configurations": [
 		{
 			"name": "library",
