@@ -8,7 +8,17 @@
 		"kxml": "~>1.1.1"
 	},
 	"targetType": "dynamicLibrary",
-	"lflags-linux": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib", "-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack.a", "-l:libopenblas.a", "-lgfortran"],
+	"lflags-linux": [
+		"-L$HOME/.local/lib",
+		"-L/usr/local/lib",
+		"-L$CONDA_PREFIX/lib",
+		"-L$HOME/.local/lib64",
+		"-lsleef",
+		"-llapacke",
+		"-llapack",
+		"-lopenblas",
+		"-lgfortran"
+	],
 	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
@@ -22,7 +32,12 @@
 			"dflags": ["-HCf=./opencopter.h"],
 			"dependencies": {
 				"vtkd": { "path": "./dependencies/vtkd" }
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-novtk",
@@ -42,7 +57,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python33"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python33-novtk",
@@ -67,7 +87,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python37"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python34-novtk",
@@ -92,7 +117,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python35"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python35-novtk",
@@ -117,7 +147,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python36"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python36-novtk",
@@ -142,7 +177,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python37"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python37-novtk",
@@ -167,7 +207,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python38"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python38-novtk",
@@ -192,7 +237,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python39"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python39-novtk",
@@ -217,7 +267,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python310"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python310-novtk",
@@ -242,7 +297,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python311"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python311-novtk",
@@ -267,7 +327,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python312"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python312-novtk",
@@ -292,7 +357,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python313"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python313-novtk",
@@ -317,7 +387,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python314"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python314-novtk",

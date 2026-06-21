@@ -1,0 +1,20 @@
+name: opencopter
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.12
+  - dub
+  - ldc2
+  - openmpi-mpifort
+  - mpi4py
+  - openmpi-mpicc
+  - sleef
+  - vtk=9.2.6
+  - libopenblas
+  - liblapack
+  - openmpi-mpicxx
+  - json5
+  - liblapacke
+  - scipy=1.12.0
+  - openmpi
