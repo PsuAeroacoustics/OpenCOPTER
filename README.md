@@ -3,9 +3,10 @@ OpenCOPTER (COupled Potential Theory Extensions for Rotors) is a library for fas
 
 # Table of Contents
 1. [Dependencies](#dependencies)
-	1. [Required Dependencies](#required-dependencies)
-	2. [Optional Dependencies](#optional-dependencies)
-	3. [Example/Validation Project Dependencies](#examplevalidation-project-dependencies)
+	1. [Recommended setup and build (Linux)](#recommended-setup-and-build-linux)
+	2. [Required Dependencies](#required-dependencies-if-building-without-anaconda)
+	3. [Optional Dependencies](#optional-dependencies)
+	4. [Example/Validation Project Dependencies](#examplevalidation-project-dependencies)
 2. [Building](#building)
 	1. [Build Types (`-b`)](#build-types--b)
 	2. [Configurations (`-c`)](#configurations--c)
@@ -31,7 +32,29 @@ If the repository is already cloned, but submodules were not cloned, run the fol
 
 Setting up the remaining dependencies is described below.
 
-### Required Dependencies
+### Recommended setup and build (Linux)
+
+The recommended way to setup and build OpenCOPTER is by using the included anaconda environment. This process is already automated and OpenCOPTER can be setup and built by calling the build_linux.sh script. This script automates the process of creating the anaconda environment, activating it, and building OpenCOPTER and its dependencies.
+
+General usage of the script is simple:
+```
+$ ./build_linux.sh --help
+Usage:
+  For native CPU build:
+      ./build_linux.sh
+          or
+      ./build_linux.sh native
+  For generic CPU build:
+      ./build_linux.sh generic
+  For generic CPU build with AVX support:
+      ./build_linux.sh generic-avx
+  For generic CPU build with AVX2 support:
+      ./build_linux.sh generic-avx2
+  For generic CPU build with AVX512F support:
+      ./build_linux.sh generic-avx512f
+```
+
+### Required Dependencies if building without Anaconda
 
 - The LLVM D Compiler (ldc) (https://github.com/ldc-developers/ldc)
 - SLEEF (https://sleef.org/)

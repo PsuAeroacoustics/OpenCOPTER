@@ -8,7 +8,19 @@
 		"kxml": "~>1.1.1"
 	},
 	"targetType": "dynamicLibrary",
-	"lflags-linux": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib", "-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack.a", "-l:libopenblas.a", "-lgfortran"],
+	"lflags-linux": [
+		"-L$HOME/.local/lib",
+		"-L/usr/local/lib",
+		"-L$CONDA_PREFIX/lib",
+		"-L$HOME/.local/lib64",
+		"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+		"-lsleef",
+		"-llapacke",
+		"-llapack",
+		"-lopenblas",
+		"-lgfortran",
+		"-lvtk_shim"
+	],
 	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
