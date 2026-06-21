@@ -1114,7 +1114,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			immutable num_chunks = ac_state
 				.rotor_states[rotor_idx]
 				.blade_states[blade_idx]
-				.chunks.length();
+				.chunks.length;
 
 			double max_gamma = 0;
 			int idx = 0;

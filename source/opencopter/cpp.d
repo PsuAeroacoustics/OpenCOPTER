@@ -32,6 +32,7 @@ import std.array;
 import std.conv : to;
 import std.exception : enforce;
 import std.math : abs, fmod, PI, sgn;
+import std.string : fromStringz;
 import std.traits : isBasicType;
 
 import numd.linearalgebra.matrix;
@@ -40,6 +41,8 @@ extern(C++) {
 
 	import core.stdcpp.array : array;
 	import core.stdcpp.vector;
+	//import core.stdcpp.string : basic_string;
+	alias cpp_string = char*;//basic_string!char;
 
 	alias CppChunk = array!(double, chunk_size());
 
@@ -574,37 +577,47 @@ extern(C++) {
 		opencopter.wake.get_wake_component!"v_z"(filament, data_slice);
 	}
 
-	void fill_wake_xyz_rotor_frame(ref RotorGeometry rotor, ref VortexFilament filament, double[] x, double[] y, double[] z) {
-		opencopter.wake.fill_wake_xyz_rotor_frame(rotor, filament, x, y, z);
-	}
+	// void fill_wake_xyz_rotor_frame(ref RotorGeometry rotor, ref VortexFilament filament, double[] x, double[] y, double[] z) {
+	// 	opencopter.wake.fill_wake_xyz_rotor_frame(rotor, filament, x, y, z);
+	// }
 
 	void set_blade_pitch(ref AircraftInputState ac_input, size_t rotor_idx, size_t blade_idx, double pitch) {
 		ac_input.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = pitch;
 	}
 
-	string FrameType_aircraft() {
-		return opencopter.aircraft.FrameType.aircraft.to!string;
-	}
+	// string FrameType_aircraft() {
+	// 	return opencopter.aircraft.FrameType.aircraft.to!string;
+	// }
 
-	string FrameType_connection() {
-		return opencopter.aircraft.FrameType.connection.to!string;
-	}
+	// string FrameType_connection() {
+	// 	return opencopter.aircraft.FrameType.connection.to!string;
+	// }
 
-	string FrameType_rotor() {
-		return opencopter.aircraft.FrameType.rotor.to!string;
-	}
+	// string FrameType_rotor() {
+	// 	return opencopter.aircraft.FrameType.rotor.to!string;
+	// }
 
-	string FrameType_blade() {
-		return opencopter.aircraft.FrameType.blade.to!string;
-	}
+	// string FrameType_blade() {
+	// 	return opencopter.aircraft.FrameType.blade.to!string;
+	// }
 
-	string FrameType_wing() {
-		return opencopter.aircraft.FrameType.wing.to!string;
-	}
+	// string FrameType_wing() {
+	// 	return opencopter.aircraft.FrameType.wing.to!string;
+	// }
 
-	void step(AircraftState* ac_state, Aircraft* aircraft, AircraftInputState* ac_input_state, WakeHistory* wake_history, Atmosphere* atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
+	void step(
+		ref AircraftState ac_state,
+		ref Aircraft aircraft,
+		ref AircraftInputState ac_input_state,
+		ref WakeHistory wake_history,
+		ref Atmosphere atmo,
+		size_t iteration,
+		double dt,
+		bool trackBWIevents,
+		bool converged
+	) {
 		//void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
-		opencopter.bladeelement.step(*ac_state, *aircraft, *ac_input_state, *wake_history, *atmo, iteration, dt, trackBWIevents, converged);
+		opencopter.bladeelement.step(ac_state, aircraft, ac_input_state, wake_history, atmo, iteration, dt, trackBWIevents, converged);
 	}
 
 	void set_wing_vortex_geometry(WingLiftSurf* wing_lift_surf, WingGeometry* wing, size_t spanwise_chunks, size_t chordwise_nodes){
@@ -619,54 +632,87 @@ extern(C++) {
 		return opencopter.vtk.build_base_vtu_rotor(rotor);
 	}
 
-	void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, RotorState* rotor_state, RotorGeometry* rotor_geom) {
-		opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_geom);
+	// void write_rotor_vtu(string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, RotorState* rotor_state, RotorGeometry* rotor_geom) {
+	// 	opencopter.vtk.write_rotor_vtu(base_filename, iteration, rotor_idx, rotor, rotor_state, rotor_geom);
+	// }
+	void write_rotor_vtu(cpp_string base_filename, size_t iteration, size_t rotor_idx, opencopter.vtk.VtkRotor rotor, ref RotorState rotor_state, ref RotorGeometry rotor_geom) {
+		opencopter.vtk.write_rotor_vtu(fromStringz(base_filename).idup, iteration, rotor_idx, rotor, rotor_state, rotor_geom);
 	}
 
-	void write_rotors_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkRotor[] rotors, AircraftState* ac_state, Aircraft* aircraft) {
-		foreach(r_idx; 0..aircraft.rotors.length()) {
-			opencopter.vtk.write_rotor_vtu(base_filename, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], aircraft.rotors[r_idx]);
+	void write_rotors_vtu(
+		cpp_string base_filename,
+		size_t iteration,
+		opencopter.vtk.VtkRotor* rotors,
+		ref AircraftState ac_state,
+		ref Aircraft aircraft
+	) {
+		foreach(r_idx; 0..aircraft.rotors.length) {
+			opencopter.vtk.write_rotor_vtu(fromStringz(base_filename).idup, iteration, r_idx, rotors[r_idx], ac_state.rotor_states[r_idx], aircraft.rotors[r_idx]);
 		}
 	}
 
-	opencopter.vtk.VtkWing build_base_vtu_wing(WingGeometry* wing){
+	opencopter.vtk.VtkWing build_base_vtu_wing(ref WingGeometry wing){
 		return opencopter.vtk.build_base_vtu_wing(wing);
 	}
 
-	void write_wing_vtu(string base_filename, size_t iteration, size_t wing_idx, opencopter.vtk.VtkWing wing, WingState* wing_state, WingGeometry* wing_geom){
-		opencopter.vtk.write_wing_vtu(base_filename, iteration, wing_idx, wing, wing_state, wing_geom);
+	void write_wing_vtu(cpp_string base_filename, size_t iteration, size_t wing_idx, opencopter.vtk.VtkWing wing, ref WingState wing_state, ref WingGeometry wing_geom){
+		opencopter.vtk.write_wing_vtu(fromStringz(base_filename).idup, iteration, wing_idx, wing, wing_state, wing_geom);
 	}
 
-	opencopter.vtk.VtkWake build_base_vtu_wake(Wake* wake) {
+	opencopter.vtk.VtkWake build_base_vtu_wake(ref Wake wake) {
 		return opencopter.vtk.build_base_vtu_wake(wake);
 	}
 
-	void write_wake_vtu(string base_filename, size_t iteration, opencopter.vtk.VtkWake vtk_wake, Wake* wake) {
-		opencopter.vtk.write_wake_vtu(base_filename, iteration, vtk_wake, wake);
+	void write_wake_vtu(cpp_string base_filename, size_t iteration, opencopter.vtk.VtkWake vtk_wake, ref Wake wake) {
+		opencopter.vtk.write_wake_vtu(fromStringz(base_filename).idup, iteration, vtk_wake, wake);
 	}
 
-	opencopter.vtk.VtkWingWake build_base_vtu_wing_wake(WingGeometry* wing, WingLiftSurf* wing_lift_surf){
+	opencopter.vtk.VtkWingWake build_base_vtu_wing_wake(ref WingGeometry wing, ref WingLiftSurf wing_lift_surf){
 		return opencopter.vtk.build_base_vtu_wing_wake(wing, wing_lift_surf);
 	}
 
-	void write_wing_wake_vtu(string base_filename, size_t iteration, size_t wing_idx,  opencopter.vtk.VtkWingWake wing_wake, WingGeometry* wing_geom, WingLiftSurf* wing_lift_surf, WingInputState wing_input){
-		opencopter.vtk.write_wing_wake_vtu(base_filename, iteration, wing_idx, wing_wake, wing_geom, wing_lift_surf, wing_input);
+	void write_wing_wake_vtu(cpp_string base_filename, size_t iteration, size_t wing_idx,  opencopter.vtk.VtkWingWake wing_wake, ref WingGeometry wing_geom, ref WingLiftSurf wing_lift_surf, ref WingInputState wing_input){
+		opencopter.vtk.write_wing_wake_vtu(fromStringz(base_filename).idup, iteration, wing_idx, wing_wake, wing_geom, wing_lift_surf, wing_input);
 	}
 
-	void write_wake_field_vtu(string filename, AircraftState ac_state, Wake wake, Vec3 delta, Vec3 starts, size_t num_x, size_t num_y, size_t num_z) {
-		opencopter.vtk.write_wake_field_vtu(filename, ac_state, wake, delta, starts, num_x, num_y, num_z);
+	void write_wake_field_vtu(cpp_string filename, ref AircraftState ac_state, ref Wake wake, Vec3 delta, Vec3 starts, size_t num_x, size_t num_y, size_t num_z) {
+		opencopter.vtk.write_wake_field_vtu(fromStringz(filename).idup, ac_state, wake, delta, starts, num_x, num_y, num_z);
 	}
 
-	alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!(Inflow, Array!RotorGeometry);
+	//alias write_inflow_vtu = opencopter.vtk.write_inflow_vtu!(Inflow, Array!RotorGeometry);
 
-	IV compute_wake_induced_velocities(ref Wake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref AircraftState ac_state, size_t rotor_idx, bool single_rotor = false) {
-		return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, rotor_idx, 0.to!size_t, single_rotor);
-	}
+	// IV compute_wake_induced_velocities(ref Wake wake, immutable Chunk x, immutable Chunk y, immutable Chunk z, ref AircraftState ac_state, size_t rotor_idx, bool single_rotor = false) {
+	// 	return opencopter.wake.compute_wake_induced_velocities(wake, x, y, z, ac_state, rotor_idx, 0.to!size_t, single_rotor);
+	// }
 
-	AircraftState* CreateAircraftState(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings, size_t[] num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, Aircraft* ac, Inflow[] rotor_inflows, Inflow[] wing_inflows, double[] direction) {
-		auto oc_rotor_inflows = rotor_inflows.map!(a => a.get_wrapped_inflow()).array;
-		auto oc_wing_inflows = wing_inflows.map!(a => a.get_wrapped_inflow()).array;
-		return new AircraftState(num_rotors, num_blades, num_elements, num_wings, num_wing_parts, num_span_nodes, num_chord_nodes, *ac, oc_rotor_inflows, oc_wing_inflows, direction);
+	AircraftState CreateAircraftState(
+		size_t num_rotors,
+		size_t* num_blades,
+		size_t num_elements,
+		size_t num_wings,
+		size_t* num_wing_parts,
+		size_t num_span_nodes,
+		size_t num_chord_nodes,
+		ref Aircraft ac,
+		Inflow* rotor_inflows,
+		Inflow* wing_inflows,
+		double* direction
+	) {
+		auto oc_rotor_inflows = std.array.array(rotor_inflows[0..num_rotors].map!(a => a.get_wrapped_inflow()));
+		auto oc_wing_inflows = std.array.array(wing_inflows[0..num_wings].map!(a => a.get_wrapped_inflow()));
+		return AircraftState(
+			num_rotors,
+			num_blades[0..num_rotors],
+			num_elements,
+			num_wings,
+			num_wing_parts[0..num_wings],
+			num_span_nodes,
+			num_chord_nodes,
+			ac,
+			oc_rotor_inflows,
+			oc_wing_inflows,
+			direction[0..num_rotors]
+		);
 	}
 
 	void compute_blade_vectors(ref BladeGeometry blade) {
@@ -689,29 +735,29 @@ extern(C++) {
 		return comp_frame.global_matrix;
 	}*/
 
-	alias WingLoc = opencopter.aircraft.geometry.Location;
+	// alias WingLoc = opencopter.aircraft.geometry.Location;
 
-	struct Location{
-		private WingLoc loc;
+	// struct Location{
+	// 	private WingLoc loc;
 
-		string toString() const {
-			return loc;
-		}
-	}
+	// 	string toString() const {
+	// 		return loc;
+	// 	}
+	// }
 
-	Location location_right_wing(){
-		return Location(opencopter.aircraft.Location.right);
-	}
+	// Location location_right_wing(){
+	// 	return Location(opencopter.aircraft.Location.right);
+	// }
 
-	Location location_left_wing(){
-		return Location(opencopter.aircraft.Location.left);
-	}
+	// Location location_left_wing(){
+	// 	return Location(opencopter.aircraft.Location.left);
+	// }
 
-	WingPartGeometry build_wing_part_geometry(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, Location Pyloc){
-		auto loc = Pyloc.loc;
-		auto wing_part = WingPartGeometry(span_elements, chordwise_nodes, wing_root_origin, average_chord, wing_root_chord, wing_tip_chord, le_sweep_angle, te_sweep_angle, wing_span, loc);
+	// WingPartGeometry build_wing_part_geometry(size_t span_elements, size_t chordwise_nodes, Vec3 wing_root_origin, double average_chord, double wing_root_chord, double wing_tip_chord, double le_sweep_angle, double te_sweep_angle, double wing_span, Location Pyloc){
+	// 	auto loc = Pyloc.loc;
+	// 	auto wing_part = WingPartGeometry(span_elements, chordwise_nodes, wing_root_origin, average_chord, wing_root_chord, wing_tip_chord, le_sweep_angle, te_sweep_angle, wing_span, loc);
 
-		return wing_part;
-	}
+	// 	return wing_part;
+	// }
 
 }
