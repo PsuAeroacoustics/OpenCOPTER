@@ -32,9 +32,9 @@ fi
 
 # Check for anaconda
 if command -v conda &> /dev/null; then
-    echo "Anaconda/Miniconda is installed."
+    echo "Anaconda is installed."
 else
-    echo "Anaconda/Miniconda is not installed. Please install Anaconda/Miniconda before continuing"
+    echo "Anaconda is not installed. Please install Anaconda before continuing"
     exit -1
 fi
 
@@ -49,6 +49,7 @@ fi
 if [ "$CONDA_DEFAULT_ENV" == "opencopter" ]; then
     echo "opencopter environment already activated, skipping activation."
 else
+    eval "$(conda shell.bash hook)"
     conda activate opencopter
 fi
 
