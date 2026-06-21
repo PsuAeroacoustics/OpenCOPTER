@@ -61,6 +61,7 @@ jobs:
         
     - name: 'Build'
       run: |
+        export CONDA_PREFIX=""
         # Build the project, with its main file included, without unittests
         dub build -c library-python310-novtk -b release --compiler=$DC
         cd oc_fly/dependencies/wopwopd
