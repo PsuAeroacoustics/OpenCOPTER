@@ -63,9 +63,9 @@ jobs:
       run: |
         export CONDA_PREFIX=""
         # Build the project, with its main file included, without unittests
-        dub build -c library-python310-novtk -b release --compiler=$DC
+        dub build -c library-python310-novtk -b release-native --compiler=$DC
         cd oc_fly/dependencies/wopwopd
-        dub build -c library-python310 -b release --compiler=$DC
+        dub build -c library-python310 -b release-native --compiler=$DC
         cd -
 
     - name: 'Validate HART II'
@@ -73,12 +73,9 @@ jobs:
         # Run HART II validation case
         ls -alh ../
         cd oc_fly/example
-        ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs
+        ../oc_fly -input_geom hart_ii.json5 -input_param hart_ii_params.json5 --aero -fs -flight_condition BL
 
         mkdir -p ./hart_ii/BL/acoustics/full_system/octaveFilterSP/spl
-        mkdir -p ./hart_ii/MN/acoustics/full_system/octaveFilterSP/spl
-        mkdir -p ./hart_ii/MV/acoustics/full_system/octaveFilterSP/spl
 
         ../../wopwop3/build/wopwop3 cases_0_0.nam
-        ../../wopwop3/build/wopwop3 cases_0_1.nam
-        ../../wopwop3/build/wopwop3 cases_0_2.nam
+

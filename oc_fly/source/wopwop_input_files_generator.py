@@ -88,7 +88,8 @@ def build_blade_cntr(rotor, rotor_idx, blade, blade_idx, environment_in, wopwop_
 	blade_cntr = ContainerIn()
 
 	blade_cntr.BPMNoiseFlag = include_broadband
-	blade_cntr.BWINoiseFlag = include_bwi
+	if include_bwi:
+		blade_cntr.BWINoiseFlag = include_bwi
 
 	blade_cntr.Title = blade.frame.name + " container"
 
@@ -240,13 +241,17 @@ def generate_wopwop_namelist(atmo, dt, V_inf, iterations, aoa, t_min, t_max, nt,
 	environment_in.MdotrSigmaFlag = acoustics_config["mdotr_sigma_flag"] if "mdotr_sigma_flag" in acoustics_config else False
 	environment_in.iblankSigmaFlag = acoustics_config["iblank_sigma_flag"] if "iblank_sigma_flag" in acoustics_config else False
 	environment_in.broadbandFlag = acoustics_config["broadband_flag"] if "broadband_flag" in acoustics_config else False
-	environment_in.BWINoiseFlag = acoustics_config["BWI_flag"] if "BWI_flag" in acoustics_config else False
+
+	want_bwi = ("BWI_flag" in acoustics_config) and acoustics_config["BWI_flag"]
+
+	if want_bwi:
+		environment_in.BWINoiseFlag = True
 
 	num_rotors = len(rotor_phases)
 	if (num_rotors>1):
-		wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, environment_in.BWINoiseFlag, bwi_params) for rotor_idx, rotor in enumerate(rotors)])
+		wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, want_bwi, bwi_params) for rotor_idx, rotor in enumerate(rotors)])
 	else :
-		wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx2, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, environment_in.BWINoiseFlag, bwi_params) for rotor_idx, rotor in enumerate(rotors)])
+		wopwop_aircraft.children = flatten([build_rotor_cntr(rotor, rotor_idx2, environment_in, wopwop_motion, rotor_phases[rotor_idx], environment_in.broadbandFlag, want_bwi, bwi_params) for rotor_idx, rotor in enumerate(rotors)])
 	
 	R = 1
 	num_blades = 1
