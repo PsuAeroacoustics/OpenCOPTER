@@ -786,7 +786,33 @@ void get_state_array(string value, ArrayContainer AC)(const ref BladeStateT!AC b
 	}
 }
 
+void get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, auto ref double[] state_array) {
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = state_array.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+}
+
 void get_state_array(string value, ArrayContainer AC)(const ref BladeStateT!AC blade, auto ref float[] state_array) {
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = state_array.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[].map!(a => a.to!float).staticArray!(float[chunk_size])[0..in_end_idx];");
+	}
+}
+
+void get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, auto ref float[] state_array) {
 	foreach(c_idx, ref chunk; blade.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
 
