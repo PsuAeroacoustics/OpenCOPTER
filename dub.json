@@ -28,7 +28,6 @@
 			"targetType": "dynamicLibrary",
 			"excludedSourceFiles": [ "source/opencopter/python.d" ],
 			"versions": [ "Python_3_0_Or_Later" ],
-			"dflags": ["-HCf=./opencopter.h"],
 			"dependencies": {
 				"vtkd": { "path": "./dependencies/vtkd" }
 			},

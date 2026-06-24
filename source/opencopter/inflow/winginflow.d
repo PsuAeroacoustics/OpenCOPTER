@@ -398,8 +398,11 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
     Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
         auto ind_vel = compute_wing_induced_vel(wing_lift_surf, xyz[0], xyz[1], xyz[2]);
-
         immutable Chunk V_z = ind_vel.v_z[];
         return V_z;
+    }
+
+    double wake_skew() {
+        return 0.0;
     }
 }

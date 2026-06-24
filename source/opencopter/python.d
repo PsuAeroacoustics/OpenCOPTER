@@ -13,6 +13,7 @@ import opencopter.vortexlattice;
 static import opencopter.vtk;
 
 static import opencopter.aircraft.geometry;
+static import opencopter.aircraft.input;
 static import opencopter.bladeelement;
 static import opencopter.wake;
 static import opencopter.inflow;
@@ -63,31 +64,33 @@ struct Direction {
 }
 
 void basic_aircraft_rotor_dynamics(PyAircraftInputState* ac_input, double dt) {
-	foreach(r_idx, ref rotor; ac_input.rotor_inputs) {
-		rotor.azimuth += rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
-		auto sign = sgn(rotor.azimuth);
-		// Keep the azimuth between 0 and 2*PI so we don't
-		// lose fp precicion as the sim marches in time and
-		// the azimuth grows unbounded.
-		if(abs(rotor.azimuth) > 2.0*PI) {
-			rotor.azimuth = sign * fmod(abs(rotor.azimuth), 2.0*PI);
-		}
-	}
+	// foreach(r_idx, ref rotor; ac_input.rotor_inputs) {
+	// 	rotor.azimuth += rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
+	// 	auto sign = sgn(rotor.azimuth);
+	// 	// Keep the azimuth between 0 and 2*PI so we don't
+	// 	// lose fp precicion as the sim marches in time and
+	// 	// the azimuth grows unbounded.
+	// 	if(abs(rotor.azimuth) > 2.0*PI) {
+	// 		rotor.azimuth = sign * fmod(abs(rotor.azimuth), 2.0*PI);
+	// 	}
+	// }
+	opencopter.aircraft.input.basic_aircraft_rotor_dynamics(ac_input, dt);
 }
 
 double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
-	double angle = input_state.angular_velocity*dt + input_state.angular_accel*dt*dt;
+	// double angle = input_state.angular_velocity*dt + input_state.angular_accel*dt*dt;
 
-	input_state.azimuth += angle;
+	// input_state.azimuth += angle;
 
-	// Keep the azimuth between 0 and 2*PI so we don't
-	// lose fp precicion as the sim marches in time and
-	// the azimuth grows unbounded.
-	if(input_state.azimuth > 2.0*PI) {
-		input_state.azimuth = fmod(abs(input_state.azimuth), 2.0*PI);
-	}
+	// // Keep the azimuth between 0 and 2*PI so we don't
+	// // lose fp precicion as the sim marches in time and
+	// // the azimuth grows unbounded.
+	// if(input_state.azimuth > 2.0*PI) {
+	// 	input_state.azimuth = fmod(abs(input_state.azimuth), 2.0*PI);
+	// }
 
-	return angle;
+	// return angle;
+	return opencopter.aircraft.input.basic_single_rotor_dynamics(input_state, dt);
 }
 
 /++

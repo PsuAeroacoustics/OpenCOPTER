@@ -173,7 +173,7 @@ struct WakeT(ArrayContainer AC) {
 	double[][] raw_buffer;
 	// Nitya: WHAT ARE THESE BUFFERS FOR?
 
-	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
 		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
@@ -202,7 +202,7 @@ struct WakeT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, size_t num_blades, const(size_t[]) wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
 		// Nitya: WHAT IS wake_history.map??
@@ -232,7 +232,7 @@ struct WakeT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, const(size_t[]) num_blades, size_t wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
 		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
@@ -257,7 +257,7 @@ struct WakeT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, const(size_t[]) num_blades, const(size_t[]) wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
 
@@ -312,7 +312,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 	immutable double a1 =  6.5e-5;
 	bool hybrid = false;
 
-	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -324,7 +324,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, size_t num_blades, const(size_t[]) wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -336,7 +336,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, const(size_t[]) num_blades, size_t wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -348,7 +348,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, const(size_t[]) num_blades, const(size_t[]) wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;

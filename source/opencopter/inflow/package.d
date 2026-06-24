@@ -31,6 +31,7 @@ interface InflowT(ArrayContainer AC = ArrayContainer.none) {
 	void update_wing_circulation(WingStateT!AC wing_state);
 	void update_wing_dC_L(WingStateT!AC wing_state);
 	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z);
+	double wake_skew();
 	@nogc Frame* frame();
 }
 
