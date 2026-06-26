@@ -259,7 +259,6 @@
 			"targetName": "opencopter",
 			"targetType": "dynamicLibrary",
 			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
-			"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 			"dependencies": {
 				"pyd": { "path": "./dependencies/pyd" },
 				"vtkd": { "path": "./dependencies/vtkd" }
@@ -278,7 +277,6 @@
 			"targetName": "opencopter",
 			"targetType": "dynamicLibrary",
 			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
-			"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 			"dependencies": {
 				"pyd": { "path": "./dependencies/pyd" }
 			},

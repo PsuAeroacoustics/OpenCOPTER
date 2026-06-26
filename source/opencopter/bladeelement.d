@@ -195,6 +195,9 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] - plunging_correction[];
 
+		debug writeln("aoa: ", blade_state.chunks[chunk_idx].aoa);
+		debug writeln("inflow_angle: ", inflow_angle);
+		
 		immutable Chunk u_squared = (u_t[]*u_t[] + u_p[]*u_p[]);
 		immutable Chunk u_inf = sqrt(u_squared);
 		immutable Chunk dimensional_u_inf = u_inf[] * rotor.radius * abs(rotor_input.angular_velocity);
@@ -218,10 +221,15 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 		// Nitya: Blade circulation dimensionalized here!!
 
+		debug writeln("gamma: ", gamma);
+
 		blade_state.chunks[chunk_idx].aoa_eff[] = 2.0*std.math.sgn(rotor_input.angular_velocity)*gamma[];
 
 		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.airfoil.lift_curve_slope(chunk_idx)[]*blade.chunks[chunk_idx].chord[]*std.math.abs(rotor_input.angular_velocity)*rotor.radius*rotor.radius);
 		blade_state.chunks[chunk_idx].aoa_eff[] += blade.airfoil.zero_lift_aoa(chunk_idx)[];
+
+		debug writeln("aoa_eff: ", blade_state.chunks[chunk_idx].aoa_eff);
+		debug writeln("aoa_0: ", blade.airfoil.zero_lift_aoa(chunk_idx)[]);
 
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, M_inf);
 
@@ -461,7 +469,7 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	//GC.collect();
 	
 	aircraft.root_frame.update(Mat4.identity);
-	//aircraft.root_frame.print_frame;
+	debug aircraft.root_frame.print_frame;
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 

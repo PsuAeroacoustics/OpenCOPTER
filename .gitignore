@@ -1,7 +1,6 @@
 .dub
 .vscode
 *.asm
-*.h
 dub.selections.json
 plot_scipt.py
 *.png

@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
 	def build_blade(b_idx, parent_frame):
 
-		polar_path = f"{os.path.dirname(os.path.realpath(__file__))}/NACA23012mod_1000000_polar.dat"
+		polar_path = f"{os.path.dirname(os.path.realpath(__file__))}/../polars/NACA23012mod_1000000_polar.dat"
 		airfoil = create_aerodas_from_xfoil_polar(polar_path, 0.12)
 		extent = [0, 47]
 		blade_airfoil = BladeAirfoil([airfoil], [extent])

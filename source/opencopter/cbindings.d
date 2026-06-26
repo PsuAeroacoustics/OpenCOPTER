@@ -38,6 +38,7 @@ static import opencopter.wake;
 
 import core.memory : GC;
 
+import std.algorithm;
 import std.array;
 import std.conv : to;
 import std.exception : enforce;
@@ -109,6 +110,7 @@ struct OC_AircraftState          {}
 struct OC_BladeGeometry          {}
 struct OC_BladeState             {}
 struct OC_BladeAirfoil           {}
+struct OC_AirfoilModel           {}
 struct OC_Frame                  {}
 struct OC_Inflow                 {}
 struct OC_HuangPeters            {}
@@ -117,6 +119,7 @@ struct OC_WingInflow             {}
 struct OC_RotorGeometry          {}
 struct OC_RotorInputState        {}
 struct OC_RotorState             {}
+struct OC_RotorWake              {}
 struct OC_VortexFilament         {}
 struct OC_Wake                   {}
 struct OC_WakeHistory            {}
@@ -149,6 +152,26 @@ OC_Vec3 vec3_to_oc_vec3(const Vec3 v) {
     _out.x = v[0];
     _out.y = v[1];
     _out.z = v[2];
+    return _out;
+}
+
+/** Convert OC_Vec4 to Vec4 (Matrix!(4,1)) */
+Vec4 oc_vec4_to_vec4(const OC_Vec4 v) {
+    Vec4 _out;
+    _out[0] = v.x;
+    _out[1] = v.y;
+    _out[2] = v.z;
+    _out[3] = v.w;
+    return _out;
+}
+
+/** Convert Vec4 to OC_Vec4 */
+OC_Vec4 vec4_to_oc_vec4(const Vec4 v) {
+    OC_Vec4 _out;
+    _out.x = v[0];
+    _out.y = v[1];
+    _out.z = v[2];
+    _out.w = v[3];
     return _out;
 }
 
@@ -327,6 +350,11 @@ extern(C) void oc_rotor_geometry_destroy(OC_RotorGeometry* geom) {
     }
 }
 
+extern(C) void oc_rotor_geometry_set_solidity(OC_RotorGeometry* rotor, double solidity) {
+    auto r = cast(RotorGeometry*)rotor;
+    if (r !is null) r.solidity = solidity;
+}
+
 // ========================================================================
 //  BladeGeometry API
 // ========================================================================
@@ -334,9 +362,11 @@ extern(C) void oc_rotor_geometry_destroy(OC_RotorGeometry* geom) {
 extern(C) OC_BladeGeometry* oc_blade_geometry_create(size_t num_elements, double azimuth_offset,
                                                       double average_chord, OC_BladeAirfoil* airfoil,
                                                       double r_c) {
-    auto blade_af = cast(BladeAirfoil*)airfoil;
+    // BladeAirfoil is a D class (reference type). Cast OC_BladeAirfoil* directly to BladeAirfoil.
+    auto blade_af = cast(BladeAirfoil)airfoil;
     if(blade_af !is null) {
-        auto blade = new BladeGeometry(num_elements, azimuth_offset, average_chord, *blade_af, r_c);
+        // BladeGeometryT is an extern(C++) struct allocated on the heap via new.
+        auto blade = new BladeGeometry(num_elements, azimuth_offset, average_chord, blade_af, r_c);
         GC.addRoot(blade);
         return cast(OC_BladeGeometry*)blade;
     }
@@ -480,14 +510,14 @@ extern(C) OC_AircraftState* oc_aircraft_state_create(
 
     if (rotor_inflows !is null) {
         for (size_t i = 0; i < num_rotors; i++) {
-            auto p = cast(Inflow*)rotor_inflows[i];
-            if (p !is null) oc_rotor_inflows[i] = *p;
+            auto inflow_val = oc_inflow_from_handle(rotor_inflows[i]);
+            if (inflow_val !is null) oc_rotor_inflows[i] = inflow_val;
         }
     }
     if (wing_inflows !is null) {
         for (size_t i = 0; i < num_wings; i++) {
-            auto p = cast(Inflow*)wing_inflows[i];
-            if (p !is null) oc_wing_inflows[i] = *p;
+            auto inflow_val = oc_inflow_from_handle(wing_inflows[i]);
+            if (inflow_val !is null) oc_wing_inflows[i] = inflow_val;
         }
     }
 
@@ -714,11 +744,16 @@ extern(C) void oc_vortex_filament_fill_v_z(const OC_VortexFilament* fil, double*
 extern(C) OC_WakeHistory* oc_wake_history_create(
     size_t num_rotors, size_t num_blades,
     size_t wake_history, size_t time_history, size_t radial_elements,
-    const size_t* shed_history, const size_t* shed_release,
+    const size_t* shed_history, const(size_t)* shed_release,
     double a1, int hybrid)
 {
+    // Pass num_blades as an array (one value per rotor) to use the constructor
+    // overload that avoids an uninit-array bug in the scalar-num_blades path.
+    auto nb = new size_t[num_rotors];
+    foreach(i; 0..num_rotors) nb[i] = num_blades;
+
     auto history = new WakeHistory(
-        num_rotors, num_blades, wake_history, time_history, radial_elements,
+        num_rotors, nb, wake_history, time_history, radial_elements,
         (shed_history !is null) ? shed_history[0..num_rotors] : null,
         (shed_release !is null) ? shed_release[0..num_rotors] : null,
         a1, hybrid != 0
@@ -795,6 +830,105 @@ extern(C) void oc_inflow_at(OC_Inflow* inflow, const double* x, const double* y,
         }
     }
 }
+
+// ========================================================================
+//  New C bindings for feature parity with Python API
+// ========================================================================
+
+/**
+ * Generate radial distribution points using the OpenCOPTER half-cosine method.
+ * Writes results into the caller-provided buffer and returns the actual number
+ * of points written (may be larger than requested due to chunk alignment).
+ */
+extern(C) size_t oc_generate_radius_points(double* buf, size_t n_sections, double root_cutout) {
+    if (buf !is null && n_sections > 0) {
+        auto pts = opencopter.aircraft.geometry.generate_radius_points(n_sections, root_cutout);
+        foreach(i; 0..pts.length) {
+            buf[i] = pts[i];
+        }
+        return pts.length;
+    }
+    return 0;
+}
+
+/**
+ * Set children array for a Frame.
+ */
+extern(C) void oc_frame_set_children(OC_Frame* frame, OC_Frame** children, size_t num_children) {
+    auto f = cast(Frame*)frame;
+    if (f !is null && children !is null) {
+        Frame*[] newChildren;
+        for (size_t i = 0; i < num_children; i++) {
+            auto child = cast(Frame*)children[i];
+            if (child !is null) {
+                newChildren ~= child;
+                child.parent = f;
+            }
+        }
+        f.children = newChildren;
+    }
+}
+
+/**
+ * Set rotors on an Aircraft.
+ */
+extern(C) void oc_aircraft_set_rotors(OC_Aircraft* ac, OC_RotorGeometry** rotors, size_t num_rotors) {
+    auto a = cast(Aircraft*)ac;
+    if (a !is null && rotors !is null) {
+        RotorGeometry[] rotorArray;
+        for (size_t i = 0; i < num_rotors; i++) {
+            auto r = cast(RotorGeometry*)rotors[i];
+            if (r !is null) {
+                rotorArray ~= *r;
+            }
+        }
+        a.rotors = rotorArray;
+    }
+}
+
+/**
+ * Set blade_length on a BladeGeometry.
+ */
+extern(C) void oc_blade_geometry_set_blade_length(OC_BladeGeometry* geom, double length) {
+    auto g = cast(BladeGeometry*)geom;
+    if (g !is null) g.blade_length = length;
+}
+
+/**
+ * Set frame on a RotorGeometry.
+ */
+extern(C) void oc_rotor_geometry_set_frame(OC_RotorGeometry* rotor, OC_Frame* frame) {
+    auto r = cast(RotorGeometry*)rotor;
+    auto f = cast(Frame*)frame;
+    if (r !is null && f !is null) r.frame = f;
+}
+
+/**
+ * Get parent frame.
+ */
+extern(C) OC_Frame* oc_frame_get_parent(OC_Frame* frame) {
+    auto f = cast(Frame*)frame;
+    if (f !is null && f.parent !is null) return cast(OC_Frame*)f.parent;
+    return null;
+}
+
+/**
+ * Set frame type for a frame (as OC_FrameType enum int).
+ */
+extern(C) void oc_frame_set_frame_type(OC_Frame* frame, int frame_type) {
+    auto f = cast(Frame*)frame;
+    if (f !is null) f.frame_type = cast(FrameType)frame_type;
+}
+
+/**
+ * Set name for a frame.
+ */
+extern(C) void oc_frame_set_name(OC_Frame* frame, const(char)* name) {
+    auto f = cast(Frame*)frame;
+    if (f !is null && name !is null) {
+        f.name = fromStringz(name).idup;
+    }
+}
 extern(C) void oc_inflow_update_wing_circulation(OC_Inflow* inflow, OC_WingState* wing_state) {
     auto i = cast(Inflow*)inflow; auto ws = cast(WingState*)wing_state;
     if (i !is null && ws !is null) (*i).update_wing_circulation(*ws);
@@ -811,37 +945,58 @@ extern(C) OC_InducedVelocities oc_inflow_compute_wing_induced_vel_on_blade(OC_In
     } else { foreach(j; 0..8) { result.v_x[j] = 0.0; result.v_y[j] = 0.0; result.v_z[j] = 0.0; } }
     return result;
 }
-extern(C) void oc_inflow_destroy(OC_Inflow* inflow) {
-    if (inflow !is null) GC.removeRoot(cast(Inflow*)inflow);
+// Inflow factory functions
+// InflowT is a D interface so we cannot allocate it on the stack and take its address.
+// Instead we keep a global map from an opaque pointer key to the live D interface value.
+private {
+    // Simple handle-based registry: each created inflow gets an integer id.
+    Inflow[size_t] s_inflow_registry;
+    size_t s_inflow_next_id = 1;
 }
 
-// Inflow factory functions
 extern(C) OC_Inflow* oc_huang_peters_create(long _Mo, long _Me, OC_RotorGeometry* rotor, OC_RotorInputState* rotor_input, double dt) {
     auto r = cast(RotorGeometry*)rotor; auto inp = cast(RotorInputState*)rotor_input;
     if (r !is null && inp !is null) {
-        auto inflow = new HuangPetersInflow(_Mo, _Me, r, inp, dt);
-        GC.addRoot(&inflow);
-        return cast(OC_Inflow*)inflow;
+        Inflow inflow = new HuangPetersInflow(_Mo, _Me, r, inp, dt);
+        size_t id = s_inflow_next_id++;
+        s_inflow_registry[id] = inflow;
+        return cast(OC_Inflow*)cast(void*)id;
     }
     return null;
 }
 extern(C) OC_Inflow* oc_null_inflow_create(OC_RotorGeometry* rotor, OC_RotorInputState* rotor_input) {
     auto r = cast(RotorGeometry*)rotor; auto inp = cast(RotorInputState*)rotor_input;
     if (r !is null && inp !is null) {
-        auto inflow = new NullInflow!(ArrayContainer.none)(r, inp);
-        GC.addRoot(&inflow);
-        return cast(OC_Inflow*)inflow;
+        Inflow inflow = new NullInflow!(ArrayContainer.none)(r, inp);
+        size_t id = s_inflow_next_id++;
+        s_inflow_registry[id] = inflow;
+        return cast(OC_Inflow*)cast(void*)id;
     }
     return null;
 }
 extern(C) OC_Inflow* oc_wing_inflow_create(OC_WingGeometry* wing, OC_WingInputState* wing_inputs, OC_WingLiftSurf* wing_lift_surf) {
     auto w = cast(WingGeometry*)wing; auto wi = cast(WingInputState*)wing_inputs; auto wl = cast(WingLiftSurf*)wing_lift_surf;
     if (w !is null && wi !is null && wl !is null) {
-        auto inflow = new WingInflow(w, wi, wl);
-        GC.addRoot(&inflow);
-        return cast(OC_Inflow*)inflow;
+        Inflow inflow = new WingInflow(w, wi, wl);
+        size_t id = s_inflow_next_id++;
+        s_inflow_registry[id] = inflow;
+        return cast(OC_Inflow*)cast(void*)id;
     }
     return null;
+}
+
+/** Resolve an OC_Inflow* opaque handle back to the D interface. */
+Inflow oc_inflow_from_handle(OC_Inflow* h) {
+    auto id = cast(size_t)h;
+    if (id && id in s_inflow_registry)
+        return s_inflow_registry[id];
+    return null;
+}
+
+extern(C) void oc_inflow_destroy(OC_Inflow* inflow) {
+    auto id = cast(size_t)inflow;
+    if (id && id in s_inflow_registry)
+        s_inflow_registry.remove(id);
 }
 
 // ========================================================================
@@ -918,3 +1073,415 @@ extern(C) OC_VtkWingWake* oc_build_vtu_wing_wake(OC_WingGeometry*, OC_WingLiftSu
 extern(C) void oc_write_wing_wake_vtu(const(char)*, size_t, size_t, OC_VtkWingWake*, OC_WingGeometry*, OC_WingLiftSurf*, OC_WingInputState*) {}
 extern(C) void oc_vtk_wing_wake_destroy(OC_VtkWingWake* vtk) { if (vtk !is null) GC.removeRoot(cast(typeof(vtk)*)vtk); }
 extern(C) void oc_write_wake_field_vtu(const(char)*, OC_AircraftState*, OC_Wake*, double, double, double, double, double, double, size_t, size_t, size_t) {}
+
+// ========================================================================
+//  Aircraft accessor functions
+// ========================================================================
+
+extern(C) OC_Frame* oc_aircraft_get_root_frame(OC_Aircraft* ac) {
+    auto a = cast(Aircraft*)ac;
+    if (a !is null) return cast(OC_Frame*)(*a).root_frame;
+    return null;
+}
+
+// ========================================================================
+//  RotorGeometry accessor and setter functions
+// ========================================================================
+
+extern(C) void oc_rotor_geometry_set_blades(OC_RotorGeometry* rotor, OC_BladeGeometry** blades, size_t num_blades) {
+    auto r = cast(RotorGeometry*)rotor;
+    if (r !is null && blades !is null) {
+        // BladeGeometry is a struct allocated on the heap via `new`.
+        // oc_blade_geometry_create returns cast(OC_BladeGeometry*)blade where blade = new BladeGeometry(...).
+        // So we need to dereference the pointer to get the struct value.
+        auto blade_array = new BladeGeometry[num_blades];
+        for (size_t i = 0; i < num_blades; i++) {
+            blade_array[i] = *cast(BladeGeometry*)(blades[i]);
+        }
+        r.blades = blade_array;
+    }
+}
+
+// ========================================================================
+//  BladeGeometry accessor and setter functions
+// ========================================================================
+
+extern(C) OC_Frame* oc_blade_geometry_get_frame(const OC_BladeGeometry* geom) {
+    auto g = cast(BladeGeometry*)geom;
+    if (g !is null) return cast(OC_Frame*)(*g).frame;
+    return null;
+}
+
+extern(C) void oc_blade_geometry_set_frame(OC_BladeGeometry* geom, OC_Frame* frame) {
+    auto g = cast(BladeGeometry*)geom;
+    auto f = cast(Frame*)frame;
+    if (g !is null && f !is null) (*g).frame = f;
+}
+
+// ========================================================================
+//  AircraftInputState accessor and setter functions
+// ========================================================================
+
+extern(C) OC_RotorInputState* oc_aircraft_input_get_rotor_input(OC_AircraftInputState* input, size_t rotor_idx) {
+    auto i = cast(AircraftInputState*)input;
+    if (i !is null && rotor_idx < (*i).rotor_inputs.length)
+        return cast(OC_RotorInputState*)(&(*i).rotor_inputs[rotor_idx]);
+    return null;
+}
+
+// extern(C) void oc_aircraft_input_set_blade_pitch(OC_AircraftInputState* input, size_t rotor_idx, size_t blade_idx, double pitch) {
+//     auto i = cast(AircraftInputState*)input;
+//     if (i !is null && rotor_idx < (*i).rotor_inputs.length) 
+//         i.rotor_inputs[rotor_idx].blade_pitches[blade_idx] = pitch;
+// }
+
+extern(C) double oc_aircraft_input_get_blade_pitch(OC_AircraftInputState* input, size_t rotor_idx, size_t blade_idx) {
+    auto i = cast(AircraftInputState*)input;
+    if (i !is null && rotor_idx < (*i).rotor_inputs.length) 
+        return i.rotor_inputs[rotor_idx].blade_pitches[blade_idx];
+    return 0.0;
+}
+
+extern(C) void oc_rotor_input_set_angular_velocity(OC_RotorInputState* input, double omega) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null) i.angular_velocity = omega;
+}
+
+extern(C) double oc_rotor_input_get_angular_velocity(OC_RotorInputState* input) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null) return i.angular_velocity;
+    return 0.0;
+}
+
+extern(C) void oc_rotor_input_set_angular_accel(OC_RotorInputState* input, double alpha) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null) i.angular_accel = alpha;
+}
+
+extern(C) double oc_rotor_input_get_angular_accel(OC_RotorInputState* input) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null) return i.angular_accel;
+    return 0.0;
+}
+
+extern(C) void oc_rotor_input_set_azimuth(OC_RotorInputState* input, double azimuth) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null) i.azimuth = azimuth;
+}
+
+extern(C) double oc_rotor_input_get_azimuth(OC_RotorInputState* input) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null) return i.azimuth;
+    return 0.0;
+}
+
+extern(C) void oc_rotor_input_set_r_0(OC_RotorInputState* input, double* r_0, size_t len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && r_0 !is null) {
+        foreach(idx; 0..min(len, i.r_0.length)) {
+            i.r_0[idx] = r_0[idx];
+        }
+    }
+}
+
+extern(C) void oc_rotor_input_get_r_0(const OC_RotorInputState* input, double* result_out, size_t len) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && result_out !is null) {
+        foreach(idx; 0..min(len, (*i).r_0.length)) {
+            result_out[idx] = (*i).r_0[idx];
+        }
+    }
+}
+
+extern(C) void oc_rotor_input_set_blade_flapping(OC_RotorInputState* input, double* flapping, size_t len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && flapping !is null) {
+        foreach(idx; 0..min(len, i.blade_flapping.length)) {
+            i.blade_flapping[idx] = flapping[idx];
+        }
+    }
+}
+
+extern(C) void oc_rotor_input_get_blade_flapping(const OC_RotorInputState* input, double* result_out, size_t len) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && result_out !is null) {
+        foreach(idx; 0..min(len, (*i).blade_flapping.length)) {
+            result_out[idx] = (*i).blade_flapping[idx];
+        }
+    }
+}
+
+extern(C) void oc_rotor_input_set_blade_flapping_rate(OC_RotorInputState* input, double* flapping_rate, size_t len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && flapping_rate !is null) {
+        foreach(idx; 0..min(len, i.blade_flapping_rate.length)) {
+            i.blade_flapping_rate[idx] = flapping_rate[idx];
+        }
+    }
+}
+
+extern(C) void oc_rotor_input_get_blade_flapping_rate(const OC_RotorInputState* input, double* result_out, size_t len) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && result_out !is null) {
+        foreach(idx; 0..min(len, (*i).blade_flapping_rate.length)) {
+            result_out[idx] = (*i).blade_flapping_rate[idx];
+        }
+    }
+}
+
+// ========================================================================
+//  AircraftState accessor and setter functions
+// ========================================================================
+
+extern(C) void oc_aircraft_state_set_freestream(OC_AircraftState* state, const OC_Vec4* freestream) {
+    auto s = cast(AircraftState*)state;
+    if (s !is null && freestream !is null) (*s).freestream = oc_vec4_to_vec4(*freestream);
+}
+
+extern(C) void oc_aircraft_state_get_freestream(const OC_AircraftState* state, OC_Vec4* result_out) {
+    auto s = cast(const(AircraftState)*)state;
+    if (s !is null && result_out !is null) *result_out = vec4_to_oc_vec4((*s).freestream);
+}
+
+// ========================================================================
+//  WakeHistory accessor functions
+// ========================================================================
+
+extern(C) OC_Wake* oc_wake_history_get_wake(OC_WakeHistory* history, size_t idx) {
+    auto h = cast(WakeHistory*)history;
+    if (h !is null && idx < (*h).history.length) return cast(OC_Wake*)&(*h).history[idx];
+    return null;
+}
+
+extern(C) OC_RotorWake* oc_wake_get_rotor_wake(OC_Wake* wake, size_t rotor_idx) {
+    auto w = cast(Wake*)wake;
+    if (w !is null && rotor_idx < (*w).rotor_wakes.length) return cast(OC_RotorWake*)&(*w).rotor_wakes[rotor_idx];
+    return null;
+}
+
+extern(C) OC_VortexFilament* oc_rotor_wake_get_tip_vortex(OC_RotorWake* rotor_wake, size_t blade_idx) {
+    auto rw = cast(RotorWake*)rotor_wake;
+    if (rw !is null && blade_idx < (*rw).tip_vortices.length) return cast(OC_VortexFilament*)&(*rw).tip_vortices[blade_idx];
+    return null;
+}
+
+// ========================================================================
+//  Airfoil Model API
+// ========================================================================
+
+// --- ThinAirfoil ---
+
+extern(C) OC_AirfoilModel* oc_thin_airfoil_create(double C_l_alpha_0) {
+    auto af = new ThinAirfoil(C_l_alpha_0);
+    GC.addRoot(&af);
+    return cast(OC_AirfoilModel*)af;
+}
+
+// --- AeroDAS ---
+
+extern(C) OC_AirfoilModel* oc_aero_das_create(double* alpha, size_t alpha_len,
+                                               double* CL, size_t cl_len,
+                                               double* CD, size_t cd_len,
+                                               double tbyc, double AR) {
+    if (alpha !is null && CL !is null && CD !is null && alpha_len == cl_len && alpha_len == cd_len) {
+        auto af = new AeroDAS(alpha[0..alpha_len], CL[0..cl_len], CD[0..cd_len], tbyc, AR);
+        GC.addRoot(&af);
+        return cast(OC_AirfoilModel*)af;
+    }
+    return null;
+}
+
+extern(C) OC_AirfoilModel* oc_aero_das_from_xfoil_polar(const(char)* filename, double tbyc) {
+    if (filename !is null) {
+        string fname = fromStringz(filename).idup;
+        auto af = create_aerodas_from_xfoil_polar(fname, tbyc);
+        GC.addRoot(&af);
+        return cast(OC_AirfoilModel*)af;
+    }
+    return null;
+}
+
+// --- C81 ---
+
+extern(C) OC_AirfoilModel* oc_c81_from_file(const(char)* filename) {
+    if (filename !is null) {
+        string fname = fromStringz(filename).idup;
+        auto af = load_c81_file(fname);
+        GC.addRoot(&af);
+        return cast(OC_AirfoilModel*)af;
+    }
+    return null;
+}
+
+// --- AirfoilModel destroy ---
+
+extern(C) void oc_airfoil_model_destroy(OC_AirfoilModel* af) {
+    if (af !is null) {
+        auto p = cast(AirfoilModel)af;
+        GC.removeRoot(&p);
+    }
+}
+
+// --- AirfoilModel query methods (scalar) ---
+
+extern(C) double oc_airfoil_get_Cl(OC_AirfoilModel* af, double alpha, double mach) {
+    auto a = cast(AirfoilModel*)af;
+    if (a !is null) return (*a).get_Cl(alpha, mach);
+    return 0.0;
+}
+
+extern(C) double oc_airfoil_get_Cd(OC_AirfoilModel* af, double alpha, double mach) {
+    auto a = cast(AirfoilModel*)af;
+    if (a !is null) return (*a).get_Cd(alpha, mach);
+    return 0.0;
+}
+
+extern(C) double oc_airfoil_lift_curve_slope(OC_AirfoilModel* af) {
+    auto a = cast(AirfoilModel*)af;
+    if (a !is null) return (*a).lift_curve_slope();
+    return 0.0;
+}
+
+extern(C) double oc_airfoil_zero_lift_aoa(OC_AirfoilModel* af) {
+    auto a = cast(AirfoilModel*)af;
+    if (a !is null) return (*a).zero_lift_aoa();
+    return 0.0;
+}
+
+// --- BladeAirfoil ---
+
+/**
+ * Convenience function to create a BladeAirfoil with a single thin airfoil
+ * model spanning all elements [0..num_elements). Uses the given lift-curve slope.
+ */
+extern(C) OC_BladeAirfoil* oc_blade_airfoil_create_basic(size_t num_elements, double C_l_alpha_0) {
+    if (num_elements > 0) {
+        auto af = new ThinAirfoil(C_l_alpha_0);
+        GC.addRoot(&af);
+
+        AirfoilModel[] af_models;
+        af_models ~= af;
+
+        size_t[2][] ext;
+        ext ~= [size_t(0), num_elements - 1];
+
+        auto blade_af = new BladeAirfoil(af_models, ext);
+        GC.addRoot(&blade_af);
+        return cast(OC_BladeAirfoil*)blade_af;
+    }
+    return null;
+}
+
+extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, size_t* extents, size_t num_af) {
+    if (models !is null && extents !is null && num_af > 0) {
+        auto af_models = new AirfoilModel[num_af];
+        for (size_t i = 0; i < num_af; i++) {
+            af_models[i] = cast(AirfoilModel)models[i];
+        }
+        auto ext = new size_t[2][num_af];
+        for (size_t i = 0; i < num_af; i++) {
+            ext[i][0] = extents[i * 2];
+            ext[i][1] = extents[i * 2 + 1];
+        }
+        auto blade_af = new BladeAirfoil(af_models, ext);
+        GC.addRoot(&blade_af);
+        return cast(OC_BladeAirfoil*)blade_af;
+    }
+    return null;
+}
+
+extern(C) void oc_blade_airfoil_destroy(OC_BladeAirfoil* blade_af) {
+    if (blade_af !is null) {
+        auto p = cast(BladeAirfoil*)blade_af;
+        GC.removeRoot(&p);
+    }
+}
+
+extern(C) double oc_blade_airfoil_get_Cl(OC_BladeAirfoil* blade_af, size_t chunk_idx, double alpha, double mach) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null) {
+        Chunk _alpha, _mach;
+        _alpha[] = alpha;
+        _mach[] = mach;
+        auto state = (*b).compute_coeffiecients(chunk_idx, _alpha, _mach);
+        return state.C_l[0];
+    }
+    return 0.0;
+}
+
+extern(C) double oc_blade_airfoil_get_Cd(OC_BladeAirfoil* blade_af, size_t chunk_idx, double alpha, double mach) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null) {
+        Chunk _alpha, _mach;
+        _alpha[] = alpha;
+        _mach[] = mach;
+        auto state = (*b).compute_coeffiecients(chunk_idx, _alpha, _mach);
+        return state.C_d[0];
+    }
+    return 0.0;
+}
+
+extern(C) double oc_blade_airfoil_lift_curve_slope(OC_BladeAirfoil* blade_af, size_t chunk_idx) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null) {
+        auto val = (*b).lift_curve_slope(chunk_idx);
+        return val[0];
+    }
+    return 0.0;
+}
+
+extern(C) double oc_blade_airfoil_zero_lift_aoa(OC_BladeAirfoil* blade_af, size_t chunk_idx) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null) {
+        auto val = (*b).zero_lift_aoa(chunk_idx);
+        return val[0];
+    }
+    return 0.0;
+}
+
+extern(C) void oc_blade_airfoil_fill_lift_curve_slope(OC_BladeAirfoil* blade_af, size_t chunk_idx, double* result_out, size_t len) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null && result_out !is null) {
+        auto val = (*b).lift_curve_slope(chunk_idx);
+        foreach(i; 0..min(len, val.length)) {
+            result_out[i] = val[i];
+        }
+    }
+}
+
+extern(C) void oc_blade_airfoil_fill_zero_lift_aoa(OC_BladeAirfoil* blade_af, size_t chunk_idx, double* result_out, size_t len) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null && result_out !is null) {
+        auto val = (*b).zero_lift_aoa(chunk_idx);
+        foreach(i; 0..min(len, val.length)) {
+            result_out[i] = val[i];
+        }
+    }
+}
+
+extern(C) void oc_blade_airfill_fill_coefficients(OC_BladeAirfoil* blade_af, size_t chunk_idx,
+                                                   const double* alphas, const double* machs,
+                                                   double* Cl_out, double* Cd_out, size_t len) {
+    auto b = cast(BladeAirfoil*)blade_af;
+    if (b !is null && alphas !is null && machs !is null && Cl_out !is null && Cd_out !is null) {
+        import opencopter.config : chunk_size;
+        size_t processed = 0;
+        while (processed < len) {
+            size_t remaining = len - processed;
+            size_t chunk_len = (remaining >= chunk_size) ? chunk_size : remaining;
+            Chunk _alpha, _mach;
+            _alpha[] = 0;
+            _mach[] = 0;
+            foreach(j; 0..chunk_len) {
+                _alpha[j] = alphas[processed + j];
+                _mach[j] = machs[processed + j];
+            }
+            auto state = (*b).compute_coeffiecients(chunk_idx, _alpha, _mach);
+            foreach(j; 0..chunk_len) {
+                Cl_out[processed + j] = state.C_l[j];
+                Cd_out[processed + j] = state.C_d[j];
+            }
+            processed += chunk_len;
+        }
+    }
+}
