@@ -467,7 +467,7 @@ double oc_airfoil_zero_lift_aoa(const OC_AirfoilModel* af);
 // ========================================================================
 
 OC_BladeAirfoil* oc_blade_airfoil_create_basic(size_t num_elements, double C_l_alpha_0);
-OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, size_t* extents, size_t num_af);
+OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, const size_t* extents, size_t num_af);
 void oc_blade_airfoil_destroy(OC_BladeAirfoil* blade_af);
 double oc_blade_airfoil_get_Cl(const OC_BladeAirfoil* blade_af, size_t chunk_idx, double alpha, double mach);
 double oc_blade_airfoil_get_Cd(const OC_BladeAirfoil* blade_af, size_t chunk_idx, double alpha, double mach);

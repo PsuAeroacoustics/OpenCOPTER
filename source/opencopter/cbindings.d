@@ -1372,7 +1372,7 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create_basic(size_t num_elements, do
     return null;
 }
 
-extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, size_t* extents, size_t num_af) {
+extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, const size_t* extents, size_t num_af) {
     if (models !is null && extents !is null && num_af > 0) {
         auto af_models = new AirfoilModel[num_af];
         for (size_t i = 0; i < num_af; i++) {

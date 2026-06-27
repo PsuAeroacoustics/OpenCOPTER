@@ -4,10 +4,10 @@
 	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
 	"preBuildCommands-linux": [
-		"mkdir -p build && cd build && cmake .. && cmake --build ."
+		"mkdir -p build && cd build && cmake .. -DBUILD_TYPE=$BUILD_TYPE && cmake --build ."
 	],
 	"preBuildCommands-osx": [
-		"mkdir -p build && cd build && cmake .. && cmake --build ."
+		"mkdir -p build && cd build && cmake .. -DBUILD_TYPE=$BUILD_TYPE && cmake --build ."
 	],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},

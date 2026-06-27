@@ -1,4 +1,5 @@
-# Build Linux
+---
 
-To build opencopter on linux use the command `./build_linux.sh native debug` to build the library.
+I MUST try to build the project to ensure there are no compilation errors. I MUST use the command `./build_linux.sh native debug` to accomplish this task.
 
+---
