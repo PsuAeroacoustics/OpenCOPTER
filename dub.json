@@ -3,6 +3,12 @@
 	"copyright": "Copyright © 2026, Robert F. Rau II, The Pennsylvania State University",
 	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
+	"preBuildCommands-linux": [
+		"mkdir -p build && cd build && cmake .. && cmake --build ."
+	],
+	"preBuildCommands-osx": [
+		"mkdir -p build && cd build && cmake .. && cmake --build ."
+	],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},
 		"kxml": "~>1.1.1"
@@ -21,6 +27,7 @@
 	],
 	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
+	"sourceFiles": ["source/opencopter/cppbindings.o"],
 	"configurations": [
 		{
 			"name": "library",
