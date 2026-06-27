@@ -1,6 +1,9 @@
 #! /bin/env bash
 
 CPU_SUPPORT=native
+BUILD_MODE=release
+
+# Parse first argument: CPU target
 if [ $# -gt 0 ]; then
     if [[ "$1" == "generic" || "$1" == "generic-avx" || "$1" == "generic-avx2" || "$1" == "generic-avx512f" ]]; then
         CPU_SUPPORT=$1
@@ -10,23 +13,49 @@ if [ $# -gt 0 ]; then
     elif [ "$1" == "native" ]; then
         CPU_SUPPORT=native
     elif [ "$1" == "--help" ]; then
-        echo "Usage:"
-        echo "  For native CPU build:"
-        echo "      ./build_linux.sh"
-        echo "          or"
-        echo "      ./build_linux.sh native"
-        echo "  For generic CPU build:"
-        echo "      ./build_linux.sh generic"
-        echo "  For generic CPU build with AVX support:"
-        echo "      ./build_linux.sh generic-avx"
-        echo "  For generic CPU build with AVX2 support:"
-        echo "      ./build_linux.sh generic-avx2"
-        echo "  For generic CPU build with AVX512F support:"
-        echo "      ./build_linux.sh generic-avx512f"
+        echo "Usage: ./build_linux.sh [cpu_target] [build_mode]"
+        echo ""
+        echo "CPU Target (default: native):"
+        echo "  native            - Build for native CPU"
+        echo "  generic           - Build for generic CPU (AVX)"
+        echo "  generic-avx       - Build for generic CPU with AVX"
+        echo "  generic-avx2      - Build for generic CPU with AVX2"
+        echo "  generic-avx512f   - Build for generic CPU with AVX512F"
+        echo ""
+        echo "Build Mode (default: release):"
+        echo "  debug             - Debug build (native CPU only)"
+        echo "  release           - Release build"
+        echo ""
+        echo "Examples:"
+        echo "  ./build_linux.sh                     # release + native"
+        echo "  ./build_linux.sh native debug         # debug + native"
+        echo "  ./build_linux.sh generic-avx2 release  # release + generic-avx2"
         exit 0
     else
-        echo "Unrecognized input argument: $1"
-        exit -1
+        echo "Unrecognized CPU target argument: $1"
+        echo "Use --help for usage information."
+        exit 1
+    fi
+fi
+
+# Parse second argument: build mode
+if [ $# -gt 1 ]; then
+    if [ "$2" == "debug" ]; then
+        BUILD_MODE=debug
+    elif [ "$2" == "release" ]; then
+        BUILD_MODE=release
+    else
+        echo "Unrecognized build mode argument: $2"
+        echo "Valid options: debug, release"
+        echo "Use --help for usage information."
+        exit 1
+    fi
+
+    # Check compatibility: debug builds only support native CPU
+    if [ "$BUILD_MODE" == "debug" ] && [ "$CPU_SUPPORT" != "native" ]; then
+        echo "Error: Debug builds only support native CPU targets."
+        echo "Please use 'native' with debug mode, or switch to release mode for generic CPU builds."
+        exit 1
     fi
 fi
 
@@ -53,7 +82,7 @@ else
 fi
 
 # Configure build type
-BUILD_CONFIG=release-$CPU_SUPPORT
+BUILD_CONFIG=$BUILD_MODE-$CPU_SUPPORT
 if [ "$CPU_SUPPORT" == "native" ]; then
     if grep avx512 /proc/cpuinfo &> /dev/null; then
         echo "AVX512 support enabled."

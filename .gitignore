@@ -53,3 +53,4 @@ oc_fly/example/hart_ii/MN
 oc_fly/example/hart_ii/MV
 examples/c/example
 examples/cpp/example
+.clangd
