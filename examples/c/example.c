@@ -48,11 +48,13 @@ OC_BladeGeometry* build_blade(size_t b_idx, double d_azimuth, double R, double r
     // Build frame hierarchy mirroring Python:
     //   azimuth_offset_frame -> root_cutout_frame -> blade_frame
 
-    // azimuth_offset_frame = Frame(Vec3([0,0,1]), b_idx*d_azimuth, Vec3([0,0,0]), parent_frame, ...)
+    // azimuth_offset_frame = Frame(Vec3([0,0,1]), b_idx*d_azimuth, Vec3([0,0,0]), null, ...)
+    // Parent (rotor_frame) is not yet known here, so we pass NULL and link later via set_children.
     OC_Frame* azimuth_offset_frame = oc_frame_create(
         vec3(0.0, 0.0, 1.0),
         (double)b_idx * d_azimuth,
         vec3(0.0, 0.0, 0.0),
+        NULL,
         "blade_azimuth",
         OC_CONNECTION_FRAME
     );
@@ -62,6 +64,7 @@ OC_BladeGeometry* build_blade(size_t b_idx, double d_azimuth, double R, double r
         vec3(1.0, 0.0, 0.0),
         0.0,
         vec3(R * r_c, 0.0, 0.0),
+        azimuth_offset_frame,
         "blade_cutout",
         OC_CONNECTION_FRAME
     );
@@ -71,12 +74,14 @@ OC_BladeGeometry* build_blade(size_t b_idx, double d_azimuth, double R, double r
         vec3(1.0, 0.0, 0.0),
         0.0,
         vec3(0.0, 0.0, 0.0),
+        root_cutout_frame,
         "blade",
         OC_BLADE_FRAME
     );
 
     // Set parent-child relationships:
     //   root_cutout_frame.children = [blade_frame]
+    // (already linked via parent param, but set_children ensures bidirectional refs)
     OC_Frame* cutout_children[1] = { blade_frame };
     oc_frame_set_children(root_cutout_frame, cutout_children, 1);
 
@@ -196,10 +201,12 @@ int main() {
 
     // Create rotor frame: Frame(Vec3([1,0,0]), 0, Vec3([0,0,0]), aircraft.root_frame, 'rotor_0', FrameType.rotor())
     OC_Frame* root_frame = oc_aircraft_get_root_frame(aircraft);
+    // rotor_frame = Frame with aircraft root_frame as parent
     OC_Frame* rotor_frame = oc_frame_create(
         vec3(1.0, 0.0, 0.0),
         0.0,
         vec3(0.0, 0.0, 0.0),
+        root_frame,
         "rotor_0",
         OC_ROTOR_FRAME
     );

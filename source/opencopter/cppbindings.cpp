@@ -154,9 +154,10 @@ double basic_single_rotor_dynamics(RotorInputState& input, double dt) {
 Frame::Frame(void* p, bool owned) : ptr_(p), owned_(owned) {}
 
 Frame::Frame(Vec3 axis, double angle, Vec3 translation,
-              std::string_view name, FrameType frame_type) {
+               const Frame* parent, std::string_view name, FrameType frame_type) {
     OC_Frame* raw = oc_frame_create(to_oc(axis), angle, to_oc(translation),
-                                     name.data(), static_cast<int>(frame_type));
+                                      parent ? fp(*parent) : nullptr,
+                                      name.data(), static_cast<int>(frame_type));
     ptr_ = raw;
     // owned_ defaults to false since frames are typically part of a hierarchy
     // where the Aircraft owns the entire tree. Setting owned_=true would cause
@@ -410,7 +411,7 @@ void BladeAirfoil::fill_coefficients(size_t ci, const std::vector<double>& alpha
     size_t len = alphas.size();
     if (Cl_out.size() < len) Cl_out.resize(len);
     if (Cd_out.size() < len) Cd_out.resize(len);
-    oc_blade_airfill_fill_coefficients(bap(*this), ci, alphas.data(), machs.data(), Cl_out.data(), Cd_out.data(), len);
+    oc_blade_airfoil_fill_coefficients(bap(*this), ci, alphas.data(), machs.data(), Cl_out.data(), Cd_out.data(), len);
 }
 
 // ========================================================================

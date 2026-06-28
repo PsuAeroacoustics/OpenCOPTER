@@ -259,12 +259,13 @@ extern(C) OC_Mat4 oc_mat4_identity() {
 // ========================================================================
 
 extern(C) OC_Frame* oc_frame_create(OC_Vec3 axis, double angle, OC_Vec3 translation,
-                                     const(char)* name, int frame_type) {
+                                      OC_Frame* parent, const(char)* name, int frame_type) {
     string str_name = (name !is null) ? fromStringz(name).idup : "";
     auto ftype = cast(FrameType)frame_type;
     auto d_axis = oc_vec3_to_vec3(axis);
     auto d_trans = oc_vec3_to_vec3(translation);
-    auto frame = new Frame(d_axis, angle, d_trans, null, str_name, ftype);
+    auto d_parent = cast(Frame*)parent;
+    auto frame = new Frame(d_axis, angle, d_trans, d_parent, str_name, ftype);
     GC.addRoot(frame);
     return cast(OC_Frame*)frame;
 }
@@ -1459,7 +1460,7 @@ extern(C) void oc_blade_airfoil_fill_zero_lift_aoa(OC_BladeAirfoil* blade_af, si
     }
 }
 
-extern(C) void oc_blade_airfill_fill_coefficients(OC_BladeAirfoil* blade_af, size_t chunk_idx,
+extern(C) void oc_blade_airfoil_fill_coefficients(OC_BladeAirfoil* blade_af, size_t chunk_idx,
                                                    const double* alphas, const double* machs,
                                                    double* Cl_out, double* Cd_out, size_t len) {
     auto b = cast(BladeAirfoil*)blade_af;

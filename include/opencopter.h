@@ -157,7 +157,7 @@ OC_Mat4 oc_mat4_identity();
 // ========================================================================
 
 OC_Frame* oc_frame_create(OC_Vec3 axis, double angle, OC_Vec3 translation,
-                          const char* name, int frame_type);
+                          OC_Frame* parent, const char* name, int frame_type);
 void oc_frame_destroy(OC_Frame* frame);
 void oc_frame_rotate(OC_Frame* frame, OC_Vec3 axis, double angle);
 void oc_frame_translate(OC_Frame* frame, OC_Vec3 translation);
@@ -475,7 +475,7 @@ double oc_blade_airfoil_lift_curve_slope(const OC_BladeAirfoil* blade_af, size_t
 double oc_blade_airfoil_zero_lift_aoa(const OC_BladeAirfoil* blade_af, size_t chunk_idx);
 void oc_blade_airfoil_fill_lift_curve_slope(const OC_BladeAirfoil* blade_af, size_t chunk_idx, double* result_out, size_t len);
 void oc_blade_airfoil_fill_zero_lift_aoa(const OC_BladeAirfoil* blade_af, size_t chunk_idx, double* result_out, size_t len);
-void oc_blade_airfill_fill_coefficients(const OC_BladeAirfoil* blade_af, size_t chunk_idx,
+void oc_blade_airfoil_fill_coefficients(const OC_BladeAirfoil* blade_af, size_t chunk_idx,
                                         const double* alphas, const double* machs,
                                         double* Cl_out, double* Cd_out, size_t len);
 

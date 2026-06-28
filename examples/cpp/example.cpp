@@ -156,16 +156,17 @@ int main() {
 	// ============================================================
 
 	/* IMPORTANT: The D backend pins each Frame in GC.addRoot at creation.
-		When frames are linked into a parent-child hierarchy, destroying an
-		individual child frame (calling GC.removeRoot while the parent still
-		holds a D reference) corrupts the pinned list -> heap crash.
+ 		When frames are linked into a parent-child hierarchy, destroying an
+ 		individual child frame (calling GC.removeRoot while the parent still
+ 		holds a D reference) corrupts the pinned list -> heap crash.
 
-		Solution: Use owned_=true only for the Aircraft which owns the entire
-		tree. All Frame objects created here are marked non-owning so their
-		destructors do NOT call oc_frame_destroy/GC.removeRoot. The frames
-		live on the stack and are kept alive by the D GC through parent refs. */
+ 		Solution: Use owned_=true only for the Aircraft which owns the entire
+ 		tree. All Frame objects created here are marked non-owning so their
+ 		destructors do NOT call oc_frame_destroy/GC.removeRoot. The frames
+ 		live on the stack and are kept alive by the D GC through parent refs. */
 
-	oc::Frame rotor_frame({1, 0, 0}, 0.0, {0, 0, 0}, "rotor_0", oc::FrameType::Rotor);
+	/* Create rotor frame with aircraft_root as parent */
+	oc::Frame rotor_frame({1, 0, 0}, 0.0, {0, 0, 0}, &aircraft_root, "rotor_0", oc::FrameType::Rotor);
 
 	std::vector<oc::Frame> azimuth_frames;
 	std::vector<oc::Frame> cutout_frames;
@@ -176,26 +177,29 @@ int main() {
 
 	for (size_t b_idx = 0; b_idx < num_blades; ++b_idx) {
 		std::string az_name = "blade_" + std::to_string(b_idx) + "_azimuth";
+		/* azimuth frame: parent is rotor_frame */
 		azimuth_frames.emplace_back(
 			oc::Frame({0, 0, 1}, static_cast<double>(b_idx) * d_azimuth, {0, 0, 0},
-						az_name, oc::FrameType::Connection));
+						&rotor_frame, az_name, oc::FrameType::Connection));
 
 		std::string cut_name = "blade_" + std::to_string(b_idx) + "_cutout";
+		/* cutout frame: parent is azimuth_frames[b_idx] */
 		cutout_frames.emplace_back(
-			oc::Frame({1, 0, 0}, 0.0, {R * r_c, 0, 0}, cut_name,
+			oc::Frame({1, 0, 0}, 0.0, {R * r_c, 0, 0}, &azimuth_frames[b_idx], cut_name,
 						oc::FrameType::Connection));
 
 		std::string bl_name = "blade_" + std::to_string(b_idx);
+		/* blade frame: parent is cutout_frames[b_idx] */
 		blade_frames.emplace_back(
-			oc::Frame({1, 0, 0}, 0.0, {0, 0, 0}, bl_name, oc::FrameType::Blade));
+			oc::Frame({1, 0, 0}, 0.0, {0, 0, 0}, &cutout_frames[b_idx], bl_name, oc::FrameType::Blade));
 
 		/* Assign the leaf blade frame to the blade geometry */
 		blades[b_idx].set_frame(blade_frames[b_idx]);
 	}
 
-	/* Link parent-child relationships using set_children().
-		In the C API, oc_frame_set_children sets child.parent = this for each child.
-		Order matters: set deepest children first so parent pointers are correct. */
+	/* Link children arrays using set_children() for bidirectional references.
+ 		In the C API, oc_frame_set_children sets child.parent = this for each child,
+ 		ensuring both parent->children[] and child->parent are consistent. */
 
 	/* blade_frames[b] are children of cutout_frames[b] */
 	for (size_t b_idx = 0; b_idx < num_blades; ++b_idx) {

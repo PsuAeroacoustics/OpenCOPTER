@@ -123,7 +123,7 @@ public:
     Frame() = default;
 
     Frame(Vec3 axis, double angle, Vec3 translation,
-          std::string_view name, FrameType frame_type);
+          const Frame* parent, std::string_view name, FrameType frame_type);
 
     ~Frame();
 
