@@ -120,11 +120,11 @@ Direction direction_counter_clockwise() { return static_cast<Direction>(oc_direc
 Mat3 mat3_identity() { return from_oc(oc_mat3_identity()); }
 Mat4 mat4_identity() { return from_oc(oc_mat4_identity()); }
 
-std::vector<double> generate_radius_points(size_t n_sections, double root_cutout) {
-    std::vector<double> buf(n_sections);
-    size_t written = oc_generate_radius_points(buf.data(), n_sections, root_cutout);
-    buf.resize(written);
-    return buf;
+std::span<double> generate_radius_points(size_t n_sections, double root_cutout) {
+
+    double* buff = oc_generate_radius_points(&n_sections, root_cutout);
+
+    return std::span<double>(buff, n_sections);
 }
 
 void simulation_step(const AircraftState& ac_state, const Aircraft& aircraft,
@@ -292,7 +292,10 @@ BladeGeometry& BladeGeometry::operator=(BladeGeometry&& o) noexcept {
 }
 
 #define BG_SET(name) void BladeGeometry::set_##name(const std::vector<double>& d){ \
+    if(ptr_) oc_blade_geometry_set_##name(bgp(*this), const_cast<double*>(d.data()), d.size()); } \
+    void BladeGeometry::set_##name(const std::span<double>& d){ \
     if(ptr_) oc_blade_geometry_set_##name(bgp(*this), const_cast<double*>(d.data()), d.size()); }
+    
 BG_SET(twist); BG_SET(chord); BG_SET(radius); BG_SET(C_l_alpha); BG_SET(alpha_0);
 BG_SET(sweep); BG_SET(xi); BG_SET(thickness); BG_SET(xi_p);
 #undef BG_SET

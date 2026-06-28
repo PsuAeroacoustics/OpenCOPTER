@@ -425,7 +425,7 @@ void oc_set_wing_ctrl_pt_geometry(OC_WingGeometry* wing, size_t spanwise_nodes, 
  * Generate radial distribution points using the OpenCOPTER half-cosine method.
  * Returns actual number of points written (may be padded for chunk alignment).
  */
-size_t oc_generate_radius_points(double* buf, size_t n_sections, double root_cutout);
+double* oc_generate_radius_points(size_t* n_sections, double root_cutout);
 
 // ========================================================================
 //  VTK Output API

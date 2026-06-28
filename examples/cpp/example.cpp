@@ -28,7 +28,7 @@ int main() {
 	// ============================================================
 	const int iterations = 5400;
 	const size_t wake_history_length = 1 * 1024;
-	const size_t requested_elements = 48;
+	const size_t requested_elements = 45;
 
 	const size_t num_rotors = 1;
 	const size_t num_blades = 4;
@@ -58,7 +58,7 @@ int main() {
 	// ============================================================
 	// Spanwise distributions (normalized by rotor radius)
 	// ============================================================
-	std::vector<double> r = oc::generate_radius_points(requested_elements, r_c);
+	auto r = oc::generate_radius_points(requested_elements, r_c);
 	const size_t elements = r.size();
 	std::cout << "requested_elements: " << requested_elements
 			<< ", actual elements: " << elements << std::endl;
@@ -383,6 +383,8 @@ int main() {
 	double span_2 = max_dim_2 - min_dim_2;
 	std::cout << "Total wake bounding box: x=" << span_1 << ", z=" << span_2
 			<< std::endl;
+
+	delete r.data();
 
 	return 0;
 }

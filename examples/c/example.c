@@ -130,9 +130,8 @@ int main() {
     // Generate spanwise distributions using OpenCOPTER library function
     // (matching Python: r = generate_radius_points(requested_elements, r_c))
     // Allocate a large enough buffer (chunk-aligned size could be larger)
-    size_t buf_capacity = requested_elements + 64;
-    double* r_buf = (double*)malloc(buf_capacity * sizeof(double));
-    size_t elements = oc_generate_radius_points(r_buf, requested_elements, r_c);
+    size_t elements = requested_elements;
+    double* r_buf = oc_generate_radius_points(&elements, r_c);
     printf("requested_elements: %zu, actual elements: %zu\n", requested_elements, elements);
 
     // Allocate remaining arrays using the actual element count
@@ -189,7 +188,7 @@ int main() {
     OC_Vec3 origin_0 = vec3(0.0, 0.0, 0.0);
 
     // Create blade airfoil using the aerodas model
-    char* polar_path = "../polars/NACA23012mod_1000000_polar.dat";
+    const char* polar_path = "../polars/NACA23012mod_1000000_polar.dat";
     OC_AirfoilModel* af = oc_aero_das_from_xfoil_polar(polar_path, 0.12);
     OC_AirfoilModel* models[] = { af };
     size_t extents[2] = {0, 47};

@@ -300,6 +300,16 @@ public:
     void set_thickness(const std::vector<double>& data);
     void set_xi_p(const std::vector<double>& data);
 
+    void set_twist(const std::span<double>& data);
+    void set_chord(const std::span<double>& data);
+    void set_radius(const std::span<double>& data);
+    void set_C_l_alpha(const std::span<double>& data);
+    void set_alpha_0(const std::span<double>& data);
+    void set_sweep(const std::span<double>& data);
+    void set_xi(const std::span<double>& data);
+    void set_thickness(const std::span<double>& data);
+    void set_xi_p(const std::span<double>& data);
+
     void compute_vectors();
 
     Frame get_frame() const;
@@ -1056,7 +1066,8 @@ Direction direction_clockwise();
 Direction direction_counter_clockwise();
 Mat3 mat3_identity();
 Mat4 mat4_identity();
-std::vector<double> generate_radius_points(size_t n_sections, double root_cutout);
+//std::vector<double> generate_radius_points(size_t n_sections, double root_cutout);
+std::span<double> generate_radius_points(size_t n_sections, double root_cutout);
 
 void simulation_step(const AircraftState& ac_state, const Aircraft& aircraft,
                      const AircraftInputState& ac_input_state,

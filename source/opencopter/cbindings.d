@@ -37,6 +37,7 @@ static import opencopter.aircraft.geometry;
 static import opencopter.wake;
 
 import core.memory : GC;
+import core.stdc.stdlib : malloc;
 
 import std.algorithm;
 import std.array;
@@ -846,15 +847,17 @@ extern(C) void oc_inflow_at(OC_Inflow* inflow, const double* x, const double* y,
  * Writes results into the caller-provided buffer and returns the actual number
  * of points written (may be larger than requested due to chunk alignment).
  */
-extern(C) size_t oc_generate_radius_points(double* buf, size_t n_sections, double root_cutout) {
-    if (buf !is null && n_sections > 0) {
-        auto pts = opencopter.aircraft.geometry.generate_radius_points(n_sections, root_cutout);
+extern(C) double* oc_generate_radius_points(size_t* n_sections, double root_cutout) {
+    if (n_sections !is null && *n_sections > 0) {
+        auto pts = opencopter.aircraft.geometry.generate_radius_points(*n_sections, root_cutout);
+        double* buf = cast(double*)malloc(pts.length*double.sizeof);
+        *n_sections = pts.length;
         foreach(i; 0..pts.length) {
             buf[i] = pts[i];
         }
-        return pts.length;
+        return buf;
     }
-    return 0;
+    return null;
 }
 
 /**
