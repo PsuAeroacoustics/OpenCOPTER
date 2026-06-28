@@ -9,12 +9,7 @@ elseif(${BUILD_TYPE} MATCHES "release")
 	set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-set(CMAKE_CXX_STANDARD 23)
-
-add_custom_target(cppbindings ALL
-    COMMAND ${CMAKE_CXX_COMPILER} -c -fPIC --std=c++23
-            -I${CMAKE_SOURCE_DIR}/include
-            ${CMAKE_SOURCE_DIR}/source/opencopter/cppbindings.cpp
-            -o ${CMAKE_SOURCE_DIR}/source/opencopter/cppbindings.o
-    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-    COMMENT "Compiling cppbindings.cpp")
+add_library(cppbindings OBJECT ${CMAKE_SOURCE_DIR}/source/opencopter/cppbindings.cpp)
+target_compile_options(cppbindings PRIVATE -fPIE -fPIC)
+target_compile_features(cppbindings PUBLIC cxx_std_23)
+target_include_directories(cppbindings PRIVATE ${CMAKE_SOURCE_DIR}/include)

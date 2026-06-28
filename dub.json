@@ -28,7 +28,7 @@
 	],
 	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
-	"sourceFiles": ["source/opencopter/cppbindings.o"],
+	"sourceFiles": ["build/CMakeFiles/cppbindings.dir/source/opencopter/cppbindings.cpp.o"],
 	"configurations": [
 		{
 			"name": "library",
