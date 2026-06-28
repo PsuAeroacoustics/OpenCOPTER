@@ -154,11 +154,16 @@ double basic_single_rotor_dynamics(RotorInputState& input, double dt) {
 Frame::Frame(void* p, bool owned) : ptr_(p), owned_(owned) {}
 
 Frame::Frame(Vec3 axis, double angle, Vec3 translation,
-             std::string_view name, FrameType frame_type) {
+              std::string_view name, FrameType frame_type) {
     OC_Frame* raw = oc_frame_create(to_oc(axis), angle, to_oc(translation),
-                                    name.data(), static_cast<int>(frame_type));
+                                     name.data(), static_cast<int>(frame_type));
     ptr_ = raw;
-    owned_ = true;
+    // owned_ defaults to false since frames are typically part of a hierarchy
+    // where the Aircraft owns the entire tree. Setting owned_=true would cause
+    // GC.removeRoot to be called on a frame still referenced by its parent's
+    // .children array, corrupting the D GC pinned list. Users who need explicit
+    // cleanup can call oc_frame_destroy via the C API directly.
+    owned_ = false;
 }
 
 Frame::~Frame() {

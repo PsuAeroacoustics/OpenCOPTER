@@ -208,6 +208,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		//writeln("blade sec u_squared = ", u_squared);
 		auto gamma = blade_state.circulation_model.compute_bound_circulation_band(blade_state, chunk_idx, rotor_input.angular_velocity, blade.airfoil.lift_curve_slope(chunk_idx), blade.airfoil.zero_lift_aoa(chunk_idx));
 
+		debug writeln("gamma_hat: ", gamma);
+
 		immutable Chunk u_p = blade_state.chunks[chunk_idx].u_p[];
 		immutable Chunk u_t = blade_state.chunks[chunk_idx].u_t[];
 

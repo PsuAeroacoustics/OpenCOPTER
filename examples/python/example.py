@@ -125,7 +125,7 @@ if __name__ == "__main__":
 		rotor.blades = [build_blade(b_idx, rotor_frame) for b_idx in range(num_blades)]
 		print(f'rotor.blades length: {rotor.blades.length()}')
 		rotor.solidity = num_blades*rotor.blades[0].average_chord/(math.pi*rotor.radius)
-
+		print(f'rotor.solidity: {rotor.solidity}')
 		rotor_frame.children = [b.frame.parent.parent for b in rotor.blades]
 		rotor.frame = rotor_frame
 
@@ -211,9 +211,9 @@ if __name__ == "__main__":
 		# The trailing flags are trackBWIevents and converged.
 		step(ac_state, aircraft, ac_input_state, wake_history, atmo, iteration, dt, False, False)
 
-		if iteration > (iterations - 360):
-			write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], aircraft.rotors[0])
-			write_wake_vtu("wake", iteration, vtk_wake, wake_history.history[0])
+		# if iteration > (iterations - 360):
+		# 	write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state.rotor_states[0], aircraft.rotors[0])
+		# 	write_wake_vtu("wake", iteration, vtk_wake, wake_history.history[0])
 
 	print("rotor 0 C_T: ", ac_state.rotor_states[0].C_T)
 
