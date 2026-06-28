@@ -23,7 +23,8 @@
 		"-llapacke",
 		"-llapack",
 		"-lopenblas",
-		"-lgfortran"
+		"-lgfortran",
+		"-lstdc++"
 	],
 	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
