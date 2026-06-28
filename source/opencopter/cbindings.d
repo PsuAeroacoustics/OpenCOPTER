@@ -281,6 +281,11 @@ extern(C) void oc_frame_rotate(OC_Frame* frame, OC_Vec3 axis, double angle) {
     if (f !is null) f.rotate(oc_vec3_to_vec3(axis), angle);
 }
 
+extern(C) void oc_frame_set_rotation(OC_Frame* frame, OC_Vec3 axis, double angle) {
+    auto f = cast(Frame*)frame;
+    if (f !is null) f.set_rotation(oc_vec3_to_vec3(axis), angle);
+}
+
 extern(C) void oc_frame_translate(OC_Frame* frame, OC_Vec3 translation) {
     auto f = cast(Frame*)frame;
     if (f !is null) f.translate(oc_vec3_to_vec3(translation));

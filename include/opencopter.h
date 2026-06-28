@@ -159,6 +159,7 @@ OC_Mat4 oc_mat4_identity();
 OC_Frame* oc_frame_create(OC_Vec3 axis, double angle, OC_Vec3 translation,
                           OC_Frame* parent, const char* name, int frame_type);
 void oc_frame_destroy(OC_Frame* frame);
+void oc_frame_set_rotation(OC_Frame* frame, OC_Vec3 axis, double angle);
 void oc_frame_rotate(OC_Frame* frame, OC_Vec3 axis, double angle);
 void oc_frame_translate(OC_Frame* frame, OC_Vec3 translation);
 void oc_frame_update(OC_Frame* frame, const OC_Mat4* parent_global_mat);

@@ -34,7 +34,7 @@ int main() {
 	const size_t num_blades = 4;
 	const double R = 2.0;
 
-	const double theta_75 = 2.0 * (M_PI / 180.0);
+	const double theta_75 = 3.2 * (M_PI / 180.0);
 
 	const double density = 1.125;
 	const double omega = 109.12;
@@ -166,7 +166,11 @@ int main() {
  		live on the stack and are kept alive by the D GC through parent refs. */
 
 	/* Create rotor frame with aircraft_root as parent */
-	oc::Frame rotor_frame({1, 0, 0}, 0.0, {0, 0, 0}, &aircraft_root, "rotor_0", oc::FrameType::Rotor);
+	oc::Frame rotor_fixed_frame({1, 0, 0}, 0.0, {0, 0, 0}, &aircraft_root, "rotor_0_fixed", oc::FrameType::Connection);
+	oc::Frame rotor_frame({1, 0, 0}, 0.0, {0, 0, 0}, &rotor_fixed_frame, "rotor_0", oc::FrameType::Rotor);
+
+	const oc::Frame* rotor_frame_ptr = &rotor_frame;
+	rotor_fixed_frame.set_children(std::span<const oc::Frame*>(&rotor_frame_ptr, 1));
 
 	std::vector<oc::Frame> azimuth_frames;
 	std::vector<oc::Frame> cutout_frames;
@@ -250,7 +254,7 @@ int main() {
 	/* Link aircraft_root -> rotor_frame. After this call the D GC chain is:
 		aircraft (root frame) -> rotor_frame -> azimuth_frames -> cutout_frames -> blade_frames */
 	{
-		const oc::Frame* rf = &rotor_frame;
+		const oc::Frame* rf = &rotor_fixed_frame;
 		aircraft_root.set_children(std::span<const oc::Frame*>(&rf, 1));
 	}
 
@@ -325,6 +329,8 @@ int main() {
 		}
 
 		oc::basic_aircraft_rotor_dynamics(ac_input_state, dt);
+
+		rotor_frame.set_rotation(oc::Vec3(0, 0, 1), ac_input_state.get_rotor_input(0).azimuth());
 
 		oc::simulation_step(ac_state, aircraft, ac_input_state, wake_history, atmo,
 							static_cast<size_t>(iteration), dt, false, false);

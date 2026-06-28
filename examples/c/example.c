@@ -105,7 +105,7 @@ int main() {
     size_t num_blades = 4;
     double R = 2.0;
 
-    double theta_75 = 2.0*(M_PI/180.0);
+    double theta_75 = 3.2*(M_PI/180.0);
 
     double density = 1.125;
     double omega = 109.12;
@@ -201,15 +201,32 @@ int main() {
 
     // Create rotor frame: Frame(Vec3([1,0,0]), 0, Vec3([0,0,0]), aircraft.root_frame, 'rotor_0', FrameType.rotor())
     OC_Frame* root_frame = oc_aircraft_get_root_frame(aircraft);
+
+    // rotor_frame = Frame with aircraft root_frame as parent
+    OC_Frame* rotor_fixed_frame = oc_frame_create(
+        vec3(1.0, 0.0, 0.0),
+        0.0,
+        vec3(0.0, 0.0, 0.0),
+        root_frame,
+        "rotor_0_fixed",
+        OC_CONNECTION_FRAME
+    );
+
+    OC_Frame* root_fixed_children[] = { rotor_fixed_frame };
+    oc_frame_set_children(root_frame, root_fixed_children, 1);
+
     // rotor_frame = Frame with aircraft root_frame as parent
     OC_Frame* rotor_frame = oc_frame_create(
         vec3(1.0, 0.0, 0.0),
         0.0,
         vec3(0.0, 0.0, 0.0),
-        root_frame,
+        rotor_fixed_frame,
         "rotor_0",
         OC_ROTOR_FRAME
     );
+
+    OC_Frame* rotor_fixed_children[] = { rotor_frame };
+    oc_frame_set_children(rotor_fixed_frame, rotor_fixed_children, 1);
 
     // Build blades with proper frame hierarchy
     OC_BladeGeometry** blades = (OC_BladeGeometry**)malloc(num_blades * sizeof(OC_BladeGeometry*));
@@ -263,8 +280,8 @@ int main() {
     OC_RotorGeometry* rotors_arr[1] = { rotor };
     oc_aircraft_set_rotors(aircraft, rotors_arr, num_rotors);
 
-    OC_Frame* root_children[1] = { rotor_frame };
-    oc_frame_set_children(root_frame, root_children, 1);
+    // OC_Frame* root_children[1] = { rotor_frame };
+    // oc_frame_set_children(root_frame, root_children, 1);
 
     // Set aircraft frame properties (matching Python)
     oc_frame_set_name(root_frame, "Aircraft frame");
@@ -372,6 +389,14 @@ int main() {
 
         // Advance rotor dynamics
         oc_basic_aircraft_rotor_dynamics(ac_input_state, dt);
+        double azimuth = oc_rotor_input_get_azimuth(rotor_input);
+        oc_frame_set_rotation(
+            rotor_frame,
+            vec3(0, 0, 1),
+            azimuth
+        );
+
+        //printf("azimuth: %f\n", azimuth);
 
         // Run simulation step
         oc_simulation_step(

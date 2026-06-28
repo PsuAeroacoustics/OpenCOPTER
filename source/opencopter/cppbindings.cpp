@@ -184,6 +184,7 @@ Frame& Frame::operator=(Frame&& other) noexcept {
     return *this;
 }
 
+void Frame::set_rotation(Vec3 axis, double angle) { if (ptr_) oc_frame_set_rotation(fp(*this), to_oc(axis), angle); }
 void Frame::rotate(Vec3 axis, double angle) { if (ptr_) oc_frame_rotate(fp(*this), to_oc(axis), angle); }
 void Frame::translate(Vec3 translation) { if (ptr_) oc_frame_translate(fp(*this), to_oc(translation)); }
 

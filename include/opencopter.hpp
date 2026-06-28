@@ -132,6 +132,7 @@ public:
     Frame(Frame&& other) noexcept;
     Frame& operator=(Frame&& other) noexcept;
 
+    void set_rotation(Vec3 axis, double angle);
     void rotate(Vec3 axis, double angle);
     void translate(Vec3 translation);
     void update(const Mat4& parent_global_mat);
