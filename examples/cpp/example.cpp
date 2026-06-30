@@ -2,7 +2,7 @@
  * OpenCOPTER C++ Example
  *
  * Mirrors examples/python/example.py - single rotor forward flight simulation
- * with Huang-Peters dynamic inflow and free-wake tracking.
+ * with Huang-Peters dynamic inflow.
  */
 
 #include <algorithm>
