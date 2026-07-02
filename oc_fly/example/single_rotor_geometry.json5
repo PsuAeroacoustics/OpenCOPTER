@@ -1,0 +1,79 @@
+[
+	{
+		name: "single_rotor",
+		type: "aircraft",
+		children: [
+			{
+				type: "rotor",
+				name: "Rotor_0",
+				radius: 1.5,
+				origin: [-0.5, 1.0, 1.0],
+				//number_of_blades: 5,
+				axis: [0, 0, 1],
+				axis_angle_function: "constant",
+				children: [
+					{
+						type: "connection",
+						name: "blade attach 0",
+						axis: [0, 0, 1],
+						axis_angle: 0,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 1",
+						axis: [0, 0, 1],
+						axis_angle: 90,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 2",
+						axis: [0, 0, 1],
+						axis_angle: 180,
+						children: [
+							{ref: "blade"}
+						]
+					},
+					{
+						type: "connection",
+						name: "blade attach 3",
+						axis: [0, 0, 1],
+						axis_angle: 270,
+						children: [
+							{ref: "blade"}
+						]
+					}
+				]
+			}
+
+		],
+		blades: [
+			{
+				type: "blade",
+				name: "blade",
+				r_c: 0.2,
+				AR: 12.5,
+				theta_tw: -12.0,
+				
+				airfoils: [
+					// {
+					// 	type: "aerodas",
+					// 	extent: [0.2, 0.3],
+					// 	xfoil_polar: "polars/NACA0014_1000000_polar.dat",
+					// 	thickness: 0.14
+					// },
+					{
+						type: "thinaf",
+						extent: [0.2, 1.0],
+						thickness: 0.12
+					}
+				]
+			}
+		]
+	}
+]

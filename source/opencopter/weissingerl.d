@@ -76,7 +76,13 @@ struct WeissingerL(ArrayContainer AC) {
 		//writeln("defined influence_inv");
 
 		immutable m = integration_elements;
-		immutable psi_vs = iota(1.0*PI/(m + 1.0), m*PI/(m + 1.0), 1.0*PI/(m + 1.0)).retro.array;
+		// The collocation stations are psi_v = v*PI/(m + 1) for v = 1 .. m, which
+		// is exactly m points. Build them by integer index: a floating-point iota
+		// with an upper bound of m*PI/(m + 1) excludes the last station, and its
+		// element count is rounding-sensitive across architectures. On AArch64 that
+		// left psi_vs/y_array one element short, so y_array[m - 1] read out of
+		// bounds (NaN) and poisoned the whole influence matrix.
+		immutable psi_vs = iota(1, cast(int)m + 1).map!(v => v*PI/(m + 1.0)).retro.array;
 		immutable y_array = psi_vs.map!(psi_mu => cos(psi_mu)).array;
 		//writeln("going into nested for loop");
 		foreach(ch1; 0..chunks) {
@@ -203,10 +209,10 @@ struct WeissingerL(ArrayContainer AC) {
 		int info = 0;
 		auto ipiv = new int[elements];
 		info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, elements.to!int, elements.to!int, _influence_inv[0].ptr, elements.to!int, ipiv.ptr);
-		
+
 		assert(info == 0, "Failed to invert influence matrix");
 		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, elements.to!int, _influence_inv[0].ptr, elements.to!int, ipiv.ptr);
-		
+
 		assert(info == 0, "Failed to invert influence matrix");
 
 		influence_inv = allocate_dense_chunk_aliased(elements, elements);
@@ -233,7 +239,7 @@ struct WeissingerL(ArrayContainer AC) {
 				gamma[c1] += tmp.sum;
 			}
 
-			gamma[c1] *= -sgn(direction_multiplier);
+			gamma[c1] *= sgn(direction_multiplier);
 		}
 		return gamma;
 	}

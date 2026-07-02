@@ -1,0 +1,53 @@
+{
+	computational_parameters: {
+		d_psi: 1.0,
+		spanwise_elements: 48,
+		shed_history_angle: [15, 15],
+		wake_trail_distance: [5, 10],
+		shed_release_angle: 1.0,
+		convergence_criteria: 1.0e-1,
+		trim_algo: "lympany",
+		convergence_type: "run_for",
+		r_0: [1.0, 1.0],
+		a1: 1.0e-5,
+        post_conv_revolutions: 2,
+        trackBWIevents: false
+	},
+	flight_conditions: [
+		{
+			name: "FF_30mps_aoa_0_acoustics_multiple_obs",
+			aoa: 0.0,
+			density: 1.25,
+			sos: 338.0,
+			collective: [15.0, 0.0],
+			collective_force_components: [2, 2],
+			V_inf: 30.0,
+            run_for: 2.0,
+			observer_file: "Tandem_system_observers.json5",
+			acoustics_file: "acoustics_total_noise.json",
+			motion: [
+				{
+					frame: "WingGeom",
+					axis_angle_function: "static",
+					angle: 0.0
+				},
+                {
+					frame: "HingeGeom",
+					axis_angle_function: "static",
+					angle: 0.0
+				},
+				{
+					frame: "CruiseProp",
+					blade_element_func: "rotation",
+					omega: -110.0
+				},
+				{
+					frame: "LiftRotor",
+					blade_element_func: "rotation",
+					omega: 100.0
+				},
+			]
+		},
+
+	],
+}

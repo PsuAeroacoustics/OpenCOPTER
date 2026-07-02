@@ -90,7 +90,12 @@ extern(C)
     void cblas_zsymm(const(CBLAS_ORDER), const(CBLAS_SIDE), const(CBLAS_UPLO), const(int), const(int), const(void)*, const(void)*, const(int), const(void)*, const(int), const(void)*, void*, const(int)) @nogc nothrow;
     void cblas_csymm(const(CBLAS_ORDER), const(CBLAS_SIDE), const(CBLAS_UPLO), const(int), const(int), const(void)*, const(void)*, const(int), const(void)*, const(int), const(void)*, void*, const(int)) @nogc nothrow;
     void cblas_dsymm(const(CBLAS_ORDER), const(CBLAS_SIDE), const(CBLAS_UPLO), const(int), const(int), const(double), const(double)*, const(int), const(double)*, const(int), const(double), double*, const(int)) @nogc nothrow;
-    void openblas_set_num_threads(int) @nogc nothrow;
+    // macOS Accelerate has no OpenBLAS-style thread-count control; no-op there.
+    version(OSX) {
+        extern(D) void openblas_set_num_threads(int) @nogc nothrow {}
+    } else {
+        void openblas_set_num_threads(int) @nogc nothrow;
+    }
     //void goto_set_num_threads(int) @nogc nothrow;
     //int openblas_get_num_threads() @nogc nothrow;
     //int openblas_get_num_procs() @nogc nothrow;

@@ -12,10 +12,64 @@ bool use_sleef() {
 	}
 }
 
+static import core.simd;
+
+@nogc nothrow double[2] unpack_simd(core.simd.double2 data) {
+	version(LDC) pragma(inline, true);
+	version(GNU) pragma(inline, true);
+	return [data.array[0],data.array[1]];
+}
+
+@nogc nothrow core.simd.double2 pack_simd(double[2] array) {
+	version(LDC) pragma(inline, true);
+	version(GNU) pragma(inline, true);
+	core.simd.double2 data;
+	data[0] = array[0];
+	data[1] = array[1];
+	return data;
+}
+
+
+@nogc nothrow double[4] unpack_simd(core.simd.double4 data) {
+	version(LDC) pragma(inline, true);
+	version(GNU) pragma(inline, true);
+	return [data.array[0],data.array[1],data.array[2],data.array[3]];
+}
+
+@nogc nothrow core.simd.double4 pack_simd(double[4] array) {
+	version(LDC) pragma(inline, true);
+	version(GNU) pragma(inline, true);
+	core.simd.double4 data;
+	data[0] = array[0];
+	data[1] = array[1];
+	data[2] = array[2];
+	data[3] = array[3];
+	return data;
+}
+
+@nogc nothrow double[8] unpack_simd(core.simd.double8 data) {
+	version(LDC) pragma(inline, true);
+	version(GNU) pragma(inline, true);
+	return [data.array[0], data.array[1], data.array[2], data.array[3], 
+			data.array[4], data.array[5], data.array[6], data.array[7]];
+}
+
+@nogc nothrow core.simd.double8 pack_simd(double[8] array) {
+	version(LDC) pragma(inline, true);
+	version(GNU) pragma(inline, true);
+	core.simd.double8 data;
+	data[0] = array[0];
+	data[1] = array[1];
+	data[2] = array[2];
+	data[3] = array[3];
+	data[4] = array[4];
+	data[5] = array[5];
+	data[6] = array[6];
+	data[7] = array[7];
+	return data;
+}
+
 extern (C) {
-
-	static import core.simd;
-
 	version(X86_64) {
 		core.simd.double2 Sleef_sind2_u35sse2(core.simd.double2) @nogc nothrow;
 		core.simd.double2 Sleef_cinz_sind2_u35sse2(core.simd.double2) @nogc nothrow;
@@ -638,7 +692,6 @@ extern (C) {
 		core.simd.double4 Sleef_finz_erfd4_u10avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_erfcd4_u15avx2(core.simd.double4) @nogc nothrow;
 		core.simd.double4 Sleef_finz_erfcd4_u15avx2(core.simd.double4) @nogc nothrow;
-
 	}
 
 	version(D_AVX512) {
@@ -1108,6 +1161,5 @@ extern (C) {
 		core.simd.double8 Sleef_cinz_erfd8_u10avx512fnofma(core.simd.double8) @nogc nothrow;
 		core.simd.double8 Sleef_erfcd8_u15avx512fnofma(core.simd.double8) @nogc nothrow;
 		core.simd.double8 Sleef_cinz_erfcd8_u15avx512fnofma(core.simd.double8) @nogc nothrow;
-
 	}
 }

@@ -3,7 +3,7 @@
 from collections import namedtuple
 import sys
 import os
-import pyjson5
+import json5
 
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/../')
 sys.path.append(f'{os.path.dirname(os.path.realpath(__file__))}/dependencies/wopwopd')
@@ -38,7 +38,7 @@ def calculate_sound_power_level(oaspl_db,area):
 
 	return sound_power_level
 
-FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name")
+FlightCase = namedtuple("FlightCase", "aircraft condition wake_lengths total_wake computational_parameters results observer acoustics motion_vec_dict trim_vec_dict component_dict name bwi_params")
 
 def find_frame(root_frame, frame_name):
 	if root_frame.name == frame_name:
@@ -51,7 +51,7 @@ def find_frame(root_frame, frame_name):
 
 	return None
 
-def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory):
+def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory):
 
 	motions = flight_condition["motion"] if "motion" in flight_condition else None
 	if "vsp" in aircraft:
@@ -111,10 +111,10 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 								extents.append(extent)
 								airfoils.append(airfoil)
 								af_thickness.append(airfoil_desc['thickness'])
-								af_r.append(0.5*(extent[0] + extent[1]))
+								af_r.append(0.5*(extent[0] + extent[1])/extent)
 
 							if len(af_r) == 1:
-								af_r.append(af_r[0])
+								af_r.append(extent[1]/elements)
 								af_thickness.append(af_thickness[0])
 								
 							blade_airfoil = BladeAirfoil(airfoils, extents)
@@ -183,7 +183,8 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 				# plus 1R to finish going past the other rotor, and then wake_trail_distance more radii after that
 				wake_dists[o_idx] = max(wake_dists[o_idx], delta_x + 1 + wake_trail_distance[o_idx])
-
+			
+			print(f"o_idx {origin} other_origin {other_origin}  wake_dists[o_idx] {wake_dists[o_idx]}")
 		if wake_dists[o_idx] <= 0:
 			# if all others are upstream, just trail wake_trail_distance radii behind
 			wake_dists[o_idx] = wake_trail_distance[o_idx]
@@ -191,15 +192,18 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 	wake_history_revs = np.zeros(wake_dists.size)
 
 	for idx, mu in enumerate(mus):
+		print("mu = ", mu)
 		if mu != 0:
+			print("mu = ", mu)			
 			wake_history_revs[idx] = round(wake_dists[idx]/(mu*2.0*math.pi)) # this is an array
 		else:
 			wake_history_revs[idx] = round(wake_dists[idx]/(0.1*2.0*math.pi)) # this is an array
 	
+	print("wake_history_revs", wake_history_revs)
 	wake_history_length = np.round(2*math.pi/d_psi*wake_history_revs).astype(int)
 	total_wake_history = wake_history_length.sum()
-	
-	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'])
+	print(f"wake_history_length {wake_history_length} total_wake_history {total_wake_history}")
+	return FlightCase(rotorcraft_system, flight_condition, wake_history_length.tolist(), total_wake_history, computational_parameters, results, observer, acoustics, motion_vec_dict, trim_vec_dict, component_dict, aircraft['name'], bwi_params)
 
 def main():
 	# push check
@@ -394,46 +398,48 @@ def main():
 		param_directory = geom_directory
 
 		with open(args.input_geom) as geom_file:
-			geom = pyjson5.load(geom_file)
+			geom = json5.load(geom_file)
 	elif args.case_file is not None:
 		
 		with open(args.case_file) as case_file:
-			ac_list = pyjson5.load(case_file)
+			ac_list = json5.load(case_file)
 
 		for ac in ac_list:
 			geom_directory = path.dirname(path.realpath(args.case_file))
 			param_directory = geom_directory
 
 			with open(ac) as geom_file:
-				geom = geom + pyjson5.load(geom_file)
+				geom = geom + json5.load(geom_file)
 
 	args.geom_directory = geom_directory
 
 	param = None
 	if args.input_param is not None:
 		with open(args.input_param) as param_file:
-			param = pyjson5.load(param_file)
+			param = json5.load(param_file)
 
 	input_observer = None
 	input_acoustics = None
 	input_flight_conditions = None
 	input_computational_parameters = None
 	input_results = None
+	bwi_params = None
 
 	if args.observer_param is not None:
 		with open(args.observer_param) as param_file:
-			obs_param = pyjson5.load(param_file)
+			obs_param = json5.load(param_file)
 			input_observer = obs_param["observer"]
 
 	if args.acoustics_param is not None:
 		with open(args.acoustics_param) as param_file:
-			acoustic_param = pyjson5.load(param_file)
+			acoustic_param = json5.load(param_file)
 			input_acoustics = acoustic_param["acoustic_config"]
 
 	if param is not None:
 		input_flight_conditions = param["flight_conditions"]
 		input_computational_parameters = param["computational_parameters"]
 		input_results = param["results"] if "results" in param else None
+		bwi_params = param["bwi_params"] if "bwi_params" in param else None
 	
 	flat_cases = []
 	for ac_idx, aircraft in enumerate(geom):
@@ -445,7 +451,7 @@ def main():
 			param_directory = path.dirname(path.realpath(param_filepath))
 
 			with open(param_filepath) as param_file:
-				ac_param = pyjson5.load(param_file)
+				ac_param = json5.load(param_file)
 
 		if input_flight_conditions is not None:
 			flight_conditions = input_flight_conditions
@@ -473,7 +479,7 @@ def main():
 				include_filepath = path.join(geom_directory, include_filename)
 				include_directory = path.dirname(include_filepath)
 				with open(path.join(geom_directory, include_filename)) as include_file:
-					ac_include = pyjson5.load(include_file)
+					ac_include = json5.load(include_file)
 					if "components" in ac_include:
 						if "components" in aircraft:
 							aircraft["components"] = aircraft["components"] + ac_include["components"]
@@ -523,7 +529,7 @@ def main():
 			elif 'observer_file' in flight_condition:
 				ac_observers = None
 				with open(path.join(param_directory, flight_condition['observer_file'])) as param_file:
-					ac_observers = pyjson5.load(param_file)
+					ac_observers = json5.load(param_file)
 					observer = ac_observers["observer"]
 
 			if input_acoustics is not None:
@@ -531,10 +537,10 @@ def main():
 			elif 'acoustics_file' in flight_condition:
 				ac_acoustics = None
 				with open(path.join(param_directory, flight_condition['acoustics_file'])) as param_file:
-					ac_acoustics = pyjson5.load(param_file)
+					ac_acoustics = json5.load(param_file)
 					acoustics = ac_acoustics["acoustic_config"]
 
-			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, geom_directory))
+			flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory))
 		# else:
 		# 	print(f'Only running case {args.ci}')
 		# 	flight_condition = flight_conditions[args.ci]
@@ -543,7 +549,7 @@ def main():
 		# 	elif 'observer_file' in flight_condition:
 		# 		ac_observers = None
 		# 		with open(flight_condition['observer_file']) as param_file:
-		# 			ac_observers = pyjson5.load(param_file)
+		# 			ac_observers = json5.load(param_file)
 		# 			observer = ac_observers["observer"]
 
 		# 	if input_acoustics is not None:
@@ -551,7 +557,7 @@ def main():
 		# 	elif 'acoustics_file' in flight_condition:
 		# 		ac_acoustics = None
 		# 		with open(flight_condition['acoustics_file']) as param_file:
-		# 			ac_acoustics = pyjson5.load(param_file)
+		# 			ac_acoustics = json5.load(param_file)
 		# 			acoustics = ac_acoustics["acoustic_config"]
 
 		# 	flat_cases.append(build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics))
@@ -718,8 +724,17 @@ def main():
 		with open(prog_file_name, open_mode) as prog_file:
 			for case_idx, case in enumerate(cases[acoustic_start_idx:]):
 				print("calculating acoustics")
+				case_list_element = Casename()
+				case_list_element.caseNameFile = case[0]
+				case_list_element.globalFolderName = case[1]
+
+				print("case_name_file = ", case[0])
+				print("globalFolderName = ",case[1])
+
 				case_list = CaseList()
-				case_list.cases = [case]
+				case_list.cases = [case_list_element]
+
+				write_caselist_custom_name(case_list, "./", f'cases_{rank}_{case_idx}.nam')
 
 				compute_acoustics.compute_acoustics(case_list, rank)
 

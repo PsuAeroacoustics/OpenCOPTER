@@ -1,16 +1,26 @@
 {
 	"name": "opencopter",
-	"copyright": "Copyright © 2022, Robert F. Rau II, The Pennsylvania State University",
-	"license": "GPL-3.0",
+	"copyright": "Copyright © 2026, Robert F. Rau II, The Pennsylvania State University",
+	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},
 		"kxml": "~>1.1.1"
 	},
 	"targetType": "dynamicLibrary",
-	"lflags-posix": ["-L$HOME/.local/lib", "-L/usr/local/lib", "-L$HOME/anaconda3/lib", "-L$HOME/.local/lib64", "-L/swst/apps/anaconda3/2021.05_gcc-8.5.0/lib", "-L$HOME/mambaforge/lib"],
-	"lflags-linux": ["-l:libsleef.a", "-l:liblapacke.a", "-l:liblapack.a", "-l:libopenblas.a", "-lgfortran"],
-	"lflags-osx": ["-L/usr/local/opt/openblas/lib", "/usr/local/lib/libsleef.a", "-lopenblas", "-Wl,-rpath,@loader_path/"],
+	"lflags-linux": [
+		"-L$HOME/.local/lib",
+		"-L/usr/local/lib",
+		"-L$CONDA_PREFIX/lib",
+		"-L$HOME/.local/lib64",
+		"-lsleef",
+		"-llapacke",
+		"-llapack",
+		"-lopenblas",
+		"-lgfortran"
+	],
+	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
 	"configurations": [
 		{
@@ -21,7 +31,12 @@
 			"versions": [ "Python_3_0_Or_Later" ],
 			"dependencies": {
 				"vtkd": { "path": "./dependencies/vtkd" }
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-novtk",
@@ -41,7 +56,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python33"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python33-novtk",
@@ -66,7 +86,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python37"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python34-novtk",
@@ -91,7 +116,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python35"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python35-novtk",
@@ -116,7 +146,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python36"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python36-novtk",
@@ -141,7 +176,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python37"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python37-novtk",
@@ -166,7 +206,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python38"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python38-novtk",
@@ -191,7 +236,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python39"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python39-novtk",
@@ -216,7 +266,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python310"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python310-novtk",
@@ -241,7 +296,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python311"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python311-novtk",
@@ -266,7 +326,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python312"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python312-novtk",
@@ -291,7 +356,12 @@
 			},
 			"subConfigurations": {
 				"pyd": "python313"
-			}
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
 		},
 		{
 			"name": "library-python313-novtk",
@@ -303,6 +373,36 @@
 			},
 			"subConfigurations": {
 				"pyd": "python313"
+			}
+		},
+		{
+			"name": "library-python314",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" },
+				"vtkd": { "path": "./dependencies/vtkd" }
+			},
+			"subConfigurations": {
+				"pyd": "python314"
+			},
+			"lflags-linux": [
+				"-L$PWD/dependencies/vtkd/cmake/build",
+				"-Wl,-rpath,$PWD/dependencies/vtkd/cmake/build",
+				"-lvtk_shim"
+			]
+		},
+		{
+			"name": "library-python314-novtk",
+			"targetName": "opencopter",
+			"targetType": "dynamicLibrary",
+			"postBuildCommands-osx": [ "cp libopencopter.dylib libopencopter.so" ],
+			"dependencies": {
+				"pyd": { "path": "./dependencies/pyd" }
+			},
+			"subConfigurations": {
+				"pyd": "python314"
 			}
 		},
 		{
@@ -369,7 +469,7 @@
 		"release-native-512": {
 			"buildOptions": ["releaseMode", "inline", "optimize"],
 			"dflags": ["-mcpu=native"],
-			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,+prefer-mask-registers"],
+			"dflags-ldc": ["-linkonce-templates", "-mattr=-prefer-256-bit,-prefer-128-bit,+prefer-mask-registers,+evex512,+amx-avx512", "--frame-pointer=none", "--boundscheck=off"],
 			"versions": ["AVX_512F"]
 		},
 		"release-native-dbinf": {

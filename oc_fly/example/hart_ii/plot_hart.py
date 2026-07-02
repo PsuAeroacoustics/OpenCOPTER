@@ -10,6 +10,7 @@ import json
 import numpy as np
 import math
 import argparse
+
 import csv
 import matplotlib.pyplot as plt
 
@@ -526,15 +527,20 @@ def read_hart_microphone_data_tecplot(filename: str):
 	return blade_data
 
 def read_hart_microphone_data_csv(filename: str, channel: int):
+
 	csv_idx = channel + 2
 	num_points = 2048#int(zone_dictionary["I"])
 	p = np.zeros((2, num_points))
 	p_idx = 0
+
 	with open(filename) as csvfile:
+
 		mic_reader = csv.reader(csvfile)
+
 		next(mic_reader)
 		next(mic_reader)
 		next(mic_reader)
+
 		for row in mic_reader:
 			if row[0][0] != "#":
 				p[0, p_idx] = row[0]
@@ -591,18 +597,34 @@ def plot_spectrum(plot_name: str, mic_x: float, mic_y: float, suffix: str, t_shi
 	# mic_x = -0.054*2
 	# #mic_x = 0.1*2
 	# mic_y = 0.905*2
+	# mic_x = -0.054*2
+	# #mic_x = 0.1*2
+	# mic_y = 0.905*2
 	#mic_y = 1.1*2
+#
+	#j = np.argmin(np.abs(x - mic_x))
+	#i = np.argmin(np.abs(y - mic_y))
+	
+	j = np.argmin(np.abs(x - mic_y))
+	i = np.argmin(np.abs(y - mic_x))
 
-	j = np.argmin(np.abs(x - mic_x))
-	i = np.argmin(np.abs(y - mic_y))
-
+	print(f'x = {x[j]}')
+	print(f'y = {y[i]}')
 	print(f'x = {x[j]}')
 	print(f'y = {y[i]}')
 	t = np.asarray(wopwop_results.observer_pressures[i*j_max + j].independent_axis)
 	p = np.asarray(wopwop_results.observer_pressures[i*j_max + j].functions[2].data)
 	#p = p - p.mean()
+	#p = p - p.mean()
 
 	t = t - t[0]
+
+	#t_shift = 0.0137
+
+	t_start = np.argmin(np.abs(t - t_shift))
+
+	t = t - t_shift
+	t_end = np.argmin(np.abs(t - t_measured[-1]))
 
 	#t_shift = 0.0137
 
@@ -639,12 +661,19 @@ def plot_spectrum(plot_name: str, mic_x: float, mic_y: float, suffix: str, t_shi
 	#plt.plot(f/bpf, pxx, 'b', f_measured/bpf, pxx_measured, 'r.-', linewidth=0.5, markersize=0.7)
 	plt.plot(f/bpf, spl, 'b', f_measured/bpf, spl_measured, 'r.-', linewidth=0.5, markersize=0.7)
 	plt.legend(["Predicted", "Measured"])
+	#plt.plot(f/bpf, pxx, 'b', f_measured/bpf, pxx_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.plot(f/bpf, spl, 'b', f_measured/bpf, spl_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.legend(["Predicted", "Measured"])
 	#plt.plot(f_measured, pxx_measured)
 	plt.xlim(bvi_spl_start/bpf, bvi_spl_end/bpf)
 	plt.ylim([50, 110])
 	#plt.xlim(0, bvi_spl_end/bpf)
+	plt.ylim([50, 110])
+	#plt.xlim(0, bvi_spl_end/bpf)
 	#plt.ylim(120, 170)
 	#plt.xlim(0, int(bvi_spl_end/2))
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum_{suffix}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum_{suffix}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum_{suffix}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_spectrum_{suffix}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
@@ -653,13 +682,16 @@ def plot_spectrum(plot_name: str, mic_x: float, mic_y: float, suffix: str, t_shi
 	plt.figure(num = 1)
 	plt.plot(t[t_start:t_end], p[t_start:t_end], 'b', t_measured, p_measured, 'r.-', linewidth=0.5, markersize=0.7)
 	plt.legend(["Predicted", "Measured"])
+	plt.plot(t[t_start:t_end], p[t_start:t_end], 'b', t_measured, p_measured, 'r.-', linewidth=0.5, markersize=0.7)
+	plt.legend(["Predicted", "Measured"])
 	#plt.xlim(bvi_spl_start, bvi_spl_end)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure_{suffix}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure_{suffix}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure_{suffix}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name.upper()}_acoustic_pressure_{suffix}.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
 	plt.clf()
 
-	#wopwop_results.observer_pressures
 
 def plot_acoustic_contours(plot_name: str, presentation: bool):
 	x_grid, y_grid, measured = read_hart_contour_tecplot(f'{os.path.dirname(os.path.realpath(__file__))}/{plot_name.lower()}-contour-meas.tec')
@@ -688,14 +720,13 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	y.reverse()
 
 	#print(x)
-	offset = x[0] - -4.0
-
+	#offset = x[0] - -4.0
 	#clevels = np.linspace(85, 119, 18)
 	clevels = np.linspace(86, 118, 17)
 
 	#light_rainbow = cmap_map(lambda x: x/2 + 0.5, matplotlib.cm.rainbow)
 
-	print([(_x - offset)/R for _x in x])
+	print([(_x)/R for _x in x])
 	print([_y/R for _y in y])
 	print(x_grid[0,:])
 	print(y_grid[:,0])
@@ -718,7 +749,7 @@ def plot_acoustic_contours(plot_name: str, presentation: bool):
 	ax0 = plt.subplot(121)
 	plt.plot(rotor_x, rotor_z, 'k', linewidth=1.5)
 	#plt2 = plt.contour([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=cmap_lines, linewidths=0.5)
-	plt1 = plt.contourf([-_y/R for _y in y], [-(_x - offset)/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
+	plt1 = plt.contourf([_y/R for _y in y], [_x/R for _x in x], oaspl_db, levels=clevels, cmap=hart_cmap)
 	#plt.plot(mic_y, mic_x, 'k.', markersize=7)
 	#plt.clabel(plt2, clevels, inline=True, colors='k', fontsize=5)
 	#clabels = plt.clabel(plt2, clevels, colors='k', fontsize=font_size35)
@@ -1566,6 +1597,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(400)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1619,6 +1651,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(1000)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1653,6 +1686,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(300)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_adv.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_adv.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_adv.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1678,6 +1712,7 @@ def plot_blade_normal_pressures(plot_name: str, presentation: bool, blade_result
 	plt.gca().set_aspect(300)
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_ret.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_ret.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_normal_loading_hp_ret.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 	plt.cla()
@@ -1829,6 +1864,7 @@ def plot_wake_trajectory(plot_name: str, presentation: bool, wake_results):
 		#plt.gca().invert_xaxis()
 		if not presentation:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		else:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_wake_y{target_y_slice:.2f}.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		plt.cla()
@@ -1845,6 +1881,7 @@ def plot_wake_trajectory(plot_name: str, presentation: bool, wake_results):
 		#plt.gca().invert_xaxis()
 		if not presentation:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.pdf', dpi=500, bbox_inches="tight", pad_inches=0.01)
+			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.png', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		else:
 			plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_core_size_y{target_y_slice:.2f}.svg', dpi=500, bbox_inches="tight", pad_inches=0.01)
 		plt.cla()
@@ -1862,6 +1899,7 @@ def plot_wake_trajectory(plot_name: str, presentation: bool, wake_results):
 	#plt.gca().invert_xaxis()
 	if not presentation:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_fil_core_size.pdf', dpi=500, bbox_inches="tight", pad_inches=0.0)
+		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_fil_core_size.png', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	else:
 		plt.savefig(f'{os.path.dirname(os.path.realpath(__file__))}/Hart_{plot_name}_fil_core_size.svg', dpi=500, bbox_inches="tight", pad_inches=0.0)
 	plt.cla()
@@ -2088,24 +2126,24 @@ if __name__ == "__main__":
 	# plot_acoustic_contours_all("MN", args.p)
 	# plot_acoustic_contours_all("MV", args.p)
 
-	# plot_acoustic_contours("BL", args.p)
+	#plot_acoustic_contours("BL", args.p)
 	# plot_acoustic_contours_cfd("BL", args.p)
 	# plot_acoustic_contours_charm("BL", args.p)
 	# #plot_blade_twist('BL', args.p)
 	# #plot_blade_twist('MN', args.p)
 	# #plot_blade_twist('MV', args.p)
 
-	# plot_blade_normal_pressures('BL', args.p, blade_results_bl)
-	# plot_wake_trajectory('BL', args.p, blade_results_bl)
-	# # plot_acoustic_contours("BL", args.p)
+	plot_blade_normal_pressures('BL', args.p, blade_results_bl)
+	plot_wake_trajectory('BL', args.p, blade_results_bl)
+	plot_acoustic_contours("BL", args.p)
 
-	# plot_blade_normal_pressures('MN', args.p, blade_results_mn)
-	# plot_wake_trajectory('MN', args.p, blade_results_mn)
-	# plot_acoustic_contours("MN", args.p)
+	plot_blade_normal_pressures('MN', args.p, blade_results_mn)
+	plot_wake_trajectory('MN', args.p, blade_results_mn)
+	plot_acoustic_contours("MN", args.p)
 
-	# plot_blade_normal_pressures('MV', args.p, blade_results_mv)
-	# plot_wake_trajectory('MV', args.p, blade_results_mv)
-	# plot_acoustic_contours("MV", args.p)
+	plot_blade_normal_pressures('MV', args.p, blade_results_mv)
+	plot_wake_trajectory('MV', args.p, blade_results_mv)
+	plot_acoustic_contours("MV", args.p)
 
 	# theta_bl = blade_results_bl['collective_pitch_array'].mean()*(180.0/math.pi)
 	# theta_1s_bl = blade_results_bl['sin_pitch_array'].mean()*(180.0/math.pi)

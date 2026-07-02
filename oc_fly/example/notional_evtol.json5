@@ -139,5 +139,295 @@
             }
         ],
         "parameter_file": "./notional_evtol_params.json5"
+    },
+    {
+        "include": [
+            "notional_lifter.json5"
+        ],
+        "name": "notional_evtol_high_lifters",
+        "type": "aircraft",
+        "children": [
+            {
+                "type": "connection",
+                "name": "main_wing",
+                "origin": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "children": [
+                    {
+                        "type": "connection",
+                        "name": "lifter_0_attach",
+                        // Fore rotor 1
+                        "origin": [
+                            1.5,
+                            -2.5,
+                            0.0
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": 10,
+                        "children": [
+                            {
+                                "type": "connection",
+                                "name": "lifter_0_tilt_hinge",
+                                axis_angle_function: "static",
+                                // Fore rotor 1
+                                "origin": [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "axis": [
+                                    0,
+                                    1,
+                                    0
+                                ],
+                                "children": [
+                                    {
+                                        "ref": "notional_lifter"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "connection",
+                        "name": "lifter_1_attach",
+                        // Fore rotor 2
+                        "origin": [
+                            1.5,
+                            2.5,
+                            0.0
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": -10,
+                        "children": [
+                            {
+                                "type": "connection",
+                                "name": "lifter_1_tilt_hinge",
+                                axis_angle_function: "static",
+                                // Fore rotor 1
+                                "origin": [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "axis": [
+                                    0,
+                                    1,
+                                    0
+                                ],
+                                "children": [
+                                    {
+                                        "ref": "notional_lifter"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "connection",
+                        "name": "lifter_2_attach",
+                        // Aft rotor 1
+                        "origin": [
+                            -3.0,
+                            -2.5,
+                            0.5
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": 10,
+                        "children": [
+                            {
+                                "ref": "notional_lifter"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "connection",
+                        "name": "lifter_3_attach",
+                        // Aft rotor 2
+                        "origin": [
+                            -3.0,
+                            2.5,
+                            0.5
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": -10,
+                        "children": [
+                            {
+                                "ref": "notional_lifter"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "parameter_file": "./notional_evtol_params.json5"
+    },
+    {
+        "include": [
+            "notional_lifter.json5"
+        ],
+        "name": "notional_evtol_low_lifters",
+        "type": "aircraft",
+        "children": [
+            // {
+            //     name: "wing",
+			// 	type: "wing",
+			// 	origin: [-0.5, 0.0, 0.0],
+			// 	num_wing_parts: 1,
+            //     span: 4,
+            //     avg_chord: 0.5
+			// },
+            {
+                "type": "connection",
+                "name": "main_wing",
+                "origin": [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                "children": [
+                    {
+                        "type": "connection",
+                        "name": "lifter_0_attach",
+                        // Fore rotor 1
+                        "origin": [
+                            1.5,
+                            -2.5,
+                            0.0
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": 10,
+                        "children": [
+                            {
+                                "type": "connection",
+                                "name": "lifter_0_tilt_hinge",
+                                axis_angle_function: "static",
+                                // Fore rotor 1
+                                "origin": [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "axis": [
+                                    0,
+                                    1,
+                                    0
+                                ],
+                                "children": [
+                                    {
+                                        "ref": "notional_lifter"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "connection",
+                        "name": "lifter_1_attach",
+                        // Fore rotor 2
+                        "origin": [
+                            1.5,
+                            2.5,
+                            0.0
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": -10,
+                        "children": [
+                            {
+                                "type": "connection",
+                                "name": "lifter_1_tilt_hinge",
+                                axis_angle_function: "static",
+                                // Fore rotor 1
+                                "origin": [
+                                    0,
+                                    0,
+                                    0
+                                ],
+                                "axis": [
+                                    0,
+                                    1,
+                                    0
+                                ],
+                                "children": [
+                                    {
+                                        "ref": "notional_lifter"
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        "type": "connection",
+                        "name": "lifter_2_attach",
+                        // Aft rotor 1
+                        "origin": [
+                            -3.0,
+                            -2.5,
+                            -0.6
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": 10,
+                        "children": [
+                            {
+                                "ref": "notional_lifter"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "connection",
+                        "name": "lifter_3_attach",
+                        // Aft rotor 2
+                        "origin": [
+                            -3.0,
+                            2.5,
+                            -0.6
+                        ],
+                        "axis": [
+                            1,
+                            0,
+                            0
+                        ],
+                        "axis_angle": -10,
+                        "children": [
+                            {
+                                "ref": "notional_lifter"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "parameter_file": "./notional_evtol_params.json5"
     }
 ]

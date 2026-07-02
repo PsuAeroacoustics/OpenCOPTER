@@ -7,7 +7,7 @@
 		radii_relative: true,
 		// Rotor 0 is the rotor to be relative to
 		reference_rotor: 0,
-		nb: [17, 13, 1],
+		nb: [13, 17, 1],
 		//"nb": [2, 2, 1],
 		min: [-2, -1.345, -1.1075],
 		max: [2, 1.345, -1.1075]
