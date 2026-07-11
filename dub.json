@@ -435,12 +435,12 @@
 		},
 		"debug-native": {
 			"buildOptions": ["debugMode", "debugInfo"],
-			"dflags": ["-mcpu=native"]
+			"dflags": ["-mcpu=native", "-fsanitize=address"]
 		},
 		"debug-native-512": {
 			"buildOptions": ["debugMode", "debugInfo"],
 			"dflags": ["-mcpu=native"],
-			"dflags-ldc": ["-mattr=-prefer-256-bit,prefer-mask-registers"],
+			"dflags-ldc": ["-mattr=-prefer-256-bit,prefer-mask-registers", "-fsanitize=address"],
 			"versions": ["AVX_512F"]
 		},
 		"release": {

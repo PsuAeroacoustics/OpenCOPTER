@@ -25,14 +25,14 @@ enum Direction {
 alias Inflow = InflowT!(ArrayContainer.none);
 
 
-interface InflowT(ArrayContainer AC = ArrayContainer.none) {
-	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt);
-	Chunk inflow_at(immutable Vector!(4, Chunk) xyz);
-	void update_wing_circulation(WingStateT!AC wing_state);
-	void update_wing_dC_L(WingStateT!AC wing_state);
-	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z);
-	double wake_skew();
-	@nogc Frame* frame();
+class InflowT(ArrayContainer AC = ArrayContainer.none) {
+	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) { assert(0); };
+	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) { assert(0); };
+	void update_wing_circulation(WingStateT!AC wing_state) { assert(0); };
+	void update_wing_dC_L(WingStateT!AC wing_state) { assert(0); };
+	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z) { assert(0); };
+	double wake_skew() { assert(0); };
+	@nogc Frame* frame() { assert(0); };
 }
 
 class NullInflow(ArrayContainer AC) : InflowT!AC {
@@ -57,7 +57,7 @@ class NullInflow(ArrayContainer AC) : InflowT!AC {
 		local_frame = _rotor.frame.parent.children[$-1];
 	}
 
-	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
+	override void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
 		auto inflow_local_freestream = local_frame.inverse_global_matrix * ac_state.freestream;
 		
 		advance_ratio = abs(inflow_local_freestream[0])/abs(rotor_input.angular_velocity*rotor.radius);
@@ -80,19 +80,19 @@ class NullInflow(ArrayContainer AC) : InflowT!AC {
 		axial_advance_ratio = inflow_local_freestream[2]/abs(rotor_input.angular_velocity*rotor.radius);
 	}
 
-	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
+	override Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
 		immutable Chunk lambda = 0;
 		return lambda;
 	}
 
-	void update_wing_circulation(WingStateT!AC wing_state) {}
-	void update_wing_dC_L(WingStateT!AC wing_state) {}
+	override void update_wing_circulation(WingStateT!AC wing_state) {}
+	override void update_wing_dC_L(WingStateT!AC wing_state) {}
 	
-	double wake_skew() {
+	override double wake_skew() {
 		return atan2(advance_ratio, axial_advance_ratio);
 	}
 
-	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
+	override InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z) {
 		InducedVelocities vel;
 		vel.v_x[] = 0;
 		vel.v_y[] = 0;
@@ -100,5 +100,5 @@ class NullInflow(ArrayContainer AC) : InflowT!AC {
 		return vel;
 	}
 	
-	@nogc Frame* frame() { return local_frame; }
+	override @nogc Frame* frame() { return local_frame; }
 }

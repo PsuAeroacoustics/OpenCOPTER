@@ -132,6 +132,15 @@ typedef struct OC_VtkWingWake OC_VtkWingWake;
 extern "C" {
 #endif
 
+// Helper function to create a vector
+inline OC_Vec3 vec3(double x, double y, double z) {
+    OC_Vec3 v;
+    v.x = x;
+    v.y = y;
+    v.z = z;
+    return v;
+}
+
 // ========================================================================
 //  Configuration
 // ========================================================================

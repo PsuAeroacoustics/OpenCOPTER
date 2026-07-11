@@ -448,7 +448,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	Frame* local_frame;
 	Mat4 global_inverse;
 
-	@nogc Frame* frame() {
+	override @nogc Frame* frame() {
 		return local_frame;
 	}
 
@@ -1205,7 +1205,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return K;
 	}
 
-	@nogc double wake_skew() {
+	override @nogc double wake_skew() {
 		return chi;
 	}
 
@@ -1343,7 +1343,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		}
 	}
 
-	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
+	override void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
 		omega = rotor_input.angular_velocity;
 		
 		immutable t_scale = abs(omega);
@@ -1525,15 +1525,15 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return k_bar;
 	}
 
-	void update_wing_circulation(WingStateT!AC wing_state){
+	override void update_wing_circulation(WingStateT!AC wing_state){
 		
 	}
 
-	void update_wing_dC_L(WingStateT!AC wing_state){
+	override void update_wing_dC_L(WingStateT!AC wing_state){
 		
 	}
 
-	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+	override InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
 		InducedVelocities ret;
 		Chunk zeros = 0.0;
 
@@ -1544,7 +1544,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return ret;
 	}
 
-	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
+	override Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
 		immutable normalized_xyz = xyz/rotor.radius;
 
 		if(!contraction_mapping) {

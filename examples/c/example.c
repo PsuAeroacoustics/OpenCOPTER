@@ -7,15 +7,6 @@
 
 #include "opencopter.h"
 
-// Helper function to create a vector
-OC_Vec3 vec3(double x, double y, double z) {
-    OC_Vec3 v;
-    v.x = x;
-    v.y = y;
-    v.z = z;
-    return v;
-}
-
 // Mimic Python's build_blade function: create blade geometry + frame hierarchy
 // Returns the blade geometry pointer; caller must free it.
 OC_BladeGeometry* build_blade(size_t b_idx, double d_azimuth, double R, double r_c,

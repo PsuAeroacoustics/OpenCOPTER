@@ -517,13 +517,13 @@ extern(C) OC_AircraftState* oc_aircraft_state_create(
 
     if (rotor_inflows !is null) {
         for (size_t i = 0; i < num_rotors; i++) {
-            auto inflow_val = oc_inflow_from_handle(rotor_inflows[i]);
+            auto inflow_val = cast(Inflow)rotor_inflows[i];
             if (inflow_val !is null) oc_rotor_inflows[i] = inflow_val;
         }
     }
     if (wing_inflows !is null) {
         for (size_t i = 0; i < num_wings; i++) {
-            auto inflow_val = oc_inflow_from_handle(wing_inflows[i]);
+            auto inflow_val = cast(Inflow)wing_inflows[i];
             if (inflow_val !is null) oc_wing_inflows[i] = inflow_val;
         }
     }
@@ -786,29 +786,30 @@ extern(C) void oc_wake_history_push_back(OC_WakeHistory* history) {
 //     return null;
 // }
 extern(C) double oc_inflow_wake_skew(OC_Inflow* inflow) {
-    auto i = cast(Inflow*)inflow;
-    if (i !is null) return (*i).wake_skew();
+    auto i = cast(Inflow)inflow;
+    if (i !is null) return i.wake_skew();
     return 0.0;
 }
 extern(C) OC_Frame* oc_inflow_get_frame(OC_Inflow* inflow) {
-    auto i = cast(Inflow*)inflow;
-    if (i !is null) return cast(OC_Frame*)(*i).frame();
+    auto i = cast(Inflow)inflow;
+    if (i !is null) return cast(OC_Frame*)i.frame();
     return null;
 }
 extern(C) const(OC_Mat4*) oc_inflow_get_inverse_global_frame(OC_Inflow* inflow) {
-    auto i = cast(Inflow*)inflow;
+    auto i = cast(Inflow)inflow;
     if (i !is null) {
-        auto f = (*i).frame();
+        auto f = i.frame();
         if (f !is null) return cast(const OC_Mat4*)&f.inverse_global_matrix;
     }
     return null;
 }
 extern(C) void oc_inflow_update(OC_Inflow* inflow, OC_AircraftState* ac_state, OC_Wake* wake, double dt) {
-    auto i = cast(Inflow*)inflow; auto s = cast(AircraftState*)ac_state; auto w = cast(Wake*)wake;
-    if (i !is null && s !is null && w !is null) (*i).update(*s, *w, dt);
+    auto i = cast(Inflow)inflow; auto s = cast(AircraftState*)ac_state; auto w = cast(Wake*)wake;
+    if (i !is null && s !is null && w !is null) i.update(*s, *w, dt);
 }
+
 extern(C) void oc_inflow_at(OC_Inflow* inflow, const double* x, const double* y, const double* z, double* result_out, size_t len) {
-    auto i = cast(Inflow*)inflow;
+    auto i = cast(Inflow)inflow;
     if (i !is null && x !is null && y !is null && z !is null && result_out !is null) {
         // Build Vector!(4, Chunk) from x/y/z arrays in chunks
         import opencopter.config : chunk_size;
@@ -829,7 +830,7 @@ extern(C) void oc_inflow_at(OC_Inflow* inflow, const double* x, const double* y,
             xyz_vec[1][] = _y[];
             xyz_vec[2][] = _z[];
             xyz_vec[3][] = 0;
-            auto result_chunk = (*i).inflow_at(xyz_vec);
+            auto result_chunk = i.inflow_at(xyz_vec);
             foreach(j; 0..chunk_len) {
                 result_out[(processed + j) * 3] = result_chunk[j];
             }
@@ -954,32 +955,24 @@ extern(C) OC_InducedVelocities oc_inflow_compute_wing_induced_vel_on_blade(OC_In
     } else { foreach(j; 0..8) { result.v_x[j] = 0.0; result.v_y[j] = 0.0; result.v_z[j] = 0.0; } }
     return result;
 }
-// Inflow factory functions
-// InflowT is a D interface so we cannot allocate it on the stack and take its address.
-// Instead we keep a global map from an opaque pointer key to the live D interface value.
-private {
-    // Simple handle-based registry: each created inflow gets an integer id.
-    Inflow[size_t] s_inflow_registry;
-    size_t s_inflow_next_id = 1;
-}
 
 extern(C) OC_Inflow* oc_huang_peters_create(long _Mo, long _Me, OC_RotorGeometry* rotor, OC_RotorInputState* rotor_input, double dt) {
     auto r = cast(RotorGeometry*)rotor; auto inp = cast(RotorInputState*)rotor_input;
     if (r !is null && inp !is null) {
         Inflow inflow = new HuangPetersInflow(_Mo, _Me, r, inp, dt);
-        size_t id = s_inflow_next_id++;
-        s_inflow_registry[id] = inflow;
-        return cast(OC_Inflow*)cast(void*)id;
+        GC.addRoot(cast(void*)inflow);
+        return cast(OC_Inflow*)inflow;
     }
     return null;
 }
 extern(C) OC_Inflow* oc_null_inflow_create(OC_RotorGeometry* rotor, OC_RotorInputState* rotor_input) {
-    auto r = cast(RotorGeometry*)rotor; auto inp = cast(RotorInputState*)rotor_input;
+    auto r = cast(RotorGeometry*)rotor;
+    auto inp = cast(RotorInputState*)rotor_input;
+
     if (r !is null && inp !is null) {
         Inflow inflow = new NullInflow!(ArrayContainer.none)(r, inp);
-        size_t id = s_inflow_next_id++;
-        s_inflow_registry[id] = inflow;
-        return cast(OC_Inflow*)cast(void*)id;
+        GC.addRoot(cast(void*)inflow);
+        return cast(OC_Inflow*)inflow;
     }
     return null;
 }
@@ -987,25 +980,14 @@ extern(C) OC_Inflow* oc_wing_inflow_create(OC_WingGeometry* wing, OC_WingInputSt
     auto w = cast(WingGeometry*)wing; auto wi = cast(WingInputState*)wing_inputs; auto wl = cast(WingLiftSurf*)wing_lift_surf;
     if (w !is null && wi !is null && wl !is null) {
         Inflow inflow = new WingInflow(w, wi, wl);
-        size_t id = s_inflow_next_id++;
-        s_inflow_registry[id] = inflow;
-        return cast(OC_Inflow*)cast(void*)id;
+        GC.addRoot(cast(void*)inflow);
+        return cast(OC_Inflow*)inflow;
     }
     return null;
 }
 
-/** Resolve an OC_Inflow* opaque handle back to the D interface. */
-Inflow oc_inflow_from_handle(OC_Inflow* h) {
-    auto id = cast(size_t)h;
-    if (id && id in s_inflow_registry)
-        return s_inflow_registry[id];
-    return null;
-}
-
 extern(C) void oc_inflow_destroy(OC_Inflow* inflow) {
-    auto id = cast(size_t)inflow;
-    if (id && id in s_inflow_registry)
-        s_inflow_registry.remove(id);
+    GC.removeRoot(inflow);
 }
 
 // ========================================================================
@@ -1282,7 +1264,7 @@ extern(C) OC_VortexFilament* oc_rotor_wake_get_tip_vortex(OC_RotorWake* rotor_wa
 
 extern(C) OC_AirfoilModel* oc_thin_airfoil_create(double C_l_alpha_0) {
     auto af = new ThinAirfoil(C_l_alpha_0);
-    GC.addRoot(&af);
+    GC.addRoot(cast(void*)af);
     return cast(OC_AirfoilModel*)af;
 }
 
@@ -1292,20 +1274,35 @@ extern(C) OC_AirfoilModel* oc_aero_das_create(double* alpha, size_t alpha_len,
                                                double* CL, size_t cl_len,
                                                double* CD, size_t cd_len,
                                                double tbyc, double AR) {
+    import std.stdio : writeln;
+
     if (alpha !is null && CL !is null && CD !is null && alpha_len == cl_len && alpha_len == cd_len) {
-        auto af = new AeroDAS(alpha[0..alpha_len], CL[0..cl_len], CD[0..cd_len], tbyc, AR);
-        GC.addRoot(&af);
-        return cast(OC_AirfoilModel*)af;
+        debug writeln("Creating aerodas");
+        try {
+            auto af = new AeroDAS(alpha[0..alpha_len], CL[0..cl_len], CD[0..cd_len], tbyc, AR);
+            debug writeln("Created aerodas");
+            GC.addRoot(cast(void*)af);
+            debug writeln("Rooted aerodas");
+            return cast(OC_AirfoilModel*)af;
+        } catch(Exception ex) {
+            
+            debug writeln("Caught exception creating aerodas airfoil: ", ex.msg);
+            return null;
+        }
     }
     return null;
 }
 
 extern(C) OC_AirfoilModel* oc_aero_das_from_xfoil_polar(const(char)* filename, double tbyc) {
     if (filename !is null) {
-        string fname = fromStringz(filename).idup;
-        auto af = create_aerodas_from_xfoil_polar(fname, tbyc);
-        GC.addRoot(&af);
-        return cast(OC_AirfoilModel*)af;
+        try {
+            string fname = fromStringz(filename).idup;
+            auto af = create_aerodas_from_xfoil_polar(fname, tbyc);
+            GC.addRoot(cast(void*)af);
+            return cast(OC_AirfoilModel*)af;
+        } catch(Exception ex) {
+            return null;
+        }
     }
     return null;
 }
@@ -1314,10 +1311,14 @@ extern(C) OC_AirfoilModel* oc_aero_das_from_xfoil_polar(const(char)* filename, d
 
 extern(C) OC_AirfoilModel* oc_c81_from_file(const(char)* filename) {
     if (filename !is null) {
-        string fname = fromStringz(filename).idup;
-        auto af = load_c81_file(fname);
-        GC.addRoot(&af);
-        return cast(OC_AirfoilModel*)af;
+        try {
+            string fname = fromStringz(filename).idup;
+            auto af = load_c81_file(fname);
+            GC.addRoot(cast(void*)af);
+            return cast(OC_AirfoilModel*)af;
+        } catch(Exception ex) {
+            return null;
+        }
     }
     return null;
 }
@@ -1327,33 +1328,33 @@ extern(C) OC_AirfoilModel* oc_c81_from_file(const(char)* filename) {
 extern(C) void oc_airfoil_model_destroy(OC_AirfoilModel* af) {
     if (af !is null) {
         auto p = cast(AirfoilModel)af;
-        GC.removeRoot(&p);
+        GC.removeRoot(cast(void*)p);
     }
 }
 
 // --- AirfoilModel query methods (scalar) ---
 
 extern(C) double oc_airfoil_get_Cl(OC_AirfoilModel* af, double alpha, double mach) {
-    auto a = cast(AirfoilModel*)af;
-    if (a !is null) return (*a).get_Cl(alpha, mach);
+    auto a = cast(AirfoilModel)af;
+    if (a !is null) return a.get_Cl(alpha, mach);
     return 0.0;
 }
 
 extern(C) double oc_airfoil_get_Cd(OC_AirfoilModel* af, double alpha, double mach) {
-    auto a = cast(AirfoilModel*)af;
-    if (a !is null) return (*a).get_Cd(alpha, mach);
+    auto a = cast(AirfoilModel)af;
+    if (a !is null) return a.get_Cd(alpha, mach);
     return 0.0;
 }
 
 extern(C) double oc_airfoil_lift_curve_slope(OC_AirfoilModel* af) {
-    auto a = cast(AirfoilModel*)af;
-    if (a !is null) return (*a).lift_curve_slope();
+    auto a = cast(AirfoilModel)af;
+    if (a !is null) return a.lift_curve_slope();
     return 0.0;
 }
 
 extern(C) double oc_airfoil_zero_lift_aoa(OC_AirfoilModel* af) {
-    auto a = cast(AirfoilModel*)af;
-    if (a !is null) return (*a).zero_lift_aoa();
+    auto a = cast(AirfoilModel)af;
+    if (a !is null) return a.zero_lift_aoa();
     return 0.0;
 }
 
@@ -1366,7 +1367,7 @@ extern(C) double oc_airfoil_zero_lift_aoa(OC_AirfoilModel* af) {
 extern(C) OC_BladeAirfoil* oc_blade_airfoil_create_basic(size_t num_elements, double C_l_alpha_0) {
     if (num_elements > 0) {
         auto af = new ThinAirfoil(C_l_alpha_0);
-        GC.addRoot(&af);
+        GC.addRoot(cast(void*)af);
 
         AirfoilModel[] af_models;
         af_models ~= af;
@@ -1375,7 +1376,7 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create_basic(size_t num_elements, do
         ext ~= [size_t(0), num_elements - 1];
 
         auto blade_af = new BladeAirfoil(af_models, ext);
-        GC.addRoot(&blade_af);
+        GC.addRoot(cast(void*)blade_af);
         return cast(OC_BladeAirfoil*)blade_af;
     }
     return null;
@@ -1393,7 +1394,7 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, con
             ext[i][1] = extents[i * 2 + 1];
         }
         auto blade_af = new BladeAirfoil(af_models, ext);
-        GC.addRoot(&blade_af);
+        GC.addRoot(cast(void*)blade_af);
         return cast(OC_BladeAirfoil*)blade_af;
     }
     return null;
@@ -1402,56 +1403,56 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, con
 extern(C) void oc_blade_airfoil_destroy(OC_BladeAirfoil* blade_af) {
     if (blade_af !is null) {
         auto p = cast(BladeAirfoil*)blade_af;
-        GC.removeRoot(&p);
+        GC.removeRoot(cast(void*)p);
     }
 }
 
 extern(C) double oc_blade_airfoil_get_Cl(OC_BladeAirfoil* blade_af, size_t chunk_idx, double alpha, double mach) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null) {
         Chunk _alpha, _mach;
         _alpha[] = alpha;
         _mach[] = mach;
-        auto state = (*b).compute_coeffiecients(chunk_idx, _alpha, _mach);
+        auto state = b.compute_coeffiecients(chunk_idx, _alpha, _mach);
         return state.C_l[0];
     }
     return 0.0;
 }
 
 extern(C) double oc_blade_airfoil_get_Cd(OC_BladeAirfoil* blade_af, size_t chunk_idx, double alpha, double mach) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null) {
         Chunk _alpha, _mach;
         _alpha[] = alpha;
         _mach[] = mach;
-        auto state = (*b).compute_coeffiecients(chunk_idx, _alpha, _mach);
+        auto state = b.compute_coeffiecients(chunk_idx, _alpha, _mach);
         return state.C_d[0];
     }
     return 0.0;
 }
 
 extern(C) double oc_blade_airfoil_lift_curve_slope(OC_BladeAirfoil* blade_af, size_t chunk_idx) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null) {
-        auto val = (*b).lift_curve_slope(chunk_idx);
+        auto val = b.lift_curve_slope(chunk_idx);
         return val[0];
     }
     return 0.0;
 }
 
 extern(C) double oc_blade_airfoil_zero_lift_aoa(OC_BladeAirfoil* blade_af, size_t chunk_idx) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null) {
-        auto val = (*b).zero_lift_aoa(chunk_idx);
+        auto val = b.zero_lift_aoa(chunk_idx);
         return val[0];
     }
     return 0.0;
 }
 
 extern(C) void oc_blade_airfoil_fill_lift_curve_slope(OC_BladeAirfoil* blade_af, size_t chunk_idx, double* result_out, size_t len) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null && result_out !is null) {
-        auto val = (*b).lift_curve_slope(chunk_idx);
+        auto val = b.lift_curve_slope(chunk_idx);
         foreach(i; 0..min(len, val.length)) {
             result_out[i] = val[i];
         }
@@ -1459,9 +1460,9 @@ extern(C) void oc_blade_airfoil_fill_lift_curve_slope(OC_BladeAirfoil* blade_af,
 }
 
 extern(C) void oc_blade_airfoil_fill_zero_lift_aoa(OC_BladeAirfoil* blade_af, size_t chunk_idx, double* result_out, size_t len) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null && result_out !is null) {
-        auto val = (*b).zero_lift_aoa(chunk_idx);
+        auto val = b.zero_lift_aoa(chunk_idx);
         foreach(i; 0..min(len, val.length)) {
             result_out[i] = val[i];
         }
@@ -1471,7 +1472,7 @@ extern(C) void oc_blade_airfoil_fill_zero_lift_aoa(OC_BladeAirfoil* blade_af, si
 extern(C) void oc_blade_airfoil_fill_coefficients(OC_BladeAirfoil* blade_af, size_t chunk_idx,
                                                    const double* alphas, const double* machs,
                                                    double* Cl_out, double* Cd_out, size_t len) {
-    auto b = cast(BladeAirfoil*)blade_af;
+    auto b = cast(BladeAirfoil)blade_af;
     if (b !is null && alphas !is null && machs !is null && Cl_out !is null && Cd_out !is null) {
         import opencopter.config : chunk_size;
         size_t processed = 0;
@@ -1485,7 +1486,7 @@ extern(C) void oc_blade_airfoil_fill_coefficients(OC_BladeAirfoil* blade_af, siz
                 _alpha[j] = alphas[processed + j];
                 _mach[j] = machs[processed + j];
             }
-            auto state = (*b).compute_coeffiecients(chunk_idx, _alpha, _mach);
+            auto state = b.compute_coeffiecients(chunk_idx, _alpha, _mach);
             foreach(j; 0..chunk_len) {
                 Cl_out[processed + j] = state.C_l[j];
                 Cd_out[processed + j] = state.C_d[j];
