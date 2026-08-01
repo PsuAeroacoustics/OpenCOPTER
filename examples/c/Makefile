@@ -3,6 +3,7 @@
 CC = gcc
 #CFLAGS = -Wall -Wextra -std=c11 -g3
 CFLAGS = -Wall -Wextra -std=c11 -O3
+#CFLAGS = -Wall -Wextra -std=c11 -O3 -fsanitize=address
 INCLUDES = -I../../include
 LIBS = -L../../ -lopencopter -Xlinker -rpath $(PWD)/../../ -lm
 

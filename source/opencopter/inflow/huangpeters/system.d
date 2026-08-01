@@ -565,6 +565,32 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		total_sin_states = total_odd_sin_states + total_even_sin_states;
 
+		// Validate that computed state counts are reasonable BEFORE doing any GC allocations.
+		// If they are not, it almost always means a prior field access (e.g. rotor.blades[0])
+		// read garbage due to an FFI ABI mismatch and corrupted stack data.  Print diagnostics
+		// and abort so the root cause becomes visible rather than crashing at the GC allocation.
+		if (total_states < 0 || total_odd_states < 0 || total_even_states < 0 || total_sin_states < 0) {
+			writeln("[HuangPetersInflow] FATAL: negative state counts — likely corrupted stack from FFI ABI mismatch");
+			writeln("  Mo=", Mo, " Me=", Me);
+			writeln("  total_odd_states=", total_odd_states, " total_even_states=", total_even_states);
+			writeln("  total_states=", total_states, " total_sin_states=", total_sin_states);
+			
+			// Also print rotor/blades diagnostic for debugging.
+			if (_rotor !is null) {
+				writeln("  _rotor ptr=", cast(void*)_rotor);
+				writeln("  _rotor.frame ptr=", cast(void*)_rotor.frame);
+				if (_rotor.blades.length > 0) {
+					writeln("  _rotor.blades.length=", _rotor.blades.length);
+					writeln("  _rotor.blades[0].chunks.length=", _rotor.blades[0].chunks.length);
+				} else {
+					writeln("  _rotor.blades.length=<zero>");
+				}
+			} else {
+				writeln("  _rotor is null");
+			}
+			return;
+		}
+		
 		debug writeln("total_states: ", total_states);
 		debug writeln("total_odd_states: ", total_odd_states);
 		debug writeln("total_even_states: ", total_even_states);

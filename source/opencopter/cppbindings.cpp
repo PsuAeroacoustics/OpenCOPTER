@@ -768,8 +768,8 @@ VtkWingWake VtkWingWake::build(const WingGeometry& w, const WingLiftSurf& l) {
 // ========================================================================
 
 void write_rotor_vtu(std::string_view filename, size_t step, size_t iteration,
-    const VtkRotor& vtk, const RotorState& state, const RotorGeometry& geom) {
-    oc_write_rotor_vtu(filename.data(), step, iteration, vr(vtk), rst(state), rgp(geom));
+    const VtkRotor& vtk, const AircraftState& ac_state, const RotorGeometry& geom) {
+    oc_write_rotor_vtu(filename.data(), step, iteration, vr(vtk), ast(ac_state), rgp(geom));
 }
 
 void write_rotors_vtu(std::string_view filename, size_t step,
@@ -780,8 +780,8 @@ void write_rotors_vtu(std::string_view filename, size_t step,
 }
 
 void write_wing_vtu(std::string_view filename, size_t step, size_t iteration,
-    const VtkWing& vtk, const WingState& state, const WingGeometry& geom) {
-    oc_write_wing_vtu(filename.data(), step, iteration, vw(vtk), ws(state), wg(geom));
+    const VtkWing& vtk, const AircraftState& ac_state, const WingGeometry& geom) {
+    oc_write_wing_vtu(filename.data(), step, iteration, vw(vtk), ast(ac_state), wg(geom));
 }
 
 void write_wake_vtu(std::string_view filename, size_t step, const VtkWake& vtk, const Wake& wake) {

@@ -88,7 +88,7 @@ OC_BladeGeometry* build_blade(size_t b_idx, double d_azimuth, double R, double r
 
 int main() {
     // Simulation parameters (matching Python example)
-    size_t iterations = 5400;
+    size_t iterations = 31;
     size_t wake_history_length = 1*1024;
 
     size_t requested_elements = 45;
@@ -215,8 +215,8 @@ int main() {
         OC_ROTOR_FRAME
     );
 
-    OC_Frame* rotor_fixed_children[] = { rotor_frame };
-    oc_frame_set_children(rotor_fixed_frame, rotor_fixed_children, 1);
+    OC_Frame* rotor_children[] = { rotor_frame };
+    oc_frame_set_children(rotor_fixed_frame, rotor_children, 1);
 
     // Build blades with proper frame hierarchy
     OC_BladeGeometry** blades = (OC_BladeGeometry**)malloc(num_blades * sizeof(OC_BladeGeometry*));
@@ -369,6 +369,31 @@ int main() {
             hybrid
         );
 
+    // --- VTK Output Initialization (before simulation loop) ---
+    printf("Initializing VTK output from simulation objects...\n");
+
+    // Rotor VTK
+    OC_VtkRotor* vtk_rotor = oc_build_vtu_rotor(rotor);
+    if (vtk_rotor == NULL) {
+        fprintf(stderr, "WARNING: oc_build_vtu_rotor returned NULL — rotor VTK output will be skipped\n");
+    } else {
+        printf("VTK rotor created successfully\n");
+    }
+
+    // Wake VTK — grab the first wake from history to build base structure
+    OC_Wake* wake = oc_wake_history_get_wake(wake_history, 0);
+    OC_VtkWake* vtk_wake = NULL;
+    if (wake != NULL) {
+        vtk_wake = oc_build_vtu_wake(wake);
+        if (vtk_wake == NULL) {
+            fprintf(stderr, "WARNING: oc_build_vtu_wake returned NULL — wake VTK output will be skipped\n");
+        } else {
+            printf("VTK wake created successfully\n");
+        }
+    } else {
+        fprintf(stderr, "WARNING: oc_wake_history_get_wake returned NULL — wake VTK output will be skipped\n");
+    }
+
     // Perform simulation
     printf("Starting simulation with %zu iterations\n", iterations);
     double C_T;
@@ -401,11 +426,47 @@ int main() {
             0
         );
 
+        // Write VTK output for the last N iterations
+        size_t num_output_frames = 30;
+        if (iteration >= iterations - num_output_frames) {
+            // Rotor VTU
+            if (vtk_rotor != NULL) {
+                printf("[C] === Before oc_write_rotor_vtu (iteration %zu) ===\n", iteration);
+                printf("  vtk_rotor = %p\n", (void*)vtk_rotor);
+                printf("  ac_state  = %p\n", (void*)ac_state);
+                printf("  rotor     = %p\n", (void*)rotor);
+                fflush(stdout);
+                oc_write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state, rotor);
+                printf("  [VTK] Wrote rotor at iteration %zu\n", iteration);
+            }
+            // Wake VTU — get the latest wake from history after push_back
+            if (vtk_wake != NULL) {
+                oc_write_wake_vtu("wake", iteration, vtk_wake, wake);
+                printf("  [VTK] Wrote wake at iteration %zu\n", iteration);
+            }
+        }
+
     }
 
     // Print results
     oc_aircraft_state_get_rotor_C_T(ac_state, 0, &C_T);
     printf("Rotor 0 C_T: %f\n", C_T);
+
+    // Write final iteration state (last step written above in loop)
+    if (vtk_rotor != NULL && iterations >= 30) {
+        char final_filename[256];
+        snprintf(final_filename, sizeof(final_filename), "rotor_final.vtu");
+        oc_write_rotor_vtu(final_filename, iterations - 1, 0, vtk_rotor, ac_state, rotor);
+        printf("Wrote %s at iteration %zu\n", final_filename, iterations - 1);
+    }
+
+    // Cleanup VTK objects
+    if (vtk_rotor != NULL) {
+        oc_vtk_rotor_destroy(vtk_rotor);
+    }
+    if (vtk_wake != NULL) {
+        oc_vtk_wake_destroy(vtk_wake);
+    }
 
     // Cleanup frames (children first to avoid dangling parent pointers)
     for (size_t b_idx = 0; b_idx < num_blades; b_idx++) {

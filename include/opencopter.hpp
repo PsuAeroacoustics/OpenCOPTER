@@ -1032,7 +1032,7 @@ public:
 // ========================================================================
 
 void write_rotor_vtu(std::string_view filename, size_t step, size_t iteration,
-                     const VtkRotor& vtk, const RotorState& state,
+                     const VtkRotor& vtk, const AircraftState& ac_state,
                      const RotorGeometry& geom);
 
 void write_rotors_vtu(std::string_view filename, size_t step,
@@ -1040,7 +1040,7 @@ void write_rotors_vtu(std::string_view filename, size_t step,
                       const AircraftState& ac_state, const Aircraft& aircraft);
 
 void write_wing_vtu(std::string_view filename, size_t step, size_t iteration,
-                    const VtkWing& vtk, const WingState& state,
+                    const VtkWing& vtk, const AircraftState& ac_state,
                     const WingGeometry& geom);
 
 void write_wake_vtu(std::string_view filename, size_t step,

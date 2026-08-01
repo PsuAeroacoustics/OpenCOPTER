@@ -26,7 +26,7 @@ int main() {
 	// ============================================================
 	// Configuration
 	// ============================================================
-	const int iterations = 5400;
+	const int iterations = 361;
 	const size_t wake_history_length = 1 * 1024;
 	const size_t requested_elements = 45;
 
@@ -169,6 +169,8 @@ int main() {
 	oc::Frame rotor_fixed_frame({1, 0, 0}, 0.0, {0, 0, 0}, &aircraft_root, "rotor_0_fixed", oc::FrameType::Connection);
 	oc::Frame rotor_frame({1, 0, 0}, 0.0, {0, 0, 0}, &rotor_fixed_frame, "rotor_0", oc::FrameType::Rotor);
 
+	auto parent_frame = rotor_frame.parent();
+	
 	const oc::Frame* rotor_frame_ptr = &rotor_frame;
 	rotor_fixed_frame.set_children(std::span<const oc::Frame*>(&rotor_frame_ptr, 1));
 
@@ -311,9 +313,28 @@ int main() {
 	ac_state.set_freestream(oc::Vec4{V_inf, 0, 0, 0});
 
 	// ============================================================
-	// VTK output setup
+	// VTK output setup (build once before simulation loop)
 	// ============================================================
 	oc::VtkRotor vtk_rotor_0 = oc::VtkRotor::build(rotor);
+	if (!vtk_rotor_0) {
+		std::cerr << "WARNING: VtkRotor::build returned null — rotor VTK output will be skipped" << std::endl;
+	} else {
+		std::cout << "VTK rotor created successfully" << std::endl;
+	}
+
+	// Wake VTK — grab the first wake from history to build base structure
+	oc::Wake initial_wake = wake_history.get_wake(0);
+	oc::VtkWake vtk_wake;
+	if (initial_wake) {
+		vtk_wake = oc::VtkWake::build(initial_wake);
+		if (!vtk_wake) {
+			std::cerr << "WARNING: VtkWake::build returned null — wake VTK output will be skipped" << std::endl;
+		} else {
+			std::cout << "VTK wake created successfully" << std::endl;
+		}
+	} else {
+		std::cerr << "WARNING: wake_history.get_wake(0) returned null — wake VTK output will be skipped" << std::endl;
+	}
 
 	// ============================================================
 	// Simulation loop
@@ -335,13 +356,13 @@ int main() {
 		oc::simulation_step(ac_state, aircraft, ac_input_state, wake_history, atmo,
 							static_cast<size_t>(iteration), dt, false, false);
 
-		if (iteration > (iterations - 360)) {
-			oc::Wake wake = wake_history.get_wake(0);
-			oc::VtkWake vtk_wake = oc::VtkWake::build(wake);
-
+		if (vtk_rotor_0 && iteration > (iterations - 360)) {
 			const oc::VtkRotor* vtk_arr[] = {&vtk_rotor_0};
 			oc::write_rotors_vtu("rotor", static_cast<size_t>(iteration), vtk_arr,
 								ac_state, aircraft);
+		}
+		if (vtk_wake && iteration > (iterations - 360)) {
+			oc::Wake wake = wake_history.get_wake(0);
 			oc::write_wake_vtu("wake", static_cast<size_t>(iteration), vtk_wake, wake);
 		}
 	}

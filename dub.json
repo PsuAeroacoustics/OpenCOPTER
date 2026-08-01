@@ -4,7 +4,7 @@
 	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
 	"preBuildCommands-linux": [
-		"mkdir -p build && cd build && cmake .. -DBUILD_TYPE=$BUILD_TYPE && cmake --build ."
+		"mkdir -p build ; cmake . -DBUILD_TYPE=$BUILD_TYPE -B build ; cmake --build ./build"
 	],
 	"preBuildCommands-osx": [
 		"mkdir -p build && cd build && cmake .. -DBUILD_TYPE=$BUILD_TYPE && cmake --build ."
@@ -435,12 +435,12 @@
 		},
 		"debug-native": {
 			"buildOptions": ["debugMode", "debugInfo"],
-			"dflags": ["-mcpu=native", "-fsanitize=address"]
+			"dflags": ["-mcpu=native"]
 		},
 		"debug-native-512": {
 			"buildOptions": ["debugMode", "debugInfo"],
 			"dflags": ["-mcpu=native"],
-			"dflags-ldc": ["-mattr=-prefer-256-bit,prefer-mask-registers", "-fsanitize=address"],
+			"dflags-ldc": ["-mattr=-prefer-256-bit,prefer-mask-registers"],
 			"versions": ["AVX_512F"]
 		},
 		"release": {

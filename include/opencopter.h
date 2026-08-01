@@ -441,11 +441,11 @@ double* oc_generate_radius_points(size_t* n_sections, double root_cutout);
 // ========================================================================
 
 OC_VtkRotor* oc_build_vtu_rotor(OC_RotorGeometry* rotor);
-void oc_write_rotor_vtu(const char*, size_t, size_t, OC_VtkRotor*, OC_RotorState*, OC_RotorGeometry*);
+void oc_write_rotor_vtu(const char*, size_t, size_t, OC_VtkRotor*, OC_AircraftState*, OC_RotorGeometry*);
 void oc_write_rotors_vtu(const char*, size_t, OC_VtkRotor**, size_t, OC_AircraftState*, OC_Aircraft*);
 void oc_vtk_rotor_destroy(OC_VtkRotor* vtk);
 OC_VtkWing* oc_build_vtu_wing(OC_WingGeometry* wing);
-void oc_write_wing_vtu(const char*, size_t, size_t, OC_VtkWing*, OC_WingState*, OC_WingGeometry*);
+void oc_write_wing_vtu(const char*, size_t, size_t, OC_VtkWing*, OC_AircraftState*, OC_WingGeometry*);
 void oc_vtk_wing_destroy(OC_VtkWing* vtk);
 OC_VtkWake* oc_build_vtu_wake(OC_Wake* wake);
 void oc_write_wake_vtu(const char*, size_t, OC_VtkWake*, OC_Wake*);

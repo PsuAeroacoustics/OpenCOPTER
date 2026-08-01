@@ -1047,18 +1047,101 @@ extern(C) void oc_set_wing_ctrl_pt_geometry(OC_WingGeometry* wing, size_t spanwi
 }
 
 // ========================================================================
-//  VTK Output API — placeholder declarations for future C++ layer
+//  VTK Output API
 // ========================================================================
 
-extern(C) OC_VtkRotor* oc_build_vtu_rotor(OC_RotorGeometry* rotor) { return null; }
-extern(C) void oc_write_rotor_vtu(const(char)*, size_t, size_t, OC_VtkRotor*, OC_RotorState*, OC_RotorGeometry*) {}
-extern(C) void oc_write_rotors_vtu(const(char)*, size_t, OC_VtkRotor**, size_t, OC_AircraftState*, OC_Aircraft*) {}
+import opencopter.vtk;
+
+extern(C) OC_VtkRotor* oc_build_vtu_rotor(OC_RotorGeometry* rotor) {
+    if (rotor !is null) {
+        auto r = cast(RotorGeometry*)rotor;
+        auto vtk_rotor = build_base_vtu_rotor(*r);
+        if (vtk_rotor !is null) GC.addRoot(cast(void*)vtk_rotor);
+        return cast(OC_VtkRotor*)vtk_rotor;
+    }
+    return null;
+}
+
+/**
+ * oc_write_rotor_vtu - Write a single rotor's VTU file.
+ * Signature matches C header:
+ *   void oc_write_rotor_vtu(const char*, size_t, size_t, OC_VtkRotor*, OC_AircraftState*, OC_RotorGeometry*);
+ *
+ * NOTE: VtkRotor is a D class (reference type). The OC_VtkRotor pointer from C
+ * is the same bit pattern as the original class reference. Cast directly to VtkRotor,
+ * NOT VtkRotor* (which would be a double-indirection).
+ */
+extern(C) void oc_write_rotor_vtu(const(char)* filename, size_t iteration, size_t rotor_idx,
+                                    OC_VtkRotor* vtk_rotor, OC_AircraftState* ac_state,
+                                    OC_RotorGeometry* rotor_geom) {
+    auto fname = (filename !is null) ? fromStringz(filename).idup : "";
+    // VtkRotor is a D class - cast directly to get the reference back
+    auto v = cast(VtkRotor)vtk_rotor;
+    auto s = cast(AircraftState*)ac_state;
+    RotorGeometry* rg = cast(RotorGeometry*)rotor_geom;
+
+    if (v is null || s is null || rg is null) return;
+    if (rotor_idx >= (*s).rotor_states.length) return;
+
+    auto rs = (*s).rotor_states[rotor_idx];
+    // VtkRotor is a D class (reference type) - pass directly, no dereference needed
+    write_rotor_vtu(fname, iteration, rotor_idx, v, rs, *rg);
+}
+/**
+ * oc_write_rotors_vtu - Write all rotors' VTU files in a batch.
+ * Iterates over the provided VtkRotor array and delegates to the
+ * already-working singular write_rotor_vtu for each rotor.
+ */
+extern(C) void oc_write_rotors_vtu(const(char)* filename, size_t iteration,
+                                    OC_VtkRotor** vtk_rotors, size_t num_rotors,
+                                    OC_AircraftState* ac_state, OC_Aircraft* aircraft) {
+    auto fname = (filename !is null) ? fromStringz(filename).idup : "";
+    auto s = cast(AircraftState*)ac_state;
+    auto a = cast(Aircraft*)aircraft;
+    if (s is null || a is null || vtk_rotors is null) return;
+
+    foreach (r_idx; 0 .. num_rotors) {
+        if (vtk_rotors[r_idx] is null) continue;
+        if (r_idx >= (*s).rotor_states.length) continue;
+        if (r_idx >= a.rotors.length) continue;
+
+        auto v = cast(VtkRotor)vtk_rotors[r_idx];
+        auto rs = (*s).rotor_states[r_idx];
+        auto rg = &a.rotors[r_idx];
+        write_rotor_vtu(fname, iteration, r_idx, v, rs, *rg);
+    }
+}
 extern(C) void oc_vtk_rotor_destroy(OC_VtkRotor* vtk) { if (vtk !is null) GC.removeRoot(cast(typeof(vtk)*)vtk); }
 extern(C) OC_VtkWing* oc_build_vtu_wing(OC_WingGeometry* wing) { return null; }
 extern(C) void oc_write_wing_vtu(const(char)*, size_t, size_t, OC_VtkWing*, OC_WingState*, OC_WingGeometry*) {}
 extern(C) void oc_vtk_wing_destroy(OC_VtkWing* vtk) { if (vtk !is null) GC.removeRoot(cast(typeof(vtk)*)vtk); }
-extern(C) OC_VtkWake* oc_build_vtu_wake(OC_Wake* wake) { return null; }
-extern(C) void oc_write_wake_vtu(const(char)*, size_t, OC_VtkWake*, OC_Wake*) {}
+/**
+ * oc_build_vtu_wake - Build a VtkWake from a Wake struct.
+ * VtkWake is a D class (reference type), so the result is GC-pinned
+ * and returned as an opaque C pointer.
+ */
+extern(C) OC_VtkWake* oc_build_vtu_wake(OC_Wake* wake) {
+    if (wake !is null) {
+        auto w = cast(Wake*)wake;
+        auto vtk_wake = build_base_vtu_wake(*w);
+        if (vtk_wake !is null) GC.addRoot(cast(void*)vtk_wake);
+        return cast(OC_VtkWake*)vtk_wake;
+    }
+    return null;
+}
+
+/**
+ * oc_write_wake_vtu - Write a wake's VTU file.
+ * VtkWake is a D class - cast directly to get the reference back, no dereference.
+ */
+extern(C) void oc_write_wake_vtu(const(char)* filename, size_t iteration, OC_VtkWake* vtk_wake, OC_Wake* wake) {
+    auto fname = (filename !is null) ? fromStringz(filename).idup : "";
+    // VtkWake is a D class - cast directly to get the reference back
+    auto v = cast(VtkWake)vtk_wake;
+    auto w = cast(Wake*)wake;
+    if (v is null || w is null) return;
+    write_wake_vtu(fname, iteration, v, *w);
+}
 extern(C) void oc_vtk_wake_destroy(OC_VtkWake* vtk) { if (vtk !is null) GC.removeRoot(cast(typeof(vtk)*)vtk); }
 extern(C) OC_VtkWingWake* oc_build_vtu_wing_wake(OC_WingGeometry*, OC_WingLiftSurf*) { return null; }
 extern(C) void oc_write_wing_wake_vtu(const(char)*, size_t, size_t, OC_VtkWingWake*, OC_WingGeometry*, OC_WingLiftSurf*, OC_WingInputState*) {}
