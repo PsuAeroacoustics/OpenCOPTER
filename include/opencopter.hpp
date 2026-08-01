@@ -147,6 +147,9 @@ public:
 
     Frame parent();
 
+    /** Get all children frames. Returns non-owning Frame wrappers. */
+    std::vector<Frame> children() const;
+
     operator bool() const { return ptr_ != nullptr; }
 };
 

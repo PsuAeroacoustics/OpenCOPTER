@@ -225,6 +225,19 @@ Frame Frame::parent() {
     return Frame(p, false);
 }
 
+std::vector<Frame> Frame::children() const {
+    if (!ptr_) return {};
+    size_t n = oc_frame_get_children_count(fp(*this));
+    OC_Frame** raw = oc_frame_get_children(fp(*this));
+    std::vector<Frame> result;
+    if (raw == nullptr) return result;
+    for (size_t i = 0; i < n; ++i) {
+        Frame child(raw[i], false); // construct inline where protected ctor is accessible
+        result.push_back(std::move(child));
+    }
+    return result;
+}
+
 // ========================================================================
 //  Aircraft
 // ========================================================================

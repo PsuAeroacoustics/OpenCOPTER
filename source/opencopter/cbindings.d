@@ -923,6 +923,28 @@ extern(C) OC_Frame* oc_frame_get_parent(OC_Frame* frame) {
 }
 
 /**
+ * Get children array for a Frame.
+ * Returns a pointer to the first element of the children array.
+ */
+extern(C) OC_Frame** oc_frame_get_children(OC_Frame* frame) {
+    auto f = cast(Frame*)frame;
+    if (f !is null && f.children.length > 0) {
+        // Cast the D array pointer to OC_Frame**
+        return cast(OC_Frame**)f.children.ptr;
+    }
+    return null;
+}
+
+/**
+ * Get the number of children for a Frame.
+ */
+extern(C) size_t oc_frame_get_children_count(OC_Frame* frame) {
+    auto f = cast(Frame*)frame;
+    if (f !is null) return f.children.length;
+    return 0;
+}
+
+/**
  * Set frame type for a frame (as OC_FrameType enum int).
  */
 extern(C) void oc_frame_set_frame_type(OC_Frame* frame, int frame_type) {

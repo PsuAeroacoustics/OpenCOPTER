@@ -188,6 +188,12 @@ void oc_frame_set_frame_type(OC_Frame* frame, int frame_type);
 /** Set name for a frame */
 void oc_frame_set_name(OC_Frame* frame, const char* name);
 
+/** Get children array for a frame. Returns NULL if no children. */
+OC_Frame** oc_frame_get_children(OC_Frame* frame);
+
+/** Get the number of children for a frame. */
+size_t oc_frame_get_children_count(OC_Frame* frame);
+
 // ========================================================================
 //  Aircraft API
 // ========================================================================

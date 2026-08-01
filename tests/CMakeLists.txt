@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(opencopter_c_api_tests C CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Options
@@ -68,6 +68,8 @@ set(TEST_SOURCES
   src/test_api_vtk.cpp
   # Phase 7: Extended sentinel tests
   src/test_api_sentinel.cpp
+  # Phase 8: Children API tests
+  src/test_api_children.cpp
 )
 
 # Create single test executable
