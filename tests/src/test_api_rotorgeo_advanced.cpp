@@ -16,6 +16,10 @@ static OC_Vec3 make_vec3(double x, double y, double z) {
     return v;
 }
 
+static OC_BladeAirfoil* make_test_airfoil() {
+    return oc_blade_airfoil_create_basic(8, 6.28);
+}
+
 /* ================================================================== */
 TEST(RotorGeoAdvanced, SetSolidity) {
     OC_Vec3 origin = make_vec3(0, 0, 0);
@@ -50,8 +54,9 @@ TEST(RotorGeoAdvanced, SetBlades) {
     OC_RotorGeometry* rotor = oc_rotor_geometry_create(2, origin, 1.0, 0.3);
     ASSERT_NE(rotor, nullptr);
 
-    OC_BladeGeometry* b0 = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
-    OC_BladeGeometry* b1 = oc_blade_geometry_create(8, 1.57, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* b0 = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
+    OC_BladeGeometry* b1 = oc_blade_geometry_create(8, 1.57, 0.3, af, 0.5);
     ASSERT_NE(b0, nullptr);
     ASSERT_NE(b1, nullptr);
 
@@ -61,6 +66,7 @@ TEST(RotorGeoAdvanced, SetBlades) {
     oc_rotor_geometry_destroy(rotor);
     oc_blade_geometry_destroy(b0);
     oc_blade_geometry_destroy(b1);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
@@ -73,8 +79,9 @@ TEST(RotorGeoAdvanced, CompositeLifecycle) {
     OC_RotorGeometry* rotor = oc_rotor_geometry_create(2, origin, 1.0, 0.3);
     ASSERT_NE(rotor, nullptr);
 
-    OC_BladeGeometry* b0 = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
-    OC_BladeGeometry* b1 = oc_blade_geometry_create(8, 1.57, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* b0 = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
+    OC_BladeGeometry* b1 = oc_blade_geometry_create(8, 1.57, 0.3, af, 0.5);
     ASSERT_NE(b0, nullptr);
     ASSERT_NE(b1, nullptr);
 
@@ -89,6 +96,7 @@ TEST(RotorGeoAdvanced, CompositeLifecycle) {
     oc_rotor_geometry_destroy(rotor);
     oc_blade_geometry_destroy(b0);
     oc_blade_geometry_destroy(b1);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
@@ -102,7 +110,7 @@ TEST(RotorGeoAdvanced, MultipleRotorsOnAircraft) {
     ASSERT_NE(r0, nullptr);
     ASSERT_NE(r1, nullptr);
 
-    OC_BladeAirfoil* ba = oc_blade_airfoil_create_basic(8, 0);
+    OC_BladeAirfoil* ba = make_test_airfoil(); ASSERT_NE(ba, nullptr);
 
     OC_BladeGeometry* b0 = oc_blade_geometry_create(8, 0.0, 0.3, ba, 0.5);
     OC_BladeGeometry* b1 = oc_blade_geometry_create(8, 1.57, 0.3, ba, 0.5);
@@ -124,12 +132,15 @@ TEST(RotorGeoAdvanced, MultipleRotorsOnAircraft) {
     oc_blade_geometry_destroy(b1);
     oc_blade_geometry_destroy(b2);
     oc_blade_geometry_destroy(b3);
+    oc_blade_airfoil_destroy(ba);
 }
 
 /* ================================================================== */
 TEST(RotorGeoAdvanced, NullSafeSetBlades) {
-    OC_BladeGeometry* b = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* b = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     OC_BladeGeometry* blades[1] = {b};
     oc_rotor_geometry_set_blades(nullptr, blades, 1); /* should not crash */
     oc_blade_geometry_destroy(b);
+    oc_blade_airfoil_destroy(af);
 }

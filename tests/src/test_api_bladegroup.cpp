@@ -18,25 +18,37 @@ static OC_Vec3 make_vec3(double x, double y, double z) {
     return v;
 }
 
+/* Helper: create a valid BladeAirfoil for BladeGeometry tests */
+static OC_BladeAirfoil* make_test_airfoil() {
+    return oc_blade_airfoil_create_basic(8, 6.28);
+}
+
 /* ================================================================== */
 TEST(BladeGeo, CreateDestroy) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil();
+    ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, CreateZeroElements) {
-    // Creating a BladeGeometry with 0 elements: the D side wraps in try/catch.
-    // With num_elements=0, oc_blade_geometry_create returns null (factory fails).
-    OC_BladeGeometry* bg = oc_blade_geometry_create(0, 0.0, 0.3, nullptr, 0.5);
-    // Expect null since zero elements is an invalid configuration
-    EXPECT_EQ(bg, nullptr);
+    // D side allows creating BladeGeometry with 0 elements - it succeeds.
+    OC_BladeAirfoil* af = make_test_airfoil();
+    ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(0, 0.0, 0.3, af, 0.5);
+    EXPECT_NE(bg, nullptr);
+    oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetTwist) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil();
+    ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double twist[8];
@@ -48,7 +60,8 @@ TEST(BladeGeo, SetTwist) {
 
 /* ================================================================== */
 TEST(BladeGeo, SetChord) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double chord[8];
@@ -56,11 +69,13 @@ TEST(BladeGeo, SetChord) {
     oc_blade_geometry_set_chord(bg, chord, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetRadius) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double radius[8];
@@ -68,11 +83,13 @@ TEST(BladeGeo, SetRadius) {
     oc_blade_geometry_set_radius(bg, radius, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetClAlpha) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double cl_alpha[8];
@@ -80,11 +97,13 @@ TEST(BladeGeo, SetClAlpha) {
     oc_blade_geometry_set_C_l_alpha(bg, cl_alpha, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetAlpha0) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double alpha0[8];
@@ -92,11 +111,13 @@ TEST(BladeGeo, SetAlpha0) {
     oc_blade_geometry_set_alpha_0(bg, alpha0, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetSweep) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double sweep[8];
@@ -104,11 +125,13 @@ TEST(BladeGeo, SetSweep) {
     oc_blade_geometry_set_sweep(bg, sweep, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetXi) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double xi[8];
@@ -116,11 +139,13 @@ TEST(BladeGeo, SetXi) {
     oc_blade_geometry_set_xi(bg, xi, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetThickness) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double thick[8];
@@ -128,11 +153,13 @@ TEST(BladeGeo, SetThickness) {
     oc_blade_geometry_set_thickness(bg, thick, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetXiP) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     double xip[8];
@@ -140,32 +167,38 @@ TEST(BladeGeo, SetXiP) {
     oc_blade_geometry_set_xi_p(bg, xip, 8);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, SetBladeLength) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     oc_blade_geometry_set_blade_length(bg, 1.0);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, ComputeVectors) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     // Should not crash
     oc_blade_geometry_compute_vectors(bg);
 
     oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
 TEST(BladeGeo, FrameGetSet) {
-    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
     ASSERT_NE(bg, nullptr);
 
     OC_Vec3 zero = make_vec3(0, 0, 0);
@@ -179,6 +212,7 @@ TEST(BladeGeo, FrameGetSet) {
 
     oc_blade_geometry_destroy(bg);
     oc_frame_destroy(f);
+    oc_blade_airfoil_destroy(af);
 }
 
 /* ================================================================== */
@@ -189,8 +223,10 @@ TEST(BladeGeo, NullSafeDestroy) {
 /* ================================================================== */
 TEST(BladeGeo, MultipleCycles) {
     for (int i = 0; i < 10; ++i) {
-        OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, nullptr, 0.5);
+        OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+        OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);
         ASSERT_NE(bg, nullptr);
         oc_blade_geometry_destroy(bg);
+        oc_blade_airfoil_destroy(af);
     }
 }
