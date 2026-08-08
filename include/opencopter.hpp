@@ -602,6 +602,7 @@ public:
 class RotorState {
 private:
     friend struct detail::ptr_accessor;
+    friend class AircraftState;  // AircraftState::get_rotor_states constructs RotorState
 
     void* ptr_ = nullptr;
 
@@ -609,6 +610,7 @@ private:
 
 public:
     RotorState() = default;
+    ~RotorState() = default;
 
     RotorState(const RotorState&) = default;
     RotorState& operator=(const RotorState&) = default;
@@ -619,16 +621,20 @@ public:
     double get_C_Q() const;
     void set_C_Q(double C_Q);
 
+    /** Get all blade states. Returns non-owning BladeState wrappers. */
+    std::vector<BladeState> get_blade_states() const;
+
     operator bool() const { return ptr_ != nullptr; }
 };
 
 // ========================================================================
-//  BladeState (non-owning — owned by AircraftState)
+//  BladeState (non-owning — owned by RotorState via AircraftState)
 // ========================================================================
 
 class BladeState {
 private:
     friend struct detail::ptr_accessor;
+    friend class RotorState;  // RotorState::get_blade_states constructs BladeState
 
     void* ptr_ = nullptr;
 
@@ -735,6 +741,9 @@ public:
 
     double rotor_C_T(size_t rotor_idx);
     double rotor_C_Q(size_t rotor_idx);
+
+    /** Get all rotor states. Returns non-owning RotorState wrappers. */
+    std::vector<RotorState> get_rotor_states() const;
 
     operator bool() const { return ptr_ != nullptr; }
 };

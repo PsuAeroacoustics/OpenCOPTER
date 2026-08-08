@@ -314,6 +314,18 @@ void oc_rotor_state_set_C_Q(OC_RotorState* state, double C_Q);
 void oc_aircraft_state_get_rotor_C_T(const OC_AircraftState* state, size_t rotor_idx, double* result_out);
 void oc_aircraft_state_get_rotor_C_Q(const OC_AircraftState* state, size_t rotor_idx, double* result_out);
 
+/** Get RotorState pointer from AircraftState by index. Returns non-owning pointer. */
+OC_RotorState* oc_aircraft_state_get_rotor_state(OC_AircraftState* state, size_t rotor_idx);
+
+/** Get number of rotors in an AircraftState. */
+size_t oc_aircraft_state_get_rotor_count(OC_AircraftState* state);
+
+/** Get BladeState pointer from RotorState by index. Returns non-owning pointer. */
+OC_BladeState* oc_rotor_state_get_blade_state(OC_RotorState* state, size_t blade_idx);
+
+/** Get number of blades in a RotorState. */
+size_t oc_rotor_state_get_blade_count(OC_RotorState* state);
+
 // ========================================================================
 //  BladeState API
 // ========================================================================

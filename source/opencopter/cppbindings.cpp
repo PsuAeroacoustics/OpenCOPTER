@@ -586,9 +586,16 @@ void RotorState::set_C_T(double c) { if(ptr_) oc_rotor_state_set_C_T(rst(*this),
 double RotorState::get_C_Q() const { double o=0; if(ptr_) oc_rotor_state_get_C_Q(rst(*this),&o); return o; }
 void RotorState::set_C_Q(double c) { if(ptr_) oc_rotor_state_set_C_Q(rst(*this),c); }
 
-// ========================================================================
-//  BladeState
-// ========================================================================
+std::vector<BladeState> RotorState::get_blade_states() const {
+    std::vector<BladeState> result;
+    if (!ptr_) return result;
+    size_t n = oc_rotor_state_get_blade_count(rst(*this));
+    result.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        OC_BladeState* raw = oc_rotor_state_get_blade_state(rst(*this), i);
+        result.push_back(BladeState(raw));
+    }
+    return result;}
 
 BladeState::BladeState(void* p) : ptr_(p) {}
 double BladeState::azimuth() const { return ptr_ ? oc_blade_state_get_azimuth(bst(*this)) : 0; }
@@ -649,6 +656,18 @@ Vec4 AircraftState::get_freestream() const { OC_Vec4 o{}; if(ptr_) oc_aircraft_s
 
 double AircraftState::rotor_C_T(size_t i) { double o=0; if(ptr_) oc_aircraft_state_get_rotor_C_T(ast(*this),i,&o); return o; }
 double AircraftState::rotor_C_Q(size_t i) { double o=0; if(ptr_) oc_aircraft_state_get_rotor_C_Q(ast(*this),i,&o); return o; }
+
+std::vector<RotorState> AircraftState::get_rotor_states() const {
+    std::vector<RotorState> result;
+    if (!ptr_) return result;
+    size_t n = oc_aircraft_state_get_rotor_count(ast(*this));
+    result.reserve(n);
+    for (size_t i = 0; i < n; ++i) {
+        OC_RotorState* raw = oc_aircraft_state_get_rotor_state(ast(*this), i);
+        result.push_back(RotorState(raw));
+    }
+    return result;
+}
 
 // ========================================================================
 //  VortexFilament
