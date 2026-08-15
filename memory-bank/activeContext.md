@@ -1,7 +1,17 @@
 # Active Context: OpenCOPTER
 
 ## Current Work Focus
-**COMPLETED**: Wake VTU output through C API — implemented `oc_build_vtu_wake` and `oc_write_wake_vtu` D bindings, wired up in example.c, all 271 VTU files written (31 rotor + 240 wake) without crash.
+**COMPLETED (2026-08-15)**: Added `azimuth_offset` getter + setter to the C and C++ `BladeGeometry` interfaces, matching the existing `blade_length` pattern.
+- C header: `oc_blade_geometry_set_azimuth_offset` / `oc_blade_geometry_get_azimuth_offset` in `include/opencopter.h`
+- D: `extern(double)`/`extern(OC_BladeGeometry*) double` in `source/opencopter/cbindings.d`
+- C++ hpp: `set_azimuth_offset(double)` / `azimuth_offset() const` in `include/opencopter.hpp`
+- C++ cpp: RAII-wrapped implementations in `source/opencopter/cppbindings.cpp`
+- Tests: `BladeGeo.AzimuthOffsetRoundTrip` + `BladeGeo.AzimuthOffsetNullSafe` in `tests/src/test_api_bladegroup.cpp` — both PASS
+- Build verified (`./build_linux.sh native debug`, exit 0); all 4 symbols exported in `libopencopter.so`
+
+**IMPORTANT BUILD NOTE (test linking)**: `libopencopter.so` is built with the HOST toolchain (system glibc 2.44 + system `ldc2`), NOT the conda env's cross-toolchain. Therefore the test binary MUST be configured with the host `gcc`/`g++` (NOT conda's), plus linker flags supplying the transitive runtime deps: `-L/usr/lib -l:libphobos2-ldc-shared.so.112 -l:libdruntime-ldc-shared.so.112 -L$CONDA_PREFIX/lib -lpython3.12 -lvtk*... -L<repo>/dependencies/vtkd/cmake/build -lvtk_shim` with matching `-rpath`s. Using the conda cross-compiler fails with `undefined reference to _dl_addr@GLIBC_PRIVATE` (sysroot glibc mismatch). `conda activate opencopter` is still used for `./build_linux.sh` (D build), but the C/C++ test CMake config must deactivate conda and use host compilers.
+
+**Prior work**: Wake VTU output through C API — implemented `oc_build_vtu_wake` and `oc_write_wake_vtu` D bindings, wired up in example.c, all 271 VTU files written without crash.
 
 ## Test Results Summary (125 tests, 19 test suites)
 **Status**: 87 passing, 38 failing, 1 crash (tests stopped early due to SEGV)
@@ -49,6 +59,7 @@
 
 ## Recent Changes
 - Initial Memory Bank created (2026-07-26)
+- **[2026-08-15] `azimuth_offset` get/set added** to `BladeGeometry` in C (`oc_blade_geometry_{set,get}_azimuth_offset`) and C++ (`set_azimuth_offset`/`azimuth_offset`). Followed the `blade_length` scalar pattern. 2 new tests (round-trip + null-safe) pass; all 18 BladeGeo tests green. Discovered the test harness must link with host `gcc`/`g++` (not conda cross-compiler) — see BUILD NOTE above.
 - **[2026-08-01] Children API added**: `oc_frame_get_children` (C) + `Frame::getChildren()` (C++), 10 new tests
 - **[2026-08-01] Fixed 30 pre-existing test failures** down to 7, then all 129 non-Wake tests passing:
   - BladeGeo: 15 failures fixed (nullptr airfoil -> valid BladeAirfoil required)

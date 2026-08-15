@@ -242,6 +242,12 @@ void oc_blade_geometry_set_frame(OC_BladeGeometry* geom, OC_Frame* frame);
 /** Set blade_length on a BladeGeometry */
 void oc_blade_geometry_set_blade_length(OC_BladeGeometry* geom, double length);
 
+/** Set azimuth_offset on a BladeGeometry */
+void oc_blade_geometry_set_azimuth_offset(OC_BladeGeometry* geom, double offset);
+
+/** Get azimuth_offset from a BladeGeometry */
+double oc_blade_geometry_get_azimuth_offset(const OC_BladeGeometry* geom);
+
 // ========================================================================
 //  WingGeometry API
 // ========================================================================

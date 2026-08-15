@@ -319,6 +319,9 @@ public:
     void set_frame(const Frame& frame);
     void set_blade_length(double length);
 
+    void set_azimuth_offset(double offset);
+    double azimuth_offset() const;
+
     operator bool() const { return ptr_ != nullptr; }
 };
 

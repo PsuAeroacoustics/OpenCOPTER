@@ -322,6 +322,9 @@ Frame BladeGeometry::get_frame() const {
 void BladeGeometry::set_frame(const Frame& frame) { if (ptr_) oc_blade_geometry_set_frame(bgp(*this), fp(frame)); }
 void BladeGeometry::set_blade_length(double l) { if (ptr_) oc_blade_geometry_set_blade_length(bgp(*this), l); }
 
+void BladeGeometry::set_azimuth_offset(double o) { if (ptr_) oc_blade_geometry_set_azimuth_offset(bgp(*this), o); }
+double BladeGeometry::azimuth_offset() const { return ptr_ ? oc_blade_geometry_get_azimuth_offset(bgp(*this)) : 0.0; }
+
 // ========================================================================
 //  WingGeometry
 // ========================================================================

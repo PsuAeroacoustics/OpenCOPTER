@@ -183,6 +183,36 @@ TEST(BladeGeo, SetBladeLength) {
 }
 
 /* ================================================================== */
+TEST(BladeGeo, AzimuthOffsetRoundTrip) {
+    OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
+
+    // Constructor value is retrievable
+    const double init = 0.785;
+    OC_BladeGeometry* bg = oc_blade_geometry_create(8, init, 0.3, af, 0.5);
+    ASSERT_NE(bg, nullptr);
+    EXPECT_DOUBLE_EQ(oc_blade_geometry_get_azimuth_offset(bg), init);
+
+    // Setter updates the value
+    const double newval = 1.5708;
+    oc_blade_geometry_set_azimuth_offset(bg, newval);
+    EXPECT_DOUBLE_EQ(oc_blade_geometry_get_azimuth_offset(bg), newval);
+
+    // Negative value round-trips
+    oc_blade_geometry_set_azimuth_offset(bg, -0.5);
+    EXPECT_DOUBLE_EQ(oc_blade_geometry_get_azimuth_offset(bg), -0.5);
+
+    oc_blade_geometry_destroy(bg);
+    oc_blade_airfoil_destroy(af);
+}
+
+/* ================================================================== */
+TEST(BladeGeo, AzimuthOffsetNullSafe) {
+    // Null getter returns 0.0, null setter does not crash
+    EXPECT_DOUBLE_EQ(oc_blade_geometry_get_azimuth_offset(nullptr), 0.0);
+    oc_blade_geometry_set_azimuth_offset(nullptr, 1.0); /* should not crash */
+}
+
+/* ================================================================== */
 TEST(BladeGeo, ComputeVectors) {
     OC_BladeAirfoil* af = make_test_airfoil(); ASSERT_NE(af, nullptr);
     OC_BladeGeometry* bg = oc_blade_geometry_create(8, 0.0, 0.3, af, 0.5);

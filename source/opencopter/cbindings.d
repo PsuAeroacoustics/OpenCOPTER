@@ -947,6 +947,23 @@ extern(C) void oc_blade_geometry_set_blade_length(OC_BladeGeometry* geom, double
 }
 
 /**
+ * Set azimuth_offset on a BladeGeometry.
+ */
+extern(C) void oc_blade_geometry_set_azimuth_offset(OC_BladeGeometry* geom, double offset) {
+    auto g = cast(BladeGeometry*)geom;
+    if (g !is null) g.azimuth_offset = offset;
+}
+
+/**
+ * Get azimuth_offset from a BladeGeometry.
+ */
+extern(C) double oc_blade_geometry_get_azimuth_offset(const OC_BladeGeometry* geom) {
+    auto g = cast(BladeGeometry*)geom;
+    if (g !is null) return g.azimuth_offset;
+    return 0.0;
+}
+
+/**
  * Set frame on a RotorGeometry.
  */
 extern(C) void oc_rotor_geometry_set_frame(OC_RotorGeometry* rotor, OC_Frame* frame) {
