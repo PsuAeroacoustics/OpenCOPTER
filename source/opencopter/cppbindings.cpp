@@ -12,8 +12,14 @@
 #include <vector>
 #include <algorithm>
 #include <cstring>
+#include <stdexcept>
+#include <string>
 
 namespace opencopter {
+
+// Null-pointer guard: throws std::runtime_error with a descriptive message.
+#define OC_CHECK(ptr, msg) \
+    do { if (!(ptr)) throw std::runtime_error(std::string("OpenCOPTER: ") + (msg)); } while(0)
 
 // ========================================================================
 //  Internal helpers: convert between native C++ value types and OC_* types
@@ -120,11 +126,10 @@ Direction direction_counter_clockwise() { return static_cast<Direction>(oc_direc
 Mat3 mat3_identity() { return from_oc(oc_mat3_identity()); }
 Mat4 mat4_identity() { return from_oc(oc_mat4_identity()); }
 
-std::span<double> generate_radius_points(size_t n_sections, double root_cutout) {
-
+std::vector<double> generate_radius_points(size_t n_sections, double root_cutout) {
     double* buff = oc_generate_radius_points(&n_sections, root_cutout);
-
-    return std::span<double>(buff, n_sections);
+    std::vector<double> result(buff, buff + n_sections);
+    return result;
 }
 
 void simulation_step(const AircraftState& ac_state, const Aircraft& aircraft,
@@ -151,13 +156,18 @@ double basic_single_rotor_dynamics(RotorInputState& input, double dt) {
 //  Frame
 // ========================================================================
 
-Frame::Frame(void* p, bool owned) : ptr_(p), owned_(owned) {}
+Frame::Frame(void* p, bool owned) : ptr_(p), owned_(owned) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: Frame constructed with null pointer\n";
+#endif
+}
 
 Frame::Frame(Vec3 axis, double angle, Vec3 translation,
                const Frame* parent, std::string_view name, FrameType frame_type) {
     OC_Frame* raw = oc_frame_create(to_oc(axis), angle, to_oc(translation),
                                       parent ? fp(*parent) : nullptr,
                                       name.data(), static_cast<int>(frame_type));
+    OC_CHECK(raw, "Frame constructor: oc_frame_create returned null");
     ptr_ = raw;
     // owned_ defaults to false since frames are typically part of a hierarchy
     // where the Aircraft owns the entire tree. Setting owned_=true would cause
@@ -184,25 +194,34 @@ Frame& Frame::operator=(Frame&& other) noexcept {
     return *this;
 }
 
-void Frame::set_rotation(Vec3 axis, double angle) { if (ptr_) oc_frame_set_rotation(fp(*this), to_oc(axis), angle); }
-void Frame::rotate(Vec3 axis, double angle) { if (ptr_) oc_frame_rotate(fp(*this), to_oc(axis), angle); }
-void Frame::translate(Vec3 translation) { if (ptr_) oc_frame_translate(fp(*this), to_oc(translation)); }
+void Frame::set_rotation(Vec3 axis, double angle) { OC_CHECK(ptr_, "Frame::set_rotation called on null object"); oc_frame_set_rotation(fp(*this), to_oc(axis), angle); }
+void Frame::rotate(Vec3 axis, double angle) { OC_CHECK(ptr_, "Frame::rotate called on null object"); oc_frame_rotate(fp(*this), to_oc(axis), angle); }
+void Frame::translate(Vec3 translation) { OC_CHECK(ptr_, "Frame::translate called on null object"); oc_frame_translate(fp(*this), to_oc(translation)); }
 
 void Frame::update(const Mat4& parent_global_mat) {
-    if (ptr_) { OC_Mat4 m{}; std::memcpy(m.data, parent_global_mat.data, sizeof(m.data));
-        oc_frame_update(fp(*this), &m); }
+    OC_CHECK(ptr_, "Frame::update called on null object");
+    OC_Mat4 m{}; std::memcpy(m.data, parent_global_mat.data, sizeof(m.data));
+    oc_frame_update(fp(*this), &m);
 }
 
 void Frame::set_children(std::span<const Frame*> children) {
-    if (!ptr_) return;
+    OC_CHECK(ptr_, "Frame::set_children called on null object");
     size_t n = children.size();
     std::vector<OC_Frame*> raw(n);
     for (size_t i = 0; i < n; ++i) raw[i] = children[i] ? fp(*children[i]) : nullptr;
     oc_frame_set_children(fp(*this), raw.data(), n);
 }
 
-void Frame::set_frame_type(FrameType ft) { if (ptr_) oc_frame_set_frame_type(fp(*this), static_cast<int>(ft)); }
-void Frame::set_name(std::string_view name) { if (ptr_) oc_frame_set_name(fp(*this), name.data()); }
+void Frame::set_children(std::span<const Frame> children) {
+    OC_CHECK(ptr_, "Frame::set_children called on null object");
+    size_t n = children.size();
+    std::vector<OC_Frame*> raw(n);
+    for (size_t i = 0; i < n; ++i) raw[i] = fp(children[i]);
+    oc_frame_set_children(fp(*this), raw.data(), n);
+}
+
+void Frame::set_frame_type(FrameType ft) { OC_CHECK(ptr_, "Frame::set_frame_type called on null object"); oc_frame_set_frame_type(fp(*this), static_cast<int>(ft)); }
+void Frame::set_name(std::string_view name) { OC_CHECK(ptr_, "Frame::set_name called on null object"); oc_frame_set_name(fp(*this), name.data()); }
 
 const Mat4* Frame::local_matrix() const {
     if (!ptr_) return nullptr;
@@ -242,8 +261,15 @@ std::vector<Frame> Frame::children() const {
 //  Aircraft
 // ========================================================================
 
-Aircraft::Aircraft(void* p) : ptr_(p) {}
-Aircraft::Aircraft(size_t num_rotors, size_t num_wings) { ptr_ = oc_aircraft_create(num_rotors, num_wings); }
+Aircraft::Aircraft(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: Aircraft constructed with null pointer\n";
+#endif
+}
+Aircraft::Aircraft(size_t num_rotors, size_t num_wings) {
+    ptr_ = oc_aircraft_create(num_rotors, num_wings);
+    OC_CHECK(ptr_, "Aircraft constructor: oc_aircraft_create returned null");
+}
 Aircraft::~Aircraft() { if (ptr_) oc_aircraft_destroy(ap(*this)); }
 Aircraft::Aircraft(Aircraft&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
 Aircraft& Aircraft::operator=(Aircraft&& o) noexcept {
@@ -256,11 +282,28 @@ Frame Aircraft::root_frame() {
     return Frame(f, false);
 }
 
+size_t Aircraft::num_rotors() const {
+    return ptr_ ? oc_aircraft_get_num_rotors(ap(*this)) : 0;
+}
+
+RotorGeometry Aircraft::get_rotor(size_t rotor_idx) {
+    OC_RotorGeometry* raw = ptr_ ? oc_aircraft_get_rotor(ap(*this), rotor_idx) : nullptr;
+    return RotorGeometry(raw);
+}
+
 void Aircraft::set_rotors(std::span<const RotorGeometry*> rotors) {
-    if (!ptr_) return;
+    OC_CHECK(ptr_, "Aircraft::set_rotors called on null object");
     size_t n = rotors.size();
     std::vector<OC_RotorGeometry*> raw(n);
     for (size_t i = 0; i < n; ++i) raw[i] = rotors[i] ? rgp(*rotors[i]) : nullptr;
+    oc_aircraft_set_rotors(ap(*this), raw.data(), n);
+}
+
+void Aircraft::set_rotors(std::span<const RotorGeometry> rotors) {
+    OC_CHECK(ptr_, "Aircraft::set_rotors called on null object");
+    size_t n = rotors.size();
+    std::vector<OC_RotorGeometry*> raw(n);
+    for (size_t i = 0; i < n; ++i) raw[i] = rgp(rotors[i]);
     oc_aircraft_set_rotors(ap(*this), raw.data(), n);
 }
 
@@ -268,9 +311,14 @@ void Aircraft::set_rotors(std::span<const RotorGeometry*> rotors) {
 //  RotorGeometry
 // ========================================================================
 
-RotorGeometry::RotorGeometry(void* p) : ptr_(p) {}
+RotorGeometry::RotorGeometry(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: RotorGeometry constructed with null pointer\n";
+#endif
+}
 RotorGeometry::RotorGeometry(size_t nb, Vec3 origin, double radius, double solidity)
-    { ptr_ = oc_rotor_geometry_create(nb, to_oc(origin), radius, solidity); }
+    { ptr_ = oc_rotor_geometry_create(nb, to_oc(origin), radius, solidity);
+      OC_CHECK(ptr_, "RotorGeometry constructor: oc_rotor_geometry_create returned null"); }
 RotorGeometry::~RotorGeometry() { if (ptr_) oc_rotor_geometry_destroy(rgp(*this)); }
 RotorGeometry::RotorGeometry(RotorGeometry&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
 RotorGeometry& RotorGeometry::operator=(RotorGeometry&& o) noexcept {
@@ -278,24 +326,43 @@ RotorGeometry& RotorGeometry::operator=(RotorGeometry&& o) noexcept {
     return *this;
 }
 
-void RotorGeometry::set_solidity(double s) { if (ptr_) oc_rotor_geometry_set_solidity(rgp(*this), s); }
+void RotorGeometry::set_solidity(double s) { OC_CHECK(ptr_, "RotorGeometry::set_solidity called on null object"); oc_rotor_geometry_set_solidity(rgp(*this), s); }
 
 void RotorGeometry::set_blades(std::span<const BladeGeometry*> blades) {
-    if (!ptr_) return; size_t n = blades.size();
+    OC_CHECK(ptr_, "RotorGeometry::set_blades called on null object");
+    size_t n = blades.size();
     std::vector<OC_BladeGeometry*> raw(n);
     for (size_t i = 0; i < n; ++i) raw[i] = blades[i] ? bgp(*blades[i]) : nullptr;
     oc_rotor_geometry_set_blades(rgp(*this), raw.data(), n);
 }
 
-void RotorGeometry::set_frame(const Frame& frame) { if (ptr_) oc_rotor_geometry_set_frame(rgp(*this), fp(frame)); }
+void RotorGeometry::set_blades(std::span<const BladeGeometry> blades) {
+    OC_CHECK(ptr_, "RotorGeometry::set_blades called on null object");
+    size_t n = blades.size();
+    std::vector<OC_BladeGeometry*> raw(n);
+    for (size_t i = 0; i < n; ++i) raw[i] = bgp(blades[i]);
+    oc_rotor_geometry_set_blades(rgp(*this), raw.data(), n);
+}
+
+void RotorGeometry::set_frame(const Frame& frame) { OC_CHECK(ptr_, "RotorGeometry::set_frame called on null object"); oc_rotor_geometry_set_frame(rgp(*this), fp(frame)); }
+
+Frame RotorGeometry::frame() const {
+    OC_Frame* f = ptr_ ? oc_rotor_geometry_get_frame(rgp(*this)) : nullptr;
+    return Frame(f, false);
+}
 
 // ========================================================================
 //  BladeGeometry
 // ========================================================================
 
-BladeGeometry::BladeGeometry(void* p) : ptr_(p) {}
+BladeGeometry::BladeGeometry(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: BladeGeometry constructed with null pointer\n";
+#endif
+}
 BladeGeometry::BladeGeometry(size_t ne, double ao, double ac, const BladeAirfoil& af, double rc) {
     ptr_ = oc_blade_geometry_create(ne, ao, ac, bap(af), rc);
+    OC_CHECK(ptr_, "BladeGeometry constructor: oc_blade_geometry_create returned null (check num_elements>0, valid airfoil, r_c in [0,1))");
 }
 BladeGeometry::~BladeGeometry() { if (ptr_) oc_blade_geometry_destroy(bgp(*this)); }
 BladeGeometry::BladeGeometry(BladeGeometry&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
@@ -305,33 +372,40 @@ BladeGeometry& BladeGeometry::operator=(BladeGeometry&& o) noexcept {
 }
 
 #define BG_SET(name) void BladeGeometry::set_##name(const std::vector<double>& d){ \
-    if(ptr_) oc_blade_geometry_set_##name(bgp(*this), const_cast<double*>(d.data()), d.size()); } \
-    void BladeGeometry::set_##name(const std::span<double>& d){ \
-    if(ptr_) oc_blade_geometry_set_##name(bgp(*this), const_cast<double*>(d.data()), d.size()); }
+    OC_CHECK(ptr_, "BladeGeometry::set_" #name " called on null object"); \
+    oc_blade_geometry_set_##name(bgp(*this), const_cast<double*>(d.data()), d.size()); } \
+    void BladeGeometry::set_##name(const std::span<const double>& d){ \
+    OC_CHECK(ptr_, "BladeGeometry::set_" #name " called on null object"); \
+    oc_blade_geometry_set_##name(bgp(*this), const_cast<double*>(d.data()), d.size()); }
     
 BG_SET(twist); BG_SET(chord); BG_SET(radius); BG_SET(C_l_alpha); BG_SET(alpha_0);
 BG_SET(sweep); BG_SET(xi); BG_SET(thickness); BG_SET(xi_p);
 #undef BG_SET
 
-void BladeGeometry::compute_vectors() { if (ptr_) oc_blade_geometry_compute_vectors(bgp(*this)); }
+void BladeGeometry::compute_vectors() { OC_CHECK(ptr_, "BladeGeometry::compute_vectors called on null object"); oc_blade_geometry_compute_vectors(bgp(*this)); }
 
 Frame BladeGeometry::get_frame() const {
     OC_Frame* f = ptr_ ? oc_blade_geometry_get_frame(bgp(*this)) : nullptr;
     return Frame(f, false);
 }
-void BladeGeometry::set_frame(const Frame& frame) { if (ptr_) oc_blade_geometry_set_frame(bgp(*this), fp(frame)); }
-void BladeGeometry::set_blade_length(double l) { if (ptr_) oc_blade_geometry_set_blade_length(bgp(*this), l); }
+void BladeGeometry::set_frame(const Frame& frame) { OC_CHECK(ptr_, "BladeGeometry::set_frame called on null object"); oc_blade_geometry_set_frame(bgp(*this), fp(frame)); }
+void BladeGeometry::set_blade_length(double l) { OC_CHECK(ptr_, "BladeGeometry::set_blade_length called on null object"); oc_blade_geometry_set_blade_length(bgp(*this), l); }
 
-void BladeGeometry::set_azimuth_offset(double o) { if (ptr_) oc_blade_geometry_set_azimuth_offset(bgp(*this), o); }
+void BladeGeometry::set_azimuth_offset(double o) { OC_CHECK(ptr_, "BladeGeometry::set_azimuth_offset called on null object"); oc_blade_geometry_set_azimuth_offset(bgp(*this), o); }
 double BladeGeometry::azimuth_offset() const { return ptr_ ? oc_blade_geometry_get_azimuth_offset(bgp(*this)) : 0.0; }
 
 // ========================================================================
 //  WingGeometry
 // ========================================================================
 
-WingGeometry::WingGeometry(void* p) : ptr_(p) {}
+WingGeometry::WingGeometry(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: WingGeometry constructed with null pointer\n";
+#endif
+}
 WingGeometry::WingGeometry(size_t np, Vec3 origin, double ws)
-    { ptr_ = oc_wing_geometry_create(np, to_oc(origin), ws); }
+    { ptr_ = oc_wing_geometry_create(np, to_oc(origin), ws);
+      OC_CHECK(ptr_, "WingGeometry constructor: oc_wing_geometry_create returned null"); }
 WingGeometry::~WingGeometry() { if (ptr_) oc_wing_geometry_destroy(wg(*this)); }
 WingGeometry::WingGeometry(WingGeometry&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
 WingGeometry& WingGeometry::operator=(WingGeometry&& o) noexcept {
@@ -340,24 +414,33 @@ WingGeometry& WingGeometry::operator=(WingGeometry&& o) noexcept {
 }
 
 void WingGeometry::set_ctrl_points(size_t sn, size_t cn, double camber) {
-    if (ptr_) oc_wing_geometry_set_ctrl_points(wg(*this), sn, cn, camber);
+    OC_CHECK(ptr_, "WingGeometry::set_ctrl_points called on null object");
+    oc_wing_geometry_set_ctrl_points(wg(*this), sn, cn, camber);
 }
 
 // ========================================================================
 //  WingPartGeometry
 // ========================================================================
 
-WingPartGeometry::WingPartGeometry(void* p) : ptr_(p) {}
-void WingPartGeometry::set_chord(const std::vector<double>& d){ if(ptr_) oc_wing_part_geometry_set_chord(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
-void WingPartGeometry::set_twist(const std::vector<double>& d){ if(ptr_) oc_wing_part_geometry_set_twist(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
-void WingPartGeometry::set_sweep(const std::vector<double>& d){ if(ptr_) oc_wing_part_geometry_set_sweep(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
-void WingPartGeometry::set_y_span(const std::vector<double>& d){ if(ptr_) oc_wing_part_geometry_set_y_span(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
+WingPartGeometry::WingPartGeometry(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: WingPartGeometry constructed with null pointer\n";
+#endif
+}
+void WingPartGeometry::set_chord(const std::vector<double>& d){ OC_CHECK(ptr_, "WingPartGeometry::set_chord called on null object"); oc_wing_part_geometry_set_chord(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
+void WingPartGeometry::set_twist(const std::vector<double>& d){ OC_CHECK(ptr_, "WingPartGeometry::set_twist called on null object"); oc_wing_part_geometry_set_twist(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
+void WingPartGeometry::set_sweep(const std::vector<double>& d){ OC_CHECK(ptr_, "WingPartGeometry::set_sweep called on null object"); oc_wing_part_geometry_set_sweep(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
+void WingPartGeometry::set_y_span(const std::vector<double>& d){ OC_CHECK(ptr_, "WingPartGeometry::set_y_span called on null object"); oc_wing_part_geometry_set_y_span(cast_OC_WingPartGeometry(ptr_), const_cast<double*>(d.data()), d.size()); }
 
 // ========================================================================
 //  AirfoilModel
 // ========================================================================
 
-AirfoilModel::AirfoilModel(void* p) : ptr_(p) {}
+AirfoilModel::AirfoilModel(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: AirfoilModel constructed with null pointer\n";
+#endif
+}
 AirfoilModel::~AirfoilModel() { if (ptr_) oc_airfoil_model_destroy(amp(*this)); }
 AirfoilModel::AirfoilModel(AirfoilModel&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
 AirfoilModel& AirfoilModel::operator=(AirfoilModel&& o) noexcept {
@@ -365,19 +448,29 @@ AirfoilModel& AirfoilModel::operator=(AirfoilModel&& o) noexcept {
     return *this;
 }
 
-AirfoilModel AirfoilModel::thin_airfoil(double c) { return AirfoilModel(oc_thin_airfoil_create(c)); }
+AirfoilModel AirfoilModel::thin_airfoil(double c) {
+    OC_AirfoilModel* raw = oc_thin_airfoil_create(c);
+    OC_CHECK(raw, "AirfoilModel::thin_airfoil: oc_thin_airfoil_create returned null");
+    return AirfoilModel(raw);
+}
 
 AirfoilModel AirfoilModel::aero_das(const std::vector<double>& a, const std::vector<double>& cl,
     const std::vector<double>& cd, double tbyc, double ar) {
-    return AirfoilModel(oc_aero_das_create(const_cast<double*>(a.data()), a.size(),
-        const_cast<double*>(cl.data()), cl.size(), const_cast<double*>(cd.data()), cd.size(), tbyc, ar));
+    OC_AirfoilModel* raw = oc_aero_das_create(const_cast<double*>(a.data()), a.size(),
+        const_cast<double*>(cl.data()), cl.size(), const_cast<double*>(cd.data()), cd.size(), tbyc, ar);
+    OC_CHECK(raw, "AirfoilModel::aero_das: oc_aero_das_create returned null");
+    return AirfoilModel(raw);
 }
 
 AirfoilModel AirfoilModel::aero_das_from_xfoil_polar(std::string_view fn, double tbyc) {
-    return AirfoilModel(oc_aero_das_from_xfoil_polar(fn.data(), tbyc));
+    OC_AirfoilModel* raw = oc_aero_das_from_xfoil_polar(fn.data(), tbyc);
+    OC_CHECK(raw, "AirfoilModel::aero_das_from_xfoil_polar: returned null (check filename)");
+    return AirfoilModel(raw);
 }
 AirfoilModel AirfoilModel::c81_from_file(std::string_view fn) {
-    return AirfoilModel(oc_c81_from_file(fn.data()));
+    OC_AirfoilModel* raw = oc_c81_from_file(fn.data());
+    OC_CHECK(raw, "AirfoilModel::c81_from_file: returned null (check filename)");
+    return AirfoilModel(raw);
 }
 
 double AirfoilModel::get_Cl(double a, double m) const { return ptr_ ? oc_airfoil_get_Cl(amp(*this), a, m) : 0.0; }
@@ -389,7 +482,11 @@ double AirfoilModel::zero_lift_aoa() const { return ptr_ ? oc_airfoil_zero_lift_
 //  BladeAirfoil
 // ========================================================================
 
-BladeAirfoil::BladeAirfoil(void* p) : ptr_(p) {}
+BladeAirfoil::BladeAirfoil(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: BladeAirfoil constructed with null pointer\n";
+#endif
+}
 BladeAirfoil::~BladeAirfoil() { if (ptr_) oc_blade_airfoil_destroy(bap(*this)); }
 BladeAirfoil::BladeAirfoil(BladeAirfoil&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
 BladeAirfoil& BladeAirfoil::operator=(BladeAirfoil&& o) noexcept {
@@ -397,15 +494,13 @@ BladeAirfoil& BladeAirfoil::operator=(BladeAirfoil&& o) noexcept {
     return *this;
 }
 
-BladeAirfoil BladeAirfoil::create_basic(size_t ne, double c) {
-    return BladeAirfoil(oc_blade_airfoil_create_basic(ne, c));
-}
-
 BladeAirfoil BladeAirfoil::create(const std::vector<AirfoilModel>& models, const std::vector<size_t>& extents) {
     size_t n = models.size();
     std::vector<OC_AirfoilModel*> raw(n);
     for (size_t i = 0; i < n; ++i) raw[i] = amp(models[i]);
-    return BladeAirfoil(oc_blade_airfoil_create(raw.data(), extents.data(), n));
+    OC_BladeAirfoil* result = oc_blade_airfoil_create(raw.data(), extents.data(), n);
+    OC_CHECK(result, "BladeAirfoil::create: oc_blade_airfoil_create returned null (check models and extents)");
+    return BladeAirfoil(result);
 }
 
 double BladeAirfoil::get_Cl(size_t ci, double a, double m) const { return ptr_ ? oc_blade_airfoil_get_Cl(bap(*this), ci, a, m) : 0.0; }
@@ -427,7 +522,8 @@ std::vector<double> BladeAirfoil::fill_zero_lift_aoa(size_t ci) const {
 
 void BladeAirfoil::fill_coefficients(size_t ci, const std::vector<double>& alphas,
     const std::vector<double>& machs, std::vector<double>& Cl_out, std::vector<double>& Cd_out) const {
-    if (!ptr_ || alphas.size() != machs.size()) return;
+    OC_CHECK(ptr_, "BladeAirfoil::fill_coefficients called on null object");
+    if (alphas.size() != machs.size()) return;
     size_t len = alphas.size();
     if (Cl_out.size() < len) Cl_out.resize(len);
     if (Cd_out.size() < len) Cd_out.resize(len);
@@ -438,7 +534,11 @@ void BladeAirfoil::fill_coefficients(size_t ci, const std::vector<double>& alpha
 //  Inflow
 // ========================================================================
 
-Inflow::Inflow(void* p, bool owned) : ptr_(p), owned_(owned) {}
+Inflow::Inflow(void* p, bool owned) : ptr_(p), owned_(owned) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: Inflow constructed with null pointer\n";
+#endif
+}
 Inflow::~Inflow() { if (owned_ && ptr_) { oc_inflow_destroy(inl(*this)); ptr_ = nullptr; } }
 Inflow::Inflow(Inflow&& o) noexcept : ptr_(o.ptr_), owned_(o.owned_) { o.ptr_ = nullptr; o.owned_ = false; }
 Inflow& Inflow::operator=(Inflow&& o) noexcept {
@@ -463,7 +563,8 @@ const Mat4* Inflow::inverse_global_frame() const {
 }
 
 void Inflow::update(const AircraftState& ac_state, const Wake& wake, double dt) {
-    if (ptr_) oc_inflow_update(inl(*this), ast(ac_state), wk(wake), dt);
+    OC_CHECK(ptr_, "Inflow::update called on null object");
+    oc_inflow_update(inl(*this), ast(ac_state), wk(wake), dt);
 }
 
 std::vector<double> Inflow::inflow_at(const std::vector<double>& x, const std::vector<double>& y,
@@ -475,10 +576,12 @@ std::vector<double> Inflow::inflow_at(const std::vector<double>& x, const std::v
 }
 
 void Inflow::update_wing_circulation(WingState& wing_state) {
-    if (ptr_) oc_inflow_update_wing_circulation(inl(*this), ws(wing_state));
+    OC_CHECK(ptr_, "Inflow::update_wing_circulation called on null object");
+    oc_inflow_update_wing_circulation(inl(*this), ws(wing_state));
 }
 void Inflow::update_wing_dC_L(WingState& wing_state) {
-    if (ptr_) oc_inflow_update_wing_dC_L(inl(*this), ws(wing_state));
+    OC_CHECK(ptr_, "Inflow::update_wing_dC_L called on null object");
+    oc_inflow_update_wing_dC_L(inl(*this), ws(wing_state));
 }
 
 InducedVelocities Inflow::compute_wing_induced_vel_on_blade(const std::vector<double>& x,
@@ -500,6 +603,7 @@ InducedVelocities Inflow::compute_wing_induced_vel_on_blade(const std::vector<do
 HuangPetersInflow::HuangPetersInflow(long mMo, long mMe, const RotorGeometry& rotor,
     const RotorInputState& ri, double dt) {
     OC_Inflow* raw = oc_huang_peters_create(mMo, mMe, rgp(rotor), ris(ri), dt);
+    OC_CHECK(raw, "HuangPetersInflow constructor: oc_huang_peters_create returned null");
     ptr_ = raw; owned_ = true;
 }
 HuangPetersInflow::~HuangPetersInflow() = default;
@@ -512,6 +616,7 @@ HuangPetersInflow& HuangPetersInflow::operator=(HuangPetersInflow&&) noexcept = 
 
 NullInflow::NullInflow(const RotorGeometry& rotor, const RotorInputState& ri) {
     OC_Inflow* raw = oc_null_inflow_create(rgp(rotor), ris(ri));
+    OC_CHECK(raw, "NullInflow constructor: oc_null_inflow_create returned null");
     ptr_ = raw; owned_ = true;
 }
 NullInflow::~NullInflow() = default;
@@ -524,6 +629,7 @@ NullInflow& NullInflow::operator=(NullInflow&&) noexcept = default;
 
 WingInflow::WingInflow(const WingGeometry& wing, const WingInputState& wi, const WingLiftSurf& wls_) {
     OC_Inflow* raw = oc_wing_inflow_create(wg(wing), wis(wi), wls(wls_));
+    OC_CHECK(raw, "WingInflow constructor: oc_wing_inflow_create returned null");
     ptr_ = raw; owned_ = true;
 }
 WingInflow::~WingInflow() = default;
@@ -534,32 +640,41 @@ WingInflow& WingInflow::operator=(WingInflow&&) noexcept = default;
 //  RotorInputState
 // ========================================================================
 
-RotorInputState::RotorInputState(void* p) : ptr_(p) {}
+RotorInputState::RotorInputState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: RotorInputState constructed with null pointer\n";
+#endif
+}
 
-void RotorInputState::set_angular_velocity(double o) { if(ptr_) oc_rotor_input_set_angular_velocity(ris(*this), o); }
+void RotorInputState::set_angular_velocity(double o) { OC_CHECK(ptr_, "RotorInputState::set_angular_velocity called on null object"); oc_rotor_input_set_angular_velocity(ris(*this), o); }
 double RotorInputState::angular_velocity() const { return ptr_ ? oc_rotor_input_get_angular_velocity(ris(*this)) : 0.0; }
-void RotorInputState::set_angular_accel(double a) { if(ptr_) oc_rotor_input_set_angular_accel(ris(*this), a); }
+void RotorInputState::set_angular_accel(double a) { OC_CHECK(ptr_, "RotorInputState::set_angular_accel called on null object"); oc_rotor_input_set_angular_accel(ris(*this), a); }
 double RotorInputState::angular_accel() const { return ptr_ ? oc_rotor_input_get_angular_accel(ris(*this)) : 0.0; }
-void RotorInputState::set_azimuth(double a) { if(ptr_) oc_rotor_input_set_azimuth(ris(*this), a); }
+void RotorInputState::set_azimuth(double a) { OC_CHECK(ptr_, "RotorInputState::set_azimuth called on null object"); oc_rotor_input_set_azimuth(ris(*this), a); }
 double RotorInputState::azimuth() const { return ptr_ ? oc_rotor_input_get_azimuth(ris(*this)) : 0.0; }
 
-void RotorInputState::set_r_0(const std::vector<double>& d) { if(ptr_) oc_rotor_input_set_r_0(ris(*this), const_cast<double*>(d.data()), d.size()); }
+void RotorInputState::set_r_0(const std::vector<double>& d) { OC_CHECK(ptr_, "RotorInputState::set_r_0 called on null object"); oc_rotor_input_set_r_0(ris(*this), const_cast<double*>(d.data()), d.size()); }
 std::vector<double> RotorInputState::get_r_0(size_t len) const { std::vector<double> r(len); if(ptr_) oc_rotor_input_get_r_0(ris(*this), r.data(), len); return r; }
 
-void RotorInputState::set_blade_flapping(const std::vector<double>& d) { if(ptr_) oc_rotor_input_set_blade_flapping(ris(*this), const_cast<double*>(d.data()), d.size()); }
+void RotorInputState::set_blade_flapping(const std::vector<double>& d) { OC_CHECK(ptr_, "RotorInputState::set_blade_flapping called on null object"); oc_rotor_input_set_blade_flapping(ris(*this), const_cast<double*>(d.data()), d.size()); }
 std::vector<double> RotorInputState::get_blade_flapping(size_t len) const { std::vector<double> r(len); if(ptr_) oc_rotor_input_get_blade_flapping(ris(*this), r.data(), len); return r; }
 
-void RotorInputState::set_blade_flapping_rate(const std::vector<double>& d) { if(ptr_) oc_rotor_input_set_blade_flapping_rate(ris(*this), const_cast<double*>(d.data()), d.size()); }
+void RotorInputState::set_blade_flapping_rate(const std::vector<double>& d) { OC_CHECK(ptr_, "RotorInputState::set_blade_flapping_rate called on null object"); oc_rotor_input_set_blade_flapping_rate(ris(*this), const_cast<double*>(d.data()), d.size()); }
 std::vector<double> RotorInputState::get_blade_flapping_rate(size_t len) const { std::vector<double> r(len); if(ptr_) oc_rotor_input_get_blade_flapping_rate(ris(*this), r.data(), len); return r; }
 
 // ========================================================================
 //  AircraftInputState
 // ========================================================================
 
-AircraftInputState::AircraftInputState(void* p) : ptr_(p) {}
+AircraftInputState::AircraftInputState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: AircraftInputState constructed with null pointer\n";
+#endif
+}
 AircraftInputState::AircraftInputState(size_t nr, const std::vector<size_t>& nb, size_t nw) {
     std::vector<size_t> m(nb);
     ptr_ = oc_aircraft_input_state_create(nr, m.data(), nw);
+    OC_CHECK(ptr_, "AircraftInputState constructor: oc_aircraft_input_state_create returned null");
 }
 AircraftInputState::~AircraftInputState() { if(ptr_) oc_aircraft_input_state_destroy(ais(*this)); }
 AircraftInputState::AircraftInputState(AircraftInputState&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }
@@ -573,7 +688,8 @@ RotorInputState AircraftInputState::get_rotor_input(size_t i) {
     return RotorInputState(raw);
 }
 void AircraftInputState::set_blade_pitch(size_t r, size_t b, double p) {
-    if(ptr_) oc_aircraft_input_set_blade_pitch(ais(*this), r, b, p);
+    OC_CHECK(ptr_, "AircraftInputState::set_blade_pitch called on null object");
+    oc_aircraft_input_set_blade_pitch(ais(*this), r, b, p);
 }
 double AircraftInputState::get_blade_pitch(size_t r, size_t b) const {
     return ptr_ ? oc_aircraft_input_get_blade_pitch(ais(*this), r, b) : 0.0;
@@ -583,11 +699,15 @@ double AircraftInputState::get_blade_pitch(size_t r, size_t b) const {
 //  RotorState
 // ========================================================================
 
-RotorState::RotorState(void* p) : ptr_(p) {}
+RotorState::RotorState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: RotorState constructed with null pointer\n";
+#endif
+}
 double RotorState::get_C_T() const { double o=0; if(ptr_) oc_rotor_state_get_C_T(rst(*this),&o); return o; }
-void RotorState::set_C_T(double c) { if(ptr_) oc_rotor_state_set_C_T(rst(*this),c); }
+void RotorState::set_C_T(double c) { OC_CHECK(ptr_, "RotorState::set_C_T called on null object"); oc_rotor_state_set_C_T(rst(*this),c); }
 double RotorState::get_C_Q() const { double o=0; if(ptr_) oc_rotor_state_get_C_Q(rst(*this),&o); return o; }
-void RotorState::set_C_Q(double c) { if(ptr_) oc_rotor_state_set_C_Q(rst(*this),c); }
+void RotorState::set_C_Q(double c) { OC_CHECK(ptr_, "RotorState::set_C_Q called on null object"); oc_rotor_state_set_C_Q(rst(*this),c); }
 
 std::vector<BladeState> RotorState::get_blade_states() const {
     std::vector<BladeState> result;
@@ -600,7 +720,11 @@ std::vector<BladeState> RotorState::get_blade_states() const {
     }
     return result;}
 
-BladeState::BladeState(void* p) : ptr_(p) {}
+BladeState::BladeState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: BladeState constructed with null pointer\n";
+#endif
+}
 double BladeState::azimuth() const { return ptr_ ? oc_blade_state_get_azimuth(bst(*this)) : 0; }
 double BladeState::C_T() const { return ptr_ ? oc_blade_state_get_C_T(bst(*this)) : 0; }
 double BladeState::C_Q() const { return ptr_ ? oc_blade_state_get_C_Q(bst(*this)) : 0; }
@@ -623,7 +747,8 @@ BS_VECF(dC_Df); BS_VECF(dC_Nf); BS_VECF(dC_cf); BS_VECF(dC_Tf); BS_VECF(dC_Qf);
 #undef BS_VECF
 
 #define BS_FILL(name) void BladeState::fill_##name(double* data, size_t len) const { \
-    if(ptr_) oc_blade_state_fill_##name(bst(*this),data,len); }
+    OC_CHECK(ptr_, "BladeState::fill_" #name " called on null object"); \
+    oc_blade_state_fill_##name(bst(*this),data,len); }
 BS_FILL(dC_T); BS_FILL(dC_Db); BS_FILL(dC_N); BS_FILL(dC_D); BS_FILL(dC_L);
 BS_FILL(dC_Q); BS_FILL(u_p); BS_FILL(u_t); BS_FILL(aoa); BS_FILL(gamma);
 BS_FILL(x); BS_FILL(y); BS_FILL(z); BS_FILL(r_c);
@@ -633,11 +758,15 @@ BS_FILL(x); BS_FILL(y); BS_FILL(z); BS_FILL(r_c);
 //  AircraftState
 // ========================================================================
 
-AircraftState::AircraftState(void* p) : ptr_(p) {}
+AircraftState::AircraftState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: AircraftState constructed with null pointer\n";
+#endif
+}
 
 AircraftState::AircraftState(size_t nr, const std::vector<size_t>& nb, size_t ne, size_t nw,
     const std::vector<size_t>& nwp, size_t sns, size_t cns,
-    const Aircraft& aircraft, std::span<Inflow*> ri, std::span<Inflow*> wi, Direction dir) {
+    const Aircraft& aircraft, std::vector<Inflow*> ri, std::vector<Inflow*> wi, Direction dir) {
     std::vector<OC_Inflow*> rri(ri.size());
     for (size_t i = 0; i < ri.size(); ++i) rri[i] = ri[i] ? inl(*ri[i]) : nullptr;
     std::vector<OC_Inflow*> wri(wi.size());
@@ -646,6 +775,7 @@ AircraftState::AircraftState(size_t nr, const std::vector<size_t>& nb, size_t ne
     double dv = static_cast<double>(static_cast<int>(dir));
     ptr_ = oc_aircraft_state_create(nr, mnb.data(), ne, nw, mw.data(), sns, cns,
         ap(aircraft), rri.data(), wri.data(), &dv);
+    OC_CHECK(ptr_, "AircraftState constructor: oc_aircraft_state_create returned null");
 }
 
 AircraftState::~AircraftState() { if(ptr_) oc_aircraft_state_destroy(ast(*this)); }
@@ -654,7 +784,7 @@ AircraftState& AircraftState::operator=(AircraftState&& o) noexcept {
     if(this!=&o){if(ptr_)oc_aircraft_state_destroy(ast(*this));ptr_=o.ptr_;o.ptr_=nullptr;} return *this;
 }
 
-void AircraftState::set_freestream(const Vec4& f) { if(ptr_){OC_Vec4 v=to_oc(f); oc_aircraft_state_set_freestream(ast(*this),&v);} }
+void AircraftState::set_freestream(const Vec4& f) { OC_CHECK(ptr_, "AircraftState::set_freestream called on null object"); OC_Vec4 v=to_oc(f); oc_aircraft_state_set_freestream(ast(*this),&v); }
 Vec4 AircraftState::get_freestream() const { OC_Vec4 o{}; if(ptr_) oc_aircraft_state_get_freestream(ast(*this),&o); return from_oc(o); }
 
 double AircraftState::rotor_C_T(size_t i) { double o=0; if(ptr_) oc_aircraft_state_get_rotor_C_T(ast(*this),i,&o); return o; }
@@ -676,7 +806,11 @@ std::vector<RotorState> AircraftState::get_rotor_states() const {
 //  VortexFilament
 // ========================================================================
 
-VortexFilament::VortexFilament(void* p) : ptr_(p) {}
+VortexFilament::VortexFilament(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: VortexFilament constructed with null pointer\n";
+#endif
+}
 
 #define VF_VEC(name) std::vector<double> VortexFilament::name(size_t len) const { \
     std::vector<double> d(len); if(ptr_) oc_vortex_filament_fill_##name(vf(*this),d.data(),len); return d; }
@@ -684,7 +818,8 @@ VF_VEC(x); VF_VEC(y); VF_VEC(z); VF_VEC(gamma); VF_VEC(r_c); VF_VEC(v_z);
 #undef VF_VEC
 
 #define VF_FILL(name) void VortexFilament::fill_##name(double* data, size_t len) const { \
-    if(ptr_) oc_vortex_filament_fill_##name(vf(*this),data,len); }
+    OC_CHECK(ptr_, "VortexFilament::fill_" #name " called on null object"); \
+    oc_vortex_filament_fill_##name(vf(*this),data,len); }
 VF_FILL(x); VF_FILL(y); VF_FILL(z); VF_FILL(gamma); VF_FILL(r_c); VF_FILL(v_z);
 #undef VF_FILL
 
@@ -692,7 +827,11 @@ VF_FILL(x); VF_FILL(y); VF_FILL(z); VF_FILL(gamma); VF_FILL(r_c); VF_FILL(v_z);
 //  RotorWake
 // ========================================================================
 
-RotorWake::RotorWake(void* p) : ptr_(p) {}
+RotorWake::RotorWake(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: RotorWake constructed with null pointer\n";
+#endif
+}
 
 VortexFilament RotorWake::get_tip_vortex(size_t b) {
     OC_VortexFilament* r = ptr_ ? oc_rotor_wake_get_tip_vortex(rw(*this), b) : nullptr;
@@ -703,12 +842,17 @@ VortexFilament RotorWake::get_tip_vortex(size_t b) {
 //  Wake
 // ========================================================================
 
-Wake::Wake(void* p, bool owned) : ptr_(p), owned_(owned) {}
+Wake::Wake(void* p, bool owned) : ptr_(p), owned_(owned) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: Wake constructed with null pointer\n";
+#endif
+}
 
 Wake::Wake(size_t nr, size_t nb, size_t wh_, size_t re,
     const std::vector<size_t>& sh, const std::vector<size_t>& sr) {
     std::vector<size_t> mh(sh), mr(sr);
     ptr_ = oc_wake_create(nr, nb, wh_, re, mh.data(), mr.data());
+    OC_CHECK(ptr_, "Wake constructor: oc_wake_create returned null");
     owned_ = true;
 }
 
@@ -727,12 +871,17 @@ RotorWake Wake::get_rotor_wake(size_t i) {
 //  WakeHistory
 // ========================================================================
 
-WakeHistory::WakeHistory(void* p) : ptr_(p) {}
+WakeHistory::WakeHistory(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: WakeHistory constructed with null pointer\n";
+#endif
+}
 
 WakeHistory::WakeHistory(size_t nr, size_t nb, size_t wh, size_t th, size_t re,
     const std::vector<size_t>& sh, const std::vector<size_t>& sr, double a1, bool hybrid) {
     std::vector<size_t> mh(sh), mr(sr);
     ptr_ = oc_wake_history_create(nr, nb, wh, th, re, mh.data(), mr.data(), a1, hybrid ? 1 : 0);
+    OC_CHECK(ptr_, "WakeHistory constructor: oc_wake_history_create returned null");
 }
 
 WakeHistory::~WakeHistory() { if(ptr_) oc_wake_history_destroy(wh(*this)); }
@@ -741,7 +890,7 @@ WakeHistory& WakeHistory::operator=(WakeHistory&& o) noexcept {
     if(this!=&o){if(ptr_)oc_wake_history_destroy(wh(*this));ptr_=o.ptr_;o.ptr_=nullptr;} return *this;
 }
 
-void WakeHistory::push_back() { if(ptr_) oc_wake_history_push_back(wh(*this)); }
+void WakeHistory::push_back() { OC_CHECK(ptr_, "WakeHistory::push_back called on null object"); oc_wake_history_push_back(wh(*this)); }
 
 Wake WakeHistory::get_wake(size_t i) {
     OC_Wake* r = ptr_ ? oc_wake_history_get_wake(wh(*this), i) : nullptr;
@@ -752,50 +901,93 @@ Wake WakeHistory::get_wake(size_t i) {
 //  WingInputState / WingState / WingLiftSurf
 // ========================================================================
 
-WingInputState::WingInputState(void* p) : ptr_(p) {}
-WingState::WingState(void* p) : ptr_(p) {}
-WingLiftSurf::WingLiftSurf(void* p) : ptr_(p) {}
+WingInputState::WingInputState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: WingInputState constructed with null pointer\n";
+#endif
+}
+WingState::WingState(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: WingState constructed with null pointer\n";
+#endif
+}
+WingLiftSurf::WingLiftSurf(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: WingLiftSurf constructed with null pointer\n";
+#endif
+}
 
 void WingLiftSurf::set_vortex_geometry(const WingGeometry& wing, size_t sc, size_t cn) {
-    if(ptr_) oc_wing_set_vortex_geometry(wls(*this), wg(wing), sc, cn);
+    OC_CHECK(ptr_, "WingLiftSurf::set_vortex_geometry called on null object");
+    oc_wing_set_vortex_geometry(wls(*this), wg(wing), sc, cn);
 }
 
 // ========================================================================
 //  VTK Types
 // ========================================================================
 
-VtkRotor::VtkRotor(void* p) : ptr_(p) {}
-VtkRotor::~VtkRotor() { if(ptr_) oc_vtk_rotor_destroy(vr(*this)); }
-VtkRotor::VtkRotor(VtkRotor&& o) noexcept : ptr_(o.ptr_) { o.ptr_=nullptr; }
-VtkRotor& VtkRotor::operator=(VtkRotor&& o) noexcept {
-    if(this!=&o){if(ptr_)oc_vtk_rotor_destroy(vr(*this));ptr_=o.ptr_;o.ptr_=nullptr;} return *this;
+VtkRotor::VtkRotor(void* p) : ptr_(p), owned_(true) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: VtkRotor constructed with null pointer\n";
+#endif
 }
-VtkRotor VtkRotor::build(const RotorGeometry& r) { return VtkRotor(oc_build_vtu_rotor(rgp(r))); }
+VtkRotor::~VtkRotor() { if(owned_ && ptr_) { oc_vtk_rotor_destroy(vr(*this)); ptr_ = nullptr; } }
+VtkRotor::VtkRotor(VtkRotor&& o) noexcept : ptr_(o.ptr_), owned_(o.owned_) { o.ptr_=nullptr; o.owned_=false; }
+VtkRotor& VtkRotor::operator=(VtkRotor&& o) noexcept {
+    if(this!=&o){if(owned_&&ptr_)oc_vtk_rotor_destroy(vr(*this));ptr_=o.ptr_;owned_=o.owned_;o.ptr_=nullptr;o.owned_=false;} return *this;
+}
+VtkRotor VtkRotor::build(const RotorGeometry& r) {
+    OC_VtkRotor* raw = oc_build_vtu_rotor(rgp(r));
+    OC_CHECK(raw, "VtkRotor::build: oc_build_vtu_rotor returned null");
+    return VtkRotor(raw);
+}
 
-VtkWing::VtkWing(void* p) : ptr_(p) {}
+VtkWing::VtkWing(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: VtkWing constructed with null pointer\n";
+#endif
+}
 VtkWing::~VtkWing() { if(ptr_) oc_vtk_wing_destroy(vw(*this)); }
 VtkWing::VtkWing(VtkWing&& o) noexcept : ptr_(o.ptr_) { o.ptr_=nullptr; }
 VtkWing& VtkWing::operator=(VtkWing&& o) noexcept {
     if(this!=&o){if(ptr_)oc_vtk_wing_destroy(vw(*this));ptr_=o.ptr_;o.ptr_=nullptr;} return *this;
 }
-VtkWing VtkWing::build(const WingGeometry& w) { return VtkWing(oc_build_vtu_wing(wg(w))); }
+VtkWing VtkWing::build(const WingGeometry& w) {
+    OC_VtkWing* raw = oc_build_vtu_wing(wg(w));
+    OC_CHECK(raw, "VtkWing::build: oc_build_vtu_wing returned null");
+    return VtkWing(raw);
+}
 
-VtkWake::VtkWake(void* p) : ptr_(p) {}
+VtkWake::VtkWake(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: VtkWake constructed with null pointer\n";
+#endif
+}
 VtkWake::~VtkWake() { if(ptr_) oc_vtk_wake_destroy(vkw(*this)); }
 VtkWake::VtkWake(VtkWake&& o) noexcept : ptr_(o.ptr_) { o.ptr_=nullptr; }
 VtkWake& VtkWake::operator=(VtkWake&& o) noexcept {
     if(this!=&o){if(ptr_)oc_vtk_wake_destroy(vkw(*this));ptr_=o.ptr_;o.ptr_=nullptr;} return *this;
 }
-VtkWake VtkWake::build(const Wake& w) { return VtkWake(oc_build_vtu_wake(wk(w))); }
+VtkWake VtkWake::build(const Wake& w) {
+    OC_VtkWake* raw = oc_build_vtu_wake(wk(w));
+    OC_CHECK(raw, "VtkWake::build: oc_build_vtu_wake returned null");
+    return VtkWake(raw);
+}
 
-VtkWingWake::VtkWingWake(void* p) : ptr_(p) {}
+VtkWingWake::VtkWingWake(void* p) : ptr_(p) {
+#ifndef NDEBUG
+    if (!p) std::cerr << "WARNING: VtkWingWake constructed with null pointer\n";
+#endif
+}
 VtkWingWake::~VtkWingWake() { if(ptr_) oc_vtk_wing_wake_destroy(vww(*this)); }
 VtkWingWake::VtkWingWake(VtkWingWake&& o) noexcept : ptr_(o.ptr_) { o.ptr_=nullptr; }
 VtkWingWake& VtkWingWake::operator=(VtkWingWake&& o) noexcept {
     if(this!=&o){if(ptr_)oc_vtk_wing_wake_destroy(vww(*this));ptr_=o.ptr_;o.ptr_=nullptr;} return *this;
 }
 VtkWingWake VtkWingWake::build(const WingGeometry& w, const WingLiftSurf& l) {
-    return VtkWingWake(oc_build_vtu_wing_wake(wg(w), wls(l)));
+    OC_VtkWingWake* raw = oc_build_vtu_wing_wake(wg(w), wls(l));
+    OC_CHECK(raw, "VtkWingWake::build: oc_build_vtu_wing_wake returned null");
+    return VtkWingWake(raw);
 }
 
 // ========================================================================
@@ -808,9 +1000,9 @@ void write_rotor_vtu(std::string_view filename, size_t step, size_t iteration,
 }
 
 void write_rotors_vtu(std::string_view filename, size_t step,
-    std::span<const VtkRotor*> vtks, const AircraftState& ac_state, const Aircraft& aircraft) {
+    const std::vector<VtkRotor>& vtks, const AircraftState& ac_state, const Aircraft& aircraft) {
     size_t n = vtks.size(); std::vector<OC_VtkRotor*> raw(n);
-    for(size_t i=0;i<n;++i) raw[i] = vtks[i] ? vr(*vtks[i]) : nullptr;
+    for(size_t i=0;i<n;++i) raw[i] = vr(vtks[i]);
     oc_write_rotors_vtu(filename.data(), step, raw.data(), n, ast(ac_state), ap(aircraft));
 }
 

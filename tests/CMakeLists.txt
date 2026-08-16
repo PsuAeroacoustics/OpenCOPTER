@@ -70,6 +70,8 @@ set(TEST_SOURCES
   src/test_api_sentinel.cpp
   # Phase 8: Children API tests
   src/test_api_children.cpp
+  # Phase 9: C++ RAII wrapper tests
+  src/test_cpp_api.cpp
 )
 
 # Create single test executable

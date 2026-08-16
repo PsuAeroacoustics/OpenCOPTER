@@ -292,10 +292,9 @@ int main() {
 	// ============================================================
 	oc::HuangPetersInflow inflow_0(4, 2, rotor, rotor_input, dt);
 
-	/* Build spans for AircraftState constructor */
-	oc::Inflow* rotor_inflow_arr[] = {&inflow_0};
-	std::span<oc::Inflow*> rotor_inflows_span(rotor_inflow_arr);
-	std::span<oc::Inflow*> wing_inflows_span{};
+	/* Build vectors for AircraftState constructor */
+	std::vector<oc::Inflow*> rotor_inflows = {&inflow_0};
+	std::vector<oc::Inflow*> wing_inflows;
 
 	// ============================================================
 	// Wake history (free-wake storage)
@@ -307,7 +306,7 @@ int main() {
 	// Aircraft aerodynamic state
 	// ============================================================
 	oc::AircraftState ac_state(num_rotors, {num_blades}, elements, 0, {}, 0, 0, aircraft,
-						rotor_inflows_span, wing_inflows_span,
+						rotor_inflows, wing_inflows,
 						oc::direction_counter_clockwise());
 
 	ac_state.set_freestream(oc::Vec4{V_inf, 0, 0, 0});
@@ -357,7 +356,7 @@ int main() {
 							static_cast<size_t>(iteration), dt, false, false);
 
 		if (vtk_rotor_0 && iteration > (iterations - 360)) {
-			const oc::VtkRotor* vtk_arr[] = {&vtk_rotor_0};
+			std::vector<oc::VtkRotor> vtk_arr = {vtk_rotor_0};
 			oc::write_rotors_vtu("rotor", static_cast<size_t>(iteration), vtk_arr,
 								ac_state, aircraft);
 		}

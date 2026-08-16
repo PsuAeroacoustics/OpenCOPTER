@@ -6,6 +6,20 @@
  * API.  RAII memory management via private void* pointers with explicit destructors.
  * Constructors replace factory functions for a natural object-creation model.
  *
+ * @section error Error Handling & Validation Conventions
+ *
+ * - **Factory constructors and static factories** throw
+ *   `std::runtime_error` if the underlying C API returns a null pointer.
+ * - **Setter/action methods** (set_*, rotate, translate, update, fill_*,
+ *   compute_*, push_back, etc.) throw `std::runtime_error` if called on a
+ *   null object (i.e. the wrapper was default-constructed or moved-from).
+ * - **Getter methods** (get_*, *_count, *_matrix, etc.) return sensible
+ *   defaults (0.0, nullptr, empty vectors) when called on a null object.
+ *   They do NOT throw.
+ * - **Non-owning wrappers** (BladeState, RotorState, WingPartGeometry,
+ *   VortexFilament, RotorWake, WingInputState, WingState, WingLiftSurf)
+ *   are copyable by value; their lifetime is managed by the owning object.
+ *
  * Author: OpenCOPTER Team
  * License: MIT
  */
@@ -138,6 +152,7 @@ public:
     void update(const Mat4& parent_global_mat);
 
     void set_children(std::span<const Frame*> children);
+    void set_children(std::span<const Frame> children);
     void set_frame_type(FrameType ft);
     void set_name(std::string_view name);
 
@@ -179,6 +194,13 @@ public:
 
     Frame root_frame();
     void set_rotors(std::span<const RotorGeometry*> rotors);
+    void set_rotors(std::span<const RotorGeometry> rotors);
+
+    /** Get the number of rotors on this Aircraft. */
+    size_t num_rotors() const;
+
+    /** Get RotorGeometry by index. Returns non-owning wrapper. */
+    RotorGeometry get_rotor(size_t rotor_idx);
 
     operator bool() const { return ptr_ != nullptr; }
 };
@@ -238,7 +260,14 @@ private:
 public:
     BladeAirfoil() = default;
 
-    static BladeAirfoil create_basic(size_t num_elements, double C_l_alpha_0);
+    /** @brief Construct a BladeAirfoil by combining multiple AirfoilModels across blade chunks.
+     * @param models  Vector of airfoil models (one per chunk).
+     * @param extents Chunk extents — must have size `models.size() + 1`.
+     *        extents[0] is 0, extents[last] is 1.0, monotonically increasing.
+     * @throws std::runtime_error if the C API returns null.
+     * @note Lifetime: BladeAirfoil owns all data. Move-only.
+     *       The C API copies the polar data internally, so AirfoilModel
+     *       objects can be destroyed after this call. */
     static BladeAirfoil create(const std::vector<AirfoilModel>& models,
                               const std::vector<size_t>& extents);
 
@@ -293,6 +322,8 @@ public:
     BladeGeometry(BladeGeometry&&) noexcept;
     BladeGeometry& operator=(BladeGeometry&&) noexcept;
 
+    /** @note The C API copies data internally — caller's storage can be freed after the call.
+     * @throws std::runtime_error if called on a null object. */
     void set_twist(const std::vector<double>& data);
     void set_chord(const std::vector<double>& data);
     void set_radius(const std::vector<double>& data);
@@ -303,15 +334,16 @@ public:
     void set_thickness(const std::vector<double>& data);
     void set_xi_p(const std::vector<double>& data);
 
-    void set_twist(const std::span<double>& data);
-    void set_chord(const std::span<double>& data);
-    void set_radius(const std::span<double>& data);
-    void set_C_l_alpha(const std::span<double>& data);
-    void set_alpha_0(const std::span<double>& data);
-    void set_sweep(const std::span<double>& data);
-    void set_xi(const std::span<double>& data);
-    void set_thickness(const std::span<double>& data);
-    void set_xi_p(const std::span<double>& data);
+    /** @overload span versions. @throws std::runtime_error if called on a null object. */
+    void set_twist(const std::span<const double>& data);
+    void set_chord(const std::span<const double>& data);
+    void set_radius(const std::span<const double>& data);
+    void set_C_l_alpha(const std::span<const double>& data);
+    void set_alpha_0(const std::span<const double>& data);
+    void set_sweep(const std::span<const double>& data);
+    void set_xi(const std::span<const double>& data);
+    void set_thickness(const std::span<const double>& data);
+    void set_xi_p(const std::span<const double>& data);
 
     void compute_vectors();
 
@@ -356,7 +388,11 @@ public:
 
     void set_solidity(double solidity);
     void set_blades(std::span<const BladeGeometry*> blades);
+    void set_blades(std::span<const BladeGeometry> blades);
     void set_frame(const Frame& frame);
+
+    /** Get the Frame associated with this RotorGeometry. Returns non-owning wrapper. */
+    Frame frame() const;
 
     operator bool() const { return ptr_ != nullptr; }
 };
@@ -412,6 +448,8 @@ public:
     WingPartGeometry(const WingPartGeometry&) = default;
     WingPartGeometry& operator=(const WingPartGeometry&) = default;
 
+    /** @note Non-owning wrapper — lifetime managed by WingGeometry.
+     * @throws std::runtime_error if called on a null object. */
     void set_chord(const std::vector<double>& data);
     void set_twist(const std::vector<double>& data);
     void set_sweep(const std::vector<double>& data);
@@ -728,8 +766,8 @@ public:
                   size_t num_span_nodes,
                   size_t num_chord_nodes,
                   const Aircraft& aircraft,
-                  std::span<Inflow*> rotor_inflows,
-                  std::span<Inflow*> wing_inflows,
+                  std::vector<Inflow*> rotor_inflows,
+                  std::vector<Inflow*> wing_inflows,
                   Direction direction);
 
     ~AircraftState();
@@ -940,6 +978,8 @@ public:
     WingLiftSurf(const WingLiftSurf&) = default;
     WingLiftSurf& operator=(const WingLiftSurf&) = default;
 
+    /** @note Non-owning wrapper — lifetime managed externally.
+     * @throws std::runtime_error if called on a null object. */
     void set_vortex_geometry(const WingGeometry& wing,
                              size_t spanwise_chunks, size_t chordwise_nodes);
 
@@ -955,6 +995,7 @@ private:
     friend struct detail::ptr_accessor;
 
     void* ptr_ = nullptr;
+    bool owned_ = true;
 
     explicit VtkRotor(void*);
 
@@ -963,12 +1004,14 @@ public:
 
     static VtkRotor build(const RotorGeometry& rotor);
 
+    /** @brief Non-owning copy. The copy shares the D-side object but does not destroy it. */
+    VtkRotor(const VtkRotor& o) : ptr_(o.ptr_), owned_(false) {}
+    VtkRotor& operator=(const VtkRotor&) = delete;
+
     ~VtkRotor();
 
-    VtkRotor(const VtkRotor&) = delete;
-    VtkRotor& operator=(const VtkRotor&) = delete;
-    VtkRotor(VtkRotor&&) noexcept;
-    VtkRotor& operator=(VtkRotor&&) noexcept;
+    VtkRotor(VtkRotor&& o) noexcept;
+    VtkRotor& operator=(VtkRotor&& o) noexcept;
 
     operator bool() const { return ptr_ != nullptr; }
 };
@@ -1051,7 +1094,7 @@ void write_rotor_vtu(std::string_view filename, size_t step, size_t iteration,
                      const RotorGeometry& geom);
 
 void write_rotors_vtu(std::string_view filename, size_t step,
-                      std::span<const VtkRotor*> vtks,
+                      const std::vector<VtkRotor>& vtks,
                       const AircraftState& ac_state, const Aircraft& aircraft);
 
 void write_wing_vtu(std::string_view filename, size_t step, size_t iteration,
@@ -1081,8 +1124,7 @@ Direction direction_clockwise();
 Direction direction_counter_clockwise();
 Mat3 mat3_identity();
 Mat4 mat4_identity();
-//std::vector<double> generate_radius_points(size_t n_sections, double root_cutout);
-std::span<double> generate_radius_points(size_t n_sections, double root_cutout);
+std::vector<double> generate_radius_points(size_t n_sections, double root_cutout);
 
 void simulation_step(const AircraftState& ac_state, const Aircraft& aircraft,
                      const AircraftInputState& ac_input_state,

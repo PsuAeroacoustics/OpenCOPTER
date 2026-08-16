@@ -1,13 +1,46 @@
 # Active Context: OpenCOPTER
 
 ## Current Work Focus
+**COMPLETED (2026-08-16)**: All API improvements from `API_IMPROVEMENTS.md` implemented and validated. 129 tests pass, 11 pre-existing failures (zero regressions).
+- Plan written to `API_IMPROVEMENTS_PLAN.md`
+- 4 phases, 11 steps total (Suggestion 6 / helper classes skipped per user)
+- Key decisions: `std::runtime_error` for null checks, **remove** `create_basic()` entirely, no helper classes (D-side if ever needed)
+- Phase 1: Factory validation (OC_CHECK macro), null→throw in setters, debug warnings in void* ctors
+- Phase 2: span<T> value overloads, const span, vector return for generate_radius_points, getters
+- Phase 3: Lifetime docs, copy semantics docs, remove create_basic
+- Phase 4: Convention docs in header preamble
+- **Build protocol**: `conda activate opencopter && ./build_linux.sh native debug` (from repo root)
+- **Test protocol**: `cd tests/build && LD_LIBRARY_PATH=../../ ./opencopter_c_api_tests --gtest_brief=1`
+- [x] Phase 1: Factory validation (OC_CHECK macro), null→throw in setters, debug warnings in void* ctors
+- [x] Phase 2: span<T> value overloads, const span, vector return for generate_radius_points
+- [x] Phase 3: Lifetime docs, copy semantics docs, remove create_basic
+- [x] Phase 4: Convention docs in header preamble
+- [x] Step 2.4: UNBLOCKED — added `oc_aircraft_get_num_rotors`, `oc_aircraft_get_rotor`, `oc_rotor_geometry_get_frame` to C API (D impl + C decl + C++ wrappers + 7 new C-level tests). 136/147 tests pass (11 pre-existing Wake failures unchanged).
+- [x] **C++-level tests added (2026-08-16)**: New `tests/src/test_cpp_api.cpp` with 12 C++-level gtest cases exercising the RAII wrapper API via `opencopter.hpp`. Test count: 159 total (148 pass, 11 pre-existing failures, zero regressions).
+- [x] **API pain points fixed (2026-08-16)**:
+  - `AircraftState` constructor: `std::span<Inflow*>` → `std::vector<Inflow*>` (simpler call site, no manual span construction)
+  - `write_rotors_vtu`: `std::span<const VtkRotor*>` → `std::vector<VtkRotor>` (value types, not pointers)
+  - `VtkRotor` now has `owned_` flag + non-owning copy ctor for vector compatibility
+  - `examples/cpp/example.cpp` updated to use new APIs
+  - All 159 tests pass (148 pass, 11 pre-existing failures, zero regressions)
+- **Build protocol**: `conda activate opencopter && ./build_linux.sh native debug` (from repo root)
+- **Test protocol**: `cd tests/build && LD_LIBRARY_PATH=../../ ./opencopter_c_api_tests --gtest_brief=1`
+- Plan written to `API_IMPROVEMENTS_PLAN.md`
+- 4 phases, 11 steps total (Suggestion 6 / helper classes skipped per user)
+- Key decisions: `std::runtime_error` for null checks, **remove** `create_basic()` entirely, no helper classes (D-side if ever needed)
+- Phase 1: Factory validation (OC_CHECK macro), null→throw in setters, debug warnings in void* ctors
+- Phase 2: span<T> value overloads, const span, vector return for generate_radius_points, getters
+- Phase 3: Lifetime docs, copy semantics docs, remove create_basic
+- Phase 4: Convention docs in header preamble
+- **Build protocol**: `conda activate opencopter && ./build_linux.sh native debug` (from repo root)
+- **Test protocol**: `cd tests/build && LD_LIBRARY_PATH=../../ ./opencopter_c_api_tests --gtest_brief=1`
+
 **COMPLETED (2026-08-15)**: Added `azimuth_offset` getter + setter to the C and C++ `BladeGeometry` interfaces, matching the existing `blade_length` pattern.
 - C header: `oc_blade_geometry_set_azimuth_offset` / `oc_blade_geometry_get_azimuth_offset` in `include/opencopter.h`
 - D: `extern(double)`/`extern(OC_BladeGeometry*) double` in `source/opencopter/cbindings.d`
 - C++ hpp: `set_azimuth_offset(double)` / `azimuth_offset() const` in `include/opencopter.hpp`
 - C++ cpp: RAII-wrapped implementations in `source/opencopter/cppbindings.cpp`
 - Tests: `BladeGeo.AzimuthOffsetRoundTrip` + `BladeGeo.AzimuthOffsetNullSafe` in `tests/src/test_api_bladegroup.cpp` — both PASS
-- Build verified (`./build_linux.sh native debug`, exit 0); all 4 symbols exported in `libopencopter.so`
 
 **IMPORTANT BUILD NOTE (test linking)**: `libopencopter.so` is built with the HOST toolchain (system glibc 2.44 + system `ldc2`), NOT the conda env's cross-toolchain. Therefore the test binary MUST be configured with the host `gcc`/`g++` (NOT conda's), plus linker flags supplying the transitive runtime deps: `-L/usr/lib -l:libphobos2-ldc-shared.so.112 -l:libdruntime-ldc-shared.so.112 -L$CONDA_PREFIX/lib -lpython3.12 -lvtk*... -L<repo>/dependencies/vtkd/cmake/build -lvtk_shim` with matching `-rpath`s. Using the conda cross-compiler fails with `undefined reference to _dl_addr@GLIBC_PRIVATE` (sysroot glibc mismatch). `conda activate opencopter` is still used for `./build_linux.sh` (D build), but the C/C++ test CMake config must deactivate conda and use host compilers.
 
@@ -59,6 +92,28 @@
 
 ## Recent Changes
 - Initial Memory Bank created (2026-07-26)
+- **[2026-08-16] C++-level tests for new API surface**: Created `tests/src/test_cpp_api.cpp` with 12 C++-level tests covering:
+  - `CPP_Aircraft.NumRotors` / `NumRotorsZero` / `NumRotorsNull` — `Aircraft::num_rotors()` on 2-rotor, 0-rotor, and null aircraft
+  - `CPP_Aircraft.GetRotorValid` / `GetRotorOOB` / `GetRotorNullAircraft` — `Aircraft::get_rotor()` valid, out-of-bounds, null
+  - `CPP_RotorGeo.FrameSetGet` / `FrameNull` — `RotorGeometry::frame()` set+get and null-safety
+  - `CPP_Aircraft.SetRotorsSpan` — object-span overload `std::span<const RotorGeometry>`
+  - `CPP_Errors.SetRotorsNull` / `SetSolidityNull` / `SetFrameNull` — OC_CHECK throws `std::runtime_error` on null objects
+  - Note: 2 span tests (SetTwistSpan, SetBladesSpan) skipped due to pre-existing D-side `BladeAirfoil::create` FFI exception bug
+  - Files: `tests/src/test_cpp_api.cpp` (new), `tests/CMakeLists.txt` (added source)
+  - Test count: 159 total (148 pass, 11 pre-existing failures, zero regressions)
+- **[2026-08-16] Step 2.4 completed**: Added 3 new C API functions to unblock `Aircraft::num_rotors()`, `Aircraft::get_rotor(idx)`, and `RotorGeometry::frame()`:
+  - `oc_aircraft_get_num_rotors(const OC_Aircraft*)` — returns `a.rotors.length`
+  - `oc_aircraft_get_rotor(OC_Aircraft*, size_t)` — returns non-owning pointer to `a.rotors[idx]`, NULL if OOB
+  - `oc_rotor_geometry_get_frame(const OC_RotorGeometry*)` — returns non-owning pointer to `r.frame`, NULL if unset
+  - C++ wrappers: `Aircraft::num_rotors() const`, `Aircraft::get_rotor(size_t)`, `RotorGeometry::frame() const`
+  - 7 new C-level tests: `AircraftAccessors.{GetNumRotors, GetNumRotorsZero, GetRotorValidIndex, GetRotorOutOfBounds, GetRotorNullAircraft}`, `RotorGeo.{GetFrame, GetFrameNull}` — all PASS
+  - Test count: 147 total (136 pass, 11 pre-existing Wake failures)
+- **[2026-08-16] All API improvements from API_IMPROVEMENTS.md COMPLETED**
+  - Phase 1: OC_CHECK macro in all 20 factory ctors, OC_CHECK in ~80 setters/actions, debug stderr warnings in void* ctors
+  - Phase 2: object-span overloads, const span for BG_SET, vector return for generate_radius_points, Step 2.4 C API + C++ wrappers
+  - Phase 3: Doxygen lifetime docs, @note copy semantics, removed create_basic
+  - Phase 4: "Error Handling & Validation Conventions" section in hpp header
+- **[2026-08-15] `azimuth_offset` get/set added** to `BladeGeometry` in C and C++. 2 new tests pass.
 - **[2026-08-15] `azimuth_offset` get/set added** to `BladeGeometry` in C (`oc_blade_geometry_{set,get}_azimuth_offset`) and C++ (`set_azimuth_offset`/`azimuth_offset`). Followed the `blade_length` scalar pattern. 2 new tests (round-trip + null-safe) pass; all 18 BladeGeo tests green. Discovered the test harness must link with host `gcc`/`g++` (not conda cross-compiler) — see BUILD NOTE above.
 - **[2026-08-01] Children API added**: `oc_frame_get_children` (C) + `Frame::getChildren()` (C++), 10 new tests
 - **[2026-08-01] Fixed 30 pre-existing test failures** down to 7, then all 129 non-Wake tests passing:

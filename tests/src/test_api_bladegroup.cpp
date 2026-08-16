@@ -260,3 +260,69 @@ TEST(BladeGeo, MultipleCycles) {
         oc_blade_airfoil_destroy(af);
     }
 }
+
+/* ================================================================== */
+/*  Tests for new Step 2.4 C API functions                             */
+/* ================================================================== */
+
+/* Helper: create a rotor with 1 blade */
+static OC_RotorGeometry* make_test_rotor(size_t num_blades) {
+    return oc_rotor_geometry_create(num_blades, make_vec3(0,0,0), 0.5, 0.05);
+}
+
+TEST(AircraftAccessors, GetNumRotors) {
+    OC_Aircraft* ac = oc_aircraft_create(2, 0);
+    ASSERT_NE(ac, nullptr);
+    size_t n = oc_aircraft_get_num_rotors(ac);
+    EXPECT_EQ(n, 2u);
+    oc_aircraft_destroy(ac);
+}
+
+TEST(AircraftAccessors, GetNumRotorsZero) {
+    OC_Aircraft* ac = oc_aircraft_create(0, 0);
+    ASSERT_NE(ac, nullptr);
+    size_t n = oc_aircraft_get_num_rotors(ac);
+    EXPECT_EQ(n, 0u);
+    oc_aircraft_destroy(ac);
+}
+
+TEST(AircraftAccessors, GetRotorValidIndex) {
+    OC_Aircraft* ac = oc_aircraft_create(2, 0);
+    ASSERT_NE(ac, nullptr);
+    OC_RotorGeometry* r0 = oc_aircraft_get_rotor(ac, 0);
+    OC_RotorGeometry* r1 = oc_aircraft_get_rotor(ac, 1);
+    EXPECT_NE(r0, nullptr);
+    EXPECT_NE(r1, nullptr);
+    EXPECT_NE(r0, r1); /* different rotors */
+    oc_aircraft_destroy(ac);
+}
+
+TEST(AircraftAccessors, GetRotorOutOfBounds) {
+    OC_Aircraft* ac = oc_aircraft_create(1, 0);
+    ASSERT_NE(ac, nullptr);
+    OC_RotorGeometry* r = oc_aircraft_get_rotor(ac, 5); /* out of bounds */
+    EXPECT_EQ(r, nullptr);
+    oc_aircraft_destroy(ac);
+}
+
+TEST(AircraftAccessors, GetRotorNullAircraft) {
+    OC_RotorGeometry* r = oc_aircraft_get_rotor(nullptr, 0);
+    EXPECT_EQ(r, nullptr);
+}
+
+TEST(RotorGeo, GetFrame) {
+    OC_RotorGeometry* rotor = make_test_rotor(1);
+    OC_Frame* frame = oc_frame_create(make_vec3(0,0,1), 0.0, make_vec3(0,0,0), nullptr, "test", 2);
+    ASSERT_NE(frame, nullptr);
+    oc_rotor_geometry_set_frame(rotor, frame);
+    OC_Frame* got = oc_rotor_geometry_get_frame(rotor);
+    EXPECT_NE(got, nullptr);
+    EXPECT_EQ(got, frame); /* same pointer */
+    oc_rotor_geometry_destroy(rotor);
+    oc_frame_destroy(frame);
+}
+
+TEST(RotorGeo, GetFrameNull) {
+    OC_Frame* got = oc_rotor_geometry_get_frame(nullptr);
+    EXPECT_EQ(got, nullptr);
+}

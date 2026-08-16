@@ -939,6 +939,26 @@ extern(C) void oc_aircraft_set_rotors(OC_Aircraft* ac, OC_RotorGeometry** rotors
 }
 
 /**
+ * Get the number of rotors on an Aircraft.
+ */
+extern(C) size_t oc_aircraft_get_num_rotors(const OC_Aircraft* ac) {
+    auto a = cast(const(Aircraft)*)ac;
+    if (a !is null) return a.rotors.length;
+    return 0;
+}
+
+/**
+ * Get RotorGeometry by index. Returns non-owning pointer.
+ */
+extern(C) OC_RotorGeometry* oc_aircraft_get_rotor(OC_Aircraft* ac, size_t rotor_idx) {
+    auto a = cast(Aircraft*)ac;
+    if (a !is null && rotor_idx < a.rotors.length) {
+        return cast(OC_RotorGeometry*)&a.rotors[rotor_idx];
+    }
+    return null;
+}
+
+/**
  * Set blade_length on a BladeGeometry.
  */
 extern(C) void oc_blade_geometry_set_blade_length(OC_BladeGeometry* geom, double length) {
@@ -970,6 +990,15 @@ extern(C) void oc_rotor_geometry_set_frame(OC_RotorGeometry* rotor, OC_Frame* fr
     auto r = cast(RotorGeometry*)rotor;
     auto f = cast(Frame*)frame;
     if (r !is null && f !is null) r.frame = f;
+}
+
+/**
+ * Get the Frame associated with a RotorGeometry. Returns non-owning pointer.
+ */
+extern(C) OC_Frame* oc_rotor_geometry_get_frame(const OC_RotorGeometry* rotor) {
+    auto r = cast(const(RotorGeometry)*)rotor;
+    if (r !is null && r.frame !is null) return cast(OC_Frame*)r.frame;
+    return null;
 }
 
 /**
