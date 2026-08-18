@@ -530,22 +530,26 @@ extern(C) OC_AircraftState* oc_aircraft_state_create(
 
     auto dir = (direction !is null) ? direction[0..num_rotors] : new double[num_rotors];
 
-    auto state = new AircraftState(
-        num_rotors,
-        (num_blades !is null) ? num_blades[0..num_rotors] : null,
-        num_elements,
-        num_wings,
-        (num_wing_parts !is null) ? num_wing_parts[0..num_wings] : null,
-        num_span_nodes,
-        num_chord_nodes,
-        *oc_ac,
-        oc_rotor_inflows,
-        oc_wing_inflows,
-        dir
-    );
+    try {
+        auto state = new AircraftState(
+            num_rotors,
+            (num_blades !is null) ? num_blades[0..num_rotors] : null,
+            num_elements,
+            num_wings,
+            (num_wing_parts !is null) ? num_wing_parts[0..num_wings] : null,
+            num_span_nodes,
+            num_chord_nodes,
+            *oc_ac,
+            oc_rotor_inflows,
+            oc_wing_inflows,
+            dir
+        );
 
-    GC.addRoot(state);
-    return cast(OC_AircraftState*)state;
+        GC.addRoot(state);
+        return cast(OC_AircraftState*)state;
+    } catch(Throwable e) {
+        return null;
+    }
 }
 
 extern(C) void oc_aircraft_state_destroy(OC_AircraftState* state) {
@@ -749,13 +753,19 @@ extern(C) OC_Wake* oc_wake_create(size_t num_rotors, size_t num_blades,
                                    size_t wake_history, size_t radial_elements,
                                    const size_t* shed_history, const size_t* shed_release)
 {
-    auto wake = new Wake(
-        num_rotors, num_blades, wake_history, radial_elements,
-        (shed_history !is null) ? shed_history[0..num_rotors] : null,
-        (shed_release !is null) ? shed_release[0..num_rotors] : null
-    );
-    GC.addRoot(wake);
-    return cast(OC_Wake*)wake;
+    try {
+        auto def_hist = new size_t[num_rotors]; foreach(i; 0..num_rotors) def_hist[i] = 1;
+        auto def_rel  = new size_t[num_rotors]; foreach(i; 0..num_rotors) def_rel[i]  = 1;
+        auto wake = new Wake(
+            num_rotors, num_blades, wake_history, radial_elements,
+            (shed_history !is null) ? shed_history[0..num_rotors] : def_hist,
+            (shed_release !is null) ? shed_release[0..num_rotors] : def_rel
+        );
+        GC.addRoot(wake);
+        return cast(OC_Wake*)wake;
+    } catch(Throwable e) {
+        return null;
+    }
 }
 extern(C) void oc_wake_destroy(OC_Wake* wake) {
     if (wake !is null) GC.removeRoot(cast(Wake*)wake);
@@ -801,10 +811,15 @@ extern(C) OC_WakeHistory* oc_wake_history_create(
     auto nb = new size_t[num_rotors];
     foreach(i; 0..num_rotors) nb[i] = num_blades;
 
+    size_t[] def_shed_h, def_shed_r;
+    if (shed_history is null) { def_shed_h = new size_t[num_rotors]; foreach(i; 0..num_rotors) def_shed_h[i] = 1; }
+    if (shed_release is null) { def_shed_r = new size_t[num_rotors]; foreach(i; 0..num_rotors) def_shed_r[i] = 1; }
+    auto sh_arr = (shed_history !is null) ? shed_history[0..num_rotors] : def_shed_h;
+    auto sr_arr = (shed_release !is null) ? shed_release[0..num_rotors] : def_shed_r;
+
     auto history = new WakeHistory(
         num_rotors, nb, wake_history, time_history, radial_elements,
-        (shed_history !is null) ? shed_history[0..num_rotors] : null,
-        (shed_release !is null) ? shed_release[0..num_rotors] : null,
+        sh_arr, sr_arr,
         a1, hybrid != 0
     );
     GC.addRoot(history);
@@ -1477,7 +1492,7 @@ extern(C) OC_AirfoilModel* oc_aero_das_create(double* alpha, size_t alpha_len,
             GC.addRoot(cast(void*)af);
             debug writeln("Rooted aerodas");
             return cast(OC_AirfoilModel*)af;
-        } catch(Exception ex) {
+        } catch(Throwable ex) {
             
             debug writeln("Caught exception creating aerodas airfoil: ", ex.msg);
             return null;
@@ -1493,7 +1508,7 @@ extern(C) OC_AirfoilModel* oc_aero_das_from_xfoil_polar(const(char)* filename, d
             auto af = create_aerodas_from_xfoil_polar(fname, tbyc);
             GC.addRoot(cast(void*)af);
             return cast(OC_AirfoilModel*)af;
-        } catch(Exception ex) {
+        } catch(Throwable ex) {
             return null;
         }
     }
@@ -1509,7 +1524,7 @@ extern(C) OC_AirfoilModel* oc_c81_from_file(const(char)* filename) {
             auto af = load_c81_file(fname);
             GC.addRoot(cast(void*)af);
             return cast(OC_AirfoilModel*)af;
-        } catch(Exception ex) {
+        } catch(Throwable ex) {
             return null;
         }
     }

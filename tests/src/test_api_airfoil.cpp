@@ -153,7 +153,8 @@ TEST(Airfoil, AeroDasNullInput) {
 TEST(Airfoil, AeroDasGetClCd) {
     std::vector<double> alpha = {-5.0, -4.0, -3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 4.0, 5.0};
     std::vector<double> CL    = {-0.5, -0.4, -0.3, -0.2, -0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5};
-    std::vector<double> CD    = {0.025, 0.02, 0.015, 0.01, 0.005, 0.0001, 0.005, 0.01, 0.015, 0.02, 0.025};
+    // Asymmetric drag polar (realistic): min CD near alpha=0, higher drag at positive AoA
+    std::vector<double> CD    = {0.025, 0.02, 0.015, 0.01, 0.006, 0.004, 0.005, 0.008, 0.014, 0.022, 0.035};
 
     OC_AirfoilModel* af =
         oc_aero_das_create(

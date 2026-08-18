@@ -191,8 +191,6 @@ struct WakeT(ArrayContainer AC) {
 
 			// 09/02: Nitya
 			
-			size_t[] num_blades_array;
-			num_blades_array[0] = num_blades;
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history, actual_radial_elements);
 			}
@@ -220,8 +218,6 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-			size_t[] num_blades_array;
-			num_blades_array[0] = num_blades;
 			// 09/02: Nitya
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history[r_idx], actual_radial_elements);

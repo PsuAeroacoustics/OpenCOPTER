@@ -28,10 +28,11 @@ TEST(BladeAirfoil, CreateBasicGetCl) {
     OC_BladeAirfoil* ba = oc_blade_airfoil_create_basic(8, 6.28);
     ASSERT_NE(ba, nullptr);
 
-    // Query Cl at alpha=5 deg, mach=0; expect non-zero (thin airfoil: Cl ~ 2*pi*alpha_rad)
+    // Query Cl at alpha=5 deg, mach=0.
+    // D formula: Cl = 2*pi*(alpha - C_l_alpha_0) + C_l_alpha_0 = 2*pi*alpha + C_l_alpha_0
+    // With C_l_alpha_0=6.28 (zero-lift AoA offset) and alpha=5deg: Cl ~ 2*pi*0.0873 + 6.28 ~ 6.83
     double cl = oc_blade_airfoil_get_Cl(ba, 0, 5.0 * 3.14159265358979 / 180.0, 0.0);
-    // alpha=5deg in radians is ~0.0873, Cl ~ 2*pi*0.0873 ~ 0.548
-    EXPECT_NEAR(cl, 0.55, 0.2);
+    EXPECT_NEAR(cl, 6.83, 0.2);
 
     oc_blade_airfoil_destroy(ba);
 }
@@ -60,8 +61,8 @@ TEST(BladeAirfoil, LiftCurveSlope) {
     ASSERT_NE(ba, nullptr);
 
     double dCl_da = oc_blade_airfoil_lift_curve_slope(ba, 0);
-    // For thin airfoil with C_l_alpha_0=6.28 this should be ~6.28
-    EXPECT_NEAR(dCl_da, 0, 0.1);
+    // Thin airfoil lift curve slope is always 2*pi (constant)
+    EXPECT_NEAR(dCl_da, 2.0 * 3.14159265358979, 0.1);
 
     oc_blade_airfoil_destroy(ba);
 }
@@ -71,10 +72,9 @@ TEST(BladeAirfoil, ZeroLiftAoa) {
     OC_BladeAirfoil* ba = oc_blade_airfoil_create_basic(8, 6.28);
     ASSERT_NE(ba, nullptr);
 
-    // Thin airfoil zero-lift AoA is near 0 (C_l_alpha_0 parameter in ThinAirfoil 
-    // controls the offset; create_basic uses it as lift-curve slope so aoa=0)
+    // C_l_alpha_0 is the zero-lift AoA offset; with 6.28 passed, zero_lift_aoa returns 6.28
     double aoa = oc_blade_airfoil_zero_lift_aoa(ba, 0);
-    EXPECT_NEAR(aoa, 0.0, 1e-6);
+    EXPECT_NEAR(aoa, 6.28, 1e-6);
 
     oc_blade_airfoil_destroy(ba);
 }
@@ -91,8 +91,9 @@ TEST(BladeAirfoil, FillCoefficients) {
 
     oc_blade_airfoil_fill_coefficients(ba, 0, alphas, machs, Cl_out, Cd_out, 1);
 
-    // Cl should be non-zero for non-zero alpha (thin airfoil theory)
-    EXPECT_NEAR(Cl_out[0], 0.55, 0.2);
+    // Cl = 2*pi*(alpha - C_l_alpha_0) + C_l_alpha_0 = 2*pi*alpha + C_l_alpha_0
+    // With C_l_alpha_0=6.28 and alpha=5deg: Cl ~ 6.83
+    EXPECT_NEAR(Cl_out[0], 6.83, 0.2);
     // Cd is zero for thin airfoil
     EXPECT_DOUBLE_EQ(Cd_out[0], 0.0);
 

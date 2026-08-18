@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.10)
 project(OpenCOPTER CXX)
 
+option(ENABLE_ASAN "Enable AddressSanitizer for memory error detection" ON)
+option(ENABLE_VALGRIND_TESTS "Enable Valgrind memcheck tests" ON)
+
 if(${BUILD_TYPE} STREQUAL "")
 	set(CMAKE_BUILD_TYPE "Debug")
 elseif(${BUILD_TYPE} MATCHES "debug")

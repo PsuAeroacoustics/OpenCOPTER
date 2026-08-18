@@ -437,6 +437,11 @@
 			"buildOptions": ["debugMode", "debugInfo"],
 			"dflags": ["-mcpu=native"]
 		},
+		"debug-native-asan": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-fsanitize=address"]
+		},
 		"debug-native-512": {
 			"buildOptions": ["debugMode", "debugInfo"],
 			"dflags": ["-mcpu=native"],
