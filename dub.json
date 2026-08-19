@@ -7,7 +7,7 @@
 		"mkdir -p build ; cmake . -DBUILD_TYPE=$BUILD_TYPE -B build -G \"Ninja\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ; cmake --build ./build"
 	],
 	"preBuildCommands-osx": [
-		"mkdir -p build && cd build && cmake .. -DBUILD_TYPE=$BUILD_TYPE && cmake --build ."
+		"mkdir -p build ; cmake . -DBUILD_TYPE=$BUILD_TYPE -B build -G \"Ninja\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ; cmake --build ./build"
 	],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},
