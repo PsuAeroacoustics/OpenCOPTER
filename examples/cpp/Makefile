@@ -2,6 +2,7 @@
 
 CC = g++
 #CFLAGS = -Wall -Wextra -std=c++23 -g3 -fsanitize=address -fno-omit-frame-pointer
+#CFLAGS = -Wall -Wextra -std=c++23 -g3
 CFLAGS = -Wall -Wextra -std=c++23 -O3
 INCLUDES = -I../../include
 LIBS = -L../../ -lopencopter -Xlinker -rpath $(PWD)/../../ -lm

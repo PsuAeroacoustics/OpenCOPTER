@@ -88,7 +88,7 @@ OC_BladeGeometry* build_blade(size_t b_idx, double d_azimuth, double R, double r
 
 int main() {
     // Simulation parameters (matching Python example)
-    size_t iterations = 31;
+    size_t iterations = 5400;
     size_t wake_history_length = 1*1024;
 
     size_t requested_elements = 45;
@@ -427,22 +427,15 @@ int main() {
         );
 
         // Write VTK output for the last N iterations
-        size_t num_output_frames = 30;
+        size_t num_output_frames = 360;
         if (iteration >= iterations - num_output_frames) {
             // Rotor VTU
             if (vtk_rotor != NULL) {
-                printf("[C] === Before oc_write_rotor_vtu (iteration %zu) ===\n", iteration);
-                printf("  vtk_rotor = %p\n", (void*)vtk_rotor);
-                printf("  ac_state  = %p\n", (void*)ac_state);
-                printf("  rotor     = %p\n", (void*)rotor);
-                fflush(stdout);
                 oc_write_rotor_vtu("rotor", iteration, 0, vtk_rotor, ac_state, rotor);
-                printf("  [VTK] Wrote rotor at iteration %zu\n", iteration);
             }
             // Wake VTU — get the latest wake from history after push_back
             if (vtk_wake != NULL) {
                 oc_write_wake_vtu("wake", iteration, vtk_wake, wake);
-                printf("  [VTK] Wrote wake at iteration %zu\n", iteration);
             }
         }
 

@@ -26,7 +26,7 @@ int main() {
 	// ============================================================
 	// Configuration
 	// ============================================================
-	const int iterations = 361;
+	const int iterations = 5400;
 	const size_t wake_history_length = 1 * 1024;
 	const size_t requested_elements = 45;
 
@@ -290,6 +290,7 @@ int main() {
 	// ============================================================
 	// Huang-Peters dynamic inflow model
 	// ============================================================
+	//oc::HuangPetersInflow inflow_0(4, 2, rotor, rotor_input, dt);
 	oc::HuangPetersInflow inflow_0(4, 2, rotor, rotor_input, dt);
 
 	/* Build vectors for AircraftState constructor */
@@ -403,8 +404,6 @@ int main() {
 	double span_2 = max_dim_2 - min_dim_2;
 	std::cout << "Total wake bounding box: x=" << span_1 << ", z=" << span_2
 			<< std::endl;
-
-	delete r.data();
 
 	return 0;
 }
