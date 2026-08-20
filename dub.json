@@ -26,7 +26,7 @@
 		"-lgfortran",
 		"-lstdc++"
 	],
-	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/", "-lc++"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"sourceFiles": ["build/CMakeFiles/cppbindings.dir/source/opencopter/cppbindings.cpp.o"],
 	"configurations": [
