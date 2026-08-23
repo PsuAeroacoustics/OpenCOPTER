@@ -938,7 +938,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 
 			immutable Vec4 inboard_factor =
 			Vec4(
-				1.0 - r_c - ac_input_state.rotor_inputs[rotor_idx].r_0[0]/16.0,
+				1.0 - r_c - ((ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > 0 && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[0].r_0 != double.infinity) ? ac_input_state.rotor_inputs[rotor_idx].blade_inputs[0].r_0 : ac_input_state.rotor_inputs[rotor_idx].r_0[0])/16.0,
 				ac.rotors[rotor_idx].blades[blade_idx].chunks[$-1].xi[$-1],
 				0,
 				1.0/ac.rotors[rotor_idx].radius
@@ -1139,7 +1139,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			current_tip_filament.chunks[0].x[0] = x;
 			current_tip_filament.chunks[0].gamma[0] = max_gamma;
 			current_tip_filament.chunks[0].l_0[0] = 0;
-			current_tip_filament.chunks[0].r_0[0] = ac_input_state.rotor_inputs[rotor_idx].r_0[blade_idx]*ac.rotors[rotor_idx].radius;
+			current_tip_filament.chunks[0].r_0[0] = (ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > blade_idx && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 != double.infinity) ? ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 : ac_input_state.rotor_inputs[rotor_idx].r_0[blade_idx]*ac.rotors[rotor_idx].radius;
 			current_tip_filament.chunks[0].r_c[0] = current_tip_filament.chunks[0].r_0[0];
 			current_tip_filament.chunks[0].x_e[0] = 0;
 			current_tip_filament.chunks[0].phi[0] = 0;

@@ -1,6 +1,30 @@
 # Active Context: OpenCOPTER
 
 ## Current Work Focus
+**BLADE DEFORMATION INPUT STATE — FULLY COMPLETE (2026-08-22)**: `BladeInputStateT` (per-blade scalars + per-station deflection + velocity arrays) added to `input.d`; physics reads routed via `double.infinity` sentinel in `bladeelement.d` + `wake.d`; deflection velocities (non-dim) routed into `u_p`/`u_t` in `bladeelement.d`; **`AircraftInputStateT` constructor now accepts `num_chunks`** (per-rotor array) and calls `BladeInputStateT(this(num_chunks))` on each element to allocate per-station arrays; new C binding `oc_aircraft_input_state_create_with_chunks` + C/C++ wrappers; **C/C++ API for all 10 blade_inputs fields** (4 scalars set/get + 5 per-station arrays via **zero-copy writable `std::span<double>`**). Build clean; **177/177 tests pass** (159 original + 18 new BladeInputTestFixture tests). Non-breaking: original 3-arg constructors unchanged. Plan: `BLADE_DEFORMATION_PLAN.md`.
+
+### Design (final, 2026-08-22):
+- `BladeInputStateT` contains:
+  - Per-blade scalars (default `double.infinity` = "not set"): `pitch`, `flapping`, `flapping_rate`, `r_0`
+  - Per-station Chunk arrays: `flap_deflection` (z, non-dim), `lag_deflection` (x, non-dim), `twist_deflection` (rad)
+- Added as `blade_inputs` array in `RotorInputStateT` (one per blade)
+- Legacy `blade_pitches[]`, `r_0[]`, `blade_flapping[]`, `blade_flapping_rate[]` retained for backward compat (marked `DEPRECATED`)
+- **Sentinel routing (non-breaking)**: physics reads prefer `blade_inputs[idx].<field>` when `!= double.infinity`, else fall back to the legacy array
+  - `bladeelement.d`: `pitch` (theta, cos/sin_collective) + `flapping_rate` (plunging_correction) — extracted to `pitch_val`/`fr_val` locals first to avoid ternary operator-precedence bugs
+  - `wake.d`: `r_0` (tip vortex core, `[0]` and `[blade_idx]` sites)
+- Position: `local_pos[1] += lag_def * R`, `local_pos[2] += flap_def * R`
+- Twist: `theta += twist_def[chunk]` (effective twist only, no position effect)
+- **Per-station deflection velocities** (non-dim): `flap_velocity` (z, blade frame), `lag_velocity` (x, blade frame)
+  - **Routing**: `u_p += flap_velocity[chunk]`, `u_t += lag_velocity[chunk]` in `bladeelement.d` (bounds-guarded, zero when absent)
+  - Affects: `inflow_angle` (aoa), `u_inf` (total section velocity), circulation, dC_T/dC_Db
+- **D gotchas**: `inf`/`isinf` not selectively importable — use built-in `double.infinity` + `!= double.infinity`; per-station fields must be plain `Chunk[]` (NOT `ArrayDeclMixin`); `extern(C++)` structs can't have user `this(){}` (use field initializers)
+- C/C++ bindings for the new `blade_inputs` fields = **done** (new `create_with_chunks` function + C++ constructor overload)
+- **Per-station arrays use zero-copy writable spans** (2026-08-22): C API exposes 5 `oc_rotor_input_get_blade_{flap,lag,twist}_deflection_ref` / `oc_rotor_input_get_blade_{flap,lag}_velocity_ref` functions returning `double*` + `size_t* out_len`. C++ wraps them as `std::span<double>` methods: `blade_flap_deflection(idx)`, `blade_lag_deflection(idx)`, `blade_twist_deflection(idx)`, `blade_flap_velocity(idx)`, `blade_lag_velocity(idx)`. No copying — writes through the span directly modify D-internal state.
+- `AircraftInputStateT` now has a 4-arg constructor `(num_rotors, num_blades[], num_wings, num_chunks[])` that calls `BladeInputStateT(this(num_chunks[r_idx]))` on each `blade_inputs[b_idx]` element
+- Original 3-arg constructor unchanged — non-breaking
+- Plan: `BLADE_DEFORMATION_PLAN.md`
+
+### Previous:
 **ALL TESTS PASSING (2026-08-17)**: All 159/159 tests pass across 26 test suites.
 
 ### Fixed in this session:
@@ -22,7 +46,8 @@
 - **Azimuth NaN**: `BladeStateT.azimuth` is uninitialized (NaN) before the first simulation step. Tests updated to verify accessor calls don't crash rather than asserting non-NaN values.
 - **Files changed**: `tests/src/test_api_aircraftstate.cpp` (xi_data 0.4→0.0, added xi_p_data=0.0, relaxed azimuth assertions)
 
-### Test status: 159/159 passing (ALL GREEN)
+### Test status: 177/177 passing (ALL GREEN)
+- 2026-08-22: **177/177 tests pass** across 27 test suites (159 original + 18 new BladeInputTestFixture tests)
 - 2026-08-17: All 159 tests pass across 26 test suites
 - Previously: 156/159 (3 AircraftState failures) → fixed with xi=0.0 + xi_p=0.0
 

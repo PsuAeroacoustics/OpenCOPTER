@@ -488,6 +488,19 @@ extern(C) OC_AircraftInputState* oc_aircraft_input_state_create(size_t num_rotor
     return cast(OC_AircraftInputState*)input;
 }
 
+extern(C) OC_AircraftInputState* oc_aircraft_input_state_create_with_chunks(
+    size_t num_rotors, size_t* num_blades, size_t num_wings, size_t* num_chunks
+) {
+    auto input = new AircraftInputState(
+        num_rotors,
+        num_blades[0..num_rotors],
+        num_wings,
+        num_chunks[0..num_rotors]
+    );
+    GC.addRoot(input);
+    return cast(OC_AircraftInputState*)input;
+}
+
 extern(C) void oc_aircraft_input_state_destroy(OC_AircraftInputState* input) {
     if (input !is null) GC.removeRoot(cast(AircraftInputState*)input);
 }
@@ -1426,6 +1439,140 @@ extern(C) void oc_rotor_input_get_blade_flapping_rate(const OC_RotorInputState* 
             result_out[idx] = (*i).blade_flapping_rate[idx];
         }
     }
+}
+
+// ========================================================================
+//  BladeInputState per-blade scalar setters/getters
+//  These write to blade_inputs[blade_idx].<field>, overriding the
+//  legacy per-blade arrays via the double.infinity sentinel mechanism.
+// ========================================================================
+
+extern(C) void oc_rotor_input_set_blade_input_pitch(OC_RotorInputState* input, size_t blade_idx, double pitch) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && i.blade_inputs.length > blade_idx)
+        i.blade_inputs[blade_idx].pitch = pitch;
+}
+
+extern(C) double oc_rotor_input_get_blade_input_pitch(const OC_RotorInputState* input, size_t blade_idx) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && (*i).blade_inputs.length > blade_idx)
+        return (*i).blade_inputs[blade_idx].pitch;
+    return double.infinity;
+}
+
+extern(C) void oc_rotor_input_set_blade_input_flapping(OC_RotorInputState* input, size_t blade_idx, double flapping) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && i.blade_inputs.length > blade_idx)
+        i.blade_inputs[blade_idx].flapping = flapping;
+}
+
+extern(C) double oc_rotor_input_get_blade_input_flapping(const OC_RotorInputState* input, size_t blade_idx) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && (*i).blade_inputs.length > blade_idx)
+        return (*i).blade_inputs[blade_idx].flapping;
+    return double.infinity;
+}
+
+extern(C) void oc_rotor_input_set_blade_input_flapping_rate(OC_RotorInputState* input, size_t blade_idx, double rate) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && i.blade_inputs.length > blade_idx)
+        i.blade_inputs[blade_idx].flapping_rate = rate;
+}
+
+extern(C) double oc_rotor_input_get_blade_input_flapping_rate(const OC_RotorInputState* input, size_t blade_idx) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && (*i).blade_inputs.length > blade_idx)
+        return (*i).blade_inputs[blade_idx].flapping_rate;
+    return double.infinity;
+}
+
+extern(C) void oc_rotor_input_set_blade_input_r0(OC_RotorInputState* input, size_t blade_idx, double r0) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && i.blade_inputs.length > blade_idx)
+        i.blade_inputs[blade_idx].r_0 = r0;
+}
+
+extern(C) double oc_rotor_input_get_blade_input_r0(const OC_RotorInputState* input, size_t blade_idx) {
+    auto i = cast(const(RotorInputState)*)input;
+    if (i !is null && (*i).blade_inputs.length > blade_idx)
+        return (*i).blade_inputs[blade_idx].r_0;
+    return double.infinity;
+}
+
+// ========================================================================
+//  BladeInputState per-station array zero-copy accessors
+//  Returns a mutable pointer to the contiguous double[] backing the
+//  Chunk[num_chunks] storage. Chunk = double[chunk_size] where
+//  chunk_size is a compile-time constant (typically 8).
+//
+//  The pointer is valid for the lifetime of the RotorInputState object.
+//  Writing through the pointer directly modifies the D-internal state.
+//  Returns null if blade_idx is out of bounds or the array is unallocated.
+// ========================================================================
+
+extern(C) double* oc_rotor_input_get_blade_flap_deflection_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && out_len !is null && i.blade_inputs.length > blade_idx) {
+        immutable n = i.blade_inputs[blade_idx].flap_deflection.length;
+        if (n > 0) {
+            out_len[0] = n * chunk_size;
+            return cast(double*)i.blade_inputs[blade_idx].flap_deflection.ptr;
+        }
+    }
+    if (out_len !is null) out_len[0] = 0;
+    return null;
+}
+
+extern(C) double* oc_rotor_input_get_blade_lag_deflection_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && out_len !is null && i.blade_inputs.length > blade_idx) {
+        immutable n = i.blade_inputs[blade_idx].lag_deflection.length;
+        if (n > 0) {
+            out_len[0] = n * chunk_size;
+            return cast(double*)i.blade_inputs[blade_idx].lag_deflection.ptr;
+        }
+    }
+    if (out_len !is null) out_len[0] = 0;
+    return null;
+}
+
+extern(C) double* oc_rotor_input_get_blade_twist_deflection_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && out_len !is null && i.blade_inputs.length > blade_idx) {
+        immutable n = i.blade_inputs[blade_idx].twist_deflection.length;
+        if (n > 0) {
+            out_len[0] = n * chunk_size;
+            return cast(double*)i.blade_inputs[blade_idx].twist_deflection.ptr;
+        }
+    }
+    if (out_len !is null) out_len[0] = 0;
+    return null;
+}
+
+extern(C) double* oc_rotor_input_get_blade_flap_velocity_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && out_len !is null && i.blade_inputs.length > blade_idx) {
+        immutable n = i.blade_inputs[blade_idx].flap_velocity.length;
+        if (n > 0) {
+            out_len[0] = n * chunk_size;
+            return cast(double*)i.blade_inputs[blade_idx].flap_velocity.ptr;
+        }
+    }
+    if (out_len !is null) out_len[0] = 0;
+    return null;
+}
+
+extern(C) double* oc_rotor_input_get_blade_lag_velocity_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len) {
+    auto i = cast(RotorInputState*)input;
+    if (i !is null && out_len !is null && i.blade_inputs.length > blade_idx) {
+        immutable n = i.blade_inputs[blade_idx].lag_velocity.length;
+        if (n > 0) {
+            out_len[0] = n * chunk_size;
+            return cast(double*)i.blade_inputs[blade_idx].lag_velocity.ptr;
+        }
+    }
+    if (out_len !is null) out_len[0] = 0;
+    return null;
 }
 
 // ========================================================================

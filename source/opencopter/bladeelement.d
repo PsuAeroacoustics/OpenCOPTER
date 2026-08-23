@@ -170,7 +170,10 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 
 		immutable Chunk wake_z = -projected_vel[2][];
 
-		immutable Chunk u_p = (wake_z[] - shed_projected_vel[2][])/(rotor.radius*abs(rotor_input.angular_velocity));//*cos_sweep[];
+		Chunk u_p = (wake_z[] - shed_projected_vel[2][])/(rotor.radius*abs(rotor_input.angular_velocity));//*cos_sweep[];
+		if(rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].flap_velocity.length > chunk_idx) {
+			u_p[] = rotor_input.blade_inputs[blade_idx].flap_velocity[chunk_idx][];
+		}
 
 		blade_state.chunks[chunk_idx].shed_u_p[] = shed_projected_vel[2][]/(rotor.radius*abs(rotor_input.angular_velocity));
 		blade_state.chunks[chunk_idx].u_p[] = u_p[];
@@ -181,16 +184,23 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		immutable Chunk ut_blade_due_to_wake = (total_vel_vec[1][] + shed_vel_vec[1][])/(rotor.radius*abs(rotor_input.angular_velocity));
 		immutable Chunk ut_blade_due_to_wing = wing_inflow_on_blade[1][]/(rotor.radius*abs(rotor_input.angular_velocity));
 
-		immutable Chunk u_t = (blade.chunks[chunk_idx].r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[] - ut_blade_due_to_wing[])*cos_sweep[];
-		//immutable Chunk u_t = (-blade.chunks[chunk_idx].r[]*std.math.sgn(rotor_input.angular_velocity) - ut_blade_due_to_wake[])*cos_sweep[];
-		//immutable Chunk u_t = (blade.chunks[chunk_idx].r[] - total_vel_vec[1][]) * cos_sweep[];
+		Chunk u_t = (blade.chunks[chunk_idx].r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[] - ut_blade_due_to_wing[])*cos_sweep[];
+		if(rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].lag_velocity.length > chunk_idx) {
+			u_t[] += rotor_input.blade_inputs[blade_idx].lag_velocity[chunk_idx][];
+		}
 		
 		immutable Chunk inflow_angle = atan2(u_p, u_t);
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
-		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
+		double fr_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].flapping_rate != double.infinity) ? rotor_input.blade_inputs[blade_idx].flapping_rate : rotor_input.blade_flapping_rate[blade_idx];
+		immutable Chunk plunging_correction = ((fr_val/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
 
-		immutable Chunk theta = (rotor_input.blade_pitches[blade_idx] + blade.chunks[chunk_idx].twist[])[]*cos_sweep[];
+		Chunk twist_eff = blade.chunks[chunk_idx].twist;
+		if(rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].twist_deflection.length > chunk_idx) {
+			foreach(i; 0..twist_eff.length) twist_eff[i] += rotor_input.blade_inputs[blade_idx].twist_deflection[chunk_idx][i];
+		}
+		double pitch_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].pitch != double.infinity) ? rotor_input.blade_inputs[blade_idx].pitch : rotor_input.blade_pitches[blade_idx];
+		immutable Chunk theta = ((pitch_val + twist_eff[])[]*cos_sweep[]);
 		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] - plunging_correction[];
@@ -241,7 +251,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 		immutable Chunk dC_D = steady_sectional_model(u_p, u_t, af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
 
-		immutable Chunk plunging_correction = ((rotor_input.blade_flapping_rate[blade_idx]/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
+		double fr_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].flapping_rate != double.infinity) ? rotor_input.blade_inputs[blade_idx].flapping_rate : rotor_input.blade_flapping_rate[blade_idx];
+		immutable Chunk plunging_correction = ((fr_val/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
 		immutable Chunk inflow_angle = blade_state.chunks[chunk_idx].theta[] - blade_state.chunks[chunk_idx].aoa_eff[] - plunging_correction[];
 
 		blade_state.chunks[chunk_idx].dC_l[] = af_coefficients.C_l[];
@@ -254,8 +265,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		immutable Chunk cos_inflow = cos(inflow_angle);
 		immutable Chunk sin_inflow = sin(inflow_angle);
 
-		immutable Chunk cos_collective = std.math.cos(rotor_input.blade_pitches[blade_idx]);
-		immutable Chunk sin_collective = std.math.sin(rotor_input.blade_pitches[blade_idx]);
+		immutable Chunk cos_collective = std.math.cos((rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].pitch != double.infinity) ? rotor_input.blade_inputs[blade_idx].pitch : rotor_input.blade_pitches[blade_idx]);
+		immutable Chunk sin_collective = std.math.sin((rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].pitch != double.infinity) ? rotor_input.blade_inputs[blade_idx].pitch : rotor_input.blade_pitches[blade_idx]);
 
 		immutable Chunk dC_N = blade_state.chunks[chunk_idx].dC_L[]*cos_collective[];
 		immutable Chunk dC_c = -blade_state.chunks[chunk_idx].dC_L[]*sin_collective[];
@@ -491,6 +502,19 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 				local_blade_pos[1][] = blade.chunks[chunk_idx].xi[]*aircraft.rotors[rotor_idx].radius;
 				local_blade_pos[2][] = 0;
 				local_blade_pos[3][] = 1;
+				
+				// Blade deformation deflections (new API)
+				// Flap: z displacement in blade frame, Lag: x displacement in blade frame
+				// Both are non-dimensional deltas from base blade shape
+				if(ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > blade_idx) {
+					auto ref bi = ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx];
+					if(bi.lag_deflection.length > chunk_idx) {
+						local_blade_pos[1][] += bi.lag_deflection[chunk_idx][] * aircraft.rotors[rotor_idx].radius;
+					}
+					if(bi.flap_deflection.length > chunk_idx) {
+						local_blade_pos[2][] += bi.flap_deflection[chunk_idx][] * aircraft.rotors[rotor_idx].radius;
+					}
+				}
 
 				//writeln("local_blade_pos: x = ", local_blade_pos[0][], " y = ", local_blade_pos[1][], " z = ", local_blade_pos[2][]);
 

@@ -275,6 +275,7 @@ void oc_wing_geometry_set_ctrl_points(OC_WingGeometry* wing, size_t spanwise_nod
 // ========================================================================
 
 OC_AircraftInputState* oc_aircraft_input_state_create(size_t num_rotors, size_t* num_blades, size_t num_wings);
+OC_AircraftInputState* oc_aircraft_input_state_create_with_chunks(size_t num_rotors, size_t* num_blades, size_t num_wings, size_t* num_chunks);
 void oc_aircraft_input_state_destroy(OC_AircraftInputState* input);
 OC_RotorInputState* oc_aircraft_input_get_rotor_input(OC_AircraftInputState* input, size_t rotor_idx);
 void oc_aircraft_input_set_blade_pitch(OC_AircraftInputState* input, size_t rotor_idx, size_t blade_idx, double pitch);
@@ -296,6 +297,37 @@ void oc_rotor_input_set_blade_flapping(OC_RotorInputState* input, double* flappi
 void oc_rotor_input_get_blade_flapping(const OC_RotorInputState* input, double* result_out, size_t len);
 void oc_rotor_input_set_blade_flapping_rate(OC_RotorInputState* input, double* flapping_rate, size_t len);
 void oc_rotor_input_get_blade_flapping_rate(const OC_RotorInputState* input, double* result_out, size_t len);
+
+// ========================================================================
+//  BladeInputState per-blade scalar setters/getters
+//  Write to blade_inputs[blade_idx].<field>, overriding legacy arrays
+//  via the double.infinity sentinel mechanism.
+// ========================================================================
+
+void oc_rotor_input_set_blade_input_pitch(OC_RotorInputState* input, size_t blade_idx, double pitch);
+double oc_rotor_input_get_blade_input_pitch(const OC_RotorInputState* input, size_t blade_idx);
+void oc_rotor_input_set_blade_input_flapping(OC_RotorInputState* input, size_t blade_idx, double flapping);
+double oc_rotor_input_get_blade_input_flapping(const OC_RotorInputState* input, size_t blade_idx);
+void oc_rotor_input_set_blade_input_flapping_rate(OC_RotorInputState* input, size_t blade_idx, double rate);
+double oc_rotor_input_get_blade_input_flapping_rate(const OC_RotorInputState* input, size_t blade_idx);
+void oc_rotor_input_set_blade_input_r0(OC_RotorInputState* input, size_t blade_idx, double r0);
+double oc_rotor_input_get_blade_input_r0(const OC_RotorInputState* input, size_t blade_idx);
+
+// ========================================================================
+//  BladeInputState per-station array zero-copy accessors
+//  Returns a mutable pointer to the contiguous double[] backing the
+//  Chunk[num_chunks] storage. The pointer is valid for the lifetime
+//  of the RotorInputState object. Writing through the pointer directly
+//  modifies the D-internal state.
+//  Returns null if blade_idx is out of bounds or the array is unallocated.
+//  out_len receives the total number of doubles (num_chunks * chunk_size).
+// ========================================================================
+
+double* oc_rotor_input_get_blade_flap_deflection_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len);
+double* oc_rotor_input_get_blade_lag_deflection_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len);
+double* oc_rotor_input_get_blade_twist_deflection_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len);
+double* oc_rotor_input_get_blade_flap_velocity_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len);
+double* oc_rotor_input_get_blade_lag_velocity_ref(OC_RotorInputState* input, size_t blade_idx, size_t* out_len);
 
 // ========================================================================
 //  AircraftState API

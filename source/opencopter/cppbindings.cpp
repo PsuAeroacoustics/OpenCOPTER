@@ -662,6 +662,48 @@ std::vector<double> RotorInputState::get_blade_flapping(size_t len) const { std:
 void RotorInputState::set_blade_flapping_rate(const std::vector<double>& d) { OC_CHECK(ptr_, "RotorInputState::set_blade_flapping_rate called on null object"); oc_rotor_input_set_blade_flapping_rate(ris(*this), const_cast<double*>(d.data()), d.size()); }
 std::vector<double> RotorInputState::get_blade_flapping_rate(size_t len) const { std::vector<double> r(len); if(ptr_) oc_rotor_input_get_blade_flapping_rate(ris(*this), r.data(), len); return r; }
 
+// --- BladeInputState per-blade scalars ---
+void RotorInputState::set_blade_input_pitch(size_t i, double v) { OC_CHECK(ptr_, "RotorInputState::set_blade_input_pitch called on null object"); oc_rotor_input_set_blade_input_pitch(ris(*this), i, v); }
+double RotorInputState::get_blade_input_pitch(size_t i) const { return ptr_ ? oc_rotor_input_get_blade_input_pitch(ris(*this), i) : 0.0; }
+void RotorInputState::set_blade_input_flapping(size_t i, double v) { OC_CHECK(ptr_, "RotorInputState::set_blade_input_flapping called on null object"); oc_rotor_input_set_blade_input_flapping(ris(*this), i, v); }
+double RotorInputState::get_blade_input_flapping(size_t i) const { return ptr_ ? oc_rotor_input_get_blade_input_flapping(ris(*this), i) : 0.0; }
+void RotorInputState::set_blade_input_flapping_rate(size_t i, double v) { OC_CHECK(ptr_, "RotorInputState::set_blade_input_flapping_rate called on null object"); oc_rotor_input_set_blade_input_flapping_rate(ris(*this), i, v); }
+double RotorInputState::get_blade_input_flapping_rate(size_t i) const { return ptr_ ? oc_rotor_input_get_blade_input_flapping_rate(ris(*this), i) : 0.0; }
+void RotorInputState::set_blade_input_r0(size_t i, double v) { OC_CHECK(ptr_, "RotorInputState::set_blade_input_r0 called on null object"); oc_rotor_input_set_blade_input_r0(ris(*this), i, v); }
+double RotorInputState::get_blade_input_r0(size_t i) const { return ptr_ ? oc_rotor_input_get_blade_input_r0(ris(*this), i) : 0.0; }
+
+// --- BladeInputState per-station arrays (zero-copy spans) ---
+std::span<double> RotorInputState::blade_flap_deflection(size_t i) {
+    OC_CHECK(ptr_, "RotorInputState::blade_flap_deflection called on null object");
+    size_t len = 0;
+    double* p = oc_rotor_input_get_blade_flap_deflection_ref(ris(*this), i, &len);
+    return p ? std::span<double>(p, len) : std::span<double>{};
+}
+std::span<double> RotorInputState::blade_lag_deflection(size_t i) {
+    OC_CHECK(ptr_, "RotorInputState::blade_lag_deflection called on null object");
+    size_t len = 0;
+    double* p = oc_rotor_input_get_blade_lag_deflection_ref(ris(*this), i, &len);
+    return p ? std::span<double>(p, len) : std::span<double>{};
+}
+std::span<double> RotorInputState::blade_twist_deflection(size_t i) {
+    OC_CHECK(ptr_, "RotorInputState::blade_twist_deflection called on null object");
+    size_t len = 0;
+    double* p = oc_rotor_input_get_blade_twist_deflection_ref(ris(*this), i, &len);
+    return p ? std::span<double>(p, len) : std::span<double>{};
+}
+std::span<double> RotorInputState::blade_flap_velocity(size_t i) {
+    OC_CHECK(ptr_, "RotorInputState::blade_flap_velocity called on null object");
+    size_t len = 0;
+    double* p = oc_rotor_input_get_blade_flap_velocity_ref(ris(*this), i, &len);
+    return p ? std::span<double>(p, len) : std::span<double>{};
+}
+std::span<double> RotorInputState::blade_lag_velocity(size_t i) {
+    OC_CHECK(ptr_, "RotorInputState::blade_lag_velocity called on null object");
+    size_t len = 0;
+    double* p = oc_rotor_input_get_blade_lag_velocity_ref(ris(*this), i, &len);
+    return p ? std::span<double>(p, len) : std::span<double>{};
+}
+
 // ========================================================================
 //  AircraftInputState
 // ========================================================================
@@ -675,6 +717,12 @@ AircraftInputState::AircraftInputState(size_t nr, const std::vector<size_t>& nb,
     std::vector<size_t> m(nb);
     ptr_ = oc_aircraft_input_state_create(nr, m.data(), nw);
     OC_CHECK(ptr_, "AircraftInputState constructor: oc_aircraft_input_state_create returned null");
+}
+AircraftInputState::AircraftInputState(size_t nr, const std::vector<size_t>& nb, size_t nw, const std::vector<size_t>& nc) {
+    std::vector<size_t> m_nb(nb);
+    std::vector<size_t> m_nc(nc);
+    ptr_ = oc_aircraft_input_state_create_with_chunks(nr, m_nb.data(), nw, m_nc.data());
+    OC_CHECK(ptr_, "AircraftInputState constructor: oc_aircraft_input_state_create_with_chunks returned null");
 }
 AircraftInputState::~AircraftInputState() { if(ptr_) oc_aircraft_input_state_destroy(ais(*this)); }
 AircraftInputState::AircraftInputState(AircraftInputState&& o) noexcept : ptr_(o.ptr_) { o.ptr_ = nullptr; }

@@ -600,6 +600,27 @@ public:
     void set_blade_flapping_rate(const std::vector<double>& rate);
     std::vector<double> get_blade_flapping_rate(size_t len) const;
 
+    // --- BladeInputState per-blade scalars ---
+    void set_blade_input_pitch(size_t blade_idx, double pitch);
+    double get_blade_input_pitch(size_t blade_idx) const;
+    void set_blade_input_flapping(size_t blade_idx, double flapping);
+    double get_blade_input_flapping(size_t blade_idx) const;
+    void set_blade_input_flapping_rate(size_t blade_idx, double rate);
+    double get_blade_input_flapping_rate(size_t blade_idx) const;
+    void set_blade_input_r0(size_t blade_idx, double r0);
+    double get_blade_input_r0(size_t blade_idx) const;
+
+    // --- BladeInputState per-station arrays (zero-copy, writable spans) ---
+    // Returns a writable std::span<double> backed directly by D-internal
+    // Chunk[] storage. Valid for the lifetime of this RotorInputState.
+    // Writing through the span directly modifies the D-internal state.
+    // Returns an empty span if blade_idx is out of bounds.
+    std::span<double> blade_flap_deflection(size_t blade_idx);
+    std::span<double> blade_lag_deflection(size_t blade_idx);
+    std::span<double> blade_twist_deflection(size_t blade_idx);
+    std::span<double> blade_flap_velocity(size_t blade_idx);
+    std::span<double> blade_lag_velocity(size_t blade_idx);
+
     operator bool() const { return ptr_ != nullptr; }
 };
 
@@ -621,6 +642,11 @@ public:
     AircraftInputState(size_t num_rotors,
                       const std::vector<size_t>& num_blades,
                       size_t num_wings);
+
+    AircraftInputState(size_t num_rotors,
+                      const std::vector<size_t>& num_blades,
+                      size_t num_wings,
+                      const std::vector<size_t>& num_chunks);
 
     ~AircraftInputState();
 

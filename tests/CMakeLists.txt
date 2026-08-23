@@ -72,6 +72,8 @@ set(TEST_SOURCES
   src/test_api_children.cpp
   # Phase 9: C++ RAII wrapper tests
   src/test_cpp_api.cpp
+  # Phase 10: BladeInputState tests
+  src/test_blade_input_state.cpp
 )
 
 # Create single test executable
