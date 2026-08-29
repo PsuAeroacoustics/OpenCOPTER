@@ -364,13 +364,14 @@ void write_rotor_vtu(RS, RG)(string base_filename, size_t iteration, size_t roto
 		rotor.grid.SetPoints(rotor.points);
 
 		foreach(blade_idx, blade; rotor_state.blade_states) {
-			foreach(pi; rotor.base_points[blade_idx].byKeyValue) {
-				vtkIdType id = pi.key;
-				auto point = Vec4(pi.value[0], pi.value[1], pi.value[2], 1.0/rotor_geom.radius)*rotor_geom.radius;
-
-				auto final_p = rotor_geom.blades[blade_idx].frame.global_matrix * point; //back corrected!!
-				
-				rotor.points.SetPoint(id, final_p[0], final_p[1], final_p[2]);
+			foreach(radial_idx; 0..elements) {
+				auto chunk_idx = radial_idx / chunk_size;
+				auto inner_idx = radial_idx % chunk_size;
+				auto id = rotor.r_to_point_map[blade_idx * elements + radial_idx][0];
+				rotor.points.SetPoint(id,
+					blade.chunks[chunk_idx].x[inner_idx],
+					blade.chunks[chunk_idx].y[inner_idx],
+					blade.chunks[chunk_idx].z[inner_idx]);
 			}
 
 			foreach(radial_idx, loop; rotor.r_to_point_map[blade_idx*elements..elements*(blade_idx + 1)]) {
