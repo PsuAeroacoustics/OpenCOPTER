@@ -5,7 +5,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Options
-option(ENABLE_ASAN "Enable AddressSanitizer for memory error detection" ON)
+# OFF by default: libopencopter is built by dub without ASan, so enabling this
+# without also instrumenting the library breaks linking. See the note below.
+option(ENABLE_ASAN "Enable AddressSanitizer for memory error detection" OFF)
 option(ENABLE_VALGRIND_TESTS "Enable Valgrind memcheck tests" ON)
 
 # Find GoogleTest via FetchContent (downloads if not already present)

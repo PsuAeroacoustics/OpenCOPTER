@@ -428,6 +428,8 @@ double oc_inflow_wake_skew(OC_Inflow* inflow);
 OC_Frame* oc_inflow_get_frame(OC_Inflow* inflow);
 const OC_Mat4* oc_inflow_get_inverse_global_frame(OC_Inflow* inflow);
 void oc_inflow_update(OC_Inflow* inflow, OC_AircraftState* ac_state, OC_Wake* wake, double dt);
+/* Writes one scalar inflow value per query point: result_out holds `len`
+ * doubles, not a 3-component vector per point. */
 void oc_inflow_at(OC_Inflow* inflow, const double* x, const double* y, const double* z, double* result_out, size_t len);
 void oc_inflow_update_wing_circulation(OC_Inflow* inflow, OC_WingState* wing_state);
 void oc_inflow_update_wing_dC_L(OC_Inflow* inflow, OC_WingState* wing_state);

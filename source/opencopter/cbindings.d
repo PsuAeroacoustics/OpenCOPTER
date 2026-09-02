@@ -773,27 +773,27 @@ extern(C) void oc_wake_destroy(OC_Wake* wake) {
 
 extern(C) void oc_vortex_filament_fill_x(const OC_VortexFilament* fil, double* data, size_t len) {
     auto f = cast(const(VortexFilament)*)fil;
-    if (f !is null && data !is null) { auto arr = get_wake_component!"x"(*f); foreach(i, val; arr[0..len]) data[i] = val; }
+    if (f !is null && data !is null) { auto arr = get_wake_component!"x"(*f); foreach(i, val; arr[0..min(len, arr.length)]) data[i] = val; }
 }
 extern(C) void oc_vortex_filament_fill_y(const OC_VortexFilament* fil, double* data, size_t len) {
     auto f = cast(const(VortexFilament)*)fil;
-    if (f !is null && data !is null) { auto arr = get_wake_component!"y"(*f); foreach(i, val; arr[0..len]) data[i] = val; }
+    if (f !is null && data !is null) { auto arr = get_wake_component!"y"(*f); foreach(i, val; arr[0..min(len, arr.length)]) data[i] = val; }
 }
 extern(C) void oc_vortex_filament_fill_z(const OC_VortexFilament* fil, double* data, size_t len) {
     auto f = cast(const(VortexFilament)*)fil;
-    if (f !is null && data !is null) { auto arr = get_wake_component!"z"(*f); foreach(i, val; arr[0..len]) data[i] = val; }
+    if (f !is null && data !is null) { auto arr = get_wake_component!"z"(*f); foreach(i, val; arr[0..min(len, arr.length)]) data[i] = val; }
 }
 extern(C) void oc_vortex_filament_fill_gamma(const OC_VortexFilament* fil, double* data, size_t len) {
     auto f = cast(const(VortexFilament)*)fil;
-    if (f !is null && data !is null) { auto arr = get_wake_component!"gamma"(*f); foreach(i, val; arr[0..len]) data[i] = val; }
+    if (f !is null && data !is null) { auto arr = get_wake_component!"gamma"(*f); foreach(i, val; arr[0..min(len, arr.length)]) data[i] = val; }
 }
 extern(C) void oc_vortex_filament_fill_r_c(const OC_VortexFilament* fil, double* data, size_t len) {
     auto f = cast(const(VortexFilament)*)fil;
-    if (f !is null && data !is null) { auto arr = get_wake_component!"r_c"(*f); foreach(i, val; arr[0..len]) data[i] = val; }
+    if (f !is null && data !is null) { auto arr = get_wake_component!"r_c"(*f); foreach(i, val; arr[0..min(len, arr.length)]) data[i] = val; }
 }
 extern(C) void oc_vortex_filament_fill_v_z(const OC_VortexFilament* fil, double* data, size_t len) {
     auto f = cast(const(VortexFilament)*)fil;
-    if (f !is null && data !is null) { auto arr = get_wake_component!"v_z"(*f); foreach(i, val; arr[0..len]) data[i] = val; }
+    if (f !is null && data !is null) { auto arr = get_wake_component!"v_z"(*f); foreach(i, val; arr[0..min(len, arr.length)]) data[i] = val; }
 }
 
 // ========================================================================
@@ -889,7 +889,7 @@ extern(C) void oc_inflow_at(OC_Inflow* inflow, const double* x, const double* y,
             xyz_vec[3][] = 0;
             auto result_chunk = i.inflow_at(xyz_vec);
             foreach(j; 0..chunk_len) {
-                result_out[(processed + j) * 3] = result_chunk[j];
+                result_out[processed + j] = result_chunk[j];
             }
             processed += chunk_len;
         }
@@ -1065,17 +1065,17 @@ extern(C) void oc_frame_set_name(OC_Frame* frame, const(char)* name) {
     }
 }
 extern(C) void oc_inflow_update_wing_circulation(OC_Inflow* inflow, OC_WingState* wing_state) {
-    auto i = cast(Inflow*)inflow; auto ws = cast(WingState*)wing_state;
-    if (i !is null && ws !is null) (*i).update_wing_circulation(*ws);
+    auto i = cast(Inflow)inflow; auto ws = cast(WingState*)wing_state;
+    if (i !is null && ws !is null) i.update_wing_circulation(*ws);
 }
 extern(C) void oc_inflow_update_wing_dC_L(OC_Inflow* inflow, OC_WingState* wing_state) {
-    auto i = cast(Inflow*)inflow; auto ws = cast(WingState*)wing_state;
-    if (i !is null && ws !is null) (*i).update_wing_dC_L(*ws);
+    auto i = cast(Inflow)inflow; auto ws = cast(WingState*)wing_state;
+    if (i !is null && ws !is null) i.update_wing_dC_L(*ws);
 }
 extern(C) OC_InducedVelocities oc_inflow_compute_wing_induced_vel_on_blade(OC_Inflow* inflow, const double* x, const double* y, const double* z) {
-    auto i = cast(Inflow*)inflow; OC_InducedVelocities result;
+    auto i = cast(Inflow)inflow; OC_InducedVelocities result;
     if (i !is null && x !is null && y !is null && z !is null) {
-        auto iv = (*i).compute_wing_induced_vel_on_blade(x[0..8], y[0..8], z[0..8]);
+        auto iv = i.compute_wing_induced_vel_on_blade(x[0..8], y[0..8], z[0..8]);
         foreach(j; 0..8) { result.v_x[j] = iv.v_x[j]; result.v_y[j] = iv.v_y[j]; result.v_z[j] = iv.v_z[j]; }
     } else { foreach(j; 0..8) { result.v_x[j] = 0.0; result.v_y[j] = 0.0; result.v_z[j] = 0.0; } }
     return result;
@@ -1112,7 +1112,7 @@ extern(C) OC_Inflow* oc_wing_inflow_create(OC_WingGeometry* wing, OC_WingInputSt
 }
 
 extern(C) void oc_inflow_destroy(OC_Inflow* inflow) {
-    GC.removeRoot(inflow);
+    if (inflow !is null) GC.removeRoot(cast(void*)inflow);
 }
 
 // ========================================================================
@@ -1610,7 +1610,7 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, con
 
 extern(C) void oc_blade_airfoil_destroy(OC_BladeAirfoil* blade_af) {
     if (blade_af !is null) {
-        auto p = cast(BladeAirfoil*)blade_af;
+        auto p = cast(BladeAirfoil)blade_af;
         GC.removeRoot(cast(void*)p);
     }
 }

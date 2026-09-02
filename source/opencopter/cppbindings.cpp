@@ -166,7 +166,7 @@ Frame::Frame(Vec3 axis, double angle, Vec3 translation,
                const Frame* parent, std::string_view name, FrameType frame_type) {
     OC_Frame* raw = oc_frame_create(to_oc(axis), angle, to_oc(translation),
                                       parent ? fp(*parent) : nullptr,
-                                      name.data(), static_cast<int>(frame_type));
+                                      std::string(name).c_str(), static_cast<int>(frame_type));
     OC_CHECK(raw, "Frame constructor: oc_frame_create returned null");
     ptr_ = raw;
     // owned_ defaults to false since frames are typically part of a hierarchy
@@ -221,7 +221,7 @@ void Frame::set_children(std::span<const Frame> children) {
 }
 
 void Frame::set_frame_type(FrameType ft) { OC_CHECK(ptr_, "Frame::set_frame_type called on null object"); oc_frame_set_frame_type(fp(*this), static_cast<int>(ft)); }
-void Frame::set_name(std::string_view name) { OC_CHECK(ptr_, "Frame::set_name called on null object"); oc_frame_set_name(fp(*this), name.data()); }
+void Frame::set_name(std::string_view name) { OC_CHECK(ptr_, "Frame::set_name called on null object"); oc_frame_set_name(fp(*this), std::string(name).c_str()); }
 
 const Mat4* Frame::local_matrix() const {
     if (!ptr_) return nullptr;
@@ -463,12 +463,12 @@ AirfoilModel AirfoilModel::aero_das(const std::vector<double>& a, const std::vec
 }
 
 AirfoilModel AirfoilModel::aero_das_from_xfoil_polar(std::string_view fn, double tbyc) {
-    OC_AirfoilModel* raw = oc_aero_das_from_xfoil_polar(fn.data(), tbyc);
+    OC_AirfoilModel* raw = oc_aero_das_from_xfoil_polar(std::string(fn).c_str(), tbyc);
     OC_CHECK(raw, "AirfoilModel::aero_das_from_xfoil_polar: returned null (check filename)");
     return AirfoilModel(raw);
 }
 AirfoilModel AirfoilModel::c81_from_file(std::string_view fn) {
-    OC_AirfoilModel* raw = oc_c81_from_file(fn.data());
+    OC_AirfoilModel* raw = oc_c81_from_file(std::string(fn).c_str());
     OC_CHECK(raw, "AirfoilModel::c81_from_file: returned null (check filename)");
     return AirfoilModel(raw);
 }
@@ -570,7 +570,7 @@ void Inflow::update(const AircraftState& ac_state, const Wake& wake, double dt) 
 std::vector<double> Inflow::inflow_at(const std::vector<double>& x, const std::vector<double>& y,
     const std::vector<double>& z) const {
     if (!ptr_ || x.size() != y.size() || y.size() != z.size()) return {};
-    size_t len = x.size(); std::vector<double> result(len * 3);
+    size_t len = x.size(); std::vector<double> result(len);
     oc_inflow_at(inl(*this), x.data(), y.data(), z.data(), result.data(), len);
     return result;
 }
@@ -772,9 +772,10 @@ AircraftState::AircraftState(size_t nr, const std::vector<size_t>& nb, size_t ne
     std::vector<OC_Inflow*> wri(wi.size());
     for (size_t i = 0; i < wi.size(); ++i) wri[i] = wi[i] ? inl(*wi[i]) : nullptr;
     std::vector<size_t> mnb(nb), mw(nwp);
-    double dv = static_cast<double>(static_cast<int>(dir));
+    // The C API reads direction[0..nr], so give it one entry per rotor.
+    std::vector<double> dv(nr, static_cast<double>(static_cast<int>(dir)));
     ptr_ = oc_aircraft_state_create(nr, mnb.data(), ne, nw, mw.data(), sns, cns,
-        ap(aircraft), rri.data(), wri.data(), &dv);
+        ap(aircraft), rri.data(), wri.data(), dv.data());
     OC_CHECK(ptr_, "AircraftState constructor: oc_aircraft_state_create returned null");
 }
 
@@ -996,33 +997,33 @@ VtkWingWake VtkWingWake::build(const WingGeometry& w, const WingLiftSurf& l) {
 
 void write_rotor_vtu(std::string_view filename, size_t step, size_t iteration,
     const VtkRotor& vtk, const AircraftState& ac_state, const RotorGeometry& geom) {
-    oc_write_rotor_vtu(filename.data(), step, iteration, vr(vtk), ast(ac_state), rgp(geom));
+    oc_write_rotor_vtu(std::string(filename).c_str(), step, iteration, vr(vtk), ast(ac_state), rgp(geom));
 }
 
 void write_rotors_vtu(std::string_view filename, size_t step,
     const std::vector<VtkRotor>& vtks, const AircraftState& ac_state, const Aircraft& aircraft) {
     size_t n = vtks.size(); std::vector<OC_VtkRotor*> raw(n);
     for(size_t i=0;i<n;++i) raw[i] = vr(vtks[i]);
-    oc_write_rotors_vtu(filename.data(), step, raw.data(), n, ast(ac_state), ap(aircraft));
+    oc_write_rotors_vtu(std::string(filename).c_str(), step, raw.data(), n, ast(ac_state), ap(aircraft));
 }
 
 void write_wing_vtu(std::string_view filename, size_t step, size_t iteration,
     const VtkWing& vtk, const AircraftState& ac_state, const WingGeometry& geom) {
-    oc_write_wing_vtu(filename.data(), step, iteration, vw(vtk), ast(ac_state), wg(geom));
+    oc_write_wing_vtu(std::string(filename).c_str(), step, iteration, vw(vtk), ast(ac_state), wg(geom));
 }
 
 void write_wake_vtu(std::string_view filename, size_t step, const VtkWake& vtk, const Wake& wake) {
-    oc_write_wake_vtu(filename.data(), step, vkw(vtk), wk(wake));
+    oc_write_wake_vtu(std::string(filename).c_str(), step, vkw(vtk), wk(wake));
 }
 
 void write_wing_wake_vtu(std::string_view filename, size_t step, size_t iteration,
     const VtkWingWake& vtk, const WingGeometry& wing, const WingLiftSurf& lift_surf, const WingInputState& input) {
-    oc_write_wing_wake_vtu(filename.data(), step, iteration, vww(vtk), wg(wing), wls(lift_surf), wis(input));
+    oc_write_wing_wake_vtu(std::string(filename).c_str(), step, iteration, vww(vtk), wg(wing), wls(lift_surf), wis(input));
 }
 
 void write_wake_field_vtu(std::string_view filename, const AircraftState& ac_state, const Wake& wake,
     double xmin,double xmax, double ymin,double ymax, double zmin,double zmax, size_t nx,size_t ny,size_t nz) {
-    oc_write_wake_field_vtu(filename.data(), ast(ac_state), wk(wake),
+    oc_write_wake_field_vtu(std::string(filename).c_str(), ast(ac_state), wk(wake),
         xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz);
 }
 

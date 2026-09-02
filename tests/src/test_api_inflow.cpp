@@ -80,6 +80,7 @@ TEST(Inflow, NullInflowCreateDestroy) {
 
     oc_aircraft_input_state_destroy(ac_input);
     oc_rotor_geometry_destroy(rotor);
+    oc_aircraft_destroy(aircraft);
 }
 
 
@@ -157,6 +158,7 @@ TEST(Inflow, DestroyIdempotent) {
 
     oc_aircraft_input_state_destroy(ac_input);
     oc_rotor_geometry_destroy(rotor);
+    oc_aircraft_destroy(aircraft);
 }
 
 
@@ -223,6 +225,7 @@ TEST(Inflow, NullInflowGetFrame) {
 
     oc_aircraft_input_state_destroy(ac_input);
     oc_rotor_geometry_destroy(rotor);
+    oc_aircraft_destroy(aircraft);
 }
 
 
@@ -289,6 +292,7 @@ TEST(Inflow, NullInflowWakeSkew) {
 
     oc_aircraft_input_state_destroy(ac_input);
     oc_rotor_geometry_destroy(rotor);
+    oc_aircraft_destroy(aircraft);
 }
 
 /* ================================================================== */

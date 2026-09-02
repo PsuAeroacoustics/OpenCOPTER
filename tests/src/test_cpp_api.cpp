@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <array>
 #include <span>
+#include <vector>
 
 using namespace opencopter;
 
@@ -133,4 +134,49 @@ TEST(CPP_Errors, SetFrameNull) {
     Frame f(Vec3{0,0,1}, 0.0, Vec3{0,0,0}, nullptr, "f", FrameType::Rotor);
     RotorGeometry rg;  // default-constructed → null pointer
     EXPECT_THROW(rg.set_frame(f), std::runtime_error);
+}
+
+/* ================================================================== */
+/*  Span overloads                                                    */
+/* ================================================================== */
+
+/* Helper: build a minimal valid BladeAirfoil (move-only types need push_back).
+ * The extent must span a whole chunk: BladeAirfoil sizes itself as
+ * (extent_end - extent_start + 1)/chunk_size, so a sub-chunk extent yields
+ * zero chunks. chunk_size is 8, matching the C-API tests. */
+static BladeAirfoil make_test_blade_airfoil() {
+    AirfoilModel af = AirfoilModel::thin_airfoil(6.28);
+    std::vector<AirfoilModel> models;
+    models.push_back(std::move(af));
+    std::vector<size_t> extents = {0, 7};
+    return BladeAirfoil::create(models, extents);
+}
+
+TEST(CPP_BladeGeo, SetTwistSpan) {
+    BladeAirfoil ba = make_test_blade_airfoil();
+    ASSERT_TRUE(static_cast<bool>(ba));
+
+    BladeGeometry bg(8, 0.0, 0.3, ba, 0.5);
+    ASSERT_TRUE(static_cast<bool>(bg));
+
+    // Use std::span<const double> overload
+    double twist[8] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8};
+    std::span<const double> twist_span(twist, 8);
+    bg.set_twist(twist_span);  // should not throw
+}
+
+TEST(CPP_RotorGeo, SetBladesSpan) {
+    // Object span: std::span<const BladeGeometry>
+    BladeAirfoil ba = make_test_blade_airfoil();
+    ASSERT_TRUE(static_cast<bool>(ba));
+
+    std::array<BladeGeometry, 1> blades{};
+    blades[0] = BladeGeometry(8, 0.0, 0.3, ba, 0.5);
+    ASSERT_TRUE(static_cast<bool>(blades[0]));
+
+    RotorGeometry rg(1, Vec3{0,0,0}, 0.5, 0.05);
+    ASSERT_TRUE(static_cast<bool>(rg));
+
+    std::span<const BladeGeometry> blade_span(blades.data(), 1);
+    rg.set_blades(blade_span);  // should not throw
 }
