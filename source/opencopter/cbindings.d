@@ -1580,12 +1580,30 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create_basic(size_t num_elements, do
         AirfoilModel[] af_models;
         af_models ~= af;
 
-        size_t[2][] ext;
-        ext ~= [size_t(0), num_elements - 1];
+        // BladeGeometry rounds its element count up to a whole number of
+        // chunks, so cover the padded count here too; otherwise a blade whose
+        // element count is not a multiple of chunk_size has no airfoil for its
+        // final chunk.
+        immutable size_t padded_elements = num_elements%chunk_size == 0
+            ? num_elements
+            : num_elements + (chunk_size - num_elements%chunk_size);
 
-        auto blade_af = new BladeAirfoil(af_models, ext);
-        GC.addRoot(cast(void*)blade_af);
-        return cast(OC_BladeAirfoil*)blade_af;
+        size_t[2][] ext;
+        ext ~= [size_t(0), padded_elements - 1];
+
+        // BladeAirfoil rejects extents that do not cover whole chunks; report
+        // that as a null handle rather than letting it cross the C boundary.
+        try {
+            auto blade_af = new BladeAirfoil(af_models, ext);
+            GC.addRoot(cast(void*)blade_af);
+            return cast(OC_BladeAirfoil*)blade_af;
+        } catch(Throwable ex) {
+            debug {
+                import std.stdio : writeln;
+                writeln("oc_blade_airfoil_create_basic failed: ", ex.msg);
+            }
+            return null;
+        }
     }
     return null;
 }
@@ -1601,9 +1619,19 @@ extern(C) OC_BladeAirfoil* oc_blade_airfoil_create(OC_AirfoilModel** models, con
             ext[i][0] = extents[i * 2];
             ext[i][1] = extents[i * 2 + 1];
         }
-        auto blade_af = new BladeAirfoil(af_models, ext);
-        GC.addRoot(cast(void*)blade_af);
-        return cast(OC_BladeAirfoil*)blade_af;
+        // BladeAirfoil rejects extents that do not cover whole chunks; report
+        // that as a null handle rather than letting it cross the C boundary.
+        try {
+            auto blade_af = new BladeAirfoil(af_models, ext);
+            GC.addRoot(cast(void*)blade_af);
+            return cast(OC_BladeAirfoil*)blade_af;
+        } catch(Throwable ex) {
+            debug {
+                import std.stdio : writeln;
+                writeln("oc_blade_airfoil_create failed: ", ex.msg);
+            }
+            return null;
+        }
     }
     return null;
 }
