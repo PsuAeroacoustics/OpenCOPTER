@@ -98,11 +98,27 @@ class BladeAirfoil {
 
     this(AirfoilModel[] af_models, size_t[2][] extents) {
         import std.stdio : writeln;
+        import std.conv : to;
         enforce(af_models.length == extents.length, "The supplied number of airfoil models should be the same number of supplied extents.");
+        enforce(extents.length > 0, "At least one airfoil extent is required.");
+
+        // The loop below indexes airfoil_models by an absolute element index
+        // divided by chunk_size, while the array is sized from the total span.
+        // That only lines up if the extents start at 0 and cover whole chunks;
+        // otherwise the array comes out too short and the appends run past its
+        // end, which is silent memory corruption in a release build.
+        enforce(extents[0][0] == 0,
+            "Airfoil extents must start at element 0, not "~extents[0][0].to!string~".");
 
        /// writeln("extents[$-1][1]: ",extents[$-1][1]);
         //writeln("extents[0][0] + 1: ", extents[0][0] + 1);
-        immutable size_t num_chunks = (extents[$-1][1] - extents[0][0] + 1)/chunk_size;
+        immutable size_t num_elements = extents[$-1][1] - extents[0][0] + 1;
+        enforce(num_elements > 0 && num_elements%chunk_size == 0,
+            "Airfoil extents must cover a whole number of chunks (a multiple of "~chunk_size.to!string
+            ~" elements), but ["~extents[0][0].to!string~", "~extents[$-1][1].to!string~"] covers "
+            ~num_elements.to!string~".");
+
+        immutable size_t num_chunks = num_elements/chunk_size;
 
         airfoil_models = new AirfoilModels[num_chunks];
 

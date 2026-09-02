@@ -46,7 +46,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
     Frame* local_frame;
 	Mat4 global_inverse;
 
-    @nogc Frame* frame() {
+    override @nogc Frame* frame() {
         return local_frame;
     }
 
@@ -88,7 +88,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         }
     }
     
-    void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt){
+    override void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt){
         bool calc_wake_ind_vel = true;
         bool wing_only_test = false;
         auto wing_state = ac_state.wing_states[].filter!(WS => WS.inflow_model.frame == this.frame).front;
@@ -247,7 +247,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         
     }
 
-    void update_wing_circulation(WingStateT!AC wing_state){
+    override void update_wing_circulation(WingStateT!AC wing_state){
         debug writeln("going into update_wing_circulation");
 
         debug writeln("wing_state.wing_part_states.length = ",wing_state.wing_part_states.length);
@@ -287,7 +287,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         }
     }
 
-    void update_wing_dC_L(WingStateT!AC wing_state){
+    override void update_wing_dC_L(WingStateT!AC wing_state){
         immutable num_span_chunks = wing_state.wing_part_states[0].chunks.length;
         immutable num_chord_pt =  wing_state.wing_part_states[0].ctrl_chunks.length/num_span_chunks;
         double root_chord = wing.wing_parts[0].wing_root_chord; 
@@ -383,7 +383,7 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         wing_state.C_L = C_L;
     }
 
-    InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+    override InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
         auto ind_vel = compute_wing_induced_vel(wing_lift_surf, x, y, z);
 
         return ind_vel;
@@ -396,10 +396,13 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         return V_z;
     }
 
-    Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
+    override Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
         auto ind_vel = compute_wing_induced_vel(wing_lift_surf, xyz[0], xyz[1], xyz[2]);
-
         immutable Chunk V_z = ind_vel.v_z[];
         return V_z;
+    }
+
+    override double wake_skew() {
+        return 0.0;
     }
 }

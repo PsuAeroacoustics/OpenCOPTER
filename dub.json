@@ -3,6 +3,12 @@
 	"copyright": "Copyright © 2026, Robert F. Rau II, The Pennsylvania State University",
 	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
+	"preBuildCommands-linux": [
+		"./scripts/build_cppbindings.sh"
+	],
+	"preBuildCommands-osx": [
+		"./scripts/build_cppbindings.sh"
+	],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},
 		"kxml": "~>1.1.1"
@@ -17,11 +23,12 @@
 		"-llapacke",
 		"-llapack",
 		"-lopenblas",
-		"-lgfortran"
+		"-lgfortran",
+		"-lstdc++"
 	],
-	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/", "-lc++"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
-	"excludedSourceFiles": [ "source/opencopter/cpp.d" ],
+	"sourceFiles": ["build/CMakeFiles/cppbindings.dir/source/opencopter/cppbindings.cpp.o"],
 	"configurations": [
 		{
 			"name": "library",
@@ -429,6 +436,11 @@
 		"debug-native": {
 			"buildOptions": ["debugMode", "debugInfo"],
 			"dflags": ["-mcpu=native"]
+		},
+		"debug-native-asan": {
+			"buildOptions": ["debugMode", "debugInfo"],
+			"dflags": ["-mcpu=native"],
+			"dflags-ldc": ["-fsanitize=address"]
 		},
 		"debug-native-512": {
 			"buildOptions": ["debugMode", "debugInfo"],

@@ -448,7 +448,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	Frame* local_frame;
 	Mat4 global_inverse;
 
-	@nogc Frame* frame() {
+	override @nogc Frame* frame() {
 		return local_frame;
 	}
 
@@ -565,6 +565,32 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		total_sin_states = total_odd_sin_states + total_even_sin_states;
 
+		// Validate that computed state counts are reasonable BEFORE doing any GC allocations.
+		// If they are not, it almost always means a prior field access (e.g. rotor.blades[0])
+		// read garbage due to an FFI ABI mismatch and corrupted stack data.  Print diagnostics
+		// and abort so the root cause becomes visible rather than crashing at the GC allocation.
+		if (total_states < 0 || total_odd_states < 0 || total_even_states < 0 || total_sin_states < 0) {
+			writeln("[HuangPetersInflow] FATAL: negative state counts — likely corrupted stack from FFI ABI mismatch");
+			writeln("  Mo=", Mo, " Me=", Me);
+			writeln("  total_odd_states=", total_odd_states, " total_even_states=", total_even_states);
+			writeln("  total_states=", total_states, " total_sin_states=", total_sin_states);
+			
+			// Also print rotor/blades diagnostic for debugging.
+			if (_rotor !is null) {
+				writeln("  _rotor ptr=", cast(void*)_rotor);
+				writeln("  _rotor.frame ptr=", cast(void*)_rotor.frame);
+				if (_rotor.blades.length > 0) {
+					writeln("  _rotor.blades.length=", _rotor.blades.length);
+					writeln("  _rotor.blades[0].chunks.length=", _rotor.blades[0].chunks.length);
+				} else {
+					writeln("  _rotor.blades.length=<zero>");
+				}
+			} else {
+				writeln("  _rotor is null");
+			}
+			return;
+		}
+		
 		debug writeln("total_states: ", total_states);
 		debug writeln("total_odd_states: ", total_odd_states);
 		debug writeln("total_even_states: ", total_even_states);
@@ -1205,7 +1231,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return K;
 	}
 
-	@nogc double wake_skew() {
+	override @nogc double wake_skew() {
 		return chi;
 	}
 
@@ -1343,7 +1369,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		}
 	}
 
-	void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
+	override void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt) {
 		omega = rotor_input.angular_velocity;
 		
 		immutable t_scale = abs(omega);
@@ -1525,15 +1551,15 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return k_bar;
 	}
 
-	void update_wing_circulation(WingStateT!AC wing_state){
+	override void update_wing_circulation(WingStateT!AC wing_state){
 		
 	}
 
-	void update_wing_dC_L(WingStateT!AC wing_state){
+	override void update_wing_dC_L(WingStateT!AC wing_state){
 		
 	}
 
-	InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
+	override InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
 		InducedVelocities ret;
 		Chunk zeros = 0.0;
 
@@ -1544,7 +1570,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return ret;
 	}
 
-	Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
+	override Chunk inflow_at(immutable Vector!(4, Chunk) xyz) {
 		immutable normalized_xyz = xyz/rotor.radius;
 
 		if(!contraction_mapping) {

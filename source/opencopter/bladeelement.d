@@ -195,6 +195,9 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
 		blade_state.chunks[chunk_idx].aoa[] = theta[] - inflow_angle[] - plunging_correction[];
 
+		debug writeln("aoa: ", blade_state.chunks[chunk_idx].aoa);
+		debug writeln("inflow_angle: ", inflow_angle);
+		
 		immutable Chunk u_squared = (u_t[]*u_t[] + u_p[]*u_p[]);
 		immutable Chunk u_inf = sqrt(u_squared);
 		immutable Chunk dimensional_u_inf = u_inf[] * rotor.radius * abs(rotor_input.angular_velocity);
@@ -204,6 +207,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 	foreach(chunk_idx; 0..blade.chunks.length) {
 		//writeln("blade sec u_squared = ", u_squared);
 		auto gamma = blade_state.circulation_model.compute_bound_circulation_band(blade_state, chunk_idx, rotor_input.angular_velocity, blade.airfoil.lift_curve_slope(chunk_idx), blade.airfoil.zero_lift_aoa(chunk_idx));
+
+		debug writeln("gamma_hat: ", gamma);
 
 		immutable Chunk u_p = blade_state.chunks[chunk_idx].u_p[];
 		immutable Chunk u_t = blade_state.chunks[chunk_idx].u_t[];
@@ -218,10 +223,15 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		gamma[] *= 0.5 * blade.blade_length * dimensional_u_inf[];
 		// Nitya: Blade circulation dimensionalized here!!
 
+		debug writeln("gamma: ", gamma);
+
 		blade_state.chunks[chunk_idx].aoa_eff[] = 2.0*std.math.sgn(rotor_input.angular_velocity)*gamma[];
 
 		blade_state.chunks[chunk_idx].aoa_eff[] /= (u_inf[]*blade.airfoil.lift_curve_slope(chunk_idx)[]*blade.chunks[chunk_idx].chord[]*std.math.abs(rotor_input.angular_velocity)*rotor.radius*rotor.radius);
 		blade_state.chunks[chunk_idx].aoa_eff[] += blade.airfoil.zero_lift_aoa(chunk_idx)[];
+
+		debug writeln("aoa_eff: ", blade_state.chunks[chunk_idx].aoa_eff);
+		debug writeln("aoa_0: ", blade.airfoil.zero_lift_aoa(chunk_idx)[]);
 
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, M_inf);
 
@@ -331,7 +341,12 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 		// Nitya: blade azimuth calculated here! 
 	}
 
-	auto dynWake = DynamicInflowWake!(PointerTarget!RS)(ac_state.rotor_states.data);
+	static if(isPointer!RS) {
+		auto dynWake = DynamicInflowWake!(PointerTarget!RS)(ac_state.rotor_states.data);
+	} else {
+		auto dynWake = DynamicInflowWake!(RS)(ac_state.rotor_states);
+	}
+	
 
 	Chunk[] backup_CT = new Chunk[rotor.blades[0].chunks.length];
 	//writeln("calculating blade properties");
@@ -456,7 +471,7 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	//GC.collect();
 	
 	aircraft.root_frame.update(Mat4.identity);
-	//aircraft.root_frame.print_frame;
+	debug aircraft.root_frame.print_frame;
 
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 
@@ -521,7 +536,12 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	//foreach(rotor_idx; 0..aircraft.rotors.length) {
 	foreach(rotor_idx, ref rotor_state ; ac_state.rotor_states) {
 		//inflows[rotor_idx].update(ac_state.rotor_states[rotor_idx].C_T, ac_input_state.rotor_inputs[rotor_idx], ac_state.rotor_states[rotor_idx], ac_state.rotor_states[rotor_idx].advance_ratio, ac_state.rotor_states[rotor_idx].axial_advance_ratio, &ac_state, dt);
-		rotor_state.inflow_model.update(ac_state, *wake_history[0], dt);
+		static if(AC == ArrayContainer.none) {
+			rotor_state.inflow_model.update(ac_state, wake_history[0], dt);
+		} else {
+			rotor_state.inflow_model.update(ac_state, *wake_history[0], dt);
+		}
+		
 		foreach(blade_idx, ref blade; aircraft.rotors[rotor_idx].blades) {
 			foreach(chunk_idx, ref state_chunk; ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks) {
 				state_chunk.x_old[] = state_chunk.x[];
@@ -557,7 +577,12 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 	ac_state.forces = ac_forces;
 
 	foreach(ref wing_state ; ac_state.wing_states) {
-		wing_state.inflow_model.update(ac_state, *wake_history[0], dt);
+		static if(AC == ArrayContainer.none) {
+			wing_state.inflow_model.update(ac_state, wake_history[0], dt);
+		} else {
+			wing_state.inflow_model.update(ac_state, *wake_history[0], dt);
+		}
+		
 	}
 	debug writeln("\n wing inflows updated");
 }
