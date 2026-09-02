@@ -978,16 +978,37 @@ void print_frame(F)(F frame, int depth = 0) {
 
 
 unittest {
-	auto ac = create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/test_evtol.vsp3");
+	// Mirror create_aircraft_from_vsp's defaults so the state we build below
+	// matches the geometry it produced.
+	immutable size_t elements = 48;
+	immutable size_t span_elements = 32;
+	immutable size_t chord_elements = 4;
+
+	auto ac = create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/test_evtol.vsp3", elements, span_elements, chord_elements);
 
 	print_frame(ac.root_frame);
 
 	import opencopter.vtk;
 	import opencopter.aircraft.state;
+	import opencopter.inflow;
 
 	writeln("ac.rotors[0].blades[0].chunks.length: ", ac.rotors[0].blades[0].chunks.length);
 
-	auto ac_state = AircraftState(ac.rotors.length, ac.rotors.map!(r => r.blades.length).array, 48, ac);
+	// This only exercises blade positioning and VTU output, so no inflow model is
+	// ever evaluated. The base InflowT is enough to fill the slots.
+	auto ac_state = AircraftState(
+		ac.rotors.length,
+		ac.rotors.map!(r => r.blades.length).array,
+		elements,
+		ac.wings.length,
+		ac.wings.map!(w => w.wing_parts.length).array,
+		span_elements,
+		chord_elements,
+		ac,
+		ac.rotors.map!(_ => new Inflow).array,
+		ac.wings.map!(_ => new Inflow).array,
+		ac.rotors.map!(_ => 1.0).array
+	);
 
 	foreach(rotor_idx; 0..ac.rotors.length) {
 	

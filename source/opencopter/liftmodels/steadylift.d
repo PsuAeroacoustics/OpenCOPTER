@@ -100,7 +100,8 @@ unittest {
 
 	Chunk inflow_angle = atan2(inflow, u_t)[];
 
-	auto bs = BladeState(1, blade, rotor_radius);
+	// Trailing argument is the rotor rotation direction (sign of omega).
+	auto bs = BladeState(1, blade, rotor_radius, 1.0);
 
 	
 	writeln;
