@@ -147,6 +147,14 @@ extern (C++) struct BladeInputStateT(ArrayContainer AC) {
 		twist_deflection = new Chunk[num_chunks];
 		flap_velocity = new Chunk[num_chunks];
 		lag_velocity = new Chunk[num_chunks];
+
+		foreach(i; 0..num_chunks) {
+			flap_deflection[i][] = 0.0;
+			lag_deflection[i][] = 0.0;
+			twist_deflection[i][] = 0.0;
+			flap_velocity[i][] = 0.0;
+			lag_velocity[i][] = 0.0;
+		}
 	}
 }
 

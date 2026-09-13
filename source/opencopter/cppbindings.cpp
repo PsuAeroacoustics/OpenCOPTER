@@ -784,7 +784,7 @@ double BladeState::C_D() const { return ptr_ ? oc_blade_state_get_C_D(bst(*this)
 BS_VEC(dC_T); BS_VEC(dC_Db); BS_VEC(dC_Db_profile); BS_VEC(dC_Db_induced);
 BS_VEC(dynamic_dC_Db_profile); BS_VEC(dynamic_dC_Db_induced); BS_VEC(dC_N);
 BS_VEC(dC_c); BS_VEC(dC_D); BS_VEC(dC_T_dot); BS_VEC(dC_Q); BS_VEC(dC_L);
-BS_VEC(dC_l); BS_VEC(dC_Mz); BS_VEC(dC_My); BS_VEC(u_p); BS_VEC(dynamic_u_p);
+BS_VEC(dC_l); BS_VEC(dC_Mz); BS_VEC(dC_My); BS_VEC(dC_M); BS_VEC(u_p); BS_VEC(dynamic_u_p);
 BS_VEC(u_t); BS_VEC(aoa); BS_VEC(aoa_eff); BS_VEC(gamma); BS_VEC(r_c);
 BS_VEC(x); BS_VEC(y); BS_VEC(z);
 #undef BS_VEC

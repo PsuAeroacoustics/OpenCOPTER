@@ -328,7 +328,10 @@ extern (C++) struct BladeStateChunk {
 	
 	Chunk dC_Mz;
 	Chunk dC_My;
-	//Chunk dC_M;
+	/++
+	 +  Spanwise sectional non-dimensional moment coefficient (airfoil pitch moment)
+	 +/
+	Chunk dC_M;
 	Chunk u_p;
 	Chunk dynamic_u_p;
 	Chunk shed_u_p;

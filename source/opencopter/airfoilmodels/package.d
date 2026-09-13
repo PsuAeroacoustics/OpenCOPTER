@@ -12,19 +12,24 @@ import std.exception;
 class AirfoilModel {
     Chunk get_Cl(Chunk alpha_query, Chunk mach_query) { assert(0); }
     Chunk get_Cd(Chunk alpha_query, Chunk mach_query) { assert(0); }
+    Chunk get_Cm(Chunk alpha_query, Chunk mach_query) { assert(0); }
     double get_Cl(double alpha_query, double mach_query) { assert(0); }
     double get_Cd(double alpha_query, double mach_query) { assert(0); }
+    double get_Cm(double alpha_query, double mach_query) { assert(0); }
     double lift_curve_slope() { assert(0); }
     double zero_lift_aoa() { assert(0); }
     //Chunk get_Cl(Chunk alpha_query, Chunk mach_query);
     //Chunk get_Cd(Chunk alpha_query, Chunk mach_query);
+    //Chunk get_Cm(Chunk alpha_query, Chunk mach_query);
     //double get_Cl(double alpha_query, double mach_query);
     //double get_Cd(double alpha_query, double mach_query);
+    //double get_Cm(double alpha_query, double mach_query);
 }
 
 struct AirfoilState {
     Chunk C_l;
     Chunk C_d;
+    Chunk C_m;
 }
 
 unittest {
@@ -57,11 +62,20 @@ unittest {
             return c;
         }
 
+        override Chunk get_Cm(Chunk alpha_query, Chunk mach_query) {
+            Chunk c;
+            return c;
+        }
+
         override double get_Cl(double alpha_query, double mach_query) {
             return 0.0;
         }
 
         override double get_Cd(double alpha_query, double mach_query) {
+            return 0.0;
+        }
+
+        override double get_Cm(double alpha_query, double mach_query) {
             return 0.0;
         }
     }
@@ -128,10 +142,12 @@ class BladeAirfoil {
         if(chunk_models.length == 1) {
             state.C_l[] = chunk_models[0].get_Cl(aoa, mach)[];
             state.C_d[] = chunk_models[0].get_Cd(aoa, mach)[];
+            state.C_m[] = chunk_models[0].get_Cm(aoa, mach)[];
         } else {
             foreach(c_idx; 0..chunk_size) {
                 state.C_l[c_idx] = chunk_models[c_idx].get_Cl(aoa[c_idx], mach[c_idx]);
                 state.C_d[c_idx] = chunk_models[c_idx].get_Cd(aoa[c_idx], mach[c_idx]);
+                state.C_m[c_idx] = chunk_models[c_idx].get_Cm(aoa[c_idx], mach[c_idx]);
             }
         }
         return state;

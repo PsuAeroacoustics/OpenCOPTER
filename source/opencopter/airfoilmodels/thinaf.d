@@ -33,11 +33,20 @@ class ThinAirfoil: AirfoilModel {
         return C_d;
     }
 
+    override Chunk get_Cm(Chunk alpha_query, Chunk mach_query) {
+        Chunk C_m = 0.0;
+        return C_m;
+    }
+
     override double get_Cl(double alpha_query, double mach_query) {
         return 2.0*PI*alpha_query + C_l_alpha_0;
     }
 
     override double get_Cd(double alpha_query, double mach_query) {
+        return 0.0;
+    }
+
+    override double get_Cm(double alpha_query, double mach_query) {
         return 0.0;
     }
 }

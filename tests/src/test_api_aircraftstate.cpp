@@ -201,6 +201,64 @@ TEST(AircraftState, RotorStateCTSetGet) {
 }
 
 /* ================================================================== */
+/*  TEST: BladeState dC_M fill function                                 */
+/* ================================================================== */
+TEST(AircraftState, BladeStateDCM) {
+    OC_Aircraft* ac = oc_aircraft_create(1, 0);
+    ASSERT_NE(ac, nullptr);
+
+    OC_RotorGeometry* rotor = create_rotor_with_blades(2, 1.0, 0.3);
+    ASSERT_NE(rotor, nullptr);
+
+    OC_RotorGeometry* rotors[1] = {rotor};
+    oc_aircraft_set_rotors(ac, rotors, 1);
+
+    setup_rotor_frame(ac, rotor, 0);
+
+    size_t num_blades_arr[1] = {2};
+    OC_AircraftInputState* ac_input = oc_aircraft_input_state_create(1, num_blades_arr, 0);
+    ASSERT_NE(ac_input, nullptr);
+
+    OC_RotorInputState* rotor_in = oc_aircraft_input_get_rotor_input(ac_input, 0);
+    ASSERT_NE(rotor_in, nullptr);
+    oc_rotor_input_set_angular_velocity(rotor_in, 100.0);
+
+    OC_Inflow* inflow = oc_null_inflow_create(rotor, rotor_in);
+    ASSERT_NE(inflow, nullptr);
+
+    size_t nba[1] = {2};
+    double dir_val = 1.0;
+    OC_Inflow* rinfl[] = {inflow};
+    OC_AircraftState* state = oc_aircraft_state_create(
+        1, nba, 8, 0, nullptr, 1, 1,
+        ac, rinfl, nullptr, &dir_val);
+    ASSERT_NE(state, nullptr);
+
+    OC_RotorState* rs = oc_aircraft_state_get_rotor_state(state, 0);
+    ASSERT_NE(rs, nullptr);
+
+    OC_BladeState* bs = oc_rotor_state_get_blade_state(rs, 0);
+    ASSERT_NE(bs, nullptr);
+
+    // dC_M fill: should not crash (values are uninitialized before first sim step,
+    // same pattern as the other BladeState array fill functions)
+    double dC_M[8];
+    oc_blade_state_fill_dC_M(bs, dC_M, 8);
+
+    // Null-safe: null blade state should not crash
+    oc_blade_state_fill_dC_M(nullptr, dC_M, 8);
+    // Null data should not crash
+    oc_blade_state_fill_dC_M(bs, nullptr, 8);
+
+    // Cleanup
+    oc_aircraft_state_destroy(state);
+    oc_inflow_destroy(inflow);
+    oc_aircraft_input_state_destroy(ac_input);
+    oc_rotor_geometry_destroy(rotor);
+    oc_aircraft_destroy(ac);
+}
+
+/* ================================================================== */
 /*  TEST: Multi-rotor aircraft state retrieval                          */
 /* ================================================================== */
 TEST(AircraftState, MultiRotorStates) {

@@ -34,12 +34,21 @@ unittest {
             Chunk c;
             return c;
         }
-
+        
+        override Chunk get_Cm(Chunk alpha_query, Chunk mach_query) {
+            Chunk c;
+            return c;
+        }
+        
         override double get_Cl(double alpha_query, double mach_query) {
             return 0.0;
         }
-
+        
         override double get_Cd(double alpha_query, double mach_query) {
+            return 0.0;
+        }
+        
+        override double get_Cm(double alpha_query, double mach_query) {
             return 0.0;
         }
     }

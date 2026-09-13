@@ -734,6 +734,7 @@ public:
     std::vector<double> dC_l(size_t len) const;
     std::vector<double> dC_Mz(size_t len) const;
     std::vector<double> dC_My(size_t len) const;
+    std::vector<double> dC_M(size_t len) const;
     std::vector<double> u_p(size_t len) const;
     std::vector<double> dynamic_u_p(size_t len) const;
     std::vector<double> u_t(size_t len) const;

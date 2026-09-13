@@ -890,6 +890,37 @@ InducedVelocities compute_wake_induced_velocities_on_wing(W, AS)(auto ref W wake
 	return ret;	
 }
 
+/++
+ +	Maps a spanwise release location (non-dimensional radial position) onto
+ +	the blade radial grid, returning the global element index (not the
+ +	chunk index) of the nearest blade station. This lets the trailed tip
+ +	vortex be started from the actual (possibly deformed) blade tip position
+ +	while keeping the spanwise release location user-controllable.
+ +/
+size_t find_blade_release_element(BG)(auto ref BG blade, double release_r)
+	if(is_blade_geometry!BG)
+{
+	import std.math : abs;
+
+	immutable size_t num_els = blade.chunks.length*chunk_size;
+
+	size_t best_el = num_els - 1;
+	double best_diff = 1.0e30;
+
+	foreach(el_idx; 0..num_els) {
+		immutable size_t chunk_idx = el_idx/chunk_size;
+		immutable size_t in_chunk = el_idx%chunk_size;
+		immutable double r_el = blade.chunks[chunk_idx].r[in_chunk];
+		immutable double diff = abs(r_el - release_r);
+		if(diff < best_diff) {
+			best_diff = diff;
+			best_el = el_idx;
+		}
+	}
+
+	return best_el;
+}
+
 
 immutable double alpha_l = 1.25643;
 
@@ -936,13 +967,12 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 		
 		foreach(blade_idx, ref blade; rotor.blade_states) {
 
-			immutable Vec4 inboard_factor =
-			Vec4(
-				1.0 - r_c - ((ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > 0 && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[0].r_0 != double.infinity) ? ac_input_state.rotor_inputs[rotor_idx].blade_inputs[0].r_0 : ac_input_state.rotor_inputs[rotor_idx].r_0[0])/16.0,
-				ac.rotors[rotor_idx].blades[blade_idx].chunks[$-1].xi[$-1],
-				0,
-				1.0/ac.rotors[rotor_idx].radius
-			)*ac.rotors[rotor_idx].radius;
+			// Spanwise release location of the tip vortex (non-dim radius),
+			// preserved from the existing r_0-based mechanism and read with
+			// proper per-blade indexing.
+			immutable double release_r0 = (ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > blade_idx && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 != double.infinity) ? ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 : ac_input_state.rotor_inputs[rotor_idx].r_0[blade_idx];
+			//immutable double release_r = 1.0 - r_c - release_r0/16.0;
+			immutable double release_r = 1.0 - release_r0/16.0;
 			
 			// tip vortex is accessed here
 			static if(AC == ArrayContainer.none) {
@@ -957,10 +987,14 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 				auto current_shed_filament = wake_history.history[0].rotor_wakes[rotor_idx].shed_vortices[blade_idx].shed_filaments[0];
 			}
 
-			auto new_vortex_pos = blade_geo.frame.global_matrix*inboard_factor; //back corrected!!
-			immutable x = new_vortex_pos[0];
-			immutable y = new_vortex_pos[1];
-			immutable z = new_vortex_pos[2];
+			// Trail the tip vortex from the tip of the deformed blade. The
+			// spanwise release location is mapped to the nearest blade radial
+			// station, and that station's deformed global position (from the
+			// blade state) is used as the starting point of the trailed vortex.
+			immutable size_t release_el = find_blade_release_element(ac.rotors[rotor_idx].blades[blade_idx], release_r);
+			immutable x = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[release_el/chunk_size].x[release_el%chunk_size];
+			immutable y = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[release_el/chunk_size].y[release_el%chunk_size];
+			immutable z = ac_state.rotor_states[rotor_idx].blade_states[blade_idx].chunks[release_el/chunk_size].z[release_el%chunk_size];
 
 			immutable omega = std.math.abs(ac_input_state.rotor_inputs[rotor_idx].angular_velocity);
 
@@ -1282,4 +1316,25 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			wake_history.history[0].rotor_wakes[rotor_idx].current_shed_idx++;
 		}
 	}
+}
+
+unittest {
+	// One chunk (chunk_size = 8) of evenly-spaced radial stations increasing
+	// toward the tip (r = 1.0 at the last element).
+	auto blade = BladeGeometry(8, 0.0, 1.0, null, 0.0);
+
+	double[] r_data = [0.2, 0.34, 0.48, 0.62, 0.76, 0.90, 0.97, 1.0];
+	set_geometry_array!"r"(blade, r_data);
+
+	// A release radius at the tip maps to the tip element.
+	assert(find_blade_release_element(blade, 1.0) == 7);
+
+	// Interior release radii map to their nearest station.
+	assert(find_blade_release_element(blade, 0.97) == 6);
+	assert(find_blade_release_element(blade, 0.30) == 1);
+	assert(find_blade_release_element(blade, 0.48) == 2);
+
+	// Out-of-range release radii clamp to the nearest end element.
+	assert(find_blade_release_element(blade, 0.0) == 0);
+	assert(find_blade_release_element(blade, 1.5) == 7);
 }

@@ -268,6 +268,16 @@ class AeroDAS: AirfoilModel {
         }
         return Cd;
     }
+
+    override double get_Cm(double alpha_query, double mach_query) {
+        return 0.0;
+    }
+
+    override Chunk get_Cm(Chunk alpha_query, Chunk mach_query) {
+        Chunk Cm;
+        Cm[] = 0.0;
+        return Cm;
+    }
 }
 
 auto create_aerodas_from_xfoil_polar(string filename, double tbyc) {

@@ -181,11 +181,11 @@ class C81: AirfoilModel {
         return CD.interpolation(alpha_query, mach_query);
     }
 
-    Chunk get_Cm(Chunk alpha_query, Chunk mach_query) {
+    override Chunk get_Cm(Chunk alpha_query, Chunk mach_query) {
         return CM.interpolation(alpha_query, mach_query);
     }
 
-    double get_Cm(double alpha_query, double mach_query) {
+    override double get_Cm(double alpha_query, double mach_query) {
         return CM.interpolation(alpha_query, mach_query);
     }
 }

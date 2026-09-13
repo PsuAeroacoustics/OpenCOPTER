@@ -693,6 +693,9 @@ extern(C) void oc_blade_state_fill_dC_Mz(const OC_BladeState* bs, double* data, 
 extern(C) void oc_blade_state_fill_dC_My(const OC_BladeState* bs, double* data, size_t len) {
     auto b = cast(const(BladeState)*)bs; if (b !is null && data !is null) (*b).get_state_array!"dC_My"(data[0..len]);
 }
+extern(C) void oc_blade_state_fill_dC_M(const OC_BladeState* bs, double* data, size_t len) {
+    auto b = cast(const(BladeState)*)bs; if (b !is null && data !is null) (*b).get_state_array!"dC_M"(data[0..len]);
+}
 extern(C) void oc_blade_state_fill_u_p(const OC_BladeState* bs, double* data, size_t len) {
     auto b = cast(const(BladeState)*)bs; if (b !is null && data !is null) (*b).get_state_array!"u_p"(data[0..len]);
 }

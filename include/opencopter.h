@@ -392,6 +392,7 @@ void oc_blade_state_fill_dC_L(const OC_BladeState* bs, double* data, size_t len)
 void oc_blade_state_fill_dC_l(const OC_BladeState* bs, double* data, size_t len);
 void oc_blade_state_fill_dC_Mz(const OC_BladeState* bs, double* data, size_t len);
 void oc_blade_state_fill_dC_My(const OC_BladeState* bs, double* data, size_t len);
+void oc_blade_state_fill_dC_M(const OC_BladeState* bs, double* data, size_t len);
 void oc_blade_state_fill_u_p(const OC_BladeState* bs, double* data, size_t len);
 void oc_blade_state_fill_dynamic_u_p(const OC_BladeState* bs, double* data, size_t len);
 void oc_blade_state_fill_u_t(const OC_BladeState* bs, double* data, size_t len);

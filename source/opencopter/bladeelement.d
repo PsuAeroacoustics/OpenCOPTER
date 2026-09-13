@@ -90,10 +90,16 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 
 	debug writeln("rotor state frame name: ", rotor_state.inflow_model.frame.name);
 	
+	double pitch_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].pitch != double.infinity) ? rotor_input.blade_inputs[blade_idx].pitch : rotor_input.blade_pitches[blade_idx];
+
+	debug writeln("r ", rotor_idx, " b ", blade_idx, " pitch_val: ", pitch_val*(PI/180.0));
+
 	//writeln("blade_idx = ", blade_idx);
 	foreach(chunk_idx; 0..blade.chunks.length) {
 
 		immutable Chunk effective_azimuth = blade_state.azimuth - std.math.sgn(rotor_input.angular_velocity)*blade.chunks[chunk_idx].sweep[];
+		debug writeln("blade ", blade_idx, " effective_azimuth: ", effective_azimuth);
+
 		immutable Chunk cos_sweep = cos(blade.chunks[chunk_idx].sweep);
 		immutable Chunk cos_azimuth = cos(effective_azimuth);
 		immutable Chunk sin_azimuth = sin(effective_azimuth);
@@ -105,6 +111,8 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		//writeln("\n");
 		auto wing_global_infow = Vector!(4, Chunk)(0);
 
+		debug writeln("blade ", blade_idx, " x: ", blade_state.chunks[chunk_idx].x);
+		
 		foreach(ref wing_state ; ac_state.wing_states) {
 
 			auto xyz_chunk = Vector!(4, Chunk)(1);
@@ -170,9 +178,13 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 
 		immutable Chunk wake_z = -projected_vel[2][];
 
+		debug writeln("wake_z: ", wake_z);
+		debug writeln("shed_projected_vel[2]: ", shed_projected_vel[2]);
+
 		Chunk u_p = (wake_z[] - shed_projected_vel[2][])/(rotor.radius*abs(rotor_input.angular_velocity));//*cos_sweep[];
 		if(rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].flap_velocity.length > chunk_idx) {
-			u_p[] = rotor_input.blade_inputs[blade_idx].flap_velocity[chunk_idx][];
+			u_p[] += rotor_input.blade_inputs[blade_idx].flap_velocity[chunk_idx][];
+			debug writeln("rotor_input.blade_inputs[blade_idx].flap_velocity[chunk_idx]: ", rotor_input.blade_inputs[blade_idx].flap_velocity[chunk_idx]);
 		}
 
 		blade_state.chunks[chunk_idx].shed_u_p[] = shed_projected_vel[2][]/(rotor.radius*abs(rotor_input.angular_velocity));
@@ -185,21 +197,27 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		immutable Chunk ut_blade_due_to_wing = wing_inflow_on_blade[1][]/(rotor.radius*abs(rotor_input.angular_velocity));
 
 		Chunk u_t = (blade.chunks[chunk_idx].r[] + std.math.sgn(rotor_input.angular_velocity)*mu_sin_azimuth[] - ut_blade_due_to_wing[])*cos_sweep[];
+		debug writeln("blade ", blade_idx, " chunk", chunk_idx, " u_t: ", u_t);
 		if(rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].lag_velocity.length > chunk_idx) {
 			u_t[] += rotor_input.blade_inputs[blade_idx].lag_velocity[chunk_idx][];
+			debug writeln("rotor_input.blade_inputs[blade_idx].lag_velocity[chunk_idx]: ", rotor_input.blade_inputs[blade_idx].lag_velocity[chunk_idx]);
 		}
-		
+	
 		immutable Chunk inflow_angle = atan2(u_p, u_t);
 
 		blade_state.chunks[chunk_idx].u_t[] = u_t[];
 		double fr_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].flapping_rate != double.infinity) ? rotor_input.blade_inputs[blade_idx].flapping_rate : rotor_input.blade_flapping_rate[blade_idx];
 		immutable Chunk plunging_correction = ((fr_val/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
 
-		Chunk twist_eff = blade.chunks[chunk_idx].twist;
+		Chunk twist_eff = blade.chunks[chunk_idx].twist[];
+		debug writeln("blade ", blade_idx, " geometric_twist: ", blade.chunks[chunk_idx].twist);
+
 		if(rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].twist_deflection.length > chunk_idx) {
-			foreach(i; 0..twist_eff.length) twist_eff[i] += rotor_input.blade_inputs[blade_idx].twist_deflection[chunk_idx][i];
+			twist_eff[] += rotor_input.blade_inputs[blade_idx].twist_deflection[chunk_idx][];
 		}
-		double pitch_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].pitch != double.infinity) ? rotor_input.blade_inputs[blade_idx].pitch : rotor_input.blade_pitches[blade_idx];
+		
+		debug writeln("twist_eff: ", twist_eff);
+
 		immutable Chunk theta = ((pitch_val + twist_eff[])[]*cos_sweep[]);
 		blade_state.chunks[chunk_idx].theta[] = theta[];
 		blade_state.chunks[chunk_idx].inflow_angle[] = inflow_angle[];
@@ -250,6 +268,9 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 
 		immutable Chunk dC_L = steady_sectional_model(u_p, u_t, af_coefficients.C_l, blade.chunks[chunk_idx].chord)[];
 		immutable Chunk dC_D = steady_sectional_model(u_p, u_t, af_coefficients.C_d, blade.chunks[chunk_idx].chord)[];
+		immutable Chunk dC_M = steady_sectional_model(u_p, u_t, af_coefficients.C_m, blade.chunks[chunk_idx].chord)[];
+
+		blade_state.chunks[chunk_idx].dC_M[] = dC_M[];
 
 		double fr_val = (rotor_input.blade_inputs.length > blade_idx && rotor_input.blade_inputs[blade_idx].flapping_rate != double.infinity) ? rotor_input.blade_inputs[blade_idx].flapping_rate : rotor_input.blade_flapping_rate[blade_idx];
 		immutable Chunk plunging_correction = ((fr_val/abs(rotor_input.angular_velocity))*blade.chunks[chunk_idx].r[])/u_t[];
@@ -349,8 +370,11 @@ void compute_rotor_properties(RG, RS, RIS, AS, WIS, WG, W)(auto ref RG rotor, au
 
 	foreach(blade_idx; 0..rotor.blades.length) {
 		rotor_state.blade_states[blade_idx].azimuth = rotor_input.azimuth + rotor.blades[blade_idx].azimuth_offset;
+		debug writeln("blade ", blade_idx, " azimuth: ", rotor_state.blade_states[blade_idx].azimuth);
 		// Nitya: blade azimuth calculated here! 
 	}
+
+	
 
 	static if(isPointer!RS) {
 		auto dynWake = DynamicInflowWake!(PointerTarget!RS)(ac_state.rotor_states.data);
