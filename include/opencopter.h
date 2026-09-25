@@ -171,6 +171,8 @@ void oc_frame_destroy(OC_Frame* frame);
 void oc_frame_set_rotation(OC_Frame* frame, OC_Vec3 axis, double angle);
 void oc_frame_rotate(OC_Frame* frame, OC_Vec3 axis, double angle);
 void oc_frame_translate(OC_Frame* frame, OC_Vec3 translation);
+void oc_frame_set_local_position(OC_Frame* frame, OC_Vec3 pos);
+void oc_frame_set_local_position_xyz(OC_Frame* frame, double x, double y, double z);
 void oc_frame_update(OC_Frame* frame, const OC_Mat4* parent_global_mat);
 const OC_Mat4* oc_frame_get_local_matrix(const OC_Frame* frame);
 const OC_Mat4* oc_frame_get_global_matrix(const OC_Frame* frame);

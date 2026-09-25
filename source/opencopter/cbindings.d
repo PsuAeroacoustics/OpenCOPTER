@@ -292,6 +292,19 @@ extern(C) void oc_frame_translate(OC_Frame* frame, OC_Vec3 translation) {
     if (f !is null) f.translate(oc_vec3_to_vec3(translation));
 }
 
+extern(C) void oc_frame_set_local_position(OC_Frame* frame, OC_Vec3 pos) {
+    auto f = cast(Frame*)frame;
+    if (f !is null) {
+        auto d_pos = oc_vec3_to_vec3(pos);
+        f.local_position(d_pos);
+    }
+}
+
+extern(C) void oc_frame_set_local_position_xyz(OC_Frame* frame, double x, double y, double z) {
+    auto f = cast(Frame*)frame;
+    if (f !is null) f.local_position(x, y, z);
+}
+
 extern(C) void oc_frame_update(OC_Frame* frame, const OC_Mat4* parent_global_mat) {
     auto f = cast(Frame*)frame;
     if (f !is null && parent_global_mat !is null) {

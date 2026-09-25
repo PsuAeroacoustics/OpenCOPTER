@@ -197,6 +197,8 @@ Frame& Frame::operator=(Frame&& other) noexcept {
 void Frame::set_rotation(Vec3 axis, double angle) { OC_CHECK(ptr_, "Frame::set_rotation called on null object"); oc_frame_set_rotation(fp(*this), to_oc(axis), angle); }
 void Frame::rotate(Vec3 axis, double angle) { OC_CHECK(ptr_, "Frame::rotate called on null object"); oc_frame_rotate(fp(*this), to_oc(axis), angle); }
 void Frame::translate(Vec3 translation) { OC_CHECK(ptr_, "Frame::translate called on null object"); oc_frame_translate(fp(*this), to_oc(translation)); }
+void Frame::set_local_position(Vec3 pos) { OC_CHECK(ptr_, "Frame::set_local_position called on null object"); oc_frame_set_local_position(fp(*this), to_oc(pos)); }
+void Frame::set_local_position(double x, double y, double z) { OC_CHECK(ptr_, "Frame::set_local_position called on null object"); oc_frame_set_local_position_xyz(fp(*this), x, y, z); }
 
 void Frame::update(const Mat4& parent_global_mat) {
     OC_CHECK(ptr_, "Frame::update called on null object");

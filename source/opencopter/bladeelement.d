@@ -262,6 +262,7 @@ void compute_blade_properties(BG, BS, RG, RIS, RS, AS, W)   (auto ref BG blade, 
 		debug writeln("aoa_0: ", blade.airfoil.zero_lift_aoa(chunk_idx)[]);
 
 		auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa_eff, M_inf);
+		// auto af_coefficients = blade.airfoil.compute_coeffiecients(chunk_idx, blade_state.chunks[chunk_idx].aoa, M_inf);
 
 		blade_state.chunks[chunk_idx].d_gamma[] = blade_state.chunks[chunk_idx].gamma[] - gamma[];
 		blade_state.chunks[chunk_idx].gamma[] = gamma[];

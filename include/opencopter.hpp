@@ -149,6 +149,8 @@ public:
     void set_rotation(Vec3 axis, double angle);
     void rotate(Vec3 axis, double angle);
     void translate(Vec3 translation);
+    void set_local_position(Vec3 position);
+    void set_local_position(double x, double y, double z);
     void update(const Mat4& parent_global_mat);
 
     void set_children(std::span<const Frame*> children);

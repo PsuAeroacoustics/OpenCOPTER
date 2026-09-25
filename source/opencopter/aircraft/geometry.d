@@ -293,6 +293,20 @@ struct Frame {
 		return pos;
 	}
 
+	void local_position(ref Vec3 pos) {
+		nop;
+		local_matrix[0, 3] = pos[0];
+		local_matrix[1, 3] = pos[1];
+		local_matrix[2, 3] = pos[2];
+	}
+
+	void local_position(double x, double y, double z) {
+		nop;
+		local_matrix[0, 3] = x;
+		local_matrix[1, 3] = y;
+		local_matrix[2, 3] = z;
+	}
+
 	string get_frame_type() {
 		nop;
 		return frame_type.to!string;
