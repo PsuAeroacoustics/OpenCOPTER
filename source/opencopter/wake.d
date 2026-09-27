@@ -512,8 +512,8 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 		if(i_c_idx == 0) {
 			x_am1[0] = x_am1[1];
-			z_am1[0] = y_am1[1];
-			y_am1[0] = z_am1[1];
+			y_am1[0] = y_am1[1];
+			z_am1[0] = z_am1[1];
 			r_cm1[0] = r_cm1[1];
 		} else {
 			x_am1[0] = chunks[i_c_idx - 1].x[$-1];
@@ -529,9 +529,11 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 			r_cp1[$-1] = r_cp1[$-2];
 
-			x_bp1[$-2..$] = x_bp1[$-2];
-			y_bp1[$-2..$] = y_bp1[$-2];
-			z_bp1[$-2..$] = z_bp1[$-2];
+			// No segment follows the last one, so its neighbour collapses onto the
+			// filament end point (x_bp1[$-3] is the last point of this chunk).
+			x_bp1[$-2..$] = x_bp1[$-3];
+			y_bp1[$-2..$] = y_bp1[$-3];
+			z_bp1[$-2..$] = z_bp1[$-3];
 		} else {
 			x_ap1[$-1] = chunks[i_c_idx + 1].x[0];
 			y_ap1[$-1] = chunks[i_c_idx + 1].y[0];
@@ -558,7 +560,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 			y_b[$-1] = chunks[i_c_idx + 1].y[0];
 			z_b[$-1] = chunks[i_c_idx + 1].z[0];
 		} else {
-			chunk_i.gamma[$-1] = 0;
 			x_b[$-1] = 0;
 			y_b[$-1] = 0;
 			z_b[$-1] = 0;
@@ -571,6 +572,12 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		}
 
 		Chunk gamma = chunk_i.gamma[];
+
+		// No segment starts at the last point of the filament. Zero it in the
+		// local copy so evaluating induced velocities never modifies the filament.
+		if(i_c_idx == chunks.length - 1) {
+			gamma[$-1] = 0;
+		}
 
 		// put some dummy data in values that
 		// haven't been populated so we don't
