@@ -752,8 +752,10 @@ struct VortexLatticeT(ArrayContainer AC) {
             gamma = tmp_gamma + wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].A_kl[c1..$].sum;
             //writeln("span_idx= ", span_chunk_idx*chunk_size + c1, "\tChord_node_idx = ", chord_node_idx, "\tgamma = ", gamma);
             // negative trem in the following expression is correct (verified)
-            double normalized_gamma = -PI*gamma*root_chord/(num_span_chunks*chunk_size*wing_part.chunks[span_chunk_idx].chord[c1]);
-            normalized_gamma /= wing_part.chunks[span_chunk_idx].chord[c1]/wing_part.wing_root_chord;
+            // Chordwise vortex density over u at this station, so that
+            // compute_dCl gives the sectional lift coefficient. It is the
+            // strength below over the chordwise weight u*(c/2)*sin(theta_k)*PI/N.
+            immutable double normalized_gamma = -PI*gamma*root_chord/(num_span_chunks*chunk_size*wing_part.chunks[span_chunk_idx].chord[c1]);
             wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[chord_node_idx].chunks[span_chunk_idx].normalized_gamma[c1] = normalized_gamma;
 
             // Strength of this segment of chordwise vortex line k in the
