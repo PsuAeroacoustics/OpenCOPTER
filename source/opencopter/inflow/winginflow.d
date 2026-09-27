@@ -325,12 +325,16 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
     void compute_wing_C_L(WLS, WS, W)(auto ref WLS wing_lift_surface, auto ref WS wing_state, auto ref W wing){
 
-        double C_L = 0.0;
-        immutable num_span_chunks = wing_state.wing_part_states[0].chunks.length;
+        // Lift coefficient of the whole wing: the sectional lift coefficient
+        // of each horseshoe segment [y_(l-1), y_l] weighted by its chord and
+        // width, over the planform area of all the parts. The widths are
+        // taken as magnitudes, as y decreases outboard on a left-hand part.
+        double lift = 0.0;
+        double area = 0.0;
         foreach(wp_idx, wing_part_state; wing_state.wing_part_states){
             foreach(span_idx; 0..wing_part_state.chunks.length){
                 immutable Chunk dC_L = wing_part_state.chunks[span_idx].dC_L[];
-                immutable Chunk span_y = wing.wing_parts[wp_idx].chunks[span_idx].y_span[];
+                immutable Chunk chord = wing.wing_parts[wp_idx].chunks[span_idx].chord[];
                 double y_1 = 0.0;
                 double y_2 = 0.0;
                 foreach(c1;0..chunk_size){
@@ -344,14 +348,15 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
                     }else{  
                         y_2 = wing_lift_surface.wing_part_lift_surf[wp_idx].spanwise_filaments[0].chunks[span_idx].y[c1 - 1];
                     }
-                    double delta_y = y_1-y_2;
-                    C_L += dC_L[c1]*delta_y/wing.wing_parts[wp_idx].wing_span;
+                    immutable double delta_y = abs(y_1-y_2);
+                    lift += dC_L[c1]*chord[c1]*delta_y;
                 }
                 
             }
+            area += 0.5*(wing.wing_parts[wp_idx].wing_root_chord + wing.wing_parts[wp_idx].wing_tip_chord)*wing.wing_parts[wp_idx].wing_span;
         }
 
-        wing_state.C_L = C_L;
+        wing_state.C_L = lift/area;
     }
 
     override InducedVelocities compute_wing_induced_vel_on_blade(immutable Chunk x, immutable Chunk y, immutable Chunk z){
