@@ -607,7 +607,11 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 			K[] = 0;
 		}
 
-		time_history = 1_000_000;
+		// Circular buffer of past states for the time-delay (downstream) terms. It
+		// only has to reach back as far as the largest delay queried, which is a
+		// few tens of radians of rotor rotation; 2^16 steps covers >180 revs at
+		// 1 deg steps. Each row holds 2*(total_states + total_sin_states) doubles.
+		time_history = 1 << 16;
 		state_history = allocate_dense(time_history, 2*total_states + 2*total_sin_states);
 		
 		Qmn_bar = allocate_dense_chunk(max(Me, Mo) + 1, N);
@@ -1432,14 +1436,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		curr_state++;
 
-		v_0 = compute_inflow_average_at_disk;
+		// The contraction ratios are only read when contraction_mapping is on, and
+		// refreshing them costs ~600 off-disk inflow evaluations per update.
+		if(contraction_mapping) {
+			v_0 = compute_inflow_average_at_disk;
 
-		auto v_inf = sqrt(advance_ratio*advance_ratio + axial_advance_ratio*axial_advance_ratio);
+			auto v_inf = sqrt(advance_ratio*advance_ratio + axial_advance_ratio*axial_advance_ratio);
 
-		foreach(z_idx, ref z_chunk; contraction_z_array) {
-			auto v_z = compute_inflow_average_at_z(z_chunk);
-			immutable Chunk v_0_v_z = (v_inf + v_0)/(v_inf + v_z[]);
-			contraction_array[z_idx] = sqrt(v_0_v_z);
+			foreach(z_idx, ref z_chunk; contraction_z_array) {
+				auto v_z = compute_inflow_average_at_z(z_chunk);
+				immutable Chunk v_0_v_z = (v_inf + v_0)/(v_inf + v_z[]);
+				contraction_array[z_idx] = sqrt(v_0_v_z);
+			}
 		}
 
 		// global_inverse = local_frame.inverse_global_matrix;   // This is not used anywhere, should it be removed?
