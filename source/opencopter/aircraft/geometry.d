@@ -199,7 +199,7 @@ Mat3 build_rotation_matrix(Vec3 axis, double angle) {
 	
 	alias M = temp_mat;
 	M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
-	M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
+	M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz*one_cs-x*sn;		 
 	M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
 
 	return temp_mat;
@@ -327,7 +327,7 @@ struct Frame {
 		
 		alias M = temp_mat;
 		M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
-		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
+		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz*one_cs-x*sn;		 
 		M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
 		
 		temp_mat = local_matrix.extract_rotation_matrix() * temp_mat;
@@ -363,7 +363,7 @@ struct Frame {
 		
 		alias M = temp_mat;
 		M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
-		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
+		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz*one_cs-x*sn;		 
 		M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
 		
 		local_matrix.set_rotation_matrix(temp_mat);
