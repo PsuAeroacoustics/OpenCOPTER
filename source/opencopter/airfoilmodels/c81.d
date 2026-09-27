@@ -13,8 +13,10 @@ import std.range;
 import std.conv;
 
 size_t findindx(double[] array, double query) {
-    // find index of the greatest element less then query
-    size_t indx;
+    // find index of the greatest element less then query. Queries past the
+    // last breakpoint use the last interval, mirroring how queries before the
+    // first breakpoint use the first one.
+    size_t indx = array.length >= 2 ? array.length - 2 : 0;
     foreach(i, ref a; array.enumerate) {
         if (a > query) {
             if(i > 0) {
