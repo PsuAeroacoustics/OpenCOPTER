@@ -687,6 +687,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			else:
 				rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 	
+	# One lifting surface per wing; each wing's inflow model needs its own.
+	wing_lift_surfaces = []
 	for w_idx in range(num_wings):
 		rotorcraft_input_state.wing_inputs[w_idx].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
 		rotorcraft_input_state.wing_inputs[w_idx].freestream_velocity = flight_condition['V_inf']
@@ -707,6 +709,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	#print("wing_circulation = ", wing_lift_surface.wing_part_lift_surf[0].spanwise_filaments[0].chunks[0].gamma)
 
 		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[w_idx], span_chunks, chord_elements)
+		wing_lift_surfaces.append(wing_lift_surface)
 		
 		print("wing vortex geometry is set")
 
@@ -731,7 +734,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	else:
 		rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 	
-	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
+	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surfaces[w_idx]) for w_idx in range(num_wings)]
 	#print(len(wing_inflows))
 	print("instantiated inflows")
 
