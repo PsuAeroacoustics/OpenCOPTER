@@ -64,7 +64,7 @@ struct Direction {
 
 void basic_aircraft_rotor_dynamics(PyAircraftInputState* ac_input, double dt) {
 	foreach(r_idx, ref rotor; ac_input.rotor_inputs) {
-		rotor.azimuth += rotor.angular_velocity*dt + rotor.angular_accel*dt*dt;
+		rotor.azimuth += rotor.angular_velocity*dt + 0.5*rotor.angular_accel*dt*dt;
 		auto sign = sgn(rotor.azimuth);
 		// Keep the azimuth between 0 and 2*PI so we don't
 		// lose fp precicion as the sim marches in time and
@@ -76,15 +76,15 @@ void basic_aircraft_rotor_dynamics(PyAircraftInputState* ac_input, double dt) {
 }
 
 double basic_single_rotor_dynamics(PyRotorInputState* input_state, double dt) {
-	double angle = input_state.angular_velocity*dt + input_state.angular_accel*dt*dt;
+	double angle = input_state.angular_velocity*dt + 0.5*input_state.angular_accel*dt*dt;
 
 	input_state.azimuth += angle;
 
-	// Keep the azimuth between 0 and 2*PI so we don't
+	// Keep the azimuth between -2*PI and 2*PI so we don't
 	// lose fp precicion as the sim marches in time and
-	// the azimuth grows unbounded.
-	if(input_state.azimuth > 2.0*PI) {
-		input_state.azimuth = fmod(abs(input_state.azimuth), 2.0*PI);
+	// the azimuth grows unbounded (in either direction).
+	if(abs(input_state.azimuth) > 2.0*PI) {
+		input_state.azimuth = sgn(input_state.azimuth)*fmod(abs(input_state.azimuth), 2.0*PI);
 	}
 
 	return angle;
