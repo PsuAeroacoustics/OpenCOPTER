@@ -1,0 +1,57 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "lsp": {
+    "clangd": {
+      "command": [ "clangd", "--compile-commands-dir=build" ],
+      "extensions": [ ".c", ".h", ".cpp", ".cc", ".hpp" ]
+    },
+    "serve-d": {
+      "command": ["serve-d"],
+      "extensions": [".d", ".di"]
+    }
+  },
+  "mcp": {
+    "filesystem": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "/home/rrau/MultiCOPTER/dependencies/OpenCOPTER",
+	"/home/rrau/OpenCOPTER"
+      ]
+    },
+    "sequential-thinking": {
+      "type": "local",
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-sequential-thinking"
+      ]
+    }
+  },
+  "instructions": [
+    ".clinerules/baby-steps.md",
+    ".clinerules/create-documentation.md",
+    ".clinerules/memory-bank.md",
+    ".clinerules/new-task-automation.md",
+    ".clinerules/sequential-thinking.md",
+    ".clinerules/testing-strategy.md"
+  ],
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Local",
+      "options": {
+        "baseURL": "http://localhost:11434/v1"
+      },
+      "models": {
+        "Qwen3.6:27B": {
+          "name": "qwen3.8:5090-27b-200k",
+          "context_length": 200000,
+          "output": 32768
+        }
+      }
+    }
+  }
+}

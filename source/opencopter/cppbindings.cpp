@@ -758,6 +758,8 @@ double RotorState::get_C_T() const { double o=0; if(ptr_) oc_rotor_state_get_C_T
 void RotorState::set_C_T(double c) { OC_CHECK(ptr_, "RotorState::set_C_T called on null object"); oc_rotor_state_set_C_T(rst(*this),c); }
 double RotorState::get_C_Q() const { double o=0; if(ptr_) oc_rotor_state_get_C_Q(rst(*this),&o); return o; }
 void RotorState::set_C_Q(double c) { OC_CHECK(ptr_, "RotorState::set_C_Q called on null object"); oc_rotor_state_set_C_Q(rst(*this),c); }
+double RotorState::get_C_Mx() const { double o=0; if(ptr_) oc_rotor_state_get_C_Mx(rst(*this),&o); return o; }
+double RotorState::get_C_My() const { double o=0; if(ptr_) oc_rotor_state_get_C_My(rst(*this),&o); return o; }
 
 std::vector<BladeState> RotorState::get_blade_states() const {
     std::vector<BladeState> result;

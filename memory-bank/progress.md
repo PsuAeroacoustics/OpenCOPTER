@@ -10,8 +10,13 @@
   - D bindings: `source/opencopter/cbindings.d` (20 new extern(C) functions)
   - 16 new tests in `tests/src/test_blade_input_state.cpp` (BladeInputTestFixture)
   - **175/175 tests pass** (159 original + 16 new)
+- **Rotor hub-moment (C_Mx / C_My) tests + ctor bug-fix — P-001-S2 COMPLETE (2026-09-26)**: Added `AircraftState.HubMomentGettersValueAndNullSafe` (C, `test_api_aircraftstate.cpp`: seed `1e9` write-path proof + `isfinite` + `==0.0` + 4 null-safe calls, reusing the `RotorStateCTSetGet` scaffolding) and `CPP_RotorState.HubMomentNullSafe` (C++, `test_cpp_api.cpp`: default-constructed null wrapper → `get_C_Mx()/get_C_My()==0.0`). Both PASS. **Deviation (user-approved):** the test caught a real bug — `RotorStateT` ctors (`aircraft/state.d:195-214`) only zeroed `C_T`, leaving `C_Mx/C_My` NaN pre-step; fixed by adding `C_Q=0; C_Mx=0; C_My=0;` to both ctors. Full suite **180/180 green** (no regressions). Plan **P-001 fully COMPLETE** (S0+S1+S2).
+- **Rotor hub-moment (C_Mx / C_My) C++ API — P-001-S1 COMPLETE (2026-09-26)**: Read-only RAII getters `RotorState::get_C_Mx()/get_C_My()` — decls `include/opencopter.hpp:693-694`, one-liner impls `source/opencopter/cppbindings.cpp:761-762` (null-unsafe→0.0, `rst(*this)` helper, mirrors `get_C_T`/`get_C_Q`). Build: `ninja -C build` (recompiled cppbindings.cpp.o) + dub relink clean. `nm -D libopencopter.so` → both C++ symbols + S0 C symbols exported. Unblocks `P-001-S2` (tests).
+- **Rotor hub-moment (C_Mx / C_My) C API — P-001-S0 COMPLETE (2026-09-26)**: Read-only getters `oc_rotor_state_get_C_Mx` / `oc_rotor_state_get_C_My` in `include/opencopter.h:363-364` + `source/opencopter/cbindings.d:606-614` (null-guarded, mirroring the `C_T`/`C_Q` pattern). Build clean; both symbols exported from `libopencopter.so`; grep gate: one decl + one def each. Unblocks `P-001-S1` (C++) / `P-001-S2` (tests).
 
 ## What's Left
+- [x] **Rotor hub-moment (C_Mx / C_My) — P-001 ✅ CLOSED / ARCHIVED (2026-09-26)**: All 3 slices done; 180/180 tests green. Plan at `docs/archive/plans/P-001.md`; all slices at `docs/archive/slices/P-001-S0/S1/S2.md`.
+- [ ] **Blade-deformation follow-ups (pre-existing, not from P-001)**:
 - [ ] Integration test: 1-step sim with non-zero deflection verifying physics change
 - [ ] Python bindings for blade_inputs fields (oc_fly)
 - [ ] BLADE_DEFORMATION_PLAN.md final documentation update

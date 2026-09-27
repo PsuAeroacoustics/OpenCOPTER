@@ -201,6 +201,69 @@ TEST(AircraftState, RotorStateCTSetGet) {
 }
 
 /* ================================================================== */
+/*  TEST: Hub-moment (C_Mx / C_My) getters — value + null-safe         */
+/* ================================================================== */
+TEST(AircraftState, HubMomentGettersValueAndNullSafe) {
+    OC_Aircraft* ac = oc_aircraft_create(1, 0);
+    ASSERT_NE(ac, nullptr);
+
+    OC_RotorGeometry* rotor = create_rotor_with_blades(2, 1.0, 0.3);
+    ASSERT_NE(rotor, nullptr);
+
+    OC_RotorGeometry* rotors[1] = {rotor};
+    oc_aircraft_set_rotors(ac, rotors, 1);
+
+    setup_rotor_frame(ac, rotor, 0);
+
+    size_t num_blades_arr[1] = {2};
+    OC_AircraftInputState* ac_input = oc_aircraft_input_state_create(1, num_blades_arr, 0);
+    ASSERT_NE(ac_input, nullptr);
+
+    OC_RotorInputState* rotor_in = oc_aircraft_input_get_rotor_input(ac_input, 0);
+    ASSERT_NE(rotor_in, nullptr);
+    oc_rotor_input_set_angular_velocity(rotor_in, 100.0);
+
+    OC_Inflow* inflow = oc_null_inflow_create(rotor, rotor_in);
+    ASSERT_NE(inflow, nullptr);
+
+    size_t nba[1] = {2};
+    double dir_val = 1.0;
+    OC_Inflow* rinfl[] = {inflow};
+    OC_AircraftState* state = oc_aircraft_state_create(
+        1, nba, 8, 0, nullptr, 1, 1,
+        ac, rinfl, nullptr, &dir_val);
+
+    ASSERT_NE(state, nullptr);
+
+    OC_RotorState* rs = oc_aircraft_state_get_rotor_state(state, 0);
+    ASSERT_NE(rs, nullptr);
+
+    double cmx = 1.0e9, cmy = 1.0e9;   // prove the write path
+    oc_rotor_state_get_C_Mx(rs, &cmx);
+    oc_rotor_state_get_C_My(rs, &cmy);
+    EXPECT_NE(cmx, 1.0e9);
+    EXPECT_NE(cmy, 1.0e9);
+    EXPECT_TRUE(std::isfinite(cmx));
+    EXPECT_TRUE(std::isfinite(cmy));
+
+    EXPECT_DOUBLE_EQ(cmx, 0.0);        // pre-step POD default
+    EXPECT_DOUBLE_EQ(cmy, 0.0);
+
+    double dummy = 1.0e9;              // null-safety
+    oc_rotor_state_get_C_Mx(nullptr, &dummy);
+    oc_rotor_state_get_C_Mx(nullptr, nullptr);
+    oc_rotor_state_get_C_My(nullptr, &dummy);
+    oc_rotor_state_get_C_My(nullptr, nullptr);
+
+    // Cleanup
+    oc_aircraft_state_destroy(state);
+    oc_inflow_destroy(inflow);
+    oc_aircraft_input_state_destroy(ac_input);
+    oc_rotor_geometry_destroy(rotor);
+    oc_aircraft_destroy(ac);
+}
+
+/* ================================================================== */
 /*  TEST: BladeState dC_M fill function                                 */
 /* ================================================================== */
 TEST(AircraftState, BladeStateDCM) {

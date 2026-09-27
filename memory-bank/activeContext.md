@@ -1,6 +1,20 @@
 # Active Context: OpenCOPTER
 
 ## Current Work Focus
+**ROTOR HUB-MOMENT (C_Mx / C_My) C & C++ API — ✅ COMPLETE (2026-09-26)**: Goal: expose the per-rotor hub-moment coefficients `RotorState.C_Mx` (roll) and `C_My` (pitch) through read-only getters in the **C** and **C++** public APIs, mirroring the existing `C_T`/`C_Q` pattern. **Scope (user-locked):** RotorState-level only (no aircraft-indexed `rotor_C_Mx/C_My`), getters only (no setters), and tests included. **Status:** ALL THREE SLICES COMPLETE — `P-001-S0` (C API) + `P-001-S1` (C++) CLOSED-OUT/ARCHIVED 2026-09-26; `P-001-S2` (tests) COMPLETE 2026-09-26. **Facts:** `C_Mx`/`C_My` exist at `aircraft/state.d:186-187`, are zeroed/accumulated per blade in `bladeelement.d:472-473`, read by `validation/HART_II/main.d` and the Python API (`python.d:2567-2568`), and are now exposed read-only via `oc_rotor_state_get_C_Mx/C_My` (C) and `RotorState::get_C_Mx()/get_C_My()` (C++). **Test results:** `AircraftState.HubMomentGettersValueAndNullSafe` (C, test_api_aircraftstate.cpp) + `CPP_RotorState.HubMomentNullSafe` (C++, test_cpp_api.cpp) both PASS; full suite **180/180 green** (no regressions). **Deviation (user-approved):** S2 test exposed a real bug — `RotorStateT` ctors (`state.d:195-214`) only zeroed `C_T`, leaving `C_Mx/C_My` NaN before the first sim step. Fixed by adding `C_Q = 0; C_Mx = 0; C_My = 0;` to both ctors (mirrors existing `C_T = 0` + the `compute_rotor_properties` reset). This is the ONLY non-test source change in the plan. **Artifacts:** plan **P-001** CLOSED and archived at `docs/archive/plans/P-001.md`; all three slices archived at `docs/archive/slices/P-001-S0.md` / `P-001-S1.md` / `P-001-S2.md`.
+
+## Plan Registry (IDs)
+The bank is the registry of plan IDs (`P-###`) → title / status / created / plan path / slices (id, status, path). Slice sub-IDs are per-plan (`S0, S1, …`); full slice ref = `P-###-S<N>`.
+
+| Plan ID | Title | Status | Created | Plan path | Slices (id → status → path) |
+|---|---|---|---|---|---|
+| `P-001` | Rotor hub-moment (C_Mx / C_My) C & C++ API | ✅ CLOSED / ARCHIVED (2026-09-26) | 2026-09-26 | `docs/archive/plans/P-001.md` | `P-001-S0`→CLOSED-ARCHIVED→`docs/archive/slices/P-001-S0.md`; `P-001-S1`→CLOSED-ARCHIVED→`docs/archive/slices/P-001-S1.md`; `P-001-S2`→CLOSED-ARCHIVED (2026-09-26)→`docs/archive/slices/P-001-S2.md` |
+
+_Convention: close-out skills flip a slice's status → COMPLETE and move it to
+`docs/archive/slices/P-###-S<N>.md`; plan close-out moves the plan to
+`docs/archive/plans/P-###.md`. Next free plan ID after `P-001`: `P-002`._
+
+### Prior focus (completed 2026-08-22)
 **BLADE DEFORMATION INPUT STATE — FULLY COMPLETE (2026-08-22)**: `BladeInputStateT` (per-blade scalars + per-station deflection + velocity arrays) added to `input.d`; physics reads routed via `double.infinity` sentinel in `bladeelement.d` + `wake.d`; deflection velocities (non-dim) routed into `u_p`/`u_t` in `bladeelement.d`; **`AircraftInputStateT` constructor now accepts `num_chunks`** (per-rotor array) and calls `BladeInputStateT(this(num_chunks))` on each element to allocate per-station arrays; new C binding `oc_aircraft_input_state_create_with_chunks` + C/C++ wrappers; **C/C++ API for all 10 blade_inputs fields** (4 scalars set/get + 5 per-station arrays via **zero-copy writable `std::span<double>`**). Build clean; **177/177 tests pass** (159 original + 18 new BladeInputTestFixture tests). Non-breaking: original 3-arg constructors unchanged. Plan: `BLADE_DEFORMATION_PLAN.md`.
 
 ### Design (final, 2026-08-22):

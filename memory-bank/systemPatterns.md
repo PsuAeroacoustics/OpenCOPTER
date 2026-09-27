@@ -17,7 +17,7 @@ Input (JSON/JSON5) → oc_fly (Python frontend) → C API → D Core Library
 ### 1. Aircraft Model (`aircraft/`)
 - **geometry.d**: Hierarchical frame tree (root → rotors/wings → blades)
 - **input.d**: Flight condition inputs (collective, RPM, cyclic, freestream)
-- **state.d**: Runtime state (C_T, C_Q, velocities, angles of attack per blade element)
+- **state.d**: Runtime state (per-rotor: `C_T`, `C_Q`, hub-moment coefficients `C_Mx`/`C_My`; per-blade: velocities, angles of attack, sectional `dC_*` arrays). **API note:** `C_Mx`/`C_My` are computed (`bladeelement.d:472-473`) and are exposed read-only at both layers — **C**: `oc_rotor_state_get_C_Mx/C_My` (P-001-S0); **C++**: `RotorState::get_C_Mx()/get_C_My()` (P-001-S1); tested at both layers (P-001-S2, 2026-09-26). **Invariant (P-001 deviation, 2026-09-26):** `RotorStateT` ctors (`state.d:195-214`) zero `C_T`/`C_Q`/`C_Mx`/`C_My` before the first sim step — required so the S2 tests' `==0.0` pre-step assertions hold. See slice `docs/archive/slices/P-001-S2.md` (close-out record) + plan `P-001` (`docs/archive/plans/P-001.md`).
 
 ### 2. Wake System (`wake.d`, `bladeelement.d`)
 - Lagrangian vortex filament tracking

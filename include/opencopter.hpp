@@ -690,6 +690,9 @@ public:
     double get_C_Q() const;
     void set_C_Q(double C_Q);
 
+    double get_C_Mx() const;
+    double get_C_My() const;
+
     /** Get all blade states. Returns non-owning BladeState wrappers. */
     std::vector<BladeState> get_blade_states() const;
 

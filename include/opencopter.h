@@ -360,6 +360,8 @@ void oc_rotor_state_get_C_T(const OC_RotorState* state, double* result_out);
 void oc_rotor_state_set_C_T(OC_RotorState* state, double C_T);
 void oc_rotor_state_get_C_Q(const OC_RotorState* state, double* result_out);
 void oc_rotor_state_set_C_Q(OC_RotorState* state, double C_Q);
+void oc_rotor_state_get_C_Mx(const OC_RotorState* state, double* result_out);
+void oc_rotor_state_get_C_My(const OC_RotorState* state, double* result_out);
 void oc_aircraft_state_get_rotor_C_T(const OC_AircraftState* state, size_t rotor_idx, double* result_out);
 void oc_aircraft_state_get_rotor_C_Q(const OC_AircraftState* state, size_t rotor_idx, double* result_out);
 

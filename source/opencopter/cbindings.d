@@ -603,6 +603,15 @@ extern(C) void oc_rotor_state_set_C_Q(OC_RotorState* state, double C_Q) {
     if (s !is null) (*s).C_Q = C_Q;
 }
 
+extern(C) void oc_rotor_state_get_C_Mx(const OC_RotorState* state, double* result_out) {
+    auto s = cast(const(RotorState)*)state;
+    if (s !is null && result_out !is null) *result_out = (*s).C_Mx;
+}
+extern(C) void oc_rotor_state_get_C_My(const OC_RotorState* state, double* result_out) {
+    auto s = cast(const(RotorState)*)state;
+    if (s !is null && result_out !is null) *result_out = (*s).C_My;
+}
+
 extern(C) void oc_aircraft_state_get_rotor_C_T(const OC_AircraftState* state, size_t rotor_idx, double* result_out) {
     auto s = cast(const(AircraftState)*)state;
     if (s !is null && result_out !is null && rotor_idx < (*s).rotor_states.length) *result_out = (*s).rotor_states[rotor_idx].C_T;

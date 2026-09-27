@@ -88,6 +88,17 @@ TEST(CPP_RotorGeo, FrameNull) {
 }
 
 /* ================================================================== */
+/*  Step A3b: RotorState::get_C_Mx()/get_C_My()                        */
+/* ================================================================== */
+
+TEST(CPP_RotorState, HubMomentNullSafe) {
+    RotorState rs;  // default-constructed → null pointer
+    EXPECT_FALSE(static_cast<bool>(rs));
+    EXPECT_DOUBLE_EQ(rs.get_C_Mx(), 0.0);  // degraded read, no throw
+    EXPECT_DOUBLE_EQ(rs.get_C_My(), 0.0);
+}
+
+/* ================================================================== */
 /*  Step A4: Span overloads                                            */
 /* ================================================================== */
 

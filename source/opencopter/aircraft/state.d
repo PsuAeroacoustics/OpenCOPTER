@@ -197,6 +197,9 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 		
 		inflow_model = _inflow_model;
 		C_T = 0;
+		C_Q = 0;
+		C_Mx = 0;
+		C_My = 0;
 		foreach(i, ref blade_state; blade_states) {
 			blade_state = BladeStateT!AC(num_chunks, rotor.blades[i], rotor.radius, direction);
 		}
@@ -211,6 +214,9 @@ extern (C++) struct RotorStateT(ArrayContainer AC) {
 		}
 		writeln("blade state defined");
 		C_T = 0;
+		C_Q = 0;
+		C_Mx = 0;
+		C_My = 0;
 	}
 
 	@nogc ~this() {
