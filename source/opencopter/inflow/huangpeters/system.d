@@ -243,7 +243,7 @@ void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, dou
 
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM_c[0].ptr, infl.total_states, infl.tau_c.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states].ptr, 1);
 
-	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_c[0].ptr, infl.total_sin_states, infl.tau_s.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_s[0].ptr, infl.total_sin_states, infl.tau_s.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
 	
 	infl.alpha = infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states];
 	infl.beta = infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states];
@@ -1016,8 +1016,9 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 	@nogc auto find_bracket(double t) {
 		
-		auto ordered_times = times[get_circular_index(curr_state) + 1..$].chain(times[0..get_circular_index(curr_state) + 1]);
-		auto delta_b = time_history - get_circular_index(curr_state);
+		// ordered_times[m] is stored in circular slot slot_offset + m
+		immutable ptrdiff_t slot_offset = get_circular_index(curr_state) + 1;
+		auto ordered_times = times[slot_offset..$].chain(times[0..slot_offset]);
 		ptrdiff_t l = 0;
 		ptrdiff_t R = time_history - 1;
 
@@ -1028,10 +1029,10 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 				if(ordered_times[m] != t) {
 					return -1;
 				} else {
-					return m >= delta_b ? m - delta_b + 1 : m - get_circular_index(curr_state) + 1;
+					return get_circular_index(slot_offset + m);
 				}
 			} else if ((ordered_times[m] <= t) && (ordered_times[m + 1] > t)) {
-				return m >= delta_b ? m - delta_b + 1 : m - get_circular_index(curr_state) + 1;
+				return get_circular_index(slot_offset + m);
 			} else if(ordered_times[m] <= t) {
 				l = m + 1;
 			} else if(ordered_times[m] > t) {
@@ -1598,7 +1599,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 			return V;
 		} else {
 
-			immutable k_bar = compute_contraction_multiplier(x, y, z);			
+			immutable k_bar = compute_contraction_multiplier(normalized_x, normalized_y, normalized_z);
 
 			immutable Chunk x_c = normalized_x[]/k_bar[];
 			immutable Chunk y_c = normalized_y[]/k_bar[];
