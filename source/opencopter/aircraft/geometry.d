@@ -60,13 +60,20 @@ double[] generate_spanwise_control_points(size_t span_n_sections) {
 	}).array;
 }
 
+/// y sign of wing part wp_idx. A lone part lies on the side its location
+/// names (0 if it names neither); with several parts the even ones are on the
+/// left (negative y) and the odd ones on the right.
+double wing_part_side(WG)(auto ref WG wing_geometry, size_t wp_idx) {
+	if(wing_geometry.wing_parts.length != 1) {
+		return wp_idx%2 == 0 ? -1.0 : 1.0;
+	}
+	immutable loc = wing_geometry.wing_parts[0].loc;
+	return loc == Location.left ? -1.0 : (loc == Location.right ? 1.0 : 0.0);
+}
+
 void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_nodes, size_t _chordwise_nodes, double _camber){
     
     import std.math : cos,tan, PI;
-    import std.math : abs;
-	double wing_span = wing_geometry.wing_parts[0].wing_span; // half wing span
-	Chunk span = 2*wing_span; // full wing span
-	double root_chord = wing_geometry.wing_parts[0].wing_root_chord;
 	size_t acutal_span_nodes = _spanwise_nodes%chunk_size == 0 ? _spanwise_nodes : _spanwise_nodes + (chunk_size - _spanwise_nodes%chunk_size);
 	size_t _spanwise_chunks = acutal_span_nodes/chunk_size;
     auto span_ctrl_pt = generate_spanwise_control_points(acutal_span_nodes);
@@ -75,69 +82,41 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_n
     //span_vr_nodes_left = span_vr_nodes_left.retro;
     //auto chord_vr_nodes = generate_chordwise_votex_nodes(_chordwise_nodes);
 
-	if(wing_geometry.wing_parts.length == 1){
-		string side = wing_geometry.wing_parts[0].loc;
-		writeln("location == ", side);
-		if(side == Location.left){
-			writeln("population left wing part ctrl point geometry");
-			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-				foreach(crd_idx;0.._chordwise_nodes){
-					foreach(sp_idx; 0.._spanwise_chunks){
-					//writeln("going_left_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
-					}
-				}
+	foreach(wp_idx, wing_part; wing_geometry.wing_parts){
+		immutable side = wing_part_side(wing_geometry, wp_idx);
+		if(side == 0) {
+			continue;
+		}
+
+		// Each part uses its own half span. Positive LE sweep is aft on both
+		// sides.
+		immutable double span = 2*wing_part.wing_span;
+		immutable tan_le_sweep = tan(wing_part.le_sweep_angle*PI/180);
+
+		foreach(crd_idx;0.._chordwise_nodes){
+			foreach(sp_idx; 0.._spanwise_chunks){
+				immutable Chunk abs_y = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span;
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = side*abs_y[];
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + abs_y[]*tan_le_sweep;
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
 			}
 		}
-		else if(side == Location.right){
-			writeln("populating right wing part ctrl point geometry");
-			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-				foreach(crd_idx;0.._chordwise_nodes){
-					foreach(sp_idx; 0.._spanwise_chunks){
-						//writeln("going_left_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
-					}
-				}
-			}
-		}
-	}else{
-		foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-			foreach(crd_idx;0.._chordwise_nodes){
-				foreach(sp_idx; 0.._spanwise_chunks){
-					if(wp_idx%2==0){
-					//writeln("going_left_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-					}else{
-					//writeln("going_right_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-					}				
-				
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
-				}
-			}
-		}
-	}    
+	}
 }
 
 double[] generate_chordwise_control_points(size_t chord_n_sections) {
 	import std.algorithm : map;
 	import std.array : array;
 	import std.math : cos, PI;
-	import std.range : iota, retro;
-	// Spanwise Votex nodes
-	immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
-	return iota(1.0,num_points + 2.0).map!((i){
-		immutable theta = i*PI/(num_points.to!double + 1.0);
+	import std.range : iota;
+	// Chordwise control points of Lan's quasi vortex lattice at
+	// x/c = (1 - cos(theta_i))/2, theta_i = i*PI/N for i = 1 .. N, the
+	// stations VortexLatticeT's influence matrix is built for. The last one
+	// is on the trailing edge. Chordwise control points are not stored in
+	// chunks, so N is not rounded up to a multiple of chunk_size.
+	return iota(1, chord_n_sections + 1).map!((i){
+		immutable theta = i*PI/(chord_n_sections.to!double);
 		auto chord_ctrl_pt = 0.5*(1 - cos(theta)).to!double;
 		return chord_ctrl_pt;
 	}).array;
