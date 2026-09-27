@@ -55,7 +55,14 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 
 	motions = flight_condition["motion"] if "motion" in flight_condition else None
 	if "vsp" in aircraft:
-		rotorcraft_system = create_aircraft_from_vsp(path.join(geom_directory, aircraft["vsp"]))
+		# Build the blades and wings with the element counts compute_aero sizes
+		# the aircraft state and wing lifting surfaces with (same defaults).
+		rotorcraft_system = create_aircraft_from_vsp(
+			path.join(geom_directory, aircraft["vsp"]),
+			computational_parameters["spanwise_elements"],
+			computational_parameters.get("span_elements", 8),
+			computational_parameters.get("chord_elements", 4)
+		)
 		rotorcraft_system.root_frame.name = aircraft["name"]
 		trim_vec_dict = {}
 		motion_vec_dict = {}
