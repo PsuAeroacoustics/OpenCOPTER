@@ -728,11 +728,13 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	this(size_t num_parts, Vec3 origin, double wing_span) {
 		mixin(array_ctor_mixin!(AC, "WingPartGeometryT!(AC)", "wing_parts", "num_parts"));
 		this.origin = origin;
+		this.wing_span = wing_span;
 	}
 
 	ref typeof(this) opAssign(typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.wing_span = wing.wing_span;
 		this.frame = wing.frame;
 		return this;
 	}
@@ -740,6 +742,7 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	ref typeof(this) opAssign(ref typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.wing_span = wing.wing_span;
 		this.frame = wing.frame;
 		return this;
 	}
@@ -747,6 +750,7 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	ref typeof(this) opAssign(typeof(this)* wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.wing_span = wing.wing_span;
 		this.frame = wing.frame;
 		return this;
 	}
@@ -865,7 +869,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
-		this.loc = loc;
+		this.loc = wing_part.loc;
 		//this.frame = wing_part.frame;
 		return this;
 	}
@@ -881,7 +885,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
-		this.loc = loc;
+		this.loc = wing_part.loc;
 		//this.frame = wing_part.frame;
 		return this;
 	}
@@ -897,7 +901,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
-		this.loc = loc;
+		this.loc = wing_part.loc;
 		//this.frame = wing_part.frame;
 		return this;
 	}

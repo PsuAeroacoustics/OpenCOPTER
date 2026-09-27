@@ -838,20 +838,14 @@ double[][] get_wing_state_matrix(string value, ArrayContainer AC)(ref WingPartSt
 
 double[] get_wing_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing){
 	
+	// All wing parts share the same (chunk padded) number of spanwise elements.
 	size_t elements = wing.wing_part_states[0].chunks.length*chunk_size;
-	double[] state_array = new double[2*elements];
+	double[] state_array = new double[wing.wing_part_states.length*elements];
 
-	foreach(wp_idx, wing_part; wing.wing_part_states){
-		foreach(c_idx, chunk; wing_part.chunks){
-			
+	foreach(wp_idx, ref wing_part; wing.wing_part_states){
+		foreach(c_idx, ref chunk; wing_part.chunks){
 			immutable out_start_idx = wp_idx*elements + c_idx*chunk_size;
-			
-			immutable remaining = elements- out_start_idx;
-
-			immutable out_end_idx = remaining > chunk_size ? wp_idx*elements + (c_idx + 1)*chunk_size : wp_idx*elements + out_start_idx + remaining;
-			immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
-
-			mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+			mixin("state_array[out_start_idx..out_start_idx + chunk_size] = chunk."~value~"[];");
 		}
 	}
 	return state_array;

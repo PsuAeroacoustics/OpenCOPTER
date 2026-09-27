@@ -64,8 +64,8 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         wing_input = _wing_input;
         wing_lift_surf = _wing_lift_surf;
 
-        dC_L = new Chunk[2*wing.wing_parts[0].chunks.length];
-        y = new Chunk[2*wing.wing_parts[0].chunks.length];
+        dC_L = new Chunk[wing.wing_parts.length*wing.wing_parts[0].chunks.length];
+        y = new Chunk[wing.wing_parts.length*wing.wing_parts[0].chunks.length];
 
         foreach(ref _y; y) {
             _y[] = 0.0;
