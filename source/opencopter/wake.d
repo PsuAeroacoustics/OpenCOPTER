@@ -508,8 +508,8 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 		if(i_c_idx == 0) {
 			x_am1[0] = x_am1[1];
-			z_am1[0] = y_am1[1];
-			y_am1[0] = z_am1[1];
+			y_am1[0] = y_am1[1];
+			z_am1[0] = z_am1[1];
 			r_cm1[0] = r_cm1[1];
 		} else {
 			x_am1[0] = chunks[i_c_idx - 1].x[$-1];
@@ -525,9 +525,9 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 			r_cp1[$-1] = r_cp1[$-2];
 
-			x_bp1[$-2..$] = x_bp1[$-2];
-			y_bp1[$-2..$] = y_bp1[$-2];
-			z_bp1[$-2..$] = z_bp1[$-2];
+			x_bp1[$-2..$] = chunk_i.x[$-1];
+			y_bp1[$-2..$] = chunk_i.y[$-1];
+			z_bp1[$-2..$] = chunk_i.z[$-1];
 		} else {
 			x_ap1[$-1] = chunks[i_c_idx + 1].x[0];
 			y_ap1[$-1] = chunks[i_c_idx + 1].y[0];
@@ -549,12 +549,14 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		y_b[0..$-1] = chunk_i.y[1..$];
 		z_b[0..$-1] = chunk_i.z[1..$];
 
+		Chunk gamma = chunk_i.gamma[];
+
 		if(i_c_idx != chunks.length - 1) {
 			x_b[$-1] = chunks[i_c_idx + 1].x[0];
 			y_b[$-1] = chunks[i_c_idx + 1].y[0];
 			z_b[$-1] = chunks[i_c_idx + 1].z[0];
 		} else {
-			chunk_i.gamma[$-1] = 0;
+			gamma[$-1] = 0;
 			x_b[$-1] = 0;
 			y_b[$-1] = 0;
 			z_b[$-1] = 0;
@@ -565,8 +567,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		if(all_nan) {
 			break;
 		}
-
-		Chunk gamma = chunk_i.gamma[];
 
 		// put some dummy data in values that
 		// haven't been populated so we don't
