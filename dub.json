@@ -92,7 +92,7 @@
 				"vtkd": { "path": "./dependencies/vtkd" }
 			},
 			"subConfigurations": {
-				"pyd": "python37"
+				"pyd": "python34"
 			},
 			"lflags-linux": [
 				"-L$PWD/dependencies/vtkd/cmake/build",

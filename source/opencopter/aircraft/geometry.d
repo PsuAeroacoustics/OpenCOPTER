@@ -283,7 +283,9 @@ struct Frame {
 
 	Vec3 global_position() {
 		nop;
-		auto pos = Vec3(inverse_global_matrix[0, 3], inverse_global_matrix[1, 3], inverse_global_matrix[2, 3]);
+		// The translation of the global matrix is this frame's origin in global
+		// coordinates (the inverse holds the global origin in local coordinates).
+		auto pos = Vec3(global_matrix[0, 3], global_matrix[1, 3], global_matrix[2, 3]);
 		return pos;
 	}
 
