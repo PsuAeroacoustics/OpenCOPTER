@@ -278,7 +278,7 @@ void set_circulation_to_zero(WLS)(auto ref WLS wing_lifting_surf){
 
     foreach(wp_idx, ref wp_lift_surf; wing_lifting_surf.wing_part_lift_surf){
         foreach(sf_idx, ref spanwise_filament; wp_lift_surf.spanwise_filaments){
-            foreach(ch, chunk; spanwise_filament.chunks){
+            foreach(ch, ref chunk; spanwise_filament.chunks){
                 chunk.gamma[] = chunk_of_zeros; 
             }
         }

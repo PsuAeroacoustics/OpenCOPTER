@@ -40,9 +40,6 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
     private WIS* wing_input;
     private WLS* wing_lift_surf;
 
-    private Chunk[] dC_L;
-    private Chunk[] y;
-
     Frame* local_frame;
 	Mat4 global_inverse;
 
@@ -63,29 +60,6 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         //wing_state = _wing_state;
         wing_input = _wing_input;
         wing_lift_surf = _wing_lift_surf;
-
-        dC_L = new Chunk[2*wing.wing_parts[0].chunks.length];
-        y = new Chunk[2*wing.wing_parts[0].chunks.length];
-
-        foreach(ref _y; y) {
-            _y[] = 0.0;
-        }
-        foreach(ref _dC_L; dC_L) {
-            _dC_L[] = 0.0;
-        }
-
-        size_t c_idx = 0;
-        foreach(p_idx, ref wing_part; wing.wing_parts) {
-            //writeln("p_idx: ", p_idx);
-            foreach(ref chunk; wing_part.ctrl_chunks) {
-                //writeln("c_idx: ",c_idx);
-                if(c_idx < wing_part.chunks.length){
-                    y[c_idx] = chunk.ctrl_pt_y[];
-                    c_idx++;
-                }
-                
-            }
-        }
     }
     
     override void update(AircraftStateT!AC ac_state, WakeT!AC wake, double dt){
@@ -291,13 +265,10 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         immutable num_span_chunks = wing_state.wing_part_states[0].chunks.length;
         immutable num_chord_pt =  wing_state.wing_part_states[0].ctrl_chunks.length/num_span_chunks;
         double root_chord = wing.wing_parts[0].wing_root_chord; 
-        size_t c_idx = 0;
         foreach(wp_idx, wing_part_state; wing_state.wing_part_states){
             foreach (span_idx; 0..num_span_chunks){
                 wing_part_state.circulation_model.compute_dCl(wing_lift_surf,wing_part_state,wp_idx,span_idx);
                 //wing_part_state.chunks[span_idx].dC_L[] /= root_chord; //circulation is multiplied by root chord in compute_d_gamma_circulation, so Cl need to be devided by it
-                dC_L[c_idx][] = wing_part_state.chunks[span_idx].dC_L[];
-                c_idx++;
             }
 
             //compute_wing_C_L(wing_lift_surf, wing, wing_state);
