@@ -84,7 +84,75 @@ struct WeissingerL(ArrayContainer AC) {
 		// bounds (NaN) and poisoned the whole influence matrix.
 		immutable psi_vs = iota(1, cast(int)m + 1).map!(v => v*PI/(m + 1.0)).retro.array;
 		immutable y_array = psi_vs.map!(psi_mu => cos(psi_mu)).array;
-		//writeln("going into nested for loop");
+		immutable M = integration_elements.to!double - 1.0;
+
+		// Interior stations psi_mu of the trapezoidal eta integrals, with the same
+		// values the former floating point iota produced (start + step*index).
+		immutable psi_mu_step = 1.0*PI/(M + 1.0);
+		immutable num_mu = iota(psi_mu_step, M*PI/(M + 1.0), psi_mu_step).length;
+		auto psi_mus = iota(0, num_mu).map!(i => psi_mu_step + psi_mu_step*i).array;
+
+		// Quantities that depend only on the station psi_mu, evaluated once here
+		// rather than for every (v, n) pair below. PI is a real, so psi_mu,
+		// sin(psi_mu) and psi_n are real too; they are kept at that precision
+		// rather than rounded to double.
+		auto eta_mus = new double[num_mu];
+		auto xi_etas = new double[num_mu];
+		auto xi_p_etas = new double[num_mu];
+		auto sin_psi_mus = new real[num_mu];
+		foreach(mu_idx, psi_mu; psi_mus) {
+			immutable eta_mu = cos(psi_mu);
+
+			immutable eta_idx2 = y_array.countUntil!("a > b")(eta_mu);
+			immutable eta_idx1 = eta_idx2 - 1;
+
+			immutable eta_ch_idx1 = eta_idx1/chunk_size;
+			immutable eta_c_idx1 = eta_idx1%chunk_size;
+
+			immutable eta_ch_idx2 = eta_idx2/chunk_size;
+			immutable eta_c_idx2 = eta_idx2%chunk_size;
+
+			immutable true_chord_eta1 = blade.chunks[eta_ch_idx1].chord[eta_c_idx1]*radius;
+			immutable x_eta1 = direction*blade.chunks[eta_ch_idx1].xi[eta_c_idx1]*radius;
+			immutable xp_eta1 = blade.chunks[eta_ch_idx1].xi_p[eta_c_idx1]*radius;
+
+			immutable true_chord_eta2 = blade.chunks[eta_ch_idx2].chord[eta_c_idx2]*radius;
+			immutable x_eta2 = direction*blade.chunks[eta_ch_idx2].xi[eta_c_idx2]*radius;
+			immutable xp_eta2 = blade.chunks[eta_ch_idx2].xi_p[eta_c_idx2]*radius;
+
+			immutable d = y_array[eta_idx2] - y_array[eta_idx1];
+
+			immutable w2 = abs(y_array[eta_idx2] - eta_mu)/d;
+			immutable w1 = abs(y_array[eta_idx1] - eta_mu)/d;
+
+			immutable x = w2*x_eta1 + w1*x_eta2;
+			immutable true_chord_eta = w2*true_chord_eta1 + w1*true_chord_eta2;
+			immutable xi_p_eta = w2*xp_eta1 + w1*xp_eta2;
+
+			eta_mus[mu_idx] = eta_mu;
+			xi_etas[mu_idx] = x/true_chord_eta;
+			xi_p_etas[mu_idx] = xi_p_eta;
+			sin_psi_mus[mu_idx] = sin(psi_mu);
+		}
+
+		// Quantities that depend only on the circulation mode n.
+		auto h_n_first = new double[elements];
+		auto h_n_last = new double[elements];
+		auto h_n_mu = allocate_dense(elements, num_mu);
+		auto f_n_mu = allocate_dense(elements, num_mu);
+		foreach(n; 0..elements) {
+			immutable psi_n = ((elements - n).to!double)*PI/(elements.to!double + 1.0);
+			h_n_first[n] = h_n(elements, psi_n, 0);
+			h_n_last[n] = h_n(elements, psi_n, PI);
+			foreach(mu_idx, psi_mu; psi_mus) {
+				h_n_mu[n][mu_idx] = h_n(elements, psi_n, psi_mu);
+				f_n_mu[n][mu_idx] = f_n(elements, psi_n, psi_mu);
+			}
+		}
+
+		auto Ps = new double[num_mu];
+		auto Rs = new double[num_mu];
+
 		foreach(ch1; 0..chunks) {
 			foreach(c1; 0..chunk_size) {
 				immutable v = ch1*chunk_size + c1;
@@ -97,7 +165,15 @@ struct WeissingerL(ArrayContainer AC) {
 				immutable psi_v = psi_vs[v];
 
 				immutable local_aspect = blade.blade_length/(2.0*true_chord);
-				//writeln("going into internal nested for loop");
+
+				// P and R depend on the collocation point and station, not on n.
+				immutable P0_v = P(xi_y, -direction*blade.chunks[0].xi[0], y, -1.0, local_aspect);
+				immutable Pend_v = P(xi_y, -direction*blade.chunks[$-1].xi[$-1], y, 1.0, local_aspect);
+				foreach(mu_idx; 0..num_mu) {
+					Ps[mu_idx] = P(xi_y, xi_etas[mu_idx], y, eta_mus[mu_idx], local_aspect);
+					Rs[mu_idx] = R(xi_y, xi_etas[mu_idx], xi_p_etas[mu_idx], y, eta_mus[mu_idx], local_aspect);
+				}
+
 				foreach(ch2; 0..chunks) {
 					foreach(c2; 0..chunk_size) {
 						immutable n = ch2*chunk_size + c2;
@@ -106,90 +182,16 @@ struct WeissingerL(ArrayContainer AC) {
 
 						immutable first = 1.0/(elements.to!double + 1.0)*iota(1.0, elements.to!double + 1.0).map!(mu => mu*sin(mu*psi_n)*sin(mu*psi_v)/sin(psi_v)).sum;
 
-						immutable P0 = P(xi_y, -direction*blade.chunks[0].xi[0], y, -1.0, local_aspect)*h_n(elements, psi_n, 0);
-						immutable Pend = P(xi_y, -direction*blade.chunks[$-1].xi[$-1], y, 1.0, local_aspect)*h_n(elements, psi_n, PI);
+						immutable P0 = P0_v*h_n_first[n];
+						immutable Pend = Pend_v*h_n_last[n];
 
-						immutable M = integration_elements.to!double - 1.0;
-
-						immutable Ps = iota(1.0*PI/(M + 1.0), M*PI/(M + 1.0), 1.0*PI/(M + 1.0)).map!((psi_mu) {
-
-							immutable eta_mu = cos(psi_mu);
-
-							immutable eta_idx2 = y_array.countUntil!("a > b")(eta_mu);
-							immutable eta_idx1 = eta_idx2 - 1;
-
-							immutable eta_ch_idx1 = eta_idx1/chunk_size;
-							immutable eta_c_idx1 = eta_idx1%chunk_size;
-
-							immutable eta_ch_idx2 = eta_idx2/chunk_size;
-							immutable eta_c_idx2 = eta_idx2%chunk_size;
-
-							immutable true_chord_eta1 = blade.chunks[eta_ch_idx1].chord[eta_c_idx1]*radius;
-							immutable x_eta1 = direction*blade.chunks[eta_ch_idx1].xi[eta_c_idx1]*radius;
-
-							immutable true_chord_eta2 = blade.chunks[eta_ch_idx2].chord[eta_c_idx2]*radius;
-							immutable x_eta2 = direction*blade.chunks[eta_ch_idx2].xi[eta_c_idx2]*radius;
-
-							immutable d = y_array[eta_idx2] - y_array[eta_idx1];
-
-							immutable w2 = abs(y_array[eta_idx2] - eta_mu)/d;
-							immutable w1 = abs(y_array[eta_idx1] - eta_mu)/d;
-
-							immutable x = w2*x_eta1 + w1*x_eta2;
-							immutable true_chord_eta = w2*true_chord_eta1 + w1*true_chord_eta2;
-
-							immutable xi_eta = x/true_chord_eta;
-
-							immutable hn = h_n(elements, psi_n, psi_mu);
-							immutable p = P(xi_y, xi_eta, y, eta_mu, local_aspect)*hn;
-
-							return p;
-						}).array;
-
-						//writeln("returned P");
-						immutable Psum = Ps.sum;
+						immutable Psum = iota(num_mu).map!(i => Ps[i]*h_n_mu[n][i]).sum;
 						immutable second = 1.0/(4.0*(M + 1.0))*(
 							0.5*(P0 + Pend) + Psum //tehehehehehe
 						);
 
-						immutable third = 1.0/(4.0*(M + 1.0))*local_aspect*local_aspect*(
-
-							iota(1.0*PI/(M + 1.0), M*PI/(M + 1.0), 1.0*PI/(M + 1.0)).map!((psi_mu) {
-
-								immutable eta_mu = cos(psi_mu);
-
-								immutable eta_idx2 = y_array.countUntil!("a > b")(eta_mu);
-								immutable eta_idx1 = eta_idx2 - 1;
-								
-								immutable eta_ch_idx1 = eta_idx1/chunk_size;
-								immutable eta_c_idx1 = eta_idx1%chunk_size;
-
-								immutable eta_ch_idx2 = eta_idx2/chunk_size;
-								immutable eta_c_idx2 = eta_idx2%chunk_size;
-
-								immutable true_chord_eta1 = blade.chunks[eta_ch_idx1].chord[eta_c_idx1]*radius;
-								immutable x_eta1 = direction*blade.chunks[eta_ch_idx1].xi[eta_c_idx1]*radius;
-								immutable xp_eta1 = blade.chunks[eta_ch_idx1].xi_p[eta_c_idx1]*radius;
-
-								immutable true_chord_eta2 = blade.chunks[eta_ch_idx2].chord[eta_c_idx2]*radius;
-								immutable x_eta2 = direction*blade.chunks[eta_ch_idx2].xi[eta_c_idx2]*radius;
-								immutable xp_eta2 = blade.chunks[eta_ch_idx2].xi_p[eta_c_idx2]*radius;
-
-								immutable d = y_array[eta_idx2] - y_array[eta_idx1];
-
-								immutable w2 = abs(y_array[eta_idx2] - eta_mu)/d;
-								immutable w1 = abs(y_array[eta_idx1] - eta_mu)/d;
-
-								immutable x = w2*x_eta1 + w1*x_eta2;
-								immutable true_chord_eta = w2*true_chord_eta1 + w1*true_chord_eta2;
-								immutable xi_p_eta = w2*xp_eta1 + w1*xp_eta2;
-
-								immutable xi_eta = x/true_chord_eta;
-
-								return R(xi_y, xi_eta, xi_p_eta, y, eta_mu, local_aspect)*f_n(elements, psi_n, psi_mu)*sin(psi_mu);
-
-							}).array.sum
-						);
+						immutable Rsum = iota(num_mu).map!(i => Rs[i]*f_n_mu[n][i]*sin_psi_mus[i]).sum;
+						immutable third = 1.0/(4.0*(M + 1.0))*local_aspect*local_aspect*Rsum;
 
 						// The 0.5 is to compensate for the fact that we are
 						// actually integrating over half the length as the
