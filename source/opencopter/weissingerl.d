@@ -86,10 +86,13 @@ struct WeissingerL(ArrayContainer AC) {
 		immutable y_array = psi_vs.map!(psi_mu => cos(psi_mu)).array;
 		immutable M = integration_elements.to!double - 1.0;
 
-		// Interior stations psi_mu of the trapezoidal eta integrals, with the same
-		// values the former floating point iota produced (start + step*index).
+		// Interior stations psi_mu = k*PI/(M + 1), k = 1 .. M, of the trapezoidal
+		// eta integrals (the psi = 0 and psi = PI end points are P0 and Pend).
+		// Built by integer index: a floating point iota bounded by M*PI/(M + 1)
+		// has a rounding dependent length that drops the k = M station for some
+		// element counts (e.g. 40, 64, 96), as described for psi_vs above.
 		immutable psi_mu_step = 1.0*PI/(M + 1.0);
-		immutable num_mu = iota(psi_mu_step, M*PI/(M + 1.0), psi_mu_step).length;
+		immutable size_t num_mu = integration_elements - 1;
 		auto psi_mus = iota(0, num_mu).map!(i => psi_mu_step + psi_mu_step*i).array;
 
 		// Quantities that depend only on the station psi_mu, evaluated once here
