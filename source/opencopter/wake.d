@@ -802,7 +802,8 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 
 				BWIinputsChunk[] dummy_chunks;
 
-				if((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx))) {
+				// Grouped with the shed wake, so the tip_only/shed_only pair counts them once.
+				if(!tip_only && ((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx)))) {
 					auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0, dummy_chunks, x_old, y_old, z_old, false);
 					ret_shed.v_x[] += ind_vel.v_x[];
 					ret_shed.v_y[] += ind_vel.v_y[];
