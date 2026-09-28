@@ -263,6 +263,38 @@ unittest {
 	}
 }
 
+/// cos(psi) and sin(psi) of the azimuth of each lane's (x, y). On the rotor
+/// axis the azimuth is undefined, but every m >= 1 term of the velocity field
+/// carries (1 - nu^2)^(m/2), which is zero there, so any finite azimuth gives
+/// the right field: take psi = 0 rather than dividing 0 by 0.
+@nogc package void azimuth_cos_sin(immutable Chunk x, immutable Chunk y, ref Chunk cos_psi, ref Chunk sin_psi) {
+	immutable Chunk rho_sq = x[]*x[] + y[]*y[];
+	immutable Chunk rho = sqrt(rho_sq);
+	foreach(i; 0..rho.length) {
+		if(rho[i] > 0.0) {
+			cos_psi[i] = x[i]/rho[i];
+			sin_psi[i] = y[i]/rho[i];
+		} else {
+			cos_psi[i] = 1.0;
+			sin_psi[i] = 0.0;
+		}
+	}
+}
+
+unittest {
+	immutable Chunk x = [0.0, 1.0, -2.0, 0.0, 3.0, -3.0, 1.0e-300, 0.0];
+	immutable Chunk y = [0.0, 0.0, 0.0, 1.0, 4.0, -4.0, 0.0, -2.0];
+	immutable Chunk expected_cos = [1.0, 1.0, -1.0, 0.0, 0.6, -0.6, 1.0, 0.0];
+	immutable Chunk expected_sin = [0.0, 0.0, 0.0, 1.0, 0.8, -0.8, 0.0, -1.0];
+	Chunk cos_psi;
+	Chunk sin_psi;
+	azimuth_cos_sin(x, y, cos_psi, sin_psi);
+	foreach(i; 0..x.length) {
+		assert(isClose(cos_psi[i], expected_cos[i], 1.0e-15, 1.0e-15));
+		assert(isClose(sin_psi[i], expected_sin[i], 1.0e-15, 1.0e-15));
+	}
+}
+
 @nogc Chunk sign(Chunk x) {
 	Chunk res;
 	foreach(idx, ref _x; x) {
