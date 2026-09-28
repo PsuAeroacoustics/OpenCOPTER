@@ -180,18 +180,10 @@ package auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 			//immutable Chunk mpsi = m.to!double*coords.psi[];
 			//immutable Chunk[2] sin_cos = sincos(mpsi);
 
-			//immutable Chunk neg_y = -ccoords.y[];
-			//auto v1 = Vector!(3, Chunk)(ccoords.x, neg_y, zero).normalize;
-			auto v1 = Vector!(3, Chunk)(ccoords.x, ccoords.y, zero).normalize;
-			auto v2 = Vector!(3, Chunk)(0);
-			v2[0][] = 1.0;
-
-			//auto cos_psi = v1.dot(v2);
-			infl.mpsi_buff[m][] = v1.dot(v2)[];
-			Chunk one_m_cos_psi = 1.0 - infl.mpsi_buff[m][]*infl.mpsi_buff[m][];
-			infl.sin_mpsi_buff[m][] = sgn(ccoords.y)[]*sqrt(one_m_cos_psi)[];
-
-			//infl.sin_mpsi_buff[m] = sin_cos[0];
+			// The downstream terms of compute_velocities_final evaluate the
+			// field on the rotor axis whenever y = 0 and y^2 + z^2 >= 1, where
+			// the azimuth is undefined; see azimuth_cos_sin.
+			azimuth_cos_sin(ccoords.x, ccoords.y, infl.mpsi_buff[m], infl.sin_mpsi_buff[m]);
 		} else {
 			
 			infl.mpsi_buff[m][] = 2.0*infl.mpsi_buff[1][]*infl.mpsi_buff[m-1][] - infl.mpsi_buff[m-2][];
