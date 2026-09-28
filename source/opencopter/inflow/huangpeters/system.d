@@ -390,6 +390,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	package double[] adjoint_mat_sin;
 	package double[] LM_c_scratch;
 	package double[][] K_table;
+	package double[] Q0_coefficients;
+	package double Q0_split_eta;
 	package double[] average_inflow_array;
 
 	int total_states;
@@ -604,7 +606,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		double[][] Meo_new = allocate_dense(total_even_states, total_odd_states);
 		double[][] Meo_s = allocate_dense(total_even_sin_states, total_odd_sin_states);
 		double[][] Meo_s_new = allocate_dense(total_even_sin_states, total_odd_sin_states);
-		K_table = allocate_dense(max(Me, Mo) + 1, N);
 		D = allocate_dense(total_states, total_states);
 		D_s = allocate_dense(total_sin_states, total_sin_states);
 		QS_c_mat = allocate_dense(total_states, total_states);
@@ -628,10 +629,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		L_s_inv = allocate_dense(total_sin_states, total_sin_states);
 		L_s = allocate_dense(total_sin_states, total_sin_states);
 		Gamma = allocate_dense(total_states, total_states);
-
-		foreach(ref K; K_table) {
-			K[] = 0;
-		}
 
 		// History for the time-delay (downstream) terms; 2^16 steps covers >180
 		// revs at 1 deg steps, far beyond the few-radian delays queried.
@@ -989,14 +986,16 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_sin_states, total_sin_states, total_sin_states, 1.0, M_s_inv[0].ptr, total_sin_states, D_s[0].ptr, total_sin_states, 0.0, M_s_inv_D[0].ptr, total_sin_states);
 
 		iterate_odds!((m, n, idx) {
-			K_table[m][n] = K(m, n);
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Mo, 0);
 
 		iterate_evens!((m, n, idx) {
-			K_table[m][n] = K(m, n);
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Me, total_odd_states);
+
+		K_table = K_table_for(max(Me, Mo), N);
+		Q0_coefficients = Q0_recurrence_coefficients(N);
+		Q0_split_eta = Q0_miller_eta(N);
 
 		iterate_odds_sin!((m, n, idx) {
 			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 1.0);

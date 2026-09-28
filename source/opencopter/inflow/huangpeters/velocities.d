@@ -170,7 +170,7 @@ package auto compute_velocities_bl(ArrayContainer AC, T)(HuangPetersInflowT!AC i
 		}
 	)(infl.Me, _idx);
 
-	associated_legendre_function(coords.eta, infl.Qmn_bar, infl.K_table);
+	associated_legendre_function(coords.eta, infl.Qmn_bar, infl.K_table, infl.Q0_coefficients, infl.Q0_split_eta);
 
 	foreach(m; 0..max(infl.Mo, infl.Me) + 1) {
 		if(m == 0) {
