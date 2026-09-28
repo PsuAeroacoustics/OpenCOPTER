@@ -280,6 +280,14 @@ double[] cubic_bezier_approx(double[], double[], double[]) {
 }
 
 AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t elements = 48, size_t span_elements = 32, size_t chord_elements = 4) {
+	import opencopter.config : chunk_size;
+
+	// Blades store whole chunks and generate_radius_points pads to them, so
+	// pad the element count too; the element arrays and the airfoil extent
+	// below are sized from it.
+	if(elements%chunk_size != 0) {
+		elements += chunk_size - elements%chunk_size;
+	}
 
 	AircraftT!AC ac;
 
