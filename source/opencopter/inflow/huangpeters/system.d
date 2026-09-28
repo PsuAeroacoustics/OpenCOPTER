@@ -390,6 +390,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	package double[] adjoint_mat_sin;
 	package double[] LM_c_scratch;
 	package double[][] K_table;
+	package double[] Q0_coefficients;
+	package double Q0_split_eta;
 	package double[] average_inflow_array;
 
 	int total_states;
@@ -965,14 +967,22 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_sin_states, total_sin_states, total_sin_states, 1.0, M_s_inv[0].ptr, total_sin_states, D_s[0].ptr, total_sin_states, 0.0, M_s_inv_D[0].ptr, total_sin_states);
 
 		iterate_odds!((m, n, idx) {
-			K_table[m][n] = K(m, n);
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Mo, 0);
 
 		iterate_evens!((m, n, idx) {
-			K_table[m][n] = K(m, n);
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Me, total_odd_states);
+
+		// The Qmn_bar recurrence steps through every K(m, n) with n > m, not
+		// only the pairs that are states.
+		foreach(m; 0..max(Me, Mo) + 1) {
+			foreach(n; m + 1..N) {
+				K_table[m][n] = K(m, n);
+			}
+		}
+		Q0_coefficients = Q0_recurrence_coefficients(N);
+		Q0_split_eta = Q0_miller_eta(N);
 
 		iterate_odds_sin!((m, n, idx) {
 			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 1.0);
