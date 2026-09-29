@@ -68,6 +68,12 @@ jobs:
         dub build -c library-python310 -b release-native --compiler=$DC
         cd -
 
+    - name: 'Unit tests'
+      run: |
+        export CONDA_PREFIX=""
+        # Debug build: asserts and array bounds checks stay on
+        dub test -c library-novtk --compiler=$DC
+
     - name: 'Validate HART II'
       run: |
         # Run HART II validation case
