@@ -150,6 +150,10 @@ def build_flight_case(aircraft, flight_condition, computational_parameters, resu
 		if ('blade_element_func' in m) and (m['blade_element_func'] == "rotation"):
 			omegas_with_frame_name.append((m['frame'], m['omega']))
 
+	# Reject shed wake settings the wake cannot hold now: in the child process
+	# that runs the case, an error would leave oc_fly waiting for its result.
+	compute_aero.shed_wake_counts(computational_parameters, [omega for _, omega in omegas_with_frame_name])
+
 	omegas = []
 	for rotor in rotorcraft_system.rotors:
 		matched_frames = list(filter(lambda x: x[0] == rotor.frame.name, omegas_with_frame_name))
