@@ -995,7 +995,10 @@ unittest {
 
 	writeln("ac.rotors[0].blades[0].chunks.length: ", ac.rotors[0].blades[0].chunks.length);
 
-	auto ac_state = AircraftState(ac.rotors.length, ac.rotors.map!(r => r.blades.length).array, 48, ac);
+	import opencopter.inflow : Inflow;
+	auto ac_state = AircraftState(ac.rotors.length, ac.rotors.map!(r => r.blades.length).array, 48,
+		ac.wings.length, ac.wings.map!(w => w.wing_parts.length).array, 32, 4, ac,
+		new Inflow[ac.rotors.length], new Inflow[ac.wings.length], ac.rotors.map!(r => 1.0).array);
 
 	foreach(rotor_idx; 0..ac.rotors.length) {
 	
