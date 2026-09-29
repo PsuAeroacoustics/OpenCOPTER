@@ -1043,3 +1043,8 @@ unittest {
 		write_rotor_vtu("vsp_rotor_"~r_idx.to!string, 0, r_idx, vtk_rotor, ac_state.rotor_states[r_idx], rotor);
 	}
 }
+
+unittest {
+	// The VSP loader accepts element counts that are not whole chunks.
+	create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/prop_wing_geom_2.vsp3", 45);
+}

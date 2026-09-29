@@ -324,3 +324,9 @@ auto load_c81_file(string filename) {
         aoa_M, mach_m, CM
     );
 }
+
+unittest {
+	// Past the last Mach breakpoint the lookup extrapolates from the last
+	// interval, as it does before the first one.
+	assert(findindx([0.0, 0.3, 0.5, 0.7], 0.8) == 2);
+}

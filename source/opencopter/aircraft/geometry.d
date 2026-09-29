@@ -1046,3 +1046,54 @@ void set_geometry_array(string value, ArrayContainer AC)(WingPartGeometryT!AC* w
 		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
 	}
 }
+
+unittest {
+	// Rotations about an oblique axis stay orthogonal.
+	import std.math : abs;
+
+	foreach(axis; [Vec3(0, 1, 1), Vec3(1, 2, 3)]) {
+		auto frame = Frame(Vec3(1, 0, 0), 0.0, Vec3(0, 0, 0), null, "frame", FrameType.connection);
+		frame.rotate(axis, 0.7);
+		auto m = extract_rotation_matrix(frame.local_matrix);
+		auto mtm = m.transpose*m;
+		foreach(i; 0..3) {
+			foreach(j; 0..3) {
+				assert(abs(mtm[i, j] - (i == j ? 1.0 : 0.0)) < 1.0e-14);
+			}
+		}
+	}
+}
+
+unittest {
+	// global_position is the frame's origin in global coordinates.
+	import std.math : abs, PI;
+
+	auto frame = new Frame(Vec3(0, 0, 1), PI/2, Vec3(1, 2, 3), null, "hub", FrameType.connection);
+	frame.update(Mat4.identity);
+	auto position = frame.global_position();
+	foreach(i, expected; [1.0, 2.0, 3.0]) {
+		assert(abs(position[i] - expected) < 1.0e-12);
+	}
+}
+
+unittest {
+	// Chordwise control points sit on Lan's stations, x/c = (1 - cos(i pi/N))/2,
+	// with no rounding of N to whole chunks.
+	import std.math : abs, cos, PI;
+
+	foreach(N; [3UL, 4]) {
+		auto x = generate_chordwise_control_points(N);
+		assert(x.length == N);
+		foreach(i; 0..N) {
+			assert(abs(x[i] - 0.5*(1.0 - cos((i + 1.0)*PI/N))) < 1.0e-15);
+		}
+	}
+}
+
+unittest {
+	// Assigning a wing part keeps its side, and a wing keeps its span.
+	WingPartGeometry part;
+	part = WingPartGeometry(8, 2, Vec3(0, 0, 0), 0.2, 0.2, 0.2, 0, 0, 1.0, Location.left);
+	assert(part.loc == Location.left);
+	assert(WingGeometry(1, Vec3(0, 0, 0), 3.5).wing_span == 3.5);
+}
