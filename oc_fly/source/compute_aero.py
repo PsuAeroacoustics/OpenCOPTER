@@ -649,7 +649,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	if "span_elements" in computational_parameters:
 		span_elements = computational_parameters["span_elements"]
-	span_chunks = int(span_elements/chunk_size())
+	# Round up to whole chunks, as the D side does; rounding down left the last lattice chunk NaN.
+	span_chunks = math.ceil(span_elements/chunk_size())
 
 	if "chord_elements" in computational_parameters:
 		chord_elements = computational_parameters["chord_elements"]
