@@ -1292,3 +1292,76 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 		}
 	}
 }
+
+version(unittest) private {
+	enum test_filament_points = 16;
+
+	FilamentChunk[] test_helix(double y_0, double z_0) {
+		auto chunks = new FilamentChunk[test_filament_points/chunk_size];
+		foreach(i; 0..test_filament_points) {
+			immutable double t = 0.15*i;
+			chunks[i/chunk_size].x[i%chunk_size] = cos(t);
+			chunks[i/chunk_size].y[i%chunk_size] = sin(t) + y_0;
+			chunks[i/chunk_size].z[i%chunk_size] = -0.05*i + z_0;
+			chunks[i/chunk_size].gamma[i%chunk_size] = 1.0;
+			chunks[i/chunk_size].r_c[i%chunk_size] = 1.0e-3;
+		}
+		return chunks;
+	}
+
+	InducedVelocities test_velocity_near(FilamentChunk[] filament, double x_0, double y_0, double z_0) {
+		Chunk x, y, z;
+		foreach(k; 0..chunk_size) {
+			x[k] = x_0 + 0.05*k;
+			y[k] = 0.2 + y_0;
+			z[k] = 0.1 + z_0;
+		}
+		immutable Chunk zero = 0;
+		BWIinputsChunk[] no_bwi;
+		return compute_filament_induced_velocities(filament, x, y, z, 0, no_bwi, zero, zero, zero, 0, false);
+	}
+
+	double test_relative_change(InducedVelocities a, InducedVelocities b) {
+		double change = 0;
+		double size = 0;
+		foreach(k; 0..chunk_size) {
+			change = fmax(change, abs(a.v_x[k] - b.v_x[k]) + abs(a.v_y[k] - b.v_y[k]) + abs(a.v_z[k] - b.v_z[k]));
+			size = fmax(size, abs(a.v_x[k]) + abs(a.v_y[k]) + abs(a.v_z[k]));
+		}
+		return change/size;
+	}
+}
+
+unittest {
+	// The induced velocity of a filament does not depend on where it sits
+	// (4bcd7e0: the first segment's virtual neighbour had y and z swapped).
+	auto reference = test_velocity_near(test_helix(0, 0), 0.9, 0, 0);
+	foreach(offset; [[5.0, 0.0], [0.0, -3.0], [-7.0, 4.0]]) {
+		auto moved = test_velocity_near(test_helix(offset[0], offset[1]), 0.9, offset[0], offset[1]);
+		assert(test_relative_change(reference, moved) < 1.0e-12);
+	}
+}
+
+unittest {
+	// The last segment of a filament counts, and evaluating the filament does
+	// not change its circulation (4bcd7e0).
+	auto filament = test_helix(0, 0);
+	immutable size_t last = test_filament_points - 2;
+	immutable double x_last = filament[last/chunk_size].x[last%chunk_size];
+	auto before = test_velocity_near(filament, x_last, 0, 0);
+	foreach(ref chunk; filament) {
+		foreach(k; 0..chunk_size) {
+			assert(chunk.gamma[k] == 1.0);
+		}
+	}
+	filament[last/chunk_size].gamma[last%chunk_size] = 2.0;
+	assert(test_relative_change(before, test_velocity_near(filament, x_last, 0, 0)) > 1.0e-3);
+}
+
+unittest {
+	// The constructors taking a single blade count must not write past an
+	// empty array (020ea85); a bounds-checked build would throw here.
+	auto wake = Wake(2, 3, 16, 48, [4, 4], [1, 1]);
+	assert(wake.rotor_wakes.length == 2);
+	assert(wake.rotor_wakes[1].tip_vortices.length == 3);
+}

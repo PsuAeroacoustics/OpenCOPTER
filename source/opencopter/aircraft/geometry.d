@@ -1102,3 +1102,73 @@ void set_geometry_array(string value, ArrayContainer AC)(WingPartGeometryT!AC* w
 		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
 	}
 }
+
+unittest {
+	// Rotations about an oblique axis stay orthogonal (901722d).
+	import std.math : abs, fmax;
+
+	double orthogonality_error(Mat3 m) {
+		double error = 0;
+		foreach(i; 0..3) {
+			foreach(j; 0..3) {
+				double dot = 0;
+				foreach(k; 0..3) {
+					dot += m[k, i]*m[k, j];
+				}
+				error = fmax(error, abs(dot - (i == j ? 1.0 : 0.0)));
+			}
+		}
+		return error;
+	}
+
+	foreach(axis; [Vec3(0, 0, 1), Vec3(0, 1, 1), Vec3(1, 2, 3)]) {
+		assert(orthogonality_error(build_rotation_matrix(axis, 0.7)) < 1.0e-14);
+
+		auto set = Frame(Vec3(1, 0, 0), 0.0, Vec3(0, 0, 0), null, "set", FrameType.connection);
+		set.set_rotation(axis, 0.7);
+		assert(orthogonality_error(extract_rotation_matrix(set.local_matrix)) < 1.0e-14);
+
+		auto rotated = Frame(Vec3(1, 0, 0), 0.0, Vec3(0, 0, 0), null, "rotated", FrameType.connection);
+		rotated.rotate(axis, 0.7);
+		assert(orthogonality_error(extract_rotation_matrix(rotated.local_matrix)) < 1.0e-14);
+	}
+}
+
+unittest {
+	// global_position is the frame's origin in global coordinates (7d90fa4).
+	import std.math : abs, PI;
+
+	auto root = new Frame(Vec3(0, 0, 1), 0.0, Vec3(0, 0, 0), null, "root", FrameType.aircraft);
+	auto hub = new Frame(Vec3(0, 0, 1), PI/2, Vec3(1, 2, 3), root, "hub", FrameType.connection);
+	auto rotor = new Frame(Vec3(1, 0, 0), 0.0, Vec3(0.5, 0, 0), hub, "rotor", FrameType.rotor);
+	root.children ~= hub;
+	hub.children ~= rotor;
+	root.update(Mat4.identity);
+	auto position = rotor.global_position();
+	auto origin = rotor.global_matrix*Vec4(0, 0, 0, 1);
+	foreach(i; 0..3) {
+		assert(abs(position[i] - origin[i]) < 1.0e-12);
+	}
+}
+
+unittest {
+	// Chordwise control points sit on Lan's stations, x/c = (1 - cos(i pi/N))/2,
+	// with no rounding of N to whole chunks (7c8c820).
+	import std.math : abs, cos, PI;
+
+	foreach(N; [1UL, 2, 3, 4, 6, 8, 12]) {
+		auto x = generate_chordwise_control_points(N);
+		assert(x.length == N);
+		foreach(i; 0..N) {
+			assert(abs(x[i] - 0.5*(1.0 - cos((i + 1.0)*PI/N))) < 1.0e-15);
+		}
+	}
+}
+
+unittest {
+	// Assigning a wing part keeps its side, and a wing keeps its span (5fd32ba).
+	WingPartGeometry part;
+	part = WingPartGeometry(8, 2, Vec3(0, 0, 0), 0.2, 0.2, 0.2, 0, 0, 1.0, Location.left);
+	assert(part.loc == Location.left);
+	assert(WingGeometry(1, Vec3(0, 0, 0), 3.5).wing_span == 3.5);
+}

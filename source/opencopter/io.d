@@ -1029,3 +1029,17 @@ unittest {
 		write_rotor_vtu("vsp_rotor_"~r_idx.to!string, 0, r_idx, vtk_rotor, ac_state.rotor_states[r_idx], rotor);
 	}
 }
+
+unittest {
+	// The VSP loader pads the blade element count to whole chunks, so 45
+	// elements build 48-station blades (1763f79).
+	import opencopter.config : chunk_size;
+
+	auto ac = create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/prop_wing_geom_2.vsp3", 45);
+	assert(ac.rotors.length > 0);
+	foreach(ref rotor; ac.rotors) {
+		foreach(ref blade; rotor.blades) {
+			assert(blade.chunks.length*chunk_size == 48);
+		}
+	}
+}

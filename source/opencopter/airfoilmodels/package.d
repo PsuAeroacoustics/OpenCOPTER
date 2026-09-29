@@ -181,3 +181,16 @@ class BladeAirfoil {
         return Cl_alpha;
     }
 }
+
+unittest {
+	// Extents that don't start at element 0 or don't fill whole chunks are
+	// rejected instead of corrupting the per-chunk model table (e52587f).
+	import opencopter.airfoilmodels.thinaf : ThinAirfoil;
+	import std.exception : assertNotThrown, assertThrown;
+
+	AirfoilModel airfoil = new ThinAirfoil(0.0);
+	assertThrown(new BladeAirfoil([airfoil], [[0UL, 1UL]]));
+	assertThrown(new BladeAirfoil([airfoil], [[0UL, 10UL]]));
+	assertThrown(new BladeAirfoil([airfoil], [[8UL, 15UL]]));
+	assertNotThrown(new BladeAirfoil([airfoil], [[0UL, 15UL]]));
+}

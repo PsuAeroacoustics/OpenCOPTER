@@ -1605,3 +1605,70 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		return i;
 	}
 }
+
+version(unittest) private HuangPetersInflow test_huang_peters() {
+	import opencopter.aircraft;
+
+	enum elements = 48;
+	auto root = new Frame(Vec3(0, 0, 1), 0.0, Vec3(0, 0, 0), null, "root", FrameType.aircraft);
+	auto rotor = new RotorGeometry(4, Vec3(0, 0, 0), 2.0, 0.1);
+	rotor.frame = new Frame(Vec3(1, 0, 0), 0.0, Vec3(0, 0, 0), root, "rotor", FrameType.rotor);
+	root.children ~= rotor.frame;
+	foreach(ref blade; rotor.blades) {
+		blade.chunks = new BladeGeometryChunk[elements/chunk_size];
+		blade.set_geometry_array!"r"(generate_radius_points(elements, 0.2));
+		auto xi = new double[elements];
+		xi[] = 0;
+		blade.set_geometry_array!"xi"(xi);
+	}
+	auto input = new RotorInputState;
+	input.angular_velocity = 109.12;
+	return new HuangPetersInflow(4, 2, rotor, input, (PI/180.0)/109.12);
+}
+
+unittest {
+	// simple_harmonic_solution's sine states solve VLM_s beta = tau_s (1ed6ccb).
+	auto hp = test_huang_peters();
+	hp.tau_c[] = 0;
+	hp.tau_c[0] = 0.002;
+	hp.tau_c[1] = -0.0005;
+	hp.tau_s[] = 0;
+	hp.tau_s[0] = 0.001;
+	hp.tau_s[1] = 0.0007;
+	hp.average_inflow = 0.05;
+	immutable double mu = 0.15;
+	immutable double mu_z = 0.0;
+	hp.build_vlm_matrix(mu, mu_z);
+	immutable n = hp.total_sin_states;
+	auto A = new double[n*n];
+	foreach(i; 0..n) {
+		A[i*n..(i + 1)*n] = hp.VLM_s[i][];
+	}
+	auto beta = hp.tau_s.dup;
+	auto pivots = new int[n];
+	assert(LAPACKE_dgesv(LAPACK_ROW_MAJOR, n, 1, A.ptr, n, pivots.ptr, beta.ptr, 1) == 0);
+	hp.simple_harmonic_solution(mu, mu_z);
+	double difference = 0;
+	double size = 0;
+	foreach(i; 0..n) {
+		difference = fmax(difference, abs(hp.beta[i] - beta[i]));
+		size = fmax(size, abs(beta[i]));
+	}
+	assert(difference < 1.0e-12*size);
+}
+
+unittest {
+	// find_bracket picks the right circular slot after the history wraps (1ed6ccb).
+	auto hp = test_huang_peters();
+	enum slots = 16;
+	enum last = 40;
+	hp.time_history = slots;
+	hp.times = new double[slots];
+	foreach(s; last - slots + 1..last + 1) {
+		hp.times[hp.get_circular_index(s)] = 0.1*s;
+	}
+	hp.curr_state = last;
+	foreach(s; last - slots + 1..last) {
+		assert(hp.find_bracket(0.1*s + 0.05) == hp.get_circular_index(s));
+	}
+}

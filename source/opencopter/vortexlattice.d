@@ -818,4 +818,33 @@ double[][] get_wls_state_matrix(string value, ArrayContainer AC)(ref WingPartLif
 	return state_matrix;
 }
 
+unittest {
+	// Chordwise vortex lines sit on Lan's stations, x/c = (1 - cos((2k - 1) pi/2N))/2,
+	// with no rounding of N to whole chunks (7c8c820).
+	foreach(N; [1UL, 2, 3, 4, 6, 8, 12]) {
+		auto x = generate_chordwise_votex_nodes(N);
+		assert(x.length == N);
+		foreach(k; 0..N) {
+			assert(abs(x[k] - 0.5*(1.0 - cos((2.0*k + 1.0)*PI/(2.0*N)))) < 1.0e-15);
+		}
+	}
+}
 
+unittest {
+	// set_circulation_to_zero clears the lattice (5fd32ba).
+	auto surface = WingLiftSurf(1);
+	surface.wing_part_lift_surf[0] = WingPartLiftingSurf(8, 2);
+	foreach(ref filament; surface.wing_part_lift_surf[0].spanwise_filaments) {
+		foreach(ref chunk; filament.chunks) {
+			chunk.gamma[] = 1.0;
+		}
+	}
+	set_circulation_to_zero(surface);
+	foreach(ref filament; surface.wing_part_lift_surf[0].spanwise_filaments) {
+		foreach(ref chunk; filament.chunks) {
+			foreach(k; 0..chunk_size) {
+				assert(chunk.gamma[k] == 0.0);
+			}
+		}
+	}
+}

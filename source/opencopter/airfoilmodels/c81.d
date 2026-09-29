@@ -324,3 +324,19 @@ auto load_c81_file(string filename) {
         aoa_M, mach_m, CM
     );
 }
+
+unittest {
+	// Past the last Mach breakpoint the lookup extrapolates from the last
+	// interval, as it does before the first one (6ad7089).
+	double[] mach = [0.0, 0.3, 0.5, 0.7];
+	double[] aoa = [-10.0, 0.0, 10.0];
+	double[][] values = aoa.map!(a => mach.map!(m => 0.1*a/sqrt(1.0 - m*m)).array).array;
+	auto table = new Coefftable(aoa, mach, values);
+	assert(findindx(mach, 0.8) == 2);
+
+	immutable double alpha = 5.0*PI/180.0;
+	immutable double at_05 = table.interpolation(alpha, 0.5);
+	immutable double at_07 = table.interpolation(alpha, 0.7);
+	immutable double at_08 = table.interpolation(alpha, 0.8);
+	assert(isClose(at_08, at_07 + 0.5*(at_07 - at_05), 1.0e-12));
+}

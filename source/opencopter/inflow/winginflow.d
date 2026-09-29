@@ -408,3 +408,110 @@ class WingInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
         return V_z;
     }
 }
+
+version(unittest) private {
+	// A tapered wing (b/2 = 0.6, c_r = 0.3, c_t = 0.15) at 5 degrees and 30 m/s,
+	// 32 span and 4 chordwise elements per part, solved through WingInflow.
+	enum double test_alpha = 5.0*PI/180.0;
+	enum double test_V = 30.0;
+	enum size_t test_M = 32;
+	enum size_t test_N = 4;
+
+	struct TestWing {
+		WingGeometry wing;
+		WingLiftSurf surface;
+		WingState state;
+	}
+
+	TestWing* solve_test_wing(size_t parts, Location loc, double sweep) {
+		auto w = new TestWing;
+		w.wing = WingGeometry(parts, Vec3(0, 0, 0), 0.6);
+		w.wing.frame = new Frame(Vec3(1, 0, 0), 0, Vec3(0, 0, 0), null, "wing", FrameType.wing);
+		auto y_ctrl = generate_spanwise_control_points(test_M);
+		foreach(wp; 0..parts) {
+			immutable side = parts == 1 ? loc : (wp%2 == 0 ? Location.left : Location.right);
+			w.wing.wing_parts[wp] = WingPartGeometry(test_M, test_N, Vec3(0, 0, 0), 0.225, 0.3, 0.15, sweep, 0, 0.6, side);
+			foreach(ch; 0..test_M/chunk_size) {
+				foreach(k; 0..chunk_size) {
+					w.wing.wing_parts[wp].chunks[ch].chord[k] = 0.3*(1.0 - y_ctrl[ch*chunk_size + k]);
+					w.wing.wing_parts[wp].chunks[ch].twist[k] = 0;
+				}
+			}
+		}
+		set_wing_ctrl_pt_geometry(w.wing, test_M, test_N, 0.0);
+		w.surface = WingLiftSurf(parts);
+		foreach(wp; 0..parts) {
+			w.surface.wing_part_lift_surf[wp] = WingPartLiftingSurf(test_M, test_N);
+		}
+		set_wing_vortex_geometry(w.surface, w.wing, test_M/chunk_size, test_N);
+		auto input = new WingInputState;
+		auto inflow = new WingInflow(&w.wing, input, &w.surface);
+		w.state = WingState(parts, test_M, test_N, w.wing, inflow);
+		foreach(ref part_state; w.state.wing_part_states) {
+			foreach(ref ctrl; part_state.ctrl_chunks) {
+				ctrl.ctrl_pt_aoa[] = test_alpha;
+				ctrl.ctrl_pt_ut[] = test_V;
+				ctrl.ctrl_pt_up[] = 0;
+			}
+		}
+		inflow.update_wing_circulation(w.state);
+		inflow.update_wing_dC_L(w.state);
+		inflow.compute_wing_C_L(w.surface, w.state, &w.wing);
+		return w;
+	}
+}
+
+unittest {
+	// The wing lift coefficient matches an independent 96 x 16 horseshoe
+	// vortex lattice (0.363), and is the same for two parts, one left part and
+	// one right part (65523e5, a46542c).
+	auto both = solve_test_wing(2, Location.left, 0);
+	auto right = solve_test_wing(1, Location.right, 0);
+	auto left = solve_test_wing(1, Location.left, 0);
+	// Lift comes out negative in the lattice's sign convention.
+	assert(abs(abs(both.state.C_L) - 0.363) < 0.004);
+	assert(abs(right.state.C_L - both.state.C_L) < 1.0e-9);
+	assert(abs(left.state.C_L - both.state.C_L) < 1.0e-9);
+}
+
+unittest {
+	// The lattice induces the normal velocity the influence matrix imposes at
+	// its own control points; what remains is its finite trailing legs
+	// (7c8c820, 4fef12b).
+	auto swept = solve_test_wing(2, Location.left, 20);
+	double lowest = double.infinity;
+	double highest = -double.infinity;
+	immutable span_chunks = test_M/chunk_size;
+	foreach(wp; 0..2) {
+		foreach(ci; 0..test_N) {
+			foreach(ch; 0..span_chunks) {
+				auto ctrl = swept.wing.wing_parts[wp].ctrl_chunks[ci*span_chunks + ch];
+				auto induced = compute_wing_induced_vel(swept.surface, ctrl.ctrl_pt_x, ctrl.ctrl_pt_y, ctrl.ctrl_pt_z);
+				foreach(k; 0..chunk_size) {
+					if(ch == 0 && k == 0) continue; // the root station sits on the root trailing legs
+					immutable ratio = induced.v_z[k]/(test_V*sin(test_alpha));
+					lowest = fmin(lowest, ratio);
+					highest = fmax(highest, ratio);
+				}
+			}
+		}
+	}
+	assert(lowest > 0.99 && highest < 1.01);
+}
+
+unittest {
+	// A lone left part induces the mirror image of a lone right part (4fef12b).
+	auto right = solve_test_wing(1, Location.right, 20);
+	auto left = solve_test_wing(1, Location.left, 20);
+	Chunk x = [-0.3, -0.1, 0.1, 0.2, 0.4, 0.8, 1.2, -0.5];
+	Chunk y = [0.1, 0.3, 0.5, 0.7, 0.2, 0.4, 0.9, 0.05];
+	Chunk z = [0.1, -0.1, 0.2, 0.05, -0.2, 0.3, 0.0, -0.05];
+	Chunk y_mirror = -y[];
+	auto from_right = compute_wing_induced_vel(right.surface, x, y, z);
+	auto from_left = compute_wing_induced_vel(left.surface, x, y_mirror, z);
+	foreach(k; 0..chunk_size) {
+		assert(abs(from_right.v_x[k] - from_left.v_x[k]) < 1.0e-12);
+		assert(abs(from_right.v_y[k] + from_left.v_y[k]) < 1.0e-12);
+		assert(abs(from_right.v_z[k] - from_left.v_z[k]) < 1.0e-12);
+	}
+}
