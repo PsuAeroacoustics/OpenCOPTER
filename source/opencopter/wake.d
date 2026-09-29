@@ -188,7 +188,6 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-
 			// 09/02: Nitya
 			
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
@@ -970,7 +969,12 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			// Spanwise release location of the tip vortex (non-dim radius),
 			// preserved from the existing r_0-based mechanism and read with
 			// proper per-blade indexing.
-			immutable double release_r0 = (ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > blade_idx && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 != double.infinity) ? ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 : ac_input_state.rotor_inputs[rotor_idx].r_0[blade_idx];
+			immutable double release_r0 =
+				(
+				(ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > blade_idx && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 != double.infinity) ?
+					ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 : 
+					ac_input_state.rotor_inputs[rotor_idx].r_0[blade_idx]
+				) * ac.rotors[rotor_idx].radius;
 			//immutable double release_r = 1.0 - r_c - release_r0/16.0;
 			immutable double release_r = 1.0 - release_r0/16.0;
 			
@@ -1173,7 +1177,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			current_tip_filament.chunks[0].x[0] = x;
 			current_tip_filament.chunks[0].gamma[0] = max_gamma;
 			current_tip_filament.chunks[0].l_0[0] = 0;
-			current_tip_filament.chunks[0].r_0[0] = (ac_input_state.rotor_inputs[rotor_idx].blade_inputs.length > blade_idx && ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 != double.infinity) ? ac_input_state.rotor_inputs[rotor_idx].blade_inputs[blade_idx].r_0 : ac_input_state.rotor_inputs[rotor_idx].r_0[blade_idx]*ac.rotors[rotor_idx].radius;
+			current_tip_filament.chunks[0].r_0[0] = release_r0;
 			current_tip_filament.chunks[0].r_c[0] = current_tip_filament.chunks[0].r_0[0];
 			current_tip_filament.chunks[0].x_e[0] = 0;
 			current_tip_filament.chunks[0].phi[0] = 0;
