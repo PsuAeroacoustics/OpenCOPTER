@@ -477,6 +477,34 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 
 	return aircraft, motion_dict, trim_axis_dict, components_dict
 
+def shed_wake_counts(computational_parameters, omegas):
+	"""Time steps between shed vortex releases, and shed vortices kept, per rotor.
+
+	update_wake takes the step count modulo the first, and the wake keeps the
+	second, so both must round to at least 1. oc_fly calls this before it
+	starts a case: compute_aero runs in a child process, and an error raised
+	there would leave oc_fly waiting for its result.
+	"""
+	if len(omegas) == 0:
+		return [], []
+
+	d_psi = computational_parameters["d_psi"]*math.pi/180.0
+	shed_history_angle = np.asarray(computational_parameters["shed_history_angle"])*math.pi/180.0
+	shed_release_angle = computational_parameters["shed_release_angle"]*math.pi/180.0
+
+	max_omega = np.max(np.abs(omegas))
+	rotor_ratios = np.round(max_omega/np.abs(omegas))
+
+	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
+	if min(release_ratio) < 1:
+		raise ValueError(f'shed_release_angle ({math.degrees(shed_release_angle)} deg) must round to at least one time step of d_psi ({math.degrees(d_psi)} deg)')
+
+	shed_history = np.round(shed_history_angle/shed_release_angle).astype(dtype=np.int64).tolist()
+	if min(shed_history) < 1:
+		raise ValueError(f'shed_history_angle ({np.degrees(shed_history_angle).tolist()} deg) must round to at least one shed_release_angle ({math.degrees(shed_release_angle)} deg)')
+
+	return shed_history, release_ratio
+
 def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	flight_condition = case.condition
@@ -599,14 +627,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	density = flight_condition["density"]
 	dynamic_viscosity = 18.03e-6
 
-	shed_history_angle = np.asarray(computational_parameters["shed_history_angle"])*math.pi/180.0
-	shed_release_angle = computational_parameters["shed_release_angle"]*math.pi/180.0
-
-	max_omega = np.max(np.abs(omegas))
-	rotor_ratios = np.round(max_omega/np.abs(omegas))
-
-	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
-	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
+	shed_history, release_ratio = shed_wake_counts(computational_parameters, omegas)
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]

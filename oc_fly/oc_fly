@@ -54,6 +54,10 @@ def find_frame(root_frame, frame_name):
 def build_flight_case(aircraft, flight_condition, computational_parameters, results, observer, acoustics, bwi_params, geom_directory):
 
 	motions = flight_condition["motion"] if "motion" in flight_condition else None
+
+	# Reject shed wake settings the wake cannot hold here, before the case runs
+	# in a child process that could only fail without telling this one.
+	compute_aero.shed_wake_counts(computational_parameters, [m['omega'] for m in (motions or []) if m.get('blade_element_func') == 'rotation'])
 	if "vsp" in aircraft:
 		# Build the blades and wings with the element counts compute_aero sizes
 		# the aircraft state and wing lifting surfaces with (same defaults).
