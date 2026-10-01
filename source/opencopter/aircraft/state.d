@@ -864,7 +864,13 @@ double[][] get_wing_state_matrix(string value, ArrayContainer AC)(ref WingPartSt
 
 double[] get_wing_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing){
 	
+	size_t total_elements = 0;
+	foreach(ref wing_part; wing.wing_part_states){
+		total_elements += wing_part.chunks.length*chunk_size;
+	}
+
 	double[] state_array;
+	state_array.reserve(total_elements);
 	foreach(ref wing_part; wing.wing_part_states){
 		foreach(ref chunk; wing_part.chunks){
 			mixin("state_array ~= chunk."~value~"[];");
