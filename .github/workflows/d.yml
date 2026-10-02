@@ -58,7 +58,18 @@ jobs:
         cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
         make > /dev/null 2>&1
         sudo make install
-        
+
+    - name: 'Runner diagnostics'
+      # LAPACK has intermittently returned wrong matrix inverses on CI. OpenBLAS
+      # picks its kernels by CPU at load time and runner CPUs vary, so record
+      # the CPU and which BLAS/LAPACK the loader resolves to.
+      run: |
+        lscpu | grep -E '^(Model name|Vendor ID|CPU\(s\)):'
+        echo "SIMD flags: $(grep -o -w -E 'fma|avx2|avx512f|avx512_bf16|amx_tile' /proc/cpuinfo | sort -u | tr '\n' ' ')"
+        update-alternatives --display libblas.so.3-x86_64-linux-gnu | head -2
+        update-alternatives --display liblapack.so.3-x86_64-linux-gnu | head -2
+        dpkg-query -W -f='${Package} ${Version}\n' 'libopenblas0*' liblapack3 liblapacke
+
     - name: 'Build'
       run: |
         export CONDA_PREFIX=""
@@ -69,6 +80,9 @@ jobs:
         cd -
 
     - name: 'Unit tests'
+      env:
+        # Makes OpenBLAS print the kernel set (core type) it selected.
+        OPENBLAS_VERBOSE: 2
       run: |
         export CONDA_PREFIX=""
         # Debug build: asserts and array bounds checks stay on
