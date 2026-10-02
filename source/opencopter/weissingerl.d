@@ -4,6 +4,7 @@ import opencopter.aircraft;
 import opencopter.config;
 import opencopter.math;
 import opencopter.math.blas;
+import opencopter.math.inverse;
 import opencopter.math.lapacke;
 import opencopter.memory;
 import opencopter.io;
@@ -202,20 +203,7 @@ struct WeissingerL(ArrayContainer AC) {
 			}
 		}
 
-		foreach(r_idx; 0..elements) {
-			_influence_inv[r_idx][] = influence[r_idx][];
-		}
-
-		openblas_set_num_threads(1);
-
-		int info = 0;
-		auto ipiv = new int[elements];
-		info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, elements.to!int, elements.to!int, _influence_inv[0].ptr, elements.to!int, ipiv.ptr);
-
-		assert(info == 0, "Failed to invert influence matrix");
-		info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, elements.to!int, _influence_inv[0].ptr, elements.to!int, ipiv.ptr);
-
-		assert(info == 0, "Failed to invert influence matrix");
+		invert_checked(_influence_inv, influence, "Weissinger-L influence matrix");
 
 		influence_inv = allocate_dense_chunk_aliased(elements, elements);
 
