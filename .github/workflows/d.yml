@@ -99,3 +99,56 @@ jobs:
 
         ../../wopwop3/build/wopwop3 cases_0_0.nam
 
+  # Unit tests under AddressSanitizer, hunting the intermittent wrong matrix
+  # inverses. Three copies run in parallel to sample more runner CPUs per push.
+  # ASan sees C heap and stack accesses; memory handed out by the D GC is not
+  # instrumented, and neither are OpenBLAS's own loads and stores.
+  asan:
+
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [1, 2, 3]
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
+      with:
+        compiler: ldc-1.28.1
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran libfftw3-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
+
+        wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
+        tar xf 3.5.1.tar.gz
+        cd sleef-3.5.1
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        make > /dev/null 2>&1
+        sudo make install
+
+    - name: 'Runner diagnostics'
+      run: |
+        lscpu | grep -E '^(Model name|Vendor ID|CPU\(s\)):'
+        echo "SIMD flags: $(grep -o -w -E 'fma|avx2|avx512f|avx512_bf16|amx_tile' /proc/cpuinfo | sort -u | tr '\n' ' ')"
+
+    - name: 'Unit tests (ASan)'
+      env:
+        OPENBLAS_VERBOSE: 2
+        # LeakSanitizer can't see the D GC's roots, so every live GC block
+        # would be reported as a leak. ASan's fake stacks for
+        # use-after-return hide stack pointers from the GC's scan.
+        ASAN_OPTIONS: detect_leaks=0:detect_stack_use_after_return=0:print_summary=1
+        # DFLAGS replaces dub's unittest build flags, so restate them.
+        DFLAGS: -unittest -d-debug -g -fsanitize=address -frame-pointer=all
+      run: |
+        export CONDA_PREFIX=""
+        dub test -c library-novtk --compiler=$DC
+
