@@ -162,3 +162,64 @@ jobs:
         echo "::endgroup::"
         exit 1
 
+  # Unit tests under Valgrind memcheck, covering what the ASan job can't:
+  # OpenBLAS's own loads and stores, and reads of uninitialised memory.
+  valgrind:
+
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
+      with:
+        compiler: ldc-1.28.1
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran libfftw3-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev valgrind
+
+        wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
+        tar xf 3.5.1.tar.gz
+        cd sleef-3.5.1
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        make > /dev/null 2>&1
+        sudo make install
+
+    - name: 'Runner diagnostics'
+      run: |
+        lscpu | grep -E '^(Model name|Vendor ID|CPU\(s\)):'
+        echo "SIMD flags: $(grep -o -w -E 'fma|avx2|avx512f|avx512_bf16|amx_tile' /proc/cpuinfo | sort -u | tr '\n' ' ')"
+
+    - name: 'Unit tests (Valgrind)'
+      env:
+        # Valgrind's virtual CPU hides AVX-512, so this shows the kernel set
+        # OpenBLAS falls back to under it.
+        OPENBLAS_VERBOSE: 2
+      run: |
+        export CONDA_PREFIX=""
+        # Build (and run once natively) to get the test runner binary.
+        dub test -c library-novtk --compiler=$DC
+        # Parallel GC marking only adds threads for Valgrind to serialise.
+        status=0
+        valgrind --error-exitcode=99 --num-callers=30 --track-origins=yes \
+          --log-file=valgrind.log \
+          ./opencopter-test-library-novtk --DRT-gcopt=parallel:0 > /dev/null || status=$?
+        grep -E 'ERROR SUMMARY|Invalid (read|write)|uninitialised|Mismatched|Invalid free' valgrind.log | sort | uniq -c | sort -rn | head -40
+        echo "::group::First 600 lines of valgrind.log"
+        head -600 valgrind.log
+        echo "::endgroup::"
+        exit $status
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: valgrind-log
+        path: valgrind.log
+        if-no-files-found: ignore
+
