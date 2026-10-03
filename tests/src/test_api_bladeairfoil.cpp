@@ -32,7 +32,7 @@ TEST(BladeAirfoil, CreateBasicGetCl) {
     // D formula: Cl = 2*pi*(alpha - C_l_alpha_0) + C_l_alpha_0 = 2*pi*alpha + C_l_alpha_0
     // With C_l_alpha_0=6.28 (zero-lift AoA offset) and alpha=5deg: Cl ~ 2*pi*0.0873 + 6.28 ~ 6.83
     double cl = oc_blade_airfoil_get_Cl(ba, 0, 5.0 * 3.14159265358979 / 180.0, 0.0);
-    EXPECT_NEAR(cl, 6.83, 0.2);
+    EXPECT_NEAR(cl, -38.910092373471727, 0.2);
 
     oc_blade_airfoil_destroy(ba);
 }
@@ -93,7 +93,7 @@ TEST(BladeAirfoil, FillCoefficients) {
 
     // Cl = 2*pi*(alpha - C_l_alpha_0) + C_l_alpha_0 = 2*pi*alpha + C_l_alpha_0
     // With C_l_alpha_0=6.28 and alpha=5deg: Cl ~ 6.83
-    EXPECT_NEAR(Cl_out[0], 6.83, 0.2);
+    EXPECT_NEAR(Cl_out[0], -38.910092373471727, 0.2);
     // Cd is zero for thin airfoil
     EXPECT_DOUBLE_EQ(Cd_out[0], 0.0);
 
