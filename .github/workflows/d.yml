@@ -123,7 +123,7 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y gfortran libfftw3-dev
-        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev gdb
 
         wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
         tar xf 3.5.1.tar.gz
@@ -145,10 +145,17 @@ jobs:
         # LeakSanitizer can't see the D GC's roots, so every live GC block
         # would be reported as a leak. ASan's fake stacks for
         # use-after-return hide stack pointers from the GC's scan.
-        ASAN_OPTIONS: detect_leaks=0:detect_stack_use_after_return=0:print_summary=1
+        # Keep ASan's SIGSEGV handler installed so a crash gets an ASan report.
+        ASAN_OPTIONS: detect_leaks=0:detect_stack_use_after_return=0:print_summary=1:handle_segv=1:allow_user_segv_handler=0
         # DFLAGS replaces dub's unittest build flags, so restate them.
         DFLAGS: -unittest -d-debug -g -fsanitize=address -frame-pointer=all
       run: |
         export CONDA_PREFIX=""
-        dub test -c library-novtk --compiler=$DC
+        dub test -c library-novtk --compiler=$DC && exit 0
+        # stdout is block-buffered into the log, so the last line printed says
+        # little about where a crash happened; get a backtrace instead.
+        echo "::group::Test runner under gdb"
+        gdb -q -batch -ex 'handle SIGUSR1 SIGUSR2 nostop noprint pass' -ex run -ex 'bt 40' --args ./opencopter-test-library-novtk
+        echo "::endgroup::"
+        exit 1
 
