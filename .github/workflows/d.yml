@@ -208,6 +208,7 @@ jobs:
         # Parallel GC marking only adds threads for Valgrind to serialise.
         status=0
         valgrind --error-exitcode=99 --num-callers=30 --track-origins=yes \
+          --suppressions=.github/valgrind-druntime.supp \
           --log-file=valgrind.log \
           ./opencopter-test-library-novtk --DRT-gcopt=parallel:0 > /dev/null || status=$?
         grep -E 'ERROR SUMMARY|Invalid (read|write)|uninitialised|Mismatched|Invalid free' valgrind.log | sort | uniq -c | sort -rn | head -40
