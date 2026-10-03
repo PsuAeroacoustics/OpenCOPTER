@@ -151,11 +151,14 @@ jobs:
         DFLAGS: -unittest -d-debug -g -fsanitize=address -frame-pointer=all
       run: |
         export CONDA_PREFIX=""
-        dub test -c library-novtk --compiler=$DC && exit 0
+        # LDC 1.28's ASan runtime segfaults in its pthread_create interceptor
+        # (DTLS_Destroy) when the GC starts its parallel mark threads, so
+        # collect on the main thread only.
+        dub test -c library-novtk --compiler=$DC -- --DRT-gcopt=parallel:0 && exit 0
         # stdout is block-buffered into the log, so the last line printed says
         # little about where a crash happened; get a backtrace instead.
         echo "::group::Test runner under gdb"
-        gdb -q -batch -ex 'handle SIGUSR1 SIGUSR2 nostop noprint pass' -ex run -ex 'bt 40' --args ./opencopter-test-library-novtk
+        gdb -q -batch -ex 'handle SIGUSR1 SIGUSR2 nostop noprint pass' -ex run -ex 'bt 40' --args ./opencopter-test-library-novtk --DRT-gcopt=parallel:0
         echo "::endgroup::"
         exit 1
 
