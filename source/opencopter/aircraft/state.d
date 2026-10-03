@@ -864,20 +864,16 @@ double[][] get_wing_state_matrix(string value, ArrayContainer AC)(ref WingPartSt
 
 double[] get_wing_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing){
 	
-	size_t elements = wing.wing_part_states[0].chunks.length*chunk_size;
-	double[] state_array = new double[2*elements];
+	size_t total_elements = 0;
+	foreach(ref wing_part; wing.wing_part_states){
+		total_elements += wing_part.chunks.length*chunk_size;
+	}
 
-	foreach(wp_idx, wing_part; wing.wing_part_states){
-		foreach(c_idx, chunk; wing_part.chunks){
-			
-			immutable out_start_idx = wp_idx*elements + c_idx*chunk_size;
-			
-			immutable remaining = elements- out_start_idx;
-
-			immutable out_end_idx = remaining > chunk_size ? wp_idx*elements + (c_idx + 1)*chunk_size : wp_idx*elements + out_start_idx + remaining;
-			immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
-
-			mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	double[] state_array;
+	state_array.reserve(total_elements);
+	foreach(ref wing_part; wing.wing_part_states){
+		foreach(ref chunk; wing_part.chunks){
+			mixin("state_array ~= chunk."~value~"[];");
 		}
 	}
 	return state_array;

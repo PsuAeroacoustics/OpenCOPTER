@@ -8,6 +8,7 @@ plot_scipt.py
 wopwop_cases
 tilt_rotor*
 libopencopter*
+opencopter-test-*
 build
 *.out
 hart_val
