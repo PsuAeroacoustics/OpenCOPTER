@@ -34,10 +34,17 @@ class ThinAirfoil: AirfoilModel {
     }
 
     override double get_Cl(double alpha_query, double mach_query) {
-        return 2.0*PI*alpha_query + C_l_alpha_0;
+        return 2.0*PI*(alpha_query - C_l_alpha_0);
     }
 
     override double get_Cd(double alpha_query, double mach_query) {
         return 0.0;
     }
+}
+
+unittest {
+	// The scalar overload, which BladeAirfoil's per-element path calls, gives
+	// Cl = 2 pi (alpha - alpha_0) like the chunk overload.
+	auto airfoil = new ThinAirfoil(0.0401);
+	assert(isClose(airfoil.get_Cl(0.1, 0.3), 2.0*PI*(0.1 - 0.0401)));
 }

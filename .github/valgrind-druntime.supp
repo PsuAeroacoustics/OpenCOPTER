@@ -1,0 +1,15 @@
+# The D GC scans thread stacks and registers conservatively, so it reads
+# padding and never-written stack slots while looking for pointers. Memcheck
+# reports those reads as uses of uninitialised values. Only errors whose
+# innermost frame is inside druntime's GC are suppressed; anything raised in
+# OpenCOPTER, numd, or BLAS/LAPACK code is still reported.
+{
+   druntime-gc-conservative-scan-cond
+   Memcheck:Cond
+   fun:_D4core8internal2gc*
+}
+{
+   druntime-gc-conservative-scan-value8
+   Memcheck:Value8
+   fun:_D4core8internal2gc*
+}

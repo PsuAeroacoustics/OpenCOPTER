@@ -477,6 +477,29 @@ def build_aircraft(geometry, requested_elements, geom_directory, motion, trim_fr
 
 	return aircraft, motion_dict, trim_axis_dict, components_dict
 
+def shed_wake_counts(computational_parameters, omegas):
+	"""Time steps between shed vortex releases, and shed vortices kept, per
+	rotor; both must round to at least 1."""
+	if len(omegas) == 0:
+		return [], []
+
+	d_psi = computational_parameters["d_psi"]*math.pi/180.0
+	shed_history_angle = np.asarray(computational_parameters["shed_history_angle"])*math.pi/180.0
+	shed_release_angle = computational_parameters["shed_release_angle"]*math.pi/180.0
+
+	max_omega = np.max(np.abs(omegas))
+	rotor_ratios = np.round(max_omega/np.abs(omegas))
+
+	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
+	if np.min(release_ratio) < 1:
+		raise ValueError(f'shed_release_angle ({math.degrees(shed_release_angle)} deg) must round to at least one time step of d_psi ({math.degrees(d_psi)} deg)')
+
+	shed_history = np.round(shed_history_angle/shed_release_angle).astype(dtype=np.int64).tolist()
+	if np.min(shed_history) < 1:
+		raise ValueError(f'shed_history_angle ({np.degrees(shed_history_angle).tolist()} deg) must round to at least one shed_release_angle ({math.degrees(shed_release_angle)} deg)')
+
+	return shed_history, release_ratio
+
 def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	flight_condition = case.condition
@@ -599,14 +622,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	density = flight_condition["density"]
 	dynamic_viscosity = 18.03e-6
 
-	shed_history_angle = np.asarray(computational_parameters["shed_history_angle"])*math.pi/180.0
-	shed_release_angle = computational_parameters["shed_release_angle"]*math.pi/180.0
-
-	max_omega = np.max(np.abs(omegas))
-	rotor_ratios = np.round(max_omega/np.abs(omegas))
-
-	shed_history = np.round(shed_history_angle/(shed_release_angle)).astype(dtype=np.int64).tolist()
-	release_ratio = np.round(rotor_ratios*shed_release_angle/d_psi).astype(dtype=np.int64).tolist()
+	shed_history, release_ratio = shed_wake_counts(computational_parameters, omegas)
 	
 	print(f'shed_history: {shed_history}, release_ratio: {release_ratio}')
 	requested_elements = computational_parameters["spanwise_elements"]
@@ -649,7 +665,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 
 	if "span_elements" in computational_parameters:
 		span_elements = computational_parameters["span_elements"]
-	span_chunks = int(span_elements/chunk_size())
+	# Round up to whole chunks, as the D side does; rounding down left the last lattice chunk NaN.
+	span_chunks = math.ceil(span_elements/chunk_size())
 
 	if "chord_elements" in computational_parameters:
 		chord_elements = computational_parameters["chord_elements"]
@@ -687,6 +704,8 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 			else:
 				rotorcraft_input_state.rotor_inputs[r_idx].blade_pitches[b_idx] = collectives[r_idx]
 	
+	# One lifting surface per wing; each wing's inflow model needs its own.
+	wing_lift_surfaces = []
 	for w_idx in range(num_wings):
 		rotorcraft_input_state.wing_inputs[w_idx].angle_of_attack = flight_condition["aoa"]*(math.pi/180.0)
 		rotorcraft_input_state.wing_inputs[w_idx].freestream_velocity = flight_condition['V_inf']
@@ -707,6 +726,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	#print("wing_circulation = ", wing_lift_surface.wing_part_lift_surf[0].spanwise_filaments[0].chunks[0].gamma)
 
 		set_wing_vortex_geometry(wing_lift_surface, rotorcraft_system.wings[w_idx], span_chunks, chord_elements)
+		wing_lift_surfaces.append(wing_lift_surface)
 		
 		print("wing vortex geometry is set")
 
@@ -731,7 +751,7 @@ def compute_aero(log_file, args, output_base, do_compute, case, result_queue):
 	else:
 		rotorcraft_inflows = [HuangPeters(4, 2, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) if num_blades[r_idx] != 2 else HuangPeters(2, 1, rotorcraft_system.rotors[r_idx], rotorcraft_input_state.rotor_inputs[r_idx], dt) for r_idx in range(num_rotors)]
 	
-	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surface) for w_idx in range(num_wings)]
+	wing_inflows = [WingInflow(rotorcraft_system.wings[w_idx], rotorcraft_input_state.wing_inputs[w_idx], wing_lift_surfaces[w_idx]) for w_idx in range(num_wings)]
 	#print(len(wing_inflows))
 	print("instantiated inflows")
 

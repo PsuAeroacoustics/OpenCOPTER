@@ -58,7 +58,18 @@ jobs:
         cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
         make > /dev/null 2>&1
         sudo make install
-        
+
+    - name: 'Runner diagnostics'
+      # LAPACK has intermittently returned wrong matrix inverses on CI. OpenBLAS
+      # picks its kernels by CPU at load time and runner CPUs vary, so record
+      # the CPU and which BLAS/LAPACK the loader resolves to.
+      run: |
+        lscpu | grep -E '^(Model name|Vendor ID|CPU\(s\)):'
+        echo "SIMD flags: $(grep -o -w -E 'fma|avx2|avx512f|avx512_bf16|amx_tile' /proc/cpuinfo | sort -u | tr '\n' ' ')"
+        update-alternatives --display libblas.so.3-x86_64-linux-gnu | head -2
+        update-alternatives --display liblapack.so.3-x86_64-linux-gnu | head -2
+        dpkg-query -W -f='${Package} ${Version}\n' 'libopenblas0*' liblapack3 liblapacke
+
     - name: 'Build'
       run: |
         export CONDA_PREFIX=""
@@ -67,6 +78,15 @@ jobs:
         cd oc_fly/dependencies/wopwopd
         dub build -c library-python310 -b release-native --compiler=$DC
         cd -
+
+    - name: 'Unit tests'
+      env:
+        # Makes OpenBLAS print the kernel set (core type) it selected.
+        OPENBLAS_VERBOSE: 2
+      run: |
+        export CONDA_PREFIX=""
+        # Debug build: asserts and array bounds checks stay on
+        dub test -c library-novtk --compiler=$DC
 
     - name: 'Validate HART II'
       run: |
@@ -78,4 +98,129 @@ jobs:
         mkdir -p ./hart_ii/BL/acoustics/full_system/octaveFilterSP/spl
 
         ../../wopwop3/build/wopwop3 cases_0_0.nam
+
+  # Unit tests under AddressSanitizer, hunting the intermittent wrong matrix
+  # inverses. Three copies run in parallel to sample more runner CPUs per push.
+  # ASan sees C heap and stack accesses; memory handed out by the D GC is not
+  # instrumented, and neither are OpenBLAS's own loads and stores.
+  asan:
+
+    runs-on: ubuntu-22.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        sample: [1, 2, 3]
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
+      with:
+        compiler: ldc-1.28.1
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran libfftw3-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev gdb
+
+        wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
+        tar xf 3.5.1.tar.gz
+        cd sleef-3.5.1
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        make > /dev/null 2>&1
+        sudo make install
+
+    - name: 'Runner diagnostics'
+      run: |
+        lscpu | grep -E '^(Model name|Vendor ID|CPU\(s\)):'
+        echo "SIMD flags: $(grep -o -w -E 'fma|avx2|avx512f|avx512_bf16|amx_tile' /proc/cpuinfo | sort -u | tr '\n' ' ')"
+
+    - name: 'Unit tests (ASan)'
+      env:
+        OPENBLAS_VERBOSE: 2
+        # LeakSanitizer can't see the D GC's roots, so every live GC block
+        # would be reported as a leak. ASan's fake stacks for
+        # use-after-return hide stack pointers from the GC's scan.
+        # Keep ASan's SIGSEGV handler installed so a crash gets an ASan report.
+        ASAN_OPTIONS: detect_leaks=0:detect_stack_use_after_return=0:print_summary=1:handle_segv=1:allow_user_segv_handler=0
+        # DFLAGS replaces dub's unittest build flags, so restate them.
+        DFLAGS: -unittest -d-debug -g -fsanitize=address -frame-pointer=all
+      run: |
+        export CONDA_PREFIX=""
+        # LDC 1.28's ASan runtime segfaults in its pthread_create interceptor
+        # (DTLS_Destroy) when the GC starts its parallel mark threads, so
+        # collect on the main thread only.
+        dub test -c library-novtk --compiler=$DC -- --DRT-gcopt=parallel:0 && exit 0
+        # stdout is block-buffered into the log, so the last line printed says
+        # little about where a crash happened; get a backtrace instead.
+        echo "::group::Test runner under gdb"
+        gdb -q -batch -ex 'handle SIGUSR1 SIGUSR2 nostop noprint pass' -ex run -ex 'bt 40' --args ./opencopter-test-library-novtk --DRT-gcopt=parallel:0
+        echo "::endgroup::"
+        exit 1
+
+  # Unit tests under Valgrind memcheck, covering what the ASan job can't:
+  # OpenBLAS's own loads and stores, and reads of uninitialised memory.
+  valgrind:
+
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    - uses: dlang-community/setup-dlang@4c99aa991ce7d19dd3064de0a4f2f6b2f152e2d7
+      with:
+        compiler: ldc-1.28.1
+    - name: Install Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gfortran libfftw3-dev
+        sudo apt-get install -y libopenblas-dev liblapack-dev liblapacke-dev valgrind
+
+        wget https://github.com/shibatch/sleef/archive/refs/tags/3.5.1.tar.gz
+        tar xf 3.5.1.tar.gz
+        cd sleef-3.5.1
+        mkdir build
+        cd build
+        cmake ../ -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF
+        make > /dev/null 2>&1
+        sudo make install
+
+    - name: 'Runner diagnostics'
+      run: |
+        lscpu | grep -E '^(Model name|Vendor ID|CPU\(s\)):'
+        echo "SIMD flags: $(grep -o -w -E 'fma|avx2|avx512f|avx512_bf16|amx_tile' /proc/cpuinfo | sort -u | tr '\n' ' ')"
+
+    - name: 'Unit tests (Valgrind)'
+      env:
+        # Valgrind's virtual CPU hides AVX-512, so this shows the kernel set
+        # OpenBLAS falls back to under it.
+        OPENBLAS_VERBOSE: 2
+      run: |
+        export CONDA_PREFIX=""
+        # Build (and run once natively) to get the test runner binary.
+        dub test -c library-novtk --compiler=$DC
+        # Parallel GC marking only adds threads for Valgrind to serialise.
+        status=0
+        valgrind --error-exitcode=99 --num-callers=30 --track-origins=yes \
+          --suppressions=.github/valgrind-druntime.supp \
+          --log-file=valgrind.log \
+          ./opencopter-test-library-novtk --DRT-gcopt=parallel:0 > /dev/null || status=$?
+        grep -E 'ERROR SUMMARY|Invalid (read|write)|uninitialised|Mismatched|Invalid free' valgrind.log | sort | uniq -c | sort -rn | head -40
+        echo "::group::First 600 lines of valgrind.log"
+        head -600 valgrind.log
+        echo "::endgroup::"
+        exit $status
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: valgrind-log
+        path: valgrind.log
+        if-no-files-found: ignore
 
