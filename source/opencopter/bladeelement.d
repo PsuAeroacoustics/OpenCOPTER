@@ -494,17 +494,7 @@ void print_frame(F)(F frame, int depth = 0) {
 	}
 }
 
-//void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
-void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
-	
-	import opencopter.config : chunk_size;
-
-	import std.conv : to;
-	import std.math : PI, cos, sin;
-	import std.numeric : findRoot;
-	import std.stdio : writeln;
-
-	//GC.collect();
+void update_global_aircraft_state(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state) {
 	
 	aircraft.root_frame.update(Mat4.identity);
 	debug aircraft.root_frame.print_frame;
@@ -555,6 +545,22 @@ void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_stat
 			}
 		}
 	}
+}
+
+//void step(I, ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, I[] inflows, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
+void step(ArrayContainer AC = ArrayContainer.None)(ref AircraftStateT!AC ac_state, ref AircraftT!AC aircraft, ref AircraftInputStateT!AC ac_input_state, ref WakeHistoryT!AC wake_history, immutable Atmosphere atmo, size_t iteration, double dt, bool trackBWIevents, bool converged) {
+	
+	import opencopter.config : chunk_size;
+
+	import std.conv : to;
+	import std.math : PI, cos, sin;
+	import std.numeric : findRoot;
+	import std.stdio : writeln;
+
+	//GC.collect();
+
+	update_global_aircraft_state(ac_state, aircraft, ac_input_state);
+	
 	//writeln("calculating rotor properties");
 	foreach(rotor_idx; 0..aircraft.rotors.length) {
 		//writeln("rotor properties for rotor ", rotor_idx);
