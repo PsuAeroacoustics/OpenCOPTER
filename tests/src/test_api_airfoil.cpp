@@ -7,7 +7,6 @@
 /*    - Null input handling                                            */
 /* ------------------------------------------------------------------ */
 
-#include "gtest/gtest.h"
 #include <gtest/gtest.h>
 #include "opencopter.h"
 #include <cmath>

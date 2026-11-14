@@ -4,10 +4,10 @@
 	"license": "MIT",
 	"authors": ["Robert F. Rau II"],
 	"preBuildCommands-linux": [
-		"mkdir -p build ; cmake . -DBUILD_TYPE=$BUILD_TYPE -B build -G \"Ninja\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ; cmake --build ./build"
+		"./scripts/build_cppbindings.sh"
 	],
 	"preBuildCommands-osx": [
-		"mkdir -p build ; cmake . -DBUILD_TYPE=$BUILD_TYPE -B build -G \"Ninja\" -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ; cmake --build ./build"
+		"./scripts/build_cppbindings.sh"
 	],
 	"dependencies": {
 		"numd": {"path": "./dependencies/numd"},
@@ -26,7 +26,7 @@
 		"-lgfortran",
 		"-lstdc++"
 	],
-	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/"],
+	"lflags-osx": ["-framework","Accelerate", "-Wl,-rpath,@loader_path/", "-lc++"],
 	"lflags-osx-x86_64": ["/usr/local/lib/libsleef.a"],
 	"sourceFiles": ["build/CMakeFiles/cppbindings.dir/source/opencopter/cppbindings.cpp.o"],
 	"configurations": [
@@ -92,7 +92,7 @@
 				"vtkd": { "path": "./dependencies/vtkd" }
 			},
 			"subConfigurations": {
-				"pyd": "python37"
+				"pyd": "python34"
 			},
 			"lflags-linux": [
 				"-L$PWD/dependencies/vtkd/cmake/build",

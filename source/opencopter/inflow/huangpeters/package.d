@@ -110,6 +110,7 @@ unittest {
 	import std.stdio : writeln;
 	
 	import opencopter.aircraft.geometry : BladeGeometryChunk, RotorGeometry, set_geometry_array;
+	import opencopter.aircraft.input : RotorInputState;
 	import opencopter.config : chunk_size;
 
 	writeln("Hello hp");
@@ -170,10 +171,18 @@ unittest {
 
 	}
 
+	// HuangPetersInflow stores a rotor input state and sizes its inflow
+	// averaging buffer from dt. The simple harmonic solutions below are handed
+	// their advance ratios directly and never touch either, but the model still
+	// needs both to construct.
+	immutable double omega = 235.325;
+	auto rotor_input = RotorInputState(omega, 0, 0);
+	immutable double dt = (PI/180.0)/omega;
+
 	void simple_harmonic_30_ondisk() {
 		double mu = 0.03651;
 		double mu_z = 0;
-		auto huang_peters = new HuangPetersInflow(12, 8, &rotor, mu);
+		auto huang_peters = new HuangPetersInflow(12, 8, &rotor, &rotor_input, dt);
 		//auto huang_peters = new HuangPetersInflowT(6, 4, elements, mu);
 
 		//writeln("tot states: ", huang_peters.total_states);
@@ -217,7 +226,7 @@ unittest {
 	void simple_harmonic_60_ondisk() {
 		double mu = -4.*0.02738;
 		double mu_z = 0;
-		auto huang_peters = new HuangPetersInflow(12, 8, &rotor, mu);
+		auto huang_peters = new HuangPetersInflow(12, 8, &rotor, &rotor_input, dt);
 
 		huang_peters.tau_c[] = 0;
 		huang_peters.tau_c[0] = abs(mu);//.11;
@@ -256,7 +265,7 @@ unittest {
 		double mu_z = 0.0;
 		//double mu = -45*0.0274;
 		//auto huang_peters = new HuangPetersInflow(12, 8, &rotor, mu);
-		auto huang_peters = new HuangPetersInflow(6, 4, &rotor, mu);
+		auto huang_peters = new HuangPetersInflow(6, 4, &rotor, &rotor_input, dt);
 
 		//writeln("tot states: ", huang_peters.total_states);
 		huang_peters.tau_c[] = 0;
@@ -315,7 +324,7 @@ unittest {
 		//double mu = -45*0.0274;
 		//auto huang_peters = new HuangPetersInflow(12, 8, &rotor, mu);
 		//auto huang_peters = new HuangPetersInflow(10, 6, &rotor, mu);
-		auto huang_peters = new HuangPetersInflow(6, 4, &rotor, mu);
+		auto huang_peters = new HuangPetersInflow(6, 4, &rotor, &rotor_input, dt);
 
 		//auto z_idx = huang_peters.find_z_bracket(10);
 		//writeln(z_idx);

@@ -65,13 +65,6 @@ double[] cosspace(double start, double end, size_t elements) {
 	return zip(r[0..$-1], r[1..$]).map!(a => (a[0] + 0.5*(a[1] - a[0])).to!double).array;
 }
 
-version(LDC) {
-	pragma(LDC_intrinsic, "llvm.sqrt.f#")
-    @nogc T llvm_rsqrt(T)(T val)
-        if (__traits(isFloating, T));
-
-}
-
 @nogc T exp(T)(auto ref T vector) if(isStaticArray!T) {
 	static import std.math;
 	Unqual!T result;
@@ -131,22 +124,6 @@ version(LDC) {
 			result[idx] = std.math.exp(vector[idx]);
 		}
 	}
-	return result;
-}
-
-@nogc T rsqrt(T)(auto ref T vector) if(isStaticArray!T || isSIMDVector!T) {
-	static import std.math;
-	Unqual!T result;
-	version(LDC) {
-		import ldc.intrinsics : llvm_sqrt;
-		double8 vec = pack_simd(vector);
-		result = unpack_simd(llvm_rsqrt(vec));
-	} else {
-		foreach(idx; 0..T.length) {
-			result[idx] = 1.0/std.math.sqrt(vector[idx]);
-		}
-	}
-
 	return result;
 }
 

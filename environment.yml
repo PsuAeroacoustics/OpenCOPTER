@@ -5,7 +5,7 @@ channels:
 dependencies:
   - python=3.12
   - dub
-  - ldc2
+  - ldc
   - openmpi-mpifort
   - mpi4py
   - openmpi-mpicc

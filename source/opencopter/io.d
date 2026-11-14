@@ -280,6 +280,10 @@ double[] cubic_bezier_approx(double[], double[], double[]) {
 }
 
 AircraftT!AC create_aircraft_from_vsp(ArrayContainer AC)(string filename, size_t elements = 48, size_t span_elements = 32, size_t chord_elements = 4) {
+	import opencopter.config : chunk_size;
+
+	// Pad to whole chunks, as generate_radius_points does for the blades.
+	elements = elements%chunk_size == 0 ? elements : elements + (chunk_size - elements%chunk_size);
 
 	AircraftT!AC ac;
 
@@ -978,16 +982,37 @@ void print_frame(F)(F frame, int depth = 0) {
 
 
 unittest {
-	auto ac = create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/test_evtol.vsp3");
+	// Mirror create_aircraft_from_vsp's defaults so the state we build below
+	// matches the geometry it produced.
+	immutable size_t elements = 48;
+	immutable size_t span_elements = 32;
+	immutable size_t chord_elements = 4;
+
+	auto ac = create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/test_evtol.vsp3", elements, span_elements, chord_elements);
 
 	print_frame(ac.root_frame);
 
 	import opencopter.vtk;
 	import opencopter.aircraft.state;
+	import opencopter.inflow;
 
 	writeln("ac.rotors[0].blades[0].chunks.length: ", ac.rotors[0].blades[0].chunks.length);
 
-	auto ac_state = AircraftState(ac.rotors.length, ac.rotors.map!(r => r.blades.length).array, 48, ac);
+	// This only exercises blade positioning and VTU output, so no inflow model is
+	// ever evaluated. The base InflowT is enough to fill the slots.
+	auto ac_state = AircraftState(
+		ac.rotors.length,
+		ac.rotors.map!(r => r.blades.length).array,
+		elements,
+		ac.wings.length,
+		ac.wings.map!(w => w.wing_parts.length).array,
+		span_elements,
+		chord_elements,
+		ac,
+		ac.rotors.map!(_ => new Inflow).array,
+		ac.wings.map!(_ => new Inflow).array,
+		ac.rotors.map!(_ => 1.0).array
+	);
 
 	foreach(rotor_idx; 0..ac.rotors.length) {
 	
@@ -1017,4 +1042,9 @@ unittest {
 		auto vtk_rotor = build_base_vtu_rotor(rotor);
 		write_rotor_vtu("vsp_rotor_"~r_idx.to!string, 0, r_idx, vtk_rotor, ac_state.rotor_states[r_idx], rotor);
 	}
+}
+
+unittest {
+	// The VSP loader accepts element counts that are not whole chunks.
+	create_aircraft_from_vsp!(ArrayContainer.none)("./oc_fly/example/prop_wing_geom_2.vsp3", 45);
 }

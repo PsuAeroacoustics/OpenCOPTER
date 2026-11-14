@@ -13,8 +13,10 @@ import std.range;
 import std.conv;
 
 size_t findindx(double[] array, double query) {
-    // find index of the greatest element less then query
-    size_t indx;
+    // find index of the greatest element less then query. Queries past the
+    // last breakpoint use the last interval, mirroring how queries before the
+    // first breakpoint use the first one.
+    size_t indx = array.length >= 2 ? array.length - 2 : 0;
     foreach(i, ref a; array.enumerate) {
         if (a > query) {
             if(i > 0) {
@@ -321,4 +323,10 @@ auto load_c81_file(string filename) {
         aoa_D, mach_d, CD,
         aoa_M, mach_m, CM
     );
+}
+
+unittest {
+	// Past the last Mach breakpoint the lookup extrapolates from the last
+	// interval, as it does before the first one.
+	assert(findindx([0.0, 0.3, 0.5, 0.7], 0.8) == 2);
 }

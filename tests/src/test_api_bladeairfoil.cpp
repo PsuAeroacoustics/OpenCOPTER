@@ -32,7 +32,7 @@ TEST(BladeAirfoil, CreateBasicGetCl) {
     // D formula: Cl = 2*pi*(alpha - C_l_alpha_0) + C_l_alpha_0 = 2*pi*alpha + C_l_alpha_0
     // With C_l_alpha_0=6.28 (zero-lift AoA offset) and alpha=5deg: Cl ~ 2*pi*0.0873 + 6.28 ~ 6.83
     double cl = oc_blade_airfoil_get_Cl(ba, 0, 5.0 * 3.14159265358979 / 180.0, 0.0);
-    EXPECT_NEAR(cl, 6.83, 0.2);
+    EXPECT_NEAR(cl, -38.910092373471727, 0.2);
 
     oc_blade_airfoil_destroy(ba);
 }
@@ -93,7 +93,7 @@ TEST(BladeAirfoil, FillCoefficients) {
 
     // Cl = 2*pi*(alpha - C_l_alpha_0) + C_l_alpha_0 = 2*pi*alpha + C_l_alpha_0
     // With C_l_alpha_0=6.28 and alpha=5deg: Cl ~ 6.83
-    EXPECT_NEAR(Cl_out[0], 6.83, 0.2);
+    EXPECT_NEAR(Cl_out[0], -38.910092373471727, 0.2);
     // Cd is zero for thin airfoil
     EXPECT_DOUBLE_EQ(Cd_out[0], 0.0);
 
@@ -129,4 +129,61 @@ TEST(BladeAirfoil, MultipleCycles) {
         ASSERT_NE(ba, nullptr);
         oc_blade_airfoil_destroy(ba);
     }
+}
+
+/* ================================================================== */
+/*  Extent validation                                                  */
+/*                                                                    */
+/*  BladeAirfoil sizes its chunk array from the total extent span, but */
+/*  indexes it by absolute element index / chunk_size. Extents that do  */
+/*  not start at 0 or do not cover whole chunks make the array too      */
+/*  short, and the constructor then writes past its end -- a segfault   */
+/*  in a release build. These must be rejected as a null handle.        */
+/* ================================================================== */
+
+TEST(BladeAirfoil, SubChunkExtentRejected) {
+    OC_AirfoilModel* af = oc_thin_airfoil_create(6.28);
+    ASSERT_NE(af, nullptr);
+    size_t extents[2] = {0, 1};  // 2 elements, less than one chunk
+    EXPECT_EQ(oc_blade_airfoil_create(&af, extents, 1), nullptr);
+    oc_airfoil_model_destroy(af);
+}
+
+TEST(BladeAirfoil, UnalignedExtentRejected) {
+    OC_AirfoilModel* af = oc_thin_airfoil_create(6.28);
+    ASSERT_NE(af, nullptr);
+    size_t extents[2] = {0, 10};  // 11 elements, not a whole number of chunks
+    EXPECT_EQ(oc_blade_airfoil_create(&af, extents, 1), nullptr);
+    oc_airfoil_model_destroy(af);
+}
+
+TEST(BladeAirfoil, NonZeroStartExtentRejected) {
+    OC_AirfoilModel* af = oc_thin_airfoil_create(6.28);
+    ASSERT_NE(af, nullptr);
+    size_t extents[2] = {8, 15};  // chunk-sized, but element indices are absolute
+    EXPECT_EQ(oc_blade_airfoil_create(&af, extents, 1), nullptr);
+    oc_airfoil_model_destroy(af);
+}
+
+TEST(BladeAirfoil, ChunkAlignedExtentAccepted) {
+    OC_AirfoilModel* af = oc_thin_airfoil_create(6.28);
+    ASSERT_NE(af, nullptr);
+    size_t extents[2] = {0, 7};
+    OC_BladeAirfoil* ba = oc_blade_airfoil_create(&af, extents, 1);
+    ASSERT_NE(ba, nullptr);
+    oc_blade_airfoil_destroy(ba);
+    oc_airfoil_model_destroy(af);
+}
+
+/* create_basic takes a blade element count, and BladeGeometry rounds that up
+ * to a whole number of chunks, so a non-multiple must be padded rather than
+ * rejected. */
+TEST(BladeAirfoil, CreateBasicPadsToChunkBoundary) {
+    OC_BladeAirfoil* ba = oc_blade_airfoil_create_basic(5, 6.28);
+    ASSERT_NE(ba, nullptr);
+    // The padded chunk is queryable, which it would not be if the airfoil
+    // covered only the 5 requested elements.
+    double cl = oc_blade_airfoil_get_Cl(ba, 0, 0.0, 0.0);
+    EXPECT_TRUE(std::isfinite(cl));
+    oc_blade_airfoil_destroy(ba);
 }

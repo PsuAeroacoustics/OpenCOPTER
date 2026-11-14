@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 3.10)
 project(OpenCOPTER CXX)
 
-if(${BUILD_TYPE} STREQUAL "")
+# BUILD_TYPE comes from dub and carries dub's build type verbatim, e.g.
+# "release-native", hence the substring matches rather than equality.
+if("${BUILD_TYPE}" STREQUAL "")
 	set(CMAKE_BUILD_TYPE "Debug")
-elseif(${BUILD_TYPE} MATCHES "debug")
+elseif("${BUILD_TYPE}" MATCHES "debug")
 	set(CMAKE_BUILD_TYPE "Debug")
-elseif(${BUILD_TYPE} MATCHES "release")
+elseif("${BUILD_TYPE}" MATCHES "release")
 	set(CMAKE_BUILD_TYPE "Release")
 endif()
 

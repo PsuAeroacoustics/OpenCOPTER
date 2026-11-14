@@ -243,7 +243,7 @@ void simple_harmonic_solution(ArrayContainer AC)(HuangPetersInflowT!AC infl, dou
 
 	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_states, infl.total_states, 1.0, infl.VLM_c[0].ptr, infl.total_states, infl.tau_c.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states].ptr, 1);
 
-	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_c[0].ptr, infl.total_sin_states, infl.tau_s.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
+	cblas_dgemv(CblasRowMajor, CblasNoTrans, infl.total_sin_states, infl.total_sin_states, 1.0, infl.VLM_s[0].ptr, infl.total_sin_states, infl.tau_s.ptr, 1, 0.0, infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states].ptr, 1);
 	
 	infl.alpha = infl.state_history[infl.get_circular_index(infl.curr_state)][0..infl.total_states];
 	infl.beta = infl.state_history[infl.get_circular_index(infl.curr_state)][2*infl.total_states..2*infl.total_states + infl.total_sin_states];
@@ -390,6 +390,8 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	package double[] adjoint_mat_sin;
 	package double[] LM_c_scratch;
 	package double[][] K_table;
+	package double[] Q0_coefficients;
+	package double Q0_split_eta;
 	package double[] average_inflow_array;
 
 	int total_states;
@@ -604,7 +606,6 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		double[][] Meo_new = allocate_dense(total_even_states, total_odd_states);
 		double[][] Meo_s = allocate_dense(total_even_sin_states, total_odd_sin_states);
 		double[][] Meo_s_new = allocate_dense(total_even_sin_states, total_odd_sin_states);
-		K_table = allocate_dense(max(Me, Mo) + 1, N);
 		D = allocate_dense(total_states, total_states);
 		D_s = allocate_dense(total_sin_states, total_sin_states);
 		QS_c_mat = allocate_dense(total_states, total_states);
@@ -629,11 +630,9 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		L_s = allocate_dense(total_sin_states, total_sin_states);
 		Gamma = allocate_dense(total_states, total_states);
 
-		foreach(ref K; K_table) {
-			K[] = 0;
-		}
-
-		time_history = 1_000_000;
+		// History for the time-delay (downstream) terms; 2^16 steps covers >180
+		// revs at 1 deg steps, far beyond the few-radian delays queried.
+		time_history = 1 << 16;
 		state_history = allocate_dense(time_history, 2*total_states + 2*total_sin_states);
 		
 		Qmn_bar = allocate_dense_chunk(max(Me, Mo) + 1, N);
@@ -987,14 +986,16 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 		cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, total_sin_states, total_sin_states, total_sin_states, 1.0, M_s_inv[0].ptr, total_sin_states, D_s[0].ptr, total_sin_states, 0.0, M_s_inv_D[0].ptr, total_sin_states);
 
 		iterate_odds!((m, n, idx) {
-			K_table[m][n] = K(m, n);
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Mo, 0);
 
 		iterate_evens!((m, n, idx) {
-			K_table[m][n] = K(m, n);
 			adjoint_mat[idx] = (-1.0)^^(n.to!double + 1.0);
 		})(Me, total_odd_states);
+
+		K_table = K_table_for(max(Me, Mo), N);
+		Q0_coefficients = Q0_recurrence_coefficients(N);
+		Q0_split_eta = Q0_miller_eta(N);
 
 		iterate_odds_sin!((m, n, idx) {
 			adjoint_mat_sin[idx] = (-1.0)^^(n.to!double + 1.0);
@@ -1016,8 +1017,9 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 	@nogc auto find_bracket(double t) {
 		
-		auto ordered_times = times[get_circular_index(curr_state) + 1..$].chain(times[0..get_circular_index(curr_state) + 1]);
-		auto delta_b = time_history - get_circular_index(curr_state);
+		// ordered_times[m] is stored in circular slot slot_offset + m
+		immutable ptrdiff_t slot_offset = get_circular_index(curr_state) + 1;
+		auto ordered_times = times[slot_offset..$].chain(times[0..slot_offset]);
 		ptrdiff_t l = 0;
 		ptrdiff_t R = time_history - 1;
 
@@ -1028,10 +1030,10 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 				if(ordered_times[m] != t) {
 					return -1;
 				} else {
-					return m >= delta_b ? m - delta_b + 1 : m - get_circular_index(curr_state) + 1;
+					return get_circular_index(slot_offset + m);
 				}
 			} else if ((ordered_times[m] <= t) && (ordered_times[m + 1] > t)) {
-				return m >= delta_b ? m - delta_b + 1 : m - get_circular_index(curr_state) + 1;
+				return get_circular_index(slot_offset + m);
 			} else if(ordered_times[m] <= t) {
 				l = m + 1;
 			} else if(ordered_times[m] > t) {
@@ -1457,14 +1459,18 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 
 		curr_state++;
 
-		v_0 = compute_inflow_average_at_disk;
+		// The contraction ratios are only read when contraction_mapping is on, and
+		// refreshing them costs ~600 off-disk inflow evaluations per update.
+		if(contraction_mapping) {
+			v_0 = compute_inflow_average_at_disk;
 
-		auto v_inf = sqrt(advance_ratio*advance_ratio + axial_advance_ratio*axial_advance_ratio);
+			auto v_inf = sqrt(advance_ratio*advance_ratio + axial_advance_ratio*axial_advance_ratio);
 
-		foreach(z_idx, ref z_chunk; contraction_z_array) {
-			auto v_z = compute_inflow_average_at_z(z_chunk);
-			immutable Chunk v_0_v_z = (v_inf + v_0)/(v_inf + v_z[]);
-			contraction_array[z_idx] = sqrt(v_0_v_z);
+			foreach(z_idx, ref z_chunk; contraction_z_array) {
+				auto v_z = compute_inflow_average_at_z(z_chunk);
+				immutable Chunk v_0_v_z = (v_inf + v_0)/(v_inf + v_z[]);
+				contraction_array[z_idx] = sqrt(v_0_v_z);
+			}
 		}
 
 		// global_inverse = local_frame.inverse_global_matrix;   // This is not used anywhere, should it be removed?
@@ -1598,7 +1604,7 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 			return V;
 		} else {
 
-			immutable k_bar = compute_contraction_multiplier(x, y, z);			
+			immutable k_bar = compute_contraction_multiplier(normalized_x, normalized_y, normalized_z);
 
 			immutable Chunk x_c = normalized_x[]/k_bar[];
 			immutable Chunk y_c = normalized_y[]/k_bar[];
@@ -1610,5 +1616,66 @@ class HuangPetersInflowT(ArrayContainer AC = ArrayContainer.none) : InflowT!AC {
 	@nogc Chunk inflow_at(immutable Chunk r, immutable double cos_azimuth, immutable double sin_azimuth) {
 		Chunk i;
 		return i;
+	}
+}
+
+version(unittest) private HuangPetersInflow test_huang_peters() {
+	import opencopter.aircraft;
+
+	enum elements = 48;
+	auto root = new Frame(Vec3(0, 0, 1), 0.0, Vec3(0, 0, 0), null, "root", FrameType.aircraft);
+	auto rotor = new RotorGeometry(4, Vec3(0, 0, 0), 2.0, 0.1);
+	rotor.frame = new Frame(Vec3(1, 0, 0), 0.0, Vec3(0, 0, 0), root, "rotor", FrameType.rotor);
+	root.children ~= rotor.frame;
+	foreach(ref blade; rotor.blades) {
+		blade.chunks = new BladeGeometryChunk[elements/chunk_size];
+		blade.set_geometry_array!"r"(generate_radius_points(elements, 0.2));
+		auto xi = new double[elements];
+		xi[] = 0;
+		blade.set_geometry_array!"xi"(xi);
+	}
+	auto input = new RotorInputState;
+	input.angular_velocity = 109.12;
+	return new HuangPetersInflow(4, 2, rotor, input, (PI/180.0)/109.12);
+}
+
+unittest {
+	// simple_harmonic_solution's sine states solve VLM_s beta = tau_s.
+	auto hp = test_huang_peters();
+	hp.tau_c[] = 0;
+	hp.tau_s[] = 0;
+	hp.tau_s[0] = 0.001;
+	hp.tau_s[1] = 0.0007;
+	hp.average_inflow = 0.05;
+	immutable double mu = 0.15;
+	immutable double mu_z = 0.0;
+	// The solution inverts VLM_s in place, so keep a copy to check the residual.
+	hp.build_vlm_matrix(mu, mu_z);
+	immutable n = hp.total_sin_states;
+	auto VLM_s = hp.VLM_s.map!(row => row.dup).array;
+	hp.simple_harmonic_solution(mu, mu_z);
+	double residual = 0;
+	double size = 0;
+	foreach(i; 0..n) {
+		immutable double lhs = iota(n).map!(j => VLM_s[i][j]*hp.beta[j]).sum;
+		residual = fmax(residual, abs(lhs - hp.tau_s[i]));
+		size = fmax(size, abs(hp.tau_s[i]));
+	}
+	assert(residual < 1.0e-12*size);
+}
+
+unittest {
+	// find_bracket picks the right circular slot after the history wraps.
+	auto hp = test_huang_peters();
+	enum slots = 16;
+	enum last = 40;
+	hp.time_history = slots;
+	hp.times = new double[slots];
+	foreach(s; last - slots + 1..last + 1) {
+		hp.times[hp.get_circular_index(s)] = 0.1*s;
+	}
+	hp.curr_state = last;
+	foreach(s; last - slots + 1..last) {
+		assert(hp.find_bracket(0.1*s + 0.05) == hp.get_circular_index(s));
 	}
 }
