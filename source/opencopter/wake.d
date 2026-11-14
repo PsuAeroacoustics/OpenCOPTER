@@ -173,7 +173,7 @@ struct WakeT(ArrayContainer AC) {
 	double[][] raw_buffer;
 	// Nitya: WHAT ARE THESE BUFFERS FOR?
 
-	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
 		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
@@ -191,8 +191,6 @@ struct WakeT(ArrayContainer AC) {
 
 			// 09/02: Nitya
 			
-			size_t[] num_blades_array;
-			num_blades_array[0] = num_blades;
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history, actual_radial_elements);
 			}
@@ -202,7 +200,7 @@ struct WakeT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, size_t num_blades, const(size_t[]) wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
 		// Nitya: WHAT IS wake_history.map??
@@ -220,8 +218,6 @@ struct WakeT(ArrayContainer AC) {
 			foreach(ref shed_vortex; rotor_wake.shed_vortices) {
 				shed_vortex = ShedVortexT!AC(actual_radial_elements, shed_history[r_idx]);
 			}
-			size_t[] num_blades_array;
-			num_blades_array[0] = num_blades;
 			// 09/02: Nitya
 			foreach(ref interaction; rotor_wake.interaction_perRotor) {
 			 	interaction = VortexInteraction_multiRotorT!AC(num_blades, num_blades, actual_wake_history[r_idx], actual_radial_elements);
@@ -232,7 +228,7 @@ struct WakeT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, const(size_t[]) num_blades, size_t wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		immutable actual_wake_history = wake_history%chunk_size == 0 ? wake_history : wake_history + (chunk_size - wake_history%chunk_size);
 		immutable actual_radial_elements = radial_elements%chunk_size == 0 ? radial_elements : radial_elements + (chunk_size - radial_elements%chunk_size);
@@ -257,7 +253,7 @@ struct WakeT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release) {
+	this(size_t num_rotors, const(size_t[]) num_blades, const(size_t[]) wake_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release) {
 
 		auto actual_wake_history = wake_history.map!(w => w%chunk_size == 0 ? w : w + (chunk_size - w%chunk_size)).array;
 
@@ -312,7 +308,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 	immutable double a1 =  6.5e-5;
 	bool hybrid = false;
 
-	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, size_t num_blades, size_t wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -324,7 +320,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, size_t num_blades, const(size_t[]) wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -336,7 +332,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, const(size_t[]) num_blades, size_t wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -348,7 +344,7 @@ struct WakeHistoryT(ArrayContainer AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t[] wake_history, size_t time_history, size_t radial_elements, size_t[] shed_history, size_t[] shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
+	this(size_t num_rotors, const(size_t[]) num_blades, const(size_t[]) wake_history, size_t time_history, size_t radial_elements, const(size_t[]) shed_history, const(size_t[]) shed_release, double _a1 = 6.5e-5, bool hybrid = false) {
 
 		this.hybrid = hybrid;
 		a1 = _a1;
@@ -512,8 +508,8 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 		if(i_c_idx == 0) {
 			x_am1[0] = x_am1[1];
-			z_am1[0] = y_am1[1];
-			y_am1[0] = z_am1[1];
+			y_am1[0] = y_am1[1];
+			z_am1[0] = z_am1[1];
 			r_cm1[0] = r_cm1[1];
 		} else {
 			x_am1[0] = chunks[i_c_idx - 1].x[$-1];
@@ -529,9 +525,9 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 
 			r_cp1[$-1] = r_cp1[$-2];
 
-			x_bp1[$-2..$] = x_bp1[$-2];
-			y_bp1[$-2..$] = y_bp1[$-2];
-			z_bp1[$-2..$] = z_bp1[$-2];
+			x_bp1[$-2..$] = chunk_i.x[$-1];
+			y_bp1[$-2..$] = chunk_i.y[$-1];
+			z_bp1[$-2..$] = chunk_i.z[$-1];
 		} else {
 			x_ap1[$-1] = chunks[i_c_idx + 1].x[0];
 			y_ap1[$-1] = chunks[i_c_idx + 1].y[0];
@@ -553,12 +549,14 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		y_b[0..$-1] = chunk_i.y[1..$];
 		z_b[0..$-1] = chunk_i.z[1..$];
 
+		Chunk gamma = chunk_i.gamma[];
+
 		if(i_c_idx != chunks.length - 1) {
 			x_b[$-1] = chunks[i_c_idx + 1].x[0];
 			y_b[$-1] = chunks[i_c_idx + 1].y[0];
 			z_b[$-1] = chunks[i_c_idx + 1].z[0];
 		} else {
-			chunk_i.gamma[$-1] = 0;
+			gamma[$-1] = 0;
 			x_b[$-1] = 0;
 			y_b[$-1] = 0;
 			z_b[$-1] = 0;
@@ -569,8 +567,6 @@ InducedVelocities compute_filament_induced_velocities(FC, BWI)(auto ref FC chunk
 		if(all_nan) {
 			break;
 		}
-
-		Chunk gamma = chunk_i.gamma[];
 
 		// put some dummy data in values that
 		// haven't been populated so we don't
@@ -806,7 +802,8 @@ InducedVelocities compute_wake_induced_velocities(W, AS)(auto ref W wake, immuta
 
 				BWIinputsChunk[] dummy_chunks;
 
-				if((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx))) {
+				// Grouped with the shed wake, so the tip_only/shed_only pair counts them once.
+				if(!tip_only && ((i_rotor_idx != rotor_idx) || ((i_rotor_idx == rotor_idx) && (i_blade_idx != blade_idx)))) {
 					auto ind_vel = compute_filament_induced_velocities(ac_state.rotor_states[i_rotor_idx].blade_states[i_blade_idx].chunks, x, y, z, 0, dummy_chunks, x_old, y_old, z_old, false);
 					ret_shed.v_x[] += ind_vel.v_x[];
 					ret_shed.v_y[] += ind_vel.v_y[];
@@ -1114,7 +1111,7 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			immutable num_chunks = ac_state
 				.rotor_states[rotor_idx]
 				.blade_states[blade_idx]
-				.chunks.length();
+				.chunks.length;
 
 			double max_gamma = 0;
 			int idx = 0;
@@ -1286,4 +1283,64 @@ void update_wake(ArrayContainer AC = ArrayContainer.None)(ref AircraftT!AC ac, r
 			wake_history.history[0].rotor_wakes[rotor_idx].current_shed_idx++;
 		}
 	}
+}
+
+version(unittest) private {
+	enum test_filament_points = 16;
+
+	FilamentChunk[] test_helix(double y_0, double z_0) {
+		auto chunks = new FilamentChunk[test_filament_points/chunk_size];
+		foreach(i; 0..test_filament_points) {
+			immutable double t = 0.15*i;
+			chunks[i/chunk_size].x[i%chunk_size] = cos(t);
+			chunks[i/chunk_size].y[i%chunk_size] = sin(t) + y_0;
+			chunks[i/chunk_size].z[i%chunk_size] = -0.05*i + z_0;
+			chunks[i/chunk_size].gamma[i%chunk_size] = 1.0;
+			chunks[i/chunk_size].r_c[i%chunk_size] = 1.0e-3;
+		}
+		return chunks;
+	}
+
+	InducedVelocities test_velocity_near(FilamentChunk[] filament, double x_0, double y_0, double z_0) {
+		Chunk x, y, z;
+		foreach(k; 0..chunk_size) {
+			x[k] = x_0 + 0.05*k;
+			y[k] = 0.2 + y_0;
+			z[k] = 0.1 + z_0;
+		}
+		immutable Chunk zero = 0;
+		BWIinputsChunk[] no_bwi;
+		return compute_filament_induced_velocities(filament, x, y, z, 0, no_bwi, zero, zero, zero, 0, false);
+	}
+
+	double test_relative_change(InducedVelocities a, InducedVelocities b) {
+		double change = 0;
+		double size = 0;
+		foreach(k; 0..chunk_size) {
+			change = fmax(change, abs(a.v_x[k] - b.v_x[k]) + abs(a.v_y[k] - b.v_y[k]) + abs(a.v_z[k] - b.v_z[k]));
+			size = fmax(size, abs(a.v_x[k]) + abs(a.v_y[k]) + abs(a.v_z[k]));
+		}
+		return change/size;
+	}
+}
+
+unittest {
+	// The induced velocity of a filament does not depend on where it sits
+	// (the first segment's virtual neighbour had y and z swapped).
+	auto reference = test_velocity_near(test_helix(0, 0), 0.9, 0, 0);
+	foreach(offset; [[5.0, 0.0], [0.0, -3.0], [-7.0, 4.0]]) {
+		auto moved = test_velocity_near(test_helix(offset[0], offset[1]), 0.9, offset[0], offset[1]);
+		assert(test_relative_change(reference, moved) < 1.0e-12);
+	}
+}
+
+unittest {
+	// The last segment of a filament counts, and evaluating the filament does
+	// not change its circulation.
+	auto filament = test_helix(0, 0);
+	immutable double x_last = filament[$-1].x[$-2];
+	auto before = test_velocity_near(filament, x_last, 0, 0);
+	assert(filament[$-1].gamma[$-1] == 1.0);
+	filament[$-1].gamma[$-2] = 2.0;
+	assert(test_relative_change(before, test_velocity_near(filament, x_last, 0, 0)) > 1.0e-3);
 }

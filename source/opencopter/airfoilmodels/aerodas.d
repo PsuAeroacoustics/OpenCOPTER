@@ -56,9 +56,20 @@ class InputParam {
         //this.CD0 = CD0;
         //this.cd1max_2D = cd1max_2D;
 
+        debug writeln(
+            "Enforcing lengths.",
+            " alpha.length: ", alpha.length,
+            ", CL.length: ", CL.length,
+            ", CD.length: ", CD.length);
+
         enforce(alpha.length == CL.length && alpha.length == CD.length && CL.length == CD.length,
             "Angle of attack, Cl, and Cd must have the same length"
         );
+
+        enforce(alpha.length >= 8, "Not enough data to construct aerodas model");
+
+        debug writeln("Lengths enforced");
+        
         //if (alpha.length != CL.length || alpha.length != CD.length || CL.length != CD.length) {
         //    writeln("Error: Angle of attack, Cl, and Cd must have the same length");
         //}
@@ -69,9 +80,11 @@ class InputParam {
 
         if (canFind(this.CL, 0)) {
             A0_indx = findindx(this.CL, 0);
+            debug writeln("can find A0_indx: ", A0_indx);
             this.A0 = this.alpha[countUntil(this.CL, 0)];
         } else {
             A0_indx = findindx(this.CL, 0);
+            debug writeln("can't find A0_indx: ", A0_indx);
             //debug writeln("aoa_0",this.alpha[A0_indx]);
             A0 = this.alpha[A0_indx] - ((this.alpha[A0_indx+1]-this.alpha[A0_indx])/(this.CL[A0_indx+1]-this.CL[A0_indx]))*this.CL[A0_indx];
         }
@@ -85,6 +98,8 @@ class InputParam {
         this.CD0 = minElement(this.CD);
         this.cd1max_2D = maxElement(this.CD);
         this.ACD1_2D = this.alpha[countUntil(this.CD[], this.cd1max_2D)];
+
+        debug writeln("input params finished ctor");
     }
 }
 
@@ -154,6 +169,7 @@ class AeroDAS: AirfoilModel {
         this.AR = AR;
         this.tbyc = tbyc;
 
+        debug writeln("Creating input params");
         this.ip = new InputParam(this.alpha, this.CL, this.CD);
         // debug writeln("A0 is",this.ip.A0);
     }

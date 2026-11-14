@@ -4,6 +4,7 @@ import opencopter.aircraft;
 import opencopter.config;
 import opencopter.memory;
 
+import std.math : abs, fmod, PI;
 import std.traits;
 
 template is_aircraft_input_state(A) {
@@ -88,4 +89,25 @@ extern (C++) struct WingInputStateT(ArrayContainer AC) {
 	double cos_aoa;
 	double sin_aoa;
 	double freestream_velocity; // m/s
+}
+
+void basic_aircraft_rotor_dynamics(RIS)(auto ref RIS ac_input, double dt) {
+	foreach(ref rotor; ac_input.rotor_inputs) {
+		basic_single_rotor_dynamics(rotor, dt);
+	}
+}
+
+double basic_single_rotor_dynamics(RIS)(auto ref RIS input_state, double dt) {
+	double angle = input_state.angular_velocity*dt + 0.5*input_state.angular_accel*dt*dt;
+
+	input_state.azimuth += angle;
+
+	// Keep the azimuth between -2*PI and 2*PI so we don't
+	// lose fp precicion as the sim marches in time and
+	// the azimuth grows unbounded (in either direction).
+	if(abs(input_state.azimuth) > 2.0*PI) {
+		input_state.azimuth = fmod(input_state.azimuth, 2.0*PI);
+	}
+
+	return angle;
 }

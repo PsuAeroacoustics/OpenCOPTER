@@ -60,13 +60,20 @@ double[] generate_spanwise_control_points(size_t span_n_sections) {
 	}).array;
 }
 
+/// y sign of wing part wp_idx. A lone part lies on the side its location
+/// names (0 if it names neither); with several parts the even ones are on the
+/// left (negative y) and the odd ones on the right.
+double wing_part_side(WG)(auto ref WG wing_geometry, size_t wp_idx) {
+	if(wing_geometry.wing_parts.length != 1) {
+		return wp_idx%2 == 0 ? -1.0 : 1.0;
+	}
+	immutable loc = wing_geometry.wing_parts[0].loc;
+	return loc == Location.left ? -1.0 : (loc == Location.right ? 1.0 : 0.0);
+}
+
 void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_nodes, size_t _chordwise_nodes, double _camber){
     
     import std.math : cos,tan, PI;
-    import std.math : abs;
-	double wing_span = wing_geometry.wing_parts[0].wing_span; // half wing span
-	Chunk span = 2*wing_span; // full wing span
-	double root_chord = wing_geometry.wing_parts[0].wing_root_chord;
 	size_t acutal_span_nodes = _spanwise_nodes%chunk_size == 0 ? _spanwise_nodes : _spanwise_nodes + (chunk_size - _spanwise_nodes%chunk_size);
 	size_t _spanwise_chunks = acutal_span_nodes/chunk_size;
     auto span_ctrl_pt = generate_spanwise_control_points(acutal_span_nodes);
@@ -75,69 +82,41 @@ void set_wing_ctrl_pt_geometry(WG)(auto ref WG wing_geometry, size_t _spanwise_n
     //span_vr_nodes_left = span_vr_nodes_left.retro;
     //auto chord_vr_nodes = generate_chordwise_votex_nodes(_chordwise_nodes);
 
-	if(wing_geometry.wing_parts.length == 1){
-		string side = wing_geometry.wing_parts[0].loc;
-		writeln("location == ", side);
-		if(side == Location.left){
-			writeln("population left wing part ctrl point geometry");
-			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-				foreach(crd_idx;0.._chordwise_nodes){
-					foreach(sp_idx; 0.._spanwise_chunks){
-					//writeln("going_left_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
-					}
-				}
+	foreach(wp_idx, wing_part; wing_geometry.wing_parts){
+		immutable side = wing_part_side(wing_geometry, wp_idx);
+		if(side == 0) {
+			continue;
+		}
+
+		// Each part uses its own half span. Positive LE sweep is aft on both
+		// sides.
+		immutable double span = 2*wing_part.wing_span;
+		immutable tan_le_sweep = tan(wing_part.le_sweep_angle*PI/180);
+
+		foreach(crd_idx;0.._chordwise_nodes){
+			foreach(sp_idx; 0.._spanwise_chunks){
+				immutable Chunk abs_y = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span;
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = side*abs_y[];
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + abs_y[]*tan_le_sweep;
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
+				wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
 			}
 		}
-		else if(side == Location.right){
-			writeln("populating right wing part ctrl point geometry");
-			foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-				foreach(crd_idx;0.._chordwise_nodes){
-					foreach(sp_idx; 0.._spanwise_chunks){
-						//writeln("going_left_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
-					}
-				}
-			}
-		}
-	}else{
-		foreach(wp_idx, wing_part; wing_geometry.wing_parts){
-			foreach(crd_idx;0.._chordwise_nodes){
-				foreach(sp_idx; 0.._spanwise_chunks){
-					if(wp_idx%2==0){
-					//writeln("going_left_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = -span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] - wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-					}else{
-					//writeln("going_right_wing_part");
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[] = span_ctrl_pt[sp_idx*chunk_size..sp_idx*chunk_size + chunk_size]*span[];
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_x[] = chord_ctrl_pt[crd_idx]*wing_part.chunks[sp_idx].chord[] + wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_y[]*tan(wing_part.le_sweep_angle*PI/180);
-						wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].camber[] = _camber;
-					}				
-				
-					wing_part.ctrl_chunks[crd_idx*_spanwise_chunks + sp_idx].ctrl_pt_z[] = 0.0;
-				}
-			}
-		}
-	}    
+	}
 }
 
 double[] generate_chordwise_control_points(size_t chord_n_sections) {
 	import std.algorithm : map;
 	import std.array : array;
 	import std.math : cos, PI;
-	import std.range : iota, retro;
-	// Spanwise Votex nodes
-	immutable num_points = chord_n_sections%chunk_size == 0 ? chord_n_sections : chord_n_sections + (chunk_size - chord_n_sections%chunk_size);
-	return iota(1.0,num_points + 2.0).map!((i){
-		immutable theta = i*PI/(num_points.to!double + 1.0);
+	import std.range : iota;
+	// Chordwise control points of Lan's quasi vortex lattice at
+	// x/c = (1 - cos(theta_i))/2, theta_i = i*PI/N for i = 1 .. N, the
+	// stations VortexLatticeT's influence matrix is built for. The last one
+	// is on the trailing edge. Chordwise control points are not stored in
+	// chunks, so N is not rounded up to a multiple of chunk_size.
+	return iota(1, chord_n_sections + 1).map!((i){
+		immutable theta = i*PI/(chord_n_sections.to!double);
 		auto chord_ctrl_pt = 0.5*(1 - cos(theta)).to!double;
 		return chord_ctrl_pt;
 	}).array;
@@ -199,7 +178,7 @@ Mat3 build_rotation_matrix(Vec3 axis, double angle) {
 	
 	alias M = temp_mat;
 	M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
-	M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
+	M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz*one_cs-x*sn;		 
 	M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
 
 	return temp_mat;
@@ -283,7 +262,9 @@ struct Frame {
 
 	Vec3 global_position() {
 		nop;
-		auto pos = Vec3(inverse_global_matrix[0, 3], inverse_global_matrix[1, 3], inverse_global_matrix[2, 3]);
+		// The translation of the global matrix is this frame's origin in global
+		// coordinates (the inverse holds the global origin in local coordinates).
+		auto pos = Vec3(global_matrix[0, 3], global_matrix[1, 3], global_matrix[2, 3]);
 		return pos;
 	}
 
@@ -304,34 +285,7 @@ struct Frame {
 	}
 
 	void rotate(Vec3 axis, double angle) {
-		Mat3 temp_mat;
-		double cs = cos(angle);
-		double sn = sin(angle);
-
-		double x = axis[0];
-		double y = axis[1];
-		double z = axis[2];
-
-		double mag = sqrt((x*x)+(y*y)+(z*z));
-		x = x/mag;
-		y = y/mag;
-		z = z/mag;
-		
-		double xx = x*x;
-		double xy = x*y;
-		double xz = x*z;
-		double yy = y*y;
-		double yz = y*z;
-		double zz = z*z;
-		double one_cs = 1 - cs;
-		
-		alias M = temp_mat;
-		M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
-		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
-		M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
-		
-		temp_mat = local_matrix.extract_rotation_matrix() * temp_mat;
-		
+		Mat3 temp_mat = local_matrix.extract_rotation_matrix() * build_rotation_matrix(axis, angle);
 		local_matrix.set_rotation_matrix(temp_mat);
 	}
 
@@ -340,32 +294,7 @@ struct Frame {
 		axis = _axis;
 		angle = _angle;
 
-		Mat3 temp_mat;
-		double cs = cos(angle);
-		double sn = sin(angle);
-
-		double x = axis[0];
-		double y = axis[1];
-		double z = axis[2];
-
-		double mag = sqrt((x*x)+(y*y)+(z*z));
-		x = x/mag;
-		y = y/mag;
-		z = z/mag;
-		
-		double xx = x*x;
-		double xy = x*y;
-		double xz = x*z;
-		double yy = y*y;
-		double yz = y*z;
-		double zz = z*z;
-		double one_cs = 1 - cs;
-		
-		alias M = temp_mat;
-		M[0, 0] = cs + xx*one_cs; M[0, 1] = xy*one_cs-z*sn; M[0, 2]  = xz*one_cs+y*sn;
-		M[1, 0] = xy*one_cs+z*sn; M[1, 1] = cs+yy*one_cs;   M[1, 2]  = yz-x*sn;		 
-		M[2, 0] = xz*one_cs-y*sn; M[2, 1] = yz*one_cs+x*sn; M[2, 2]  = cs+zz*one_cs;	 
-		
+		Mat3 temp_mat = build_rotation_matrix(axis, angle);
 		local_matrix.set_rotation_matrix(temp_mat);
 	}
 
@@ -728,11 +657,13 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	this(size_t num_parts, Vec3 origin, double wing_span) {
 		mixin(array_ctor_mixin!(AC, "WingPartGeometryT!(AC)", "wing_parts", "num_parts"));
 		this.origin = origin;
+		this.wing_span = wing_span;
 	}
 
 	ref typeof(this) opAssign(typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.wing_span = wing.wing_span;
 		this.frame = wing.frame;
 		return this;
 	}
@@ -740,6 +671,7 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	ref typeof(this) opAssign(ref typeof(this) wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.wing_span = wing.wing_span;
 		this.frame = wing.frame;
 		return this;
 	}
@@ -747,6 +679,7 @@ extern (C++) struct WingGeometryT(ArrayContainer AC) {
 	ref typeof(this) opAssign(typeof(this)* wing) {
 		this.wing_parts = wing.wing_parts;
 		this.origin = wing.origin;
+		this.wing_span = wing.wing_span;
 		this.frame = wing.frame;
 		return this;
 	}
@@ -865,7 +798,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
-		this.loc = loc;
+		this.loc = wing_part.loc;
 		//this.frame = wing_part.frame;
 		return this;
 	}
@@ -881,7 +814,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
-		this.loc = loc;
+		this.loc = wing_part.loc;
 		//this.frame = wing_part.frame;
 		return this;
 	}
@@ -897,7 +830,7 @@ struct WingPartGeometryT(ArrayContainer AC) {
 		this.le_sweep_angle = wing_part.le_sweep_angle;
 		this.te_sweep_angle = wing_part.te_sweep_angle;
 		this.wing_span = wing_part.wing_span;
-		this.loc = loc;
+		this.loc = wing_part.loc;
 		//this.frame = wing_part.frame;
 		return this;
 	}
@@ -1112,4 +1045,55 @@ void set_geometry_array(string value, ArrayContainer AC)(WingPartGeometryT!AC* w
 
 		mixin("chunk."~value~"[0..in_end_idx] = data[out_start_idx..out_end_idx];");
 	}
+}
+
+unittest {
+	// Rotations about an oblique axis stay orthogonal.
+	import std.math : abs;
+
+	foreach(axis; [Vec3(0, 1, 1), Vec3(1, 2, 3)]) {
+		auto frame = Frame(Vec3(1, 0, 0), 0.0, Vec3(0, 0, 0), null, "frame", FrameType.connection);
+		frame.rotate(axis, 0.7);
+		auto m = extract_rotation_matrix(frame.local_matrix);
+		auto mtm = m.transpose*m;
+		foreach(i; 0..3) {
+			foreach(j; 0..3) {
+				assert(abs(mtm[i, j] - (i == j ? 1.0 : 0.0)) < 1.0e-14);
+			}
+		}
+	}
+}
+
+unittest {
+	// global_position is the frame's origin in global coordinates.
+	import std.math : abs, PI;
+
+	auto frame = new Frame(Vec3(0, 0, 1), PI/2, Vec3(1, 2, 3), null, "hub", FrameType.connection);
+	frame.update(Mat4.identity);
+	auto position = frame.global_position();
+	foreach(i, expected; [1.0, 2.0, 3.0]) {
+		assert(abs(position[i] - expected) < 1.0e-12);
+	}
+}
+
+unittest {
+	// Chordwise control points sit on Lan's stations, x/c = (1 - cos(i pi/N))/2,
+	// with no rounding of N to whole chunks.
+	import std.math : abs, cos, PI;
+
+	foreach(N; [3UL, 4]) {
+		auto x = generate_chordwise_control_points(N);
+		assert(x.length == N);
+		foreach(i; 0..N) {
+			assert(abs(x[i] - 0.5*(1.0 - cos((i + 1.0)*PI/N))) < 1.0e-15);
+		}
+	}
+}
+
+unittest {
+	// Assigning a wing part keeps its side, and a wing keeps its span.
+	WingPartGeometry part;
+	part = WingPartGeometry(8, 2, Vec3(0, 0, 0), 0.2, 0.2, 0.2, 0, 0, 1.0, Location.left);
+	assert(part.loc == Location.left);
+	assert(WingGeometry(1, Vec3(0, 0, 0), 3.5).wing_span == 3.5);
 }

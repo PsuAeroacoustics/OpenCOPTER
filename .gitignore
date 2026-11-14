@@ -1,7 +1,6 @@
 .dub
 .vscode
 *.asm
-*.h
 dub.selections.json
 plot_scipt.py
 *.png
@@ -9,6 +8,7 @@ plot_scipt.py
 wopwop_cases
 tilt_rotor*
 libopencopter*
+opencopter-test-*
 build
 *.out
 hart_val
@@ -52,3 +52,7 @@ oc_fly/example/helinovi/ID*
 oc_fly/example/hart_ii/BL
 oc_fly/example/hart_ii/MN
 oc_fly/example/hart_ii/MV
+examples/c/example
+examples/cpp/example
+opencopter-test-library*
+.clangd

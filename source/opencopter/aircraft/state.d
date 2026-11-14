@@ -76,7 +76,7 @@ struct AircraftStateT(ArrayContainer _AC) {
 	Vec4 freestream;
 	Vec4 forces;
 	
-	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, ref AircraftT!AC ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, double[] direction) {
+	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, ref AircraftT!AC ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, const(double[]) direction) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -93,7 +93,7 @@ struct AircraftStateT(ArrayContainer _AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, AircraftT!AC* ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, double[] direction) {
+	this(size_t num_rotors, size_t num_blades, size_t num_elements, size_t num_wings, size_t num_wing_parts, size_t num_span_nodes, size_t num_chord_nodes, AircraftT!AC* ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, const(double[]) direction) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -110,7 +110,7 @@ struct AircraftStateT(ArrayContainer _AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings,size_t[] num_wing_parts,  size_t num_span_nodes, size_t num_chord_nodes, ref AircraftT!AC ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, double[] direction) {
+	this(size_t num_rotors, const(size_t[]) num_blades, size_t num_elements, size_t num_wings,const(size_t[]) num_wing_parts,  size_t num_span_nodes, size_t num_chord_nodes, ref AircraftT!AC ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, const(double[]) direction) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -127,7 +127,7 @@ struct AircraftStateT(ArrayContainer _AC) {
 		}
 	}
 
-	this(size_t num_rotors, size_t[] num_blades, size_t num_elements, size_t num_wings,size_t[] num_wing_parts,  size_t num_span_nodes, size_t num_chord_nodes, AircraftT!AC* ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, double[] direction) {
+	this(size_t num_rotors, const(size_t[]) num_blades, size_t num_elements, size_t num_wings,const(size_t[]) num_wing_parts,  size_t num_span_nodes, size_t num_chord_nodes, AircraftT!AC* ac, InflowT!AC[] rotor_inflows, InflowT!AC[] wing_inflows, const(double[]) direction) {
 		immutable actual_num_elements = num_elements%chunk_size == 0 ? num_elements : num_elements + (chunk_size - num_elements%chunk_size);
 
 		immutable num_chunks = actual_num_elements/chunk_size;
@@ -773,6 +773,19 @@ double[] get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC bla
 	return state_array;
 }
 
+void get_state_array(string value, ArrayContainer AC)(const ref BladeStateT!AC blade, auto ref double[] state_array) {
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = state_array.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+}
+
 void get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, auto ref double[] state_array) {
 	foreach(c_idx, ref chunk; blade.chunks) {
 		immutable out_start_idx = c_idx*chunk_size;
@@ -783,6 +796,19 @@ void get_state_array(string value, ArrayContainer AC)(ref BladeStateT!AC blade, 
 		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
 
 		mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	}
+}
+
+void get_state_array(string value, ArrayContainer AC)(const ref BladeStateT!AC blade, auto ref float[] state_array) {
+	foreach(c_idx, ref chunk; blade.chunks) {
+		immutable out_start_idx = c_idx*chunk_size;
+
+		immutable remaining = state_array.length - out_start_idx;
+		
+		immutable out_end_idx = remaining > chunk_size ? (c_idx + 1)*chunk_size : out_start_idx + remaining;
+		immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
+
+		mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[].map!(a => a.to!float).staticArray!(float[chunk_size])[0..in_end_idx];");
 	}
 }
 
@@ -838,20 +864,16 @@ double[][] get_wing_state_matrix(string value, ArrayContainer AC)(ref WingPartSt
 
 double[] get_wing_state_array(string value, ArrayContainer AC)(ref WingStateT!AC wing){
 	
-	size_t elements = wing.wing_part_states[0].chunks.length*chunk_size;
-	double[] state_array = new double[2*elements];
+	size_t total_elements = 0;
+	foreach(ref wing_part; wing.wing_part_states){
+		total_elements += wing_part.chunks.length*chunk_size;
+	}
 
-	foreach(wp_idx, wing_part; wing.wing_part_states){
-		foreach(c_idx, chunk; wing_part.chunks){
-			
-			immutable out_start_idx = wp_idx*elements + c_idx*chunk_size;
-			
-			immutable remaining = elements- out_start_idx;
-
-			immutable out_end_idx = remaining > chunk_size ? wp_idx*elements + (c_idx + 1)*chunk_size : wp_idx*elements + out_start_idx + remaining;
-			immutable in_end_idx = remaining > chunk_size ? chunk_size : remaining;
-
-			mixin("state_array[out_start_idx..out_end_idx] = chunk."~value~"[0..in_end_idx];");
+	double[] state_array;
+	state_array.reserve(total_elements);
+	foreach(ref wing_part; wing.wing_part_states){
+		foreach(ref chunk; wing_part.chunks){
+			mixin("state_array ~= chunk."~value~"[];");
 		}
 	}
 	return state_array;

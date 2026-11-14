@@ -1,1 +1,22 @@
-# Set the default behavior, in case people don't have core.autocrlf set.
+# Line endings: store text with LF and check it out with LF on every platform.
+#
+# Use text=auto, never a bare "* text": text=auto lets git detect binary files
+# and leave them alone, whereas "* text" forces every file through end-of-line
+# conversion. That is how commit 646bd87 ("Renormalize line endings") stripped
+# CR bytes out of the PNGs and validation/HART_II/pressure_plot.
+* text=auto eol=lf
+
+# Windows batch files need CRLF to run reliably under cmd.exe.
+*.bat text eol=crlf
+
+# Binary formats in the repo, spelled out so no heuristic can misjudge them.
+*.png binary
+*.jpg binary
+*.zip binary
+*.mat binary
+*.fig binary
+*.pptx binary
+*.so binary
+*.dylib binary
+validation/HART_II/pressure_plot binary
+wing_test/data binary

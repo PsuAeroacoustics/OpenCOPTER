@@ -571,7 +571,7 @@ void fill_directionVec(string value, BWI)(
     auto ref BWI VortexInteraction,
     ref Vec3[] outVec)
 {
-    immutable elements = VortexInteraction.BWI_inputs.length;
+    immutable elements = VortexInteraction.BWI_inputs.length * chunk_size;
     if (outVec.length < elements)
         outVec.length = elements;
 
